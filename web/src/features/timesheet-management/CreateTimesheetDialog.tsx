@@ -6,6 +6,7 @@ import {
 } from "@mytask/hooks";
 import { getErrorMessage } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
+import { FullScreenModal } from "@/components/ui/FullScreenModal";
 import { useToastStore } from "@/store/toastStore";
 
 type EmployeeRow = {
@@ -76,74 +77,13 @@ export function CreateTimesheetDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 p-4 sm:items-center">
-      <button
-        type="button"
-        className="absolute inset-0 cursor-pointer"
-        aria-label="Close dialog"
-        onClick={onClose}
-      />
-      <div className="relative z-10 w-full max-w-md rounded-2xl border border-border bg-[var(--mt-surface)] p-5 shadow-2xl">
-        <h2 className="text-lg font-bold text-[var(--mt-text)]">
-          Create timesheet
-        </h2>
-        <p className="mt-1 text-sm text-muted">
-          Choose an employee and payroll period.
-        </p>
-
-        <div className="mt-4 flex flex-col gap-3">
-          <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium">Employee</span>
-            <select
-              className="mt-focus rounded-xl border border-border bg-[var(--mt-surface)] px-3.5 py-3"
-              value={employeeId}
-              onChange={(e) => {
-                setEmployeeId(e.target.value);
-                setPeriodKey("");
-              }}
-            >
-              <option value="">Select employee</option>
-              {employees.map((emp) => {
-                const id = emp.details?.id ?? emp.id;
-                const label =
-                  emp.details?.full_name ||
-                  emp.details?.email ||
-                  `Employee #${id}`;
-                return (
-                  <option key={String(id)} value={String(id)}>
-                    {label}
-                  </option>
-                );
-              })}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium">Period</span>
-            <select
-              className="mt-focus rounded-xl border border-border bg-[var(--mt-surface)] px-3.5 py-3"
-              value={periodKey}
-              onChange={(e) => setPeriodKey(e.target.value)}
-              disabled={!employeeId || cyclesQuery.isLoading}
-            >
-              <option value="">
-                {cyclesQuery.isLoading
-                  ? "Loading periods…"
-                  : "Select period"}
-              </option>
-              {periods.map((p) => (
-                <option
-                  key={`${p.start_date}|${p.end_date}`}
-                  value={`${p.start_date}|${p.end_date}`}
-                >
-                  {p.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <div className="mt-5 flex justify-end gap-2">
+    <FullScreenModal
+      open={open}
+      onClose={onClose}
+      title="Create timesheet"
+      variant="form"
+      footer={
+        <>
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
@@ -153,8 +93,62 @@ export function CreateTimesheetDialog({
           >
             Create
           </Button>
-        </div>
+        </>
+      }
+    >
+      <p className="mb-4 text-sm text-muted">
+        Choose an employee and payroll period.
+      </p>
+
+      <div className="flex flex-col gap-3">
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="font-medium">Employee</span>
+          <select
+            className="mt-focus rounded-xl border border-border bg-[var(--mt-surface)] px-3.5 py-3"
+            value={employeeId}
+            onChange={(e) => {
+              setEmployeeId(e.target.value);
+              setPeriodKey("");
+            }}
+          >
+            <option value="">Select employee</option>
+            {employees.map((emp) => {
+              const id = emp.details?.id ?? emp.id;
+              const label =
+                emp.details?.full_name ||
+                emp.details?.email ||
+                `Employee #${id}`;
+              return (
+                <option key={String(id)} value={String(id)}>
+                  {label}
+                </option>
+              );
+            })}
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="font-medium">Period</span>
+          <select
+            className="mt-focus rounded-xl border border-border bg-[var(--mt-surface)] px-3.5 py-3"
+            value={periodKey}
+            onChange={(e) => setPeriodKey(e.target.value)}
+            disabled={!employeeId || cyclesQuery.isLoading}
+          >
+            <option value="">
+              {cyclesQuery.isLoading ? "Loading periods…" : "Select period"}
+            </option>
+            {periods.map((p) => (
+              <option
+                key={`${p.start_date}|${p.end_date}`}
+                value={`${p.start_date}|${p.end_date}`}
+              >
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
-    </div>
+    </FullScreenModal>
   );
 }

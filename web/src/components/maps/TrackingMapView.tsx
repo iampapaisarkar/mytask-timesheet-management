@@ -40,6 +40,7 @@ type GoogleMapsNs = {
   Map: new (el: HTMLElement, opts: Record<string, unknown>) => GoogleMap;
   Polyline: new (opts: Record<string, unknown>) => {
     setMap: (m: unknown) => void;
+    setOptions?: (opts: Record<string, unknown>) => void;
   };
   Circle: new (opts: Record<string, unknown>) => {
     setMap: (m: unknown) => void;
@@ -101,10 +102,15 @@ export function TrackingMapView({
   trackingLogs,
   jobs = [],
   height = 300,
+  selectedType = null,
+  className,
 }: {
   trackingLogs?: TrackingLogs | null;
   jobs?: MapJob[];
-  height?: number;
+  height?: number | string;
+  /** Highlight segments of this activity type */
+  selectedType?: "working" | "break" | "travel" | null;
+  className?: string;
 }) {
   const mapRef = useRef<HTMLDivElement>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -175,7 +181,10 @@ export function TrackingMapView({
             new maps.Polyline({
               path,
               strokeColor: "#646464",
-              strokeWeight: 6,
+              strokeWeight:
+                selectedType && selectedType !== segment.type ? 3 : 6,
+              strokeOpacity:
+                selectedType && selectedType !== segment.type ? 0.25 : 0.55,
               map,
             }),
           );
@@ -183,7 +192,14 @@ export function TrackingMapView({
             new maps.Polyline({
               path,
               strokeColor: TYPE_COLORS[segment.type] || "#EF4444",
-              strokeWeight: 4,
+              strokeWeight:
+                selectedType && selectedType === segment.type
+                  ? 6
+                  : selectedType
+                    ? 2
+                    : 4,
+              strokeOpacity:
+                selectedType && selectedType !== segment.type ? 0.35 : 1,
               map,
             }),
           );
@@ -236,12 +252,12 @@ export function TrackingMapView({
       cancelled = true;
       overlays.forEach((o) => o.setMap(null));
     };
-  }, [apiKey, hasData, segments, jobPoints]);
+  }, [apiKey, hasData, segments, jobPoints, selectedType]);
 
   if (!hasData) {
     return (
       <div
-        className="flex items-center justify-center rounded-xl border border-dashed border-border text-sm text-muted"
+        className={`flex items-center justify-center rounded-xl border border-dashed border-border text-sm text-muted ${className || ""}`}
         style={{ height }}
       >
         No tracking data found
@@ -252,8 +268,8 @@ export function TrackingMapView({
   if (!apiKey || loadError) {
     return (
       <div
-        className="overflow-auto rounded-xl border border-border bg-[var(--mt-bg)] p-3 text-sm"
-        style={{ maxHeight: height }}
+        className={`overflow-auto rounded-xl border border-border bg-[var(--mt-bg)] p-3 text-sm ${className || ""}`}
+        style={{ maxHeight: typeof height === "number" ? height : undefined, height }}
       >
         <p className="mb-2 font-medium text-[var(--mt-text)]">
           {loadError
@@ -281,7 +297,7 @@ export function TrackingMapView({
   return (
     <div
       ref={mapRef}
-      className="w-full overflow-hidden rounded-xl border border-border"
+      className={`w-full overflow-hidden rounded-xl border border-border ${className || ""}`}
       style={{ height }}
     />
   );

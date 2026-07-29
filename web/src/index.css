@@ -135,3 +135,22 @@ button:disabled,
   outline: 2px solid #04b6b1;
   outline-offset: 2px;
 }
+
+@keyframes mt-fullscreen-in {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.mt-fullscreen-root {
+  animation: mt-fade-in 0.2s ease both;
+}
+
+.mt-fullscreen-panel {
+  animation: mt-fullscreen-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}

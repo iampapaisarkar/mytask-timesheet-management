@@ -6,6 +6,7 @@ import {
 } from "@mytask/hooks";
 import { getErrorMessage } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
+import { FullScreenModal } from "@/components/ui/FullScreenModal";
 import { TextInput } from "@/components/ui/TextInput";
 import { useToastStore } from "@/store/toastStore";
 
@@ -122,69 +123,65 @@ export function ManagementGroupFormDialog({
   const pending = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 p-4 sm:items-center">
-      <button
-        type="button"
-        className="absolute inset-0 cursor-pointer"
-        aria-label="Close dialog"
-        onClick={onClose}
-      />
-      <div className="relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-[var(--mt-surface)] p-5 shadow-2xl">
-        <h2 className="text-lg font-bold text-[var(--mt-text)]">
-          {isEdit ? "Edit management group" : "Create management group"}
-        </h2>
-        <div className="mt-4 flex flex-col gap-4">
-          <TextInput
-            label="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-
-          <fieldset className="flex flex-col gap-2">
-            <legend className="text-sm font-medium">Managers</legend>
-            <div className="max-h-40 space-y-2 overflow-y-auto rounded-xl border border-border p-3">
-              {options.map((opt) => (
-                <label key={opt.id} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    className="size-4 accent-primary"
-                    checked={managerIds.includes(opt.id)}
-                    onChange={() =>
-                      toggle(managerIds, opt.id, setManagerIds)
-                    }
-                  />
-                  <span>{opt.label}</span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-
-          <fieldset className="flex flex-col gap-2">
-            <legend className="text-sm font-medium">Staff</legend>
-            <div className="max-h-40 space-y-2 overflow-y-auto rounded-xl border border-border p-3">
-              {options.map((opt) => (
-                <label key={opt.id} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    className="size-4 accent-primary"
-                    checked={staffIds.includes(opt.id)}
-                    onChange={() => toggle(staffIds, opt.id, setStaffIds)}
-                  />
-                  <span>{opt.label}</span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-        </div>
-        <div className="mt-5 flex justify-end gap-2">
+    <FullScreenModal
+      open={open}
+      onClose={onClose}
+      title={isEdit ? "Edit management group" : "Create management group"}
+      variant="form"
+      footer={
+        <>
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
           <Button loading={pending} onClick={() => void handleSubmit()}>
             {isEdit ? "Save" : "Create"}
           </Button>
-        </div>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <TextInput
+          label="Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+
+        <fieldset className="flex flex-col gap-2">
+          <legend className="text-sm font-medium">Managers</legend>
+          <div className="max-h-48 space-y-2 overflow-y-auto rounded-xl border border-border p-3">
+            {options.map((opt) => (
+              <label key={opt.id} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="size-4 accent-primary"
+                  checked={managerIds.includes(opt.id)}
+                  onChange={() =>
+                    toggle(managerIds, opt.id, setManagerIds)
+                  }
+                />
+                <span>{opt.label}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <fieldset className="flex flex-col gap-2">
+          <legend className="text-sm font-medium">Staff</legend>
+          <div className="max-h-48 space-y-2 overflow-y-auto rounded-xl border border-border p-3">
+            {options.map((opt) => (
+              <label key={opt.id} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="size-4 accent-primary"
+                  checked={staffIds.includes(opt.id)}
+                  onChange={() => toggle(staffIds, opt.id, setStaffIds)}
+                />
+                <span>{opt.label}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
       </div>
-    </div>
+    </FullScreenModal>
   );
 }

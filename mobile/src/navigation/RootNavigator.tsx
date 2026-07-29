@@ -135,7 +135,12 @@ export function RootNavigator() {
           <Stack.Screen
             name="TimesheetDayDetail"
             component={TimesheetDayDetailScreen}
-            options={{ title: "Day detail" }}
+            options={{
+              title: "Day detail",
+              presentation: "fullScreenModal",
+              animation: "slide_from_bottom",
+              headerShown: false,
+            }}
           />
           <Stack.Screen
             name="TimesheetManagementList"

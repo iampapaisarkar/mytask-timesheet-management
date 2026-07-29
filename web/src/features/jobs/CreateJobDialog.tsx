@@ -6,6 +6,7 @@ import {
 } from "@mytask/hooks";
 import { getErrorMessage } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
+import { FullScreenModal } from "@/components/ui/FullScreenModal";
 import { TextInput } from "@/components/ui/TextInput";
 import {
   GoogleAddress,
@@ -151,109 +152,13 @@ export function CreateJobDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 p-4 sm:items-center">
-      <button
-        type="button"
-        className="absolute inset-0 cursor-pointer"
-        aria-label="Close dialog"
-        onClick={onClose}
-      />
-      <div className="relative z-10 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-[var(--mt-surface)] p-5 shadow-2xl">
-        <h2 className="text-lg font-bold text-[var(--mt-text)]">Create job</h2>
-        <div className="mt-4 flex flex-col gap-3">
-          <TextInput
-            label="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <label className="flex w-full flex-col gap-1.5 text-sm">
-            <span className="font-medium text-[var(--mt-text)]">Customer</span>
-            <select
-              className={selectClass}
-              value={customerId}
-              onChange={(e) => setCustomerId(e.target.value)}
-            >
-              <option value="">Select customer</option>
-              {customers.map((c) => (
-                <option key={String(c.id)} value={String(c.id)}>
-                  {c.name || `Customer #${c.id}`}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div>
-            <p className="mb-2 text-sm font-medium text-[var(--mt-text)]">
-              Site address
-            </p>
-            <GoogleAddress value={address} onChange={setAddress} />
-          </div>
-
-          <TextInput
-            label="Geofence radius (meters)"
-            type="number"
-            min={1}
-            value={radius}
-            onChange={(e) => setRadius(e.target.value)}
-          />
-
-          <TextInput
-            label="Site contact name"
-            value={siteContactName}
-            onChange={(e) => setSiteContactName(e.target.value)}
-          />
-          <TextInput
-            label="Site contact email"
-            type="email"
-            value={siteContactEmail}
-            onChange={(e) => setSiteContactEmail(e.target.value)}
-          />
-          <TextInput
-            label="Site contact phone"
-            value={siteContactPhone}
-            onChange={(e) => setSiteContactPhone(e.target.value)}
-          />
-
-          <fieldset className="flex flex-col gap-2">
-            <legend className="text-sm font-medium text-[var(--mt-text)]">
-              Management groups
-            </legend>
-            <div className="max-h-40 space-y-2 overflow-y-auto rounded-xl border border-border p-3">
-              {!groups.length ? (
-                <p className="text-sm text-muted">No management groups found</p>
-              ) : (
-                groups.map((g) => {
-                  const id = Number(g.id);
-                  return (
-                    <label
-                      key={String(g.id)}
-                      className="flex items-center gap-2 text-sm"
-                    >
-                      <input
-                        type="checkbox"
-                        className="size-4 accent-primary"
-                        checked={groupIds.includes(id)}
-                        onChange={() => toggleGroup(id)}
-                      />
-                      <span>{g.name || `Group #${g.id}`}</span>
-                    </label>
-                  );
-                })
-              )}
-            </div>
-          </fieldset>
-
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              className="size-4 accent-primary"
-              checked={isActive}
-              onChange={(e) => setIsActive(e.target.checked)}
-            />
-            <span className="font-medium text-[var(--mt-text)]">Active</span>
-          </label>
-        </div>
-        <div className="mt-5 flex justify-end gap-2">
+    <FullScreenModal
+      open={open}
+      onClose={onClose}
+      title="Create job"
+      variant="form"
+      footer={
+        <>
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
@@ -263,8 +168,102 @@ export function CreateJobDialog({
           >
             Create
           </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-3">
+        <TextInput
+          label="Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <label className="flex w-full flex-col gap-1.5 text-sm">
+          <span className="font-medium text-[var(--mt-text)]">Customer</span>
+          <select
+            className={selectClass}
+            value={customerId}
+            onChange={(e) => setCustomerId(e.target.value)}
+          >
+            <option value="">Select customer</option>
+            {customers.map((c) => (
+              <option key={String(c.id)} value={String(c.id)}>
+                {c.name || `Customer #${c.id}`}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <div>
+          <p className="mb-2 text-sm font-medium text-[var(--mt-text)]">
+            Site address
+          </p>
+          <GoogleAddress value={address} onChange={setAddress} />
         </div>
+
+        <TextInput
+          label="Geofence radius (meters)"
+          type="number"
+          min={1}
+          value={radius}
+          onChange={(e) => setRadius(e.target.value)}
+        />
+
+        <TextInput
+          label="Site contact name"
+          value={siteContactName}
+          onChange={(e) => setSiteContactName(e.target.value)}
+        />
+        <TextInput
+          label="Site contact email"
+          type="email"
+          value={siteContactEmail}
+          onChange={(e) => setSiteContactEmail(e.target.value)}
+        />
+        <TextInput
+          label="Site contact phone"
+          value={siteContactPhone}
+          onChange={(e) => setSiteContactPhone(e.target.value)}
+        />
+
+        <fieldset className="flex flex-col gap-2">
+          <legend className="text-sm font-medium text-[var(--mt-text)]">
+            Management groups
+          </legend>
+          <div className="max-h-48 space-y-2 overflow-y-auto rounded-xl border border-border p-3">
+            {!groups.length ? (
+              <p className="text-sm text-muted">No management groups found</p>
+            ) : (
+              groups.map((g) => {
+                const id = Number(g.id);
+                return (
+                  <label
+                    key={String(g.id)}
+                    className="flex items-center gap-2 text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-primary"
+                      checked={groupIds.includes(id)}
+                      onChange={() => toggleGroup(id)}
+                    />
+                    <span>{g.name || `Group #${g.id}`}</span>
+                  </label>
+                );
+              })
+            )}
+          </div>
+        </fieldset>
+
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="size-4 accent-primary"
+            checked={isActive}
+            onChange={(e) => setIsActive(e.target.checked)}
+          />
+          <span className="font-medium text-[var(--mt-text)]">Active</span>
+        </label>
       </div>
-    </div>
+    </FullScreenModal>
   );
 }

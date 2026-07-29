@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
+import { FullScreenModal } from "@/components/ui/FullScreenModal";
 
 export function FormDialog({
   open,
@@ -18,19 +19,14 @@ export function FormDialog({
   children: ReactNode;
   submitLabel?: string;
 }) {
-  if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 p-4 sm:items-center">
-      <button
-        type="button"
-        className="absolute inset-0 cursor-pointer"
-        aria-label="Close dialog"
-        onClick={onClose}
-      />
-      <div className="relative z-10 max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-border bg-[var(--mt-surface)] p-5 shadow-2xl">
-        <h2 className="text-lg font-bold text-[var(--mt-text)]">{title}</h2>
-        <div className="mt-4 flex flex-col gap-3">{children}</div>
-        <div className="mt-5 flex justify-end gap-2">
+    <FullScreenModal
+      open={open}
+      onClose={onClose}
+      title={title}
+      variant="form"
+      footer={
+        <>
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
           </Button>
@@ -41,8 +37,10 @@ export function FormDialog({
           >
             {submitLabel}
           </Button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-3">{children}</div>
+    </FullScreenModal>
   );
 }

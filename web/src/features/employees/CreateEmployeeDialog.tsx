@@ -8,6 +8,7 @@ import {
 } from "@mytask/hooks";
 import { getErrorMessage } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
+import { FullScreenModal } from "@/components/ui/FullScreenModal";
 import { TextInput } from "@/components/ui/TextInput";
 import {
   GoogleAddress,
@@ -448,40 +449,96 @@ export function CreateEmployeeDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 p-4 sm:items-center">
-      <button
-        type="button"
-        className="absolute inset-0 cursor-pointer"
-        aria-label="Close dialog"
-        onClick={onClose}
-      />
-      <div className="relative z-10 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-[var(--mt-surface)] shadow-2xl">
-        <div className="border-b border-border px-5 py-4">
-          <h2 className="text-lg font-bold text-[var(--mt-text)]">
-            Create employee
-          </h2>
-          <p className="mt-1 text-sm text-muted">
-            Step {step + 1} of {STEPS.length}: {stepLabel}
-          </p>
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {STEPS.map((label, idx) => (
-              <span
-                key={label}
-                className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                  idx === step
-                    ? "bg-primary text-white"
-                    : idx < step
-                      ? "bg-primary-muted text-primary"
-                      : "bg-[var(--mt-bg)] text-muted"
-                }`}
+    <FullScreenModal
+      open
+      onClose={onClose}
+      variant="workspace"
+      header={
+        <div className="flex w-full items-start justify-between gap-3 border-b border-border px-5 py-4 sm:px-8">
+          <div>
+            <h2 className="text-lg font-bold text-[var(--mt-text)]">
+              Create employee
+            </h2>
+            <p className="mt-1 text-sm text-muted">
+              Step {step + 1} of {STEPS.length}: {stepLabel}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {STEPS.map((label, idx) => (
+                <span
+                  key={label}
+                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    idx === step
+                      ? "bg-primary text-white"
+                      : idx < step
+                        ? "bg-primary-muted text-primary"
+                        : "bg-[var(--mt-bg)] text-muted"
+                  }`}
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="mt-focus inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[var(--mt-muted)] transition hover:bg-primary-muted hover:text-[var(--mt-text)]"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              aria-hidden
+            >
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      }
+      footer={
+        <div className="flex w-full justify-between gap-2 border-t border-border px-5 py-4 sm:px-8">
+          <Button variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <div className="flex gap-2">
+            {step > 0 ? (
+              <Button
+                variant="secondary"
+                onClick={() => setStep((s) => Math.max(0, s - 1))}
               >
-                {label}
-              </span>
-            ))}
+                Back
+              </Button>
+            ) : null}
+            {step === 0 ? (
+              <Button
+                loading={searchMutation.isPending}
+                onClick={() => void handleSearch()}
+              >
+                Continue
+              </Button>
+            ) : null}
+            {step > 0 && step < STEPS.length - 1 ? (
+              <Button onClick={goNext}>Next</Button>
+            ) : null}
+            {step === STEPS.length - 1 ? (
+              <Button
+                loading={createMutation.isPending}
+                onClick={() => void handleCreate()}
+              >
+                Create & invite
+              </Button>
+            ) : null}
           </div>
         </div>
-
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+      }
+    >
+      <div className="h-full overflow-y-auto px-5 py-4 sm:px-8">
+        <div className="mx-auto w-full max-w-3xl">
           {step === 0 ? (
             <div className="flex flex-col gap-3">
               <p className="text-sm text-muted">
@@ -920,43 +977,8 @@ export function CreateEmployeeDialog({
             </div>
           ) : null}
         </div>
-
-        <div className="flex justify-between gap-2 border-t border-border px-5 py-4">
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <div className="flex gap-2">
-            {step > 0 ? (
-              <Button
-                variant="secondary"
-                onClick={() => setStep((s) => Math.max(0, s - 1))}
-              >
-                Back
-              </Button>
-            ) : null}
-            {step === 0 ? (
-              <Button
-                loading={searchMutation.isPending}
-                onClick={() => void handleSearch()}
-              >
-                Continue
-              </Button>
-            ) : null}
-            {step > 0 && step < STEPS.length - 1 ? (
-              <Button onClick={goNext}>Next</Button>
-            ) : null}
-            {step === STEPS.length - 1 ? (
-              <Button
-                loading={createMutation.isPending}
-                onClick={() => void handleCreate()}
-              >
-                Create & invite
-              </Button>
-            ) : null}
-          </div>
-        </div>
       </div>
-    </div>
+    </FullScreenModal>
   );
 }
 

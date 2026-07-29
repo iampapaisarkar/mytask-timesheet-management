@@ -5,6 +5,7 @@ import {
 } from "@mytask/hooks";
 import { getErrorMessage } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
+import { FullScreenModal } from "@/components/ui/FullScreenModal";
 import { TextInput } from "@/components/ui/TextInput";
 import { useToastStore } from "@/store/toastStore";
 
@@ -91,76 +92,72 @@ export function CustomerFormDialog({
   const pending = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 p-4 sm:items-center">
-      <button
-        type="button"
-        className="absolute inset-0 cursor-pointer"
-        aria-label="Close dialog"
-        onClick={onClose}
-      />
-      <div className="relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-[var(--mt-surface)] p-5 shadow-2xl">
-        <h2 className="text-lg font-bold text-[var(--mt-text)]">
-          {isEdit ? "Edit customer" : "Create customer"}
-        </h2>
-        <div className="mt-4 flex flex-col gap-3">
-          <TextInput
-            label="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <TextInput
-            label="ABN"
-            value={abn}
-            onChange={(e) => setAbn(e.target.value)}
-          />
-          <TextInput
-            label="Address"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-          />
-          <TextInput
-            label="Contact name"
-            value={contactName}
-            onChange={(e) => setContactName(e.target.value)}
-          />
-          <TextInput
-            label="Contact email"
-            type="email"
-            value={contactEmail}
-            onChange={(e) => setContactEmail(e.target.value)}
-          />
-          <TextInput
-            label="Contact phone"
-            value={contactPhone}
-            onChange={(e) => setContactPhone(e.target.value)}
-          />
-          <TextInput
-            label="Hourly rate"
-            type="number"
-            step="0.01"
-            value={hourlyRate}
-            onChange={(e) => setHourlyRate(e.target.value)}
-          />
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              className="size-4 accent-primary"
-              checked={isActive}
-              onChange={(e) => setIsActive(e.target.checked)}
-            />
-            <span className="font-medium text-[var(--mt-text)]">Active</span>
-          </label>
-        </div>
-        <div className="mt-5 flex justify-end gap-2">
+    <FullScreenModal
+      open={open}
+      onClose={onClose}
+      title={isEdit ? "Edit customer" : "Create customer"}
+      variant="form"
+      footer={
+        <>
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
           <Button loading={pending} onClick={() => void handleSubmit()}>
             {isEdit ? "Save" : "Create"}
           </Button>
-        </div>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-3">
+        <TextInput
+          label="Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <TextInput
+          label="ABN"
+          value={abn}
+          onChange={(e) => setAbn(e.target.value)}
+        />
+        <TextInput
+          label="Address"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+        />
+        <TextInput
+          label="Contact name"
+          value={contactName}
+          onChange={(e) => setContactName(e.target.value)}
+        />
+        <TextInput
+          label="Contact email"
+          type="email"
+          value={contactEmail}
+          onChange={(e) => setContactEmail(e.target.value)}
+        />
+        <TextInput
+          label="Contact phone"
+          value={contactPhone}
+          onChange={(e) => setContactPhone(e.target.value)}
+        />
+        <TextInput
+          label="Hourly rate"
+          type="number"
+          step="0.01"
+          value={hourlyRate}
+          onChange={(e) => setHourlyRate(e.target.value)}
+        />
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="size-4 accent-primary"
+            checked={isActive}
+            onChange={(e) => setIsActive(e.target.checked)}
+          />
+          <span className="font-medium text-[var(--mt-text)]">Active</span>
+        </label>
       </div>
-    </div>
+    </FullScreenModal>
   );
 }
 

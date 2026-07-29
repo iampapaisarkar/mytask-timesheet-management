@@ -151,9 +151,11 @@ function PointsList({ points }: { points: FlatPoint[] }) {
 export function TrackingMap({
   trackingLogs,
   height = 280,
+  selectedType = null,
 }: {
   trackingLogs?: TrackingLogs | null;
   height?: number;
+  selectedType?: FlatPoint["type"] | null;
 }) {
   const c = useThemeStore((s) => s.colors);
   const points = useMemo(
@@ -228,7 +230,13 @@ export function TrackingMap({
                 <Polyline
                   coordinates={coords}
                   strokeColor={TYPE_COLORS[type]}
-                  strokeWidth={3}
+                  strokeWidth={
+                    selectedType && selectedType === type
+                      ? 5
+                      : selectedType
+                        ? 2
+                        : 3
+                  }
                 />
               ) : null}
               {byType[type].map((p, i) => (
