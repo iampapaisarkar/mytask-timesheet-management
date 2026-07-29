@@ -6,6 +6,7 @@ import { OrgLayout } from "@/layouts/OrgLayout";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { SignupPage } from "@/features/auth/SignupPage";
 import { ForgotPasswordPage } from "@/features/auth/ForgotPasswordPage";
+import { AuthActionsPage } from "@/features/auth/AuthActionsPage";
 import { HomePage } from "@/features/home/HomePage";
 import { OrganisationHomePage } from "@/features/organisation/OrganisationHomePage";
 import { TimesheetListPage } from "@/features/timesheet/TimesheetListPage";
@@ -30,23 +31,24 @@ export function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Auth action links must stay public even with an existing session */}
+        <Route element={<AuthLayout />}>
+          <Route path="/auth-actions" element={<AuthActionsPage />} />
+          <Route
+            path="/org-invitation"
+            element={<PlaceholderPage title="Organisation Invitation" />}
+          />
+          <Route
+            path="/xero/authenticate"
+            element={<PlaceholderPage title="Xero Authenticate" />}
+          />
+        </Route>
+
         <Route element={<GuestRoute />}>
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            <Route
-              path="/auth-actions"
-              element={<PlaceholderPage title="Auth Actions" />}
-            />
-            <Route
-              path="/org-invitation"
-              element={<PlaceholderPage title="Organisation Invitation" />}
-            />
-            <Route
-              path="/xero/authenticate"
-              element={<PlaceholderPage title="Xero Authenticate" />}
-            />
           </Route>
         </Route>
 

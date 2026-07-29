@@ -4,6 +4,8 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
+  confirmPasswordReset,
+  applyActionCode,
   signOut,
   type Auth,
   type UserCredential,
@@ -67,6 +69,17 @@ export async function firebaseForgotPassword(email: string): Promise<void> {
     url: continueUrl,
     handleCodeInApp: true,
   });
+}
+
+export async function firebaseConfirmPasswordReset(
+  oobCode: string,
+  newPassword: string,
+): Promise<void> {
+  await confirmPasswordReset(getFirebaseAuth(), oobCode, newPassword);
+}
+
+export async function firebaseApplyActionCode(oobCode: string): Promise<void> {
+  await applyActionCode(getFirebaseAuth(), oobCode);
 }
 
 export async function firebaseLogout(): Promise<void> {
