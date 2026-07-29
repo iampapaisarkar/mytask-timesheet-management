@@ -1,0 +1,39 @@
+node_modules/
+dist/
+build/
+.DS_Store
+*.log
+coverage/
+.turbo/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+!**/.env.example
+web/.env
+mobile/.env
+backend/.env
+backend/.env.local
+backend/.env.production
+backend/serviceAccountKey.json
+backend/serviceAccountKey-*.json
+**/serviceAccountKey*.json
+
+# macOS junk from zip extracts
+**/__MACOSX/
+
+# React Native CLI
+mobile/ios/Pods/
+mobile/ios/build/
+mobile/android/app/build/
+mobile/android/.gradle/
+mobile/android/build/
+mobile/*.jsbundle
+*.jks
+*.mobileprovision
+*.keystore
+
+# IDE
+.idea/
+*.iml

@@ -1,0 +1,12 @@
+---
+description: Mobile-only agent rules when working under mobile/
+alwaysApply: true
+---
+
+# Mobile workspace
+
+- React Native CLI (0.86). Commands: `npm start`, `npm run ios`, `npm run android`.
+- Do **not** install or reference Expo (`expo`, `expo-*`, `app.config.js` Expo, EAS).
+- Env: edit `src/config/env.ts`. Docs: `mobile/docs/`.
+- Native projects: `ios/`, `android/`. After native module changes, reinstall pods and rebuild.
+- Use `@mysheet/*` for shared logic.

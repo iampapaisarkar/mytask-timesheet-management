@@ -1,0 +1,18 @@
+---
+description: Monorepo-wide architecture and coding rules for mySheet
+alwaysApply: true
+---
+
+# mySheet monorepo rules
+
+- Stack: `backend/` (Express API), `web/` (React + Vite), `mobile/` (React Native CLI), `packages/` (shared).
+- Do **not** use Expo or React Native Web. Mobile is bare React Native CLI only.
+- Never change backend API behaviour without documenting justification in `CHANGELOG.md`.
+- Share business logic in `packages/*`. Do not duplicate API clients, Zod schemas, ACL, or types between web and mobile.
+- State: Zustand + TanStack Query. Never Redux.
+- Forms: React Hook Form + Zod from `@mysheet/validation`.
+- Strict TypeScript; avoid `any`.
+- Match original Quasar UX (layouts, flows, primary `#6900ff`); do not redesign.
+- Update `MIGRATION_PROGRESS.md` when completing a milestone.
+- Secrets stay in env / `mobile/src/config/env.ts` — never commit real credentials.
+- Reference Vue build folder is `origianl-frontend-vue-js/` (misspelled).

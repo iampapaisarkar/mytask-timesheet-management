@@ -1,0 +1,14 @@
+---
+description: Shared packages conventions
+globs: packages/**/*
+alwaysApply: false
+---
+
+# Shared packages (`packages/`)
+
+- Platform-independent code only (no React DOM or React Native UI).
+- Packages: `api`, `hooks`, `types`, `utils`, `validation`, `constants`, `services`, `theme`.
+- Export from each package `src/index.ts`.
+- API modules call `getApiClient()` — never create ad-hoc Axios instances in apps.
+- ACL must stay aligned with `backend/class/acl.js` (`@mysheet/services`).
+- Prefer small, composable modules over large catch-all files.

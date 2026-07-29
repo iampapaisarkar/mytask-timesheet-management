@@ -1,0 +1,99 @@
+{
+  "name": "mysheet",
+  "version": "1.0.0",
+  "description": "the mysheet hub server",
+  "main": "index.js",
+  "author": "papai@logix26.com",
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "dev": "npm-watch start",
+    "watch": "npm-watch start",
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "generate:all": "node commands/generate.all.js",
+    "generate:model": "node commands/generate.model.js",
+    "generate:migration": "node commands/generate.migration.js",
+    "migrate:single": "node commands/run.migration.js --single",
+    "migrate:all": "node commands/run.migration.js --all",
+    "migrate:alter": "node commands/generate.migration.js --alter",
+    "migrate:drop": "node commands/run.migration.js --drop",
+    "generate:seeder": "node commands/generate.seed.js",
+    "seed:all": "node commands/run.seeder.js --all",
+    "seed:single": "node commands/run.seeder.js --single",
+    "seed:drop": "node commands/run.seeder.js --drop",
+    "generate:password": "node commands/generate.password.js",
+    "jobs:create": "node commands/jobs.create.js",
+    "jobs:start": "node commands/jobs.start.js",
+    "jobs:stop": "node commands/jobs.stop.js",
+    "jobs:delete": "node commands/jobs.delete.js"
+  },
+  "dependencies": {
+    "@google-cloud/storage": "^7.17.1",
+    "@graphql-tools/merge": "^9.1.6",
+    "@socket.io/redis-adapter": "^8.3.0",
+    "axios": "^1.9.0",
+    "bcrypt": "^6.0.0",
+    "body-parser": "^1.20.2",
+    "bullmq": "^5.61.0",
+    "compression": "^1.8.1",
+    "cors": "^2.8.5",
+    "cross-env": "^7.0.3",
+    "crypto": "^1.0.1",
+    "csv-parser": "^3.2.0",
+    "dataloader": "^2.2.3",
+    "dotenv": "^16.3.1",
+    "ejs": "^3.1.8",
+    "express": "^4.21.2",
+    "firebase-admin": "^13.6.0",
+    "fs": "^0.0.1-security",
+    "graphql": "^16.12.0",
+    "graphql-type-json": "^0.3.2",
+    "heic-convert": "^2.1.0",
+    "ioredis": "^5.9.1",
+    "moment": "^2.30.1",
+    "moment-timezone": "^0.6.0",
+    "multer": "^2.0.2",
+    "mysql2": "^3.14.1",
+    "node-cron": "^4.1.0",
+    "nodemailer": "^7.0.10",
+    "pm2": "^6.0.8",
+    "promisify": "^0.0.3",
+    "puppeteer-core": "21.4.0",
+    "qrcode": "^1.5.4",
+    "readline-sync": "^1.4.10",
+    "sequelize": "^6.37.7",
+    "sequelize-cli": "^6.6.3",
+    "sharp": "^0.34.4",
+    "socket.io": "^4.7.5",
+    "source-map-support": "^0.5.21",
+    "tedious": "^18.6.1",
+    "umzug": "3.0.0-beta.6",
+    "uuid": "^11.1.0",
+    "xero-node": "^13.3.0",
+    "xlsx": "^0.18.5"
+  },
+  "imports": {
+    "#auth": "./class/auth.js",
+    "#socketio": "./class/socket.io.js",
+    "#nodemailer": "./class/node.mailer.js",
+    "#acl": "./class/acl.js",
+    "#systemfunction": "./class/system.function.js",
+    "#firebasemessaging": "./class/firebase-messaging.js"
+  },
+  "devDependencies": {
+    "npm-watch": "^0.11.0"
+  },
+  "watch": {
+    "start": {
+      "patterns": [
+        "*"
+      ],
+      "extensions": "js,ts,html,scss",
+      "quiet": false
+    }
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

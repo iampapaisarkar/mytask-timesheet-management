@@ -1,0 +1,466 @@
+import { fn, col, literal, Op } from "sequelize";
+import models from "../models/index.js";
+const {
+  Users,
+  SystemRoles,
+  UserSystemRoles,
+  FirebaseProviders,
+  EmployeeInvitations,
+} = models;
+import Auth from "#auth";
+import moment from "moment";
+import admin from "firebase-admin";
+import { FirebaseMessaging } from "#firebasemessaging";
+import { enqueueSendEmail } from "../queue-jobs/send-email.job.js";
+import redisUtils from "../utils/redis.utils.js";
+import { mysheet } from "../database.js";
+
+export async function login(req, res, next) {
+  const { email, invitation_token, fcmToken, oldFcmToken, platform, timezone } =
+    req.body;
+  try {
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1];
+
+    if (!token) {
+      return res.status(501).json({
+        message: "Token is required!",
+      });
+    }
+
+    let tokenVerifyResponse = await Auth.verifyFirebaseToken(token);
+
+    if (tokenVerifyResponse.success) {
+      let authAttemptResponse = await Auth.attempt(email);
+
+      if (authAttemptResponse.success) {
+        let sessionCreationResponse = await Auth.createSession(
+          authAttemptResponse.user.id,
+          token,
+        );
+        if (sessionCreationResponse.success) {
+          await redisUtils.delCache(`user:${authAttemptResponse.user.id}`);
+
+          if (invitation_token) {
+            await onboardInvitation(authAttemptResponse.user, invitation_token);
+          }
+          const fcmResponse = await FirebaseMessaging.storeAndUpdateToken(
+            authAttemptResponse.user.id,
+            fcmToken,
+            oldFcmToken,
+            platform,
+          );
+          await Auth.storeUpdateUserTimezone(
+            authAttemptResponse.user.id,
+            timezone,
+          );
+          const userResponse = await Auth.getUser(authAttemptResponse.user.id);
+          return res.status(200).json({
+            data: userResponse.user,
+            message: "Successfully logged in",
+          });
+        } else {
+          return res.status(501).json({
+            message: sessionCreationResponse.message,
+          });
+        }
+      } else {
+        return res.status(501).json({
+          message: authAttemptResponse.message,
+        });
+      }
+    } else {
+      return res.status(501).json({
+        message: tokenVerifyResponse.message,
+      });
+    }
+  } catch (err) {
+    console.log("error::", err);
+    return res.status(500).json({
+      message: "Unable to login. Please ty again later.",
+      details: err,
+    });
+  }
+}
+
+export async function signup(req, res, next) {
+  const {
+    first_name,
+    middle_name,
+    last_name,
+    email,
+    dob,
+    uid,
+    providerData,
+    invitation_token,
+    fcmToken,
+    oldFcmToken,
+    platform,
+    timezone,
+  } = req.body;
+
+  // 1. Initialize transaction variable outside try/catch
+  let transaction;
+
+  try {
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1];
+
+    if (!token) {
+      return res.status(401).json({ message: "Token is required!" });
+    }
+
+    // Verify token before starting DB transaction to save resources
+    let tokenVerifyResponse = await Auth.verifyFirebaseToken(token);
+    if (!tokenVerifyResponse.success) {
+      return res.status(401).json({ message: tokenVerifyResponse.message });
+    }
+
+    if (!first_name || !last_name || !email || !uid) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    // 2. Start the transaction
+    transaction = await mysheet.transaction();
+
+    const currentUTCTime = moment().utc().format();
+
+    // CORRECTED: transaction goes inside the same object as 'where'
+    let existingUser = await Users.findOne({
+      where: { email: email },
+      transaction,
+    });
+
+    let authUserId = null;
+    if (existingUser) {
+      await existingUser.update(
+        {
+          first_name,
+          middle_name,
+          last_name,
+          dob,
+          firebase_user_id: uid,
+        },
+        { transaction },
+      );
+      authUserId = existingUser.id;
+    } else {
+      const newUser = await Users.create(
+        {
+          first_name,
+          middle_name,
+          last_name,
+          email,
+          dob,
+          firebase_user_id: uid,
+          created_at: currentUTCTime,
+        },
+        { transaction },
+      );
+      authUserId = newUser.id;
+    }
+
+    const provider = getProvider(providerData, "password");
+    await FirebaseProviders.create(
+      {
+        user_id: authUserId,
+        provider_id: provider.providerId,
+        uid: provider.uid,
+      },
+      { transaction },
+    );
+
+    const role = await SystemRoles.findOne({
+      attributes: ["id", "code"],
+      where: { code: "org-admin" },
+      raw: true,
+      transaction, // CORRECTED: nested in options
+    });
+
+    await UserSystemRoles.destroy({
+      where: { user_id: authUserId },
+      transaction, // CORRECTED
+    });
+
+    await UserSystemRoles.create(
+      {
+        user_id: authUserId,
+        role_id: role.id,
+      },
+      { transaction },
+    );
+
+    // 3. Commit the database changes
+    await transaction.commit();
+
+    /** * Post-Transaction: External Services (Firebase, Email)
+     **/
+    const actionCodeSettings = {
+      url: `${process.env.CLIENT_URL}auth-actions?email=${email}`,
+      handleCodeInApp: true,
+    };
+
+    const firebaseLink = await admin
+      .auth()
+      .generateEmailVerificationLink(email, actionCodeSettings);
+    const urlParams = new URLSearchParams(firebaseLink.split("?")[1]);
+
+    const customLink = `${
+      process.env.CLIENT_URL
+    }auth-actions?mode=${urlParams.get("mode")}&oobCode=${urlParams.get(
+      "oobCode",
+    )}`;
+
+    await enqueueSendEmail({
+      user: existingUser || { email, first_name },
+      organisation: null,
+      userEmails: [email],
+      message: {
+        subject: `${process.env.APP_NAME} - Verify email`,
+        template: "email-verification.html",
+        variables: {
+          title: `${process.env.APP_NAME} - Verify email`,
+          message: `Verify your email address. Click below button to verify.`,
+          button_url: customLink,
+          button_label: "Verify Now",
+        },
+      },
+    });
+
+    let sessionCreationResponse = await Auth.createSession(authUserId, token);
+
+    if (sessionCreationResponse.success) {
+      await Auth.storeUpdateUserTimezone(authUserId, timezone);
+      const userResponse = await Auth.getUser(authUserId);
+
+      if (invitation_token) {
+        await onboardInvitation(userResponse.user, invitation_token);
+      }
+
+      await FirebaseMessaging.storeAndUpdateToken(
+        userResponse.user.id,
+        fcmToken,
+        oldFcmToken,
+        platform,
+      );
+
+      return res.status(200).json({
+        data: userResponse.user,
+        message: "Successfully signup",
+      });
+    } else {
+      return res.status(501).json({ message: sessionCreationResponse.message });
+    }
+  } catch (err) {
+    // 4. Rollback only if transaction was actually started and not finished
+    if (transaction) await transaction.rollback();
+
+    console.error("Signup Error:", err);
+    res.status(500).json({
+      message: "Unable to signup. Please try again later.",
+      details: err.message,
+    });
+  }
+}
+
+export async function forgotPassword(req, res, next) {
+  const { email } = req.body;
+
+  try {
+    const actionCodeSettings = {
+      url: `${process.env.CLIENT_URL}auth-actions?email=${email}`,
+      handleCodeInApp: true,
+    };
+
+    const firebaseLink = await admin
+      .auth()
+      .generatePasswordResetLink(email, actionCodeSettings);
+
+    // Extract key params from Firebase link
+    const urlParams = new URLSearchParams(firebaseLink.split("?")[1]);
+    const oobCode = urlParams.get("oobCode");
+    const mode = urlParams.get("mode");
+
+    // Construct your custom frontend URL
+    const customLink = `${process.env.CLIENT_URL}auth-actions?mode=${mode}&oobCode=${oobCode}`;
+
+    const subject = `${process.env.APP_NAME} - Reset password`;
+
+    const message = {
+      subject: subject,
+      template: "forgot-password.html",
+      variables: {
+        title: subject,
+        message: `Here is you reset password link. Click below button to reset your password.`,
+        button_url: customLink,
+        button_label: "Reset Now",
+      },
+    };
+    // Add to queue
+    await enqueueSendEmail({
+      user: { email },
+      organisation: null,
+      userEmails: [email],
+      message: message,
+    });
+
+    return res.status(200).json({
+      message: "Password reset link sent to your email",
+    });
+  } catch (err) {
+    console.log("err::", err);
+    res.status(500).json({
+      message: "Unable to reset password. Please ty again later.",
+      details: err,
+    });
+  }
+}
+
+export async function logout(req, res, next) {
+  const {} = req.body;
+  try {
+    const authHeader = req.headers["authorization"];
+    const token = authHeader?.replace("Bearer ", "");
+
+    const response = await Auth.destroySession(token);
+
+    if (response.success) {
+      return res.status(200).json({
+        message: "Successfully logged out",
+      });
+    } else {
+      return res.status(501).json({
+        message: response.message,
+      });
+    }
+  } catch (err) {
+    return res.status(500).json({
+      message: "Unable to logout. Please ty again later.",
+      details: err,
+    });
+  }
+}
+
+export async function authUser(req, res, next) {
+  const { user } = req.body;
+  try {
+    return res.status(200).json({
+      data: user,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      message: "Unable to fetch user!",
+      details: err,
+    });
+  }
+}
+
+export async function verifyOrganisationInvitationToken(req, res, next) {
+  const { invitation_token } = req.body;
+  try {
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1];
+
+    if (token) {
+      const response = await Auth.verifyToken(token);
+      if (response && response.success) {
+        const userResponse = await Auth.getUserByToken(token);
+        if (userResponse && userResponse.success) {
+          await onboardInvitation(userResponse.user, invitation_token);
+        }
+      }
+    }
+
+    const response = await EmployeeInvitations.findOne({
+      where: {
+        invitation_token: invitation_token,
+      },
+      raw: true,
+    });
+
+    if (!response) {
+      return res.status(501).json({
+        message: "Invitation code is invalid or expire!",
+      });
+    }
+
+    return res.status(200).json({
+      data: {},
+    });
+  } catch (err) {
+    console.log("error::", err);
+    return res.status(500).json({
+      message: "Unable to verify employee invitation code!",
+      details: err,
+    });
+  }
+}
+
+async function onboardInvitation(user, invitationToken) {
+  try {
+    const response = await EmployeeInvitations.update(
+      {
+        user_id: user.id,
+      },
+      {
+        where: {
+          invitation_token: invitationToken,
+        },
+      },
+    );
+  } catch (err) {
+    console.log("error::", err);
+  }
+}
+
+export async function updateProfile(req, res, next) {
+  const { user, first_name, middle_name, last_name } = req.body;
+  try {
+    await Users.update(
+      {
+        first_name,
+        middle_name,
+        last_name,
+      },
+      {
+        where: { id: user.id },
+      },
+    );
+
+    await redisUtils.delCache(`user:${user.id}`);
+
+    return res.status(200).json({
+      data: user,
+      message: "Profile successfully updated",
+    });
+  } catch (err) {
+    return res.status(500).json({
+      message: "Unable to fetch user!",
+      details: err,
+    });
+  }
+}
+
+export async function updateFCMToken(req, res, next) {
+  const { user, fcmToken, oldFcmToken, platform } = req.body;
+  try {
+    const fcmResponse = await FirebaseMessaging.storeAndUpdateToken(
+      user.id,
+      fcmToken,
+      oldFcmToken,
+      platform,
+    );
+    await redisUtils.delCache(`user:${user.id}`);
+
+    return res.status(200).json({});
+  } catch (err) {
+    return res.status(500).json({
+      message: "Unable to store/update FCM token",
+      details: err,
+    });
+  }
+}
+
+function getProvider(providers, providerId) {
+  return providers.find((provider) => provider.providerId === providerId);
+}

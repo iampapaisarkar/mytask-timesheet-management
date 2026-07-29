@@ -1,0 +1,1 @@
+import{b as i,aK as n}from"./index-Dxuzi7in.js";const s=i(({app:o})=>{function e(t){n.create({progress:!0,message:t.message,type:t.type,timeout:t.timeout?t.timeout:2e3,position:t.position?t.position:"bottom",actions:[{icon:"close",color:"white",handler:()=>{}}]})}o.config.globalProperties.$Qnotify=e});export{s as default};

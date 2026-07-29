@@ -1,0 +1,16 @@
+---
+description: Backend Express/Sequelize rules
+globs: backend/**/*
+alwaysApply: false
+---
+
+# Backend rules
+
+- Preserve existing REST contracts under `/api`.
+- Auth: Firebase ID token Bearer + `user_sessions` via `TokenValidate`.
+- Org-scoped routes need `OrganisationValidate` and org headers (`ms-organisation-*`).
+- Keep controllers thin; put domain logic in `service/`.
+- Response envelope: `info` is injected in `index.js` — return `{ data, message }` as today.
+- Do not re-enable GraphQL unless explicitly requested (currently commented out).
+- Document env changes in `backend/docs/ENVIRONMENT.md`.
+- Never commit new secrets; treat existing service account JSON carefully.

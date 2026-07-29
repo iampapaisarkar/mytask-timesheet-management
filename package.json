@@ -1,0 +1,26 @@
+{
+  "name": "mysheet-monorepo",
+  "private": true,
+  "version": "1.0.0",
+  "description": "mySheet monorepo — web, mobile, and shared packages",
+  "workspaces": [
+    "web",
+    "mobile",
+    "packages/*"
+  ],
+  "scripts": {
+    "web": "npm run dev -w web",
+    "web:build": "npm run build -w web",
+    "mobile": "npm run start -w mobile",
+    "mobile:ios": "npm run ios -w mobile",
+    "mobile:android": "npm run android -w mobile",
+    "typecheck": "npm run typecheck -w @mysheet/types -w @mysheet/api -w @mysheet/validation -w @mysheet/services -w web --if-present"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "overrides": {
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  }
+}

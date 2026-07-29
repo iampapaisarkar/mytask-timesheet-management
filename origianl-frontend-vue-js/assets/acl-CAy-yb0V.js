@@ -1,0 +1,1 @@
+import{b as t,a7 as c}from"./index-BVXnCZTI.js";const r={organisation:{hasAccess(s,o){var e=!1;const a=c();var e=!1;return a.activeOrganisation&&a.activeOrganisation.acl&&a.activeOrganisation.acl[s][o]&&(e=!0),e}},system:{hasAccess(s,o){var a=!1;return a=!0,a}}},n=t(({app:s})=>{s.config.globalProperties.$acl=r});export{r as acl,n as default};

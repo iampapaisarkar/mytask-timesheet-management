@@ -1,0 +1,13 @@
+---
+description: Backend-only agent rules when working under backend/
+alwaysApply: true
+---
+
+# Backend workspace
+
+- Entry: `index.js`. Routes mount at `/api` via `routes/index.js`.
+- Middleware: `tokenvalidate.js`, `organisationvalidate.js`, `cronvalidate.js`.
+- Do not break clients: web and mobile depend on current paths and response shapes.
+- Prefer Sequelize models in `models/`; migrations via project npm scripts.
+- Full docs: `backend/docs/`.
+- See also root `.cursor/rules/backend.mdc` patterns.
