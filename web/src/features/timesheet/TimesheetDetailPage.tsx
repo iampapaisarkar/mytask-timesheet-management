@@ -1,6 +1,8 @@
-import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { useSubmitTimesheet, useTimesheet } from "@mytask/hooks";
+import { useMemo, useState } from "react";
+import { Link, useParams, useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { timesheetsApi } from "@mytask/api";
+import { useSubmitTimesheet } from "@mytask/hooks";
 import { ROUTES } from "@mytask/constants";
 import { getErrorMessage } from "@mytask/utils";
 import { Card, PageHeader } from "@/components/ui/Card";
@@ -16,6 +18,7 @@ type TimesheetDay = {
   status?: { name?: string; code?: string };
   total_hours?: number | string;
   is_public_holiday?: boolean;
+  tasks?: Array<{ total_hours?: number | string }>;
 };
 
 type TimesheetDetail = {
@@ -36,48 +39,100 @@ type TimesheetDetail = {
   employee?: { user?: { full_name?: string } };
 };
 
+const STATUS_TABS = [
+  { code: "", label: "All" },
+  { code: "draft", label: "Draft" },
+  { code: "submitted", label: "Submitted" },
+  { code: "approved", label: "Approved" },
+  { code: "rejected", label: "Rejected" },
+] as const;
+
+/**
+ * Vue AuthActions/View loads via ?tab=draft|submitted|… which maps to API `type`.
+ * We keep that contract but default to no type so the timesheet always loads.
+ */
 export function TimesheetDetailPage() {
   const { orgCode = "", id = "" } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToastStore();
-  const query = useTimesheet(id);
   const submit = useSubmitTimesheet();
   const [selectedDayId, setSelectedDayId] = useState<number | null>(null);
-  const data = query.data as TimesheetDetail | undefined;
+
+  const tab = (searchParams.get("tab") || "").toLowerCase();
+  const typeParam =
+    tab && tab !== "all" ? tab : undefined;
+
+  const query = useQuery({
+    queryKey: ["timesheets", id, typeParam || "all"] as const,
+    queryFn: async () => {
+      const res = await timesheetsApi.get(id, typeParam ? { type: typeParam } : undefined);
+      return (res.data as { data: TimesheetDetail }).data;
+    },
+    enabled: Boolean(id),
+  });
+
+  const data = query.data;
+
+  const days = useMemo(() => {
+    const list = Array.isArray(data?.days) ? data.days : [];
+    return list.map((day) => {
+      if (day.total_hours != null) return day;
+      const tasks = Array.isArray(day.tasks) ? day.tasks : [];
+      const sum = tasks.reduce((acc, t) => {
+        const h = parseFloat(String(t.total_hours ?? 0));
+        return acc + (Number.isFinite(h) ? h : 0);
+      }, 0);
+      return { ...day, total_hours: Number(sum.toFixed(2)) };
+    });
+  }, [data?.days]);
 
   async function handleSubmit() {
-    const remarks = window.prompt("Optional remarks for submit:") ?? undefined;
+    window.prompt("Optional remarks for submit:");
     try {
       await submit.mutateAsync(id);
-      toast.success(
-        "Submitted",
-        remarks?.trim()
-          ? "Timesheet submitted for approval"
-          : "Timesheet submitted for approval",
-      );
+      toast.success("Submitted", "Timesheet submitted for approval");
       void query.refetch();
     } catch (err) {
       toast.error("Submit failed", getErrorMessage(err));
     }
   }
 
+  if (!id) {
+    return (
+      <ErrorState message="Missing timesheet id in the URL." />
+    );
+  }
+
   if (query.isLoading) return <LoadingState label="Loading timesheet…" />;
   if (query.isError) {
     return (
       <ErrorState
-        message={getErrorMessage(query.error)}
+        message={getErrorMessage(
+          query.error,
+          "Unable to load this timesheet. You may not have access, or it may belong to another employee.",
+        )}
         onRetry={() => void query.refetch()}
       />
     );
   }
 
-  const days = Array.isArray(data?.days) ? data.days : [];
-  const perms = data?.permissions;
+  if (!data) {
+    return (
+      <ErrorState
+        message="Timesheet not found."
+        onRetry={() => void query.refetch()}
+      />
+    );
+  }
+
+  const perms = data.permissions;
+  const activeTab = typeParam || "";
 
   return (
     <div className="mt-fade-in flex flex-col gap-4">
       <PageHeader
-        title={`Timesheet #${data?.id ?? id}`}
-        description={data?.period_range || data?.code || "Timesheet details"}
+        title={`Timesheet #${data.id ?? id}`}
+        description={data.period_range || data.code || "Timesheet details"}
         actions={
           <div className="flex flex-wrap gap-2">
             <Link to={ROUTES.timesheet(orgCode)}>
@@ -92,18 +147,44 @@ export function TimesheetDetailPage() {
         }
       />
 
+      <div className="flex flex-wrap gap-2">
+        {STATUS_TABS.map((item) => {
+          const selected = activeTab === item.code;
+          return (
+            <button
+              key={item.code || "all"}
+              type="button"
+              className={`rounded-xl px-3 py-1.5 text-sm font-medium transition ${
+                selected
+                  ? "bg-primary text-white"
+                  : "border border-border bg-[var(--mt-surface)] text-[var(--mt-text)] hover:border-primary"
+              }`}
+              onClick={() => {
+                if (!item.code) {
+                  setSearchParams({});
+                } else {
+                  setSearchParams({ tab: item.code });
+                }
+              }}
+            >
+              {item.label}
+            </button>
+          );
+        })}
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <p className="text-xs font-medium uppercase text-muted">Status</p>
           <p className="mt-1 text-lg font-semibold text-[var(--mt-text)]">
-            {data?.status?.name || data?.status?.code || "—"}
+            {data.status?.name || data.status?.code || "—"}
           </p>
         </Card>
         <Card>
           <p className="text-xs font-medium uppercase text-muted">Period</p>
           <p className="mt-1 text-lg font-semibold text-[var(--mt-text)]">
-            {data?.period_range ||
-              [data?.period_start_date, data?.period_end_date]
+            {data.period_range ||
+              [data.period_start_date, data.period_end_date]
                 .filter(Boolean)
                 .join(" → ") ||
               "—"}
@@ -112,7 +193,7 @@ export function TimesheetDetailPage() {
         <Card>
           <p className="text-xs font-medium uppercase text-muted">Code</p>
           <p className="mt-1 text-lg font-semibold text-[var(--mt-text)]">
-            {data?.code || "—"}
+            {data.code || "—"}
           </p>
         </Card>
       </div>
@@ -126,7 +207,11 @@ export function TimesheetDetailPage() {
           {perms?.can_save === false ? " (read-only for this status)" : ""}.
         </p>
         {!days.length ? (
-          <p className="text-sm text-muted">No days on this timesheet yet.</p>
+          <p className="text-sm text-muted">
+            {typeParam
+              ? `No days for status “${typeParam}”. Try the All tab — Vue only returns the timesheet when its status matches the tab.`
+              : "No days on this timesheet yet."}
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
@@ -147,7 +232,8 @@ export function TimesheetDetailPage() {
                   >
                     <td className="px-3 py-2">{day.date || "—"}</td>
                     <td className="px-3 py-2">
-                      {day.day_name || (day.is_public_holiday ? "Holiday" : "—")}
+                      {day.day_name ||
+                        (day.is_public_holiday ? "Holiday" : "—")}
                     </td>
                     <td className="px-3 py-2">{day.total_hours ?? "—"}</td>
                     <td className="px-3 py-2">

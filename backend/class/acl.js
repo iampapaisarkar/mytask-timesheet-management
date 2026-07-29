@@ -3,7 +3,8 @@ export const Acl = {
     const rolePermissions = {
       owner: {
         organisationSetting: createPermissions(false, true, false, true, false),
-        timesheet: createPermissions(false, false, false, false, false),
+        // Owner is also created as an employee on org create — they use My Sheets for own timesheets
+        timesheet: createPermissions(true, true, false, true, false),
         timesheetManagement: createPermissions(true, true, true, true, false),
         report: createPermissions(true, true, false, false, false),
         employee: createPermissions(true, false, true, true, false),

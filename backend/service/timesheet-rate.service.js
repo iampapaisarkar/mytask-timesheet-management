@@ -8,6 +8,7 @@ const {
   Users,
   Employees,
   EmployeeWages,
+  Timesheets,
   TimesheetDays,
   TimesheetDayTasks,
   UserTimezones,
@@ -131,15 +132,32 @@ async function fetchTimesheetDays({
     return [tsDay];
   }
 
-  if (from && to) {
+  // Vue reports send period_start_date / period_end_date as from / to.
+  // If omitted, resolve the period from the timesheet itself.
+  let rangeFrom = from;
+  let rangeTo = to;
+  if ((!rangeFrom || !rangeTo) && timesheet_id) {
+    const ts = await Timesheets.findOne({
+      where: {
+        organisation_id: organisation.id,
+        id: timesheet_id,
+      },
+      attributes: ["id", "period_start_date", "period_end_date"],
+      raw: true,
+    });
+    if (!ts) throw new AppError("Timesheet not found", 400);
+    rangeFrom = rangeFrom || ts.period_start_date;
+    rangeTo = rangeTo || ts.period_end_date;
+  }
+
+  if (rangeFrom && rangeTo) {
     const tsDays = await TimesheetDays.findAll({
       where: {
         organisation_id: organisation.id,
         timesheet_id,
-        // date: { [Op.between]: [from, to] },
         date: {
-          [Op.gte]: from,
-          [Op.lte]: to,
+          [Op.gte]: rangeFrom,
+          [Op.lte]: rangeTo,
         },
       },
       include: [{ model: TimesheetDayTasks, as: "tasks" }],
@@ -148,11 +166,13 @@ async function fetchTimesheetDays({
       nest: true,
     });
 
-    if (!tsDays) throw new AppError("Timesheet days not found", 400);
-    return tsDays;
+    return tsDays || [];
   }
 
-  throw new AppError("Provide timesheet_day_id OR start_date + end_date", 400);
+  throw new AppError(
+    "Provide timesheet_day_id OR from + to (period start/end dates)",
+    400,
+  );
 }
 
 function toFixedTruncWithZeros(num, decimals = 2) {

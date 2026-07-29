@@ -6,7 +6,7 @@ export function TimesheetListPage() {
   const query = useTimesheets({ rows_per_page: 50, sort_by: "id" });
   return (
     <ResourceListPage
-      title="My Timesheets"
+      title="My Sheets"
       query={query}
       columns={[
         { key: "id", label: "ID" },

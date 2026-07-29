@@ -19,6 +19,7 @@ type TimesheetRow = {
   period_start_date?: string;
   period_end_date?: string;
   status?: { name?: string; code?: string };
+  employee?: { id?: number; details?: { id?: number } };
 };
 
 type RateDayRow = {
@@ -32,6 +33,17 @@ type RateDayRow = {
   earning_rate_percent?: number;
   is_public_holiday?: boolean;
 };
+
+/** Match Vue: rateByPerTimesheetDay({ timesheet_id, employee_id, from, to }) */
+function periodParams(ts: TimesheetRow | undefined) {
+  const from = ts?.period_start_date
+    ? String(ts.period_start_date).slice(0, 10)
+    : undefined;
+  const to = ts?.period_end_date
+    ? String(ts.period_end_date).slice(0, 10)
+    : undefined;
+  return { from, to };
+}
 
 export function ReportsPage() {
   const [employeeId, setEmployeeId] = useState("");
@@ -49,11 +61,8 @@ export function ReportsPage() {
         rows_per_page: 100,
         sort_by: "id",
         sort_direction: "desc",
-        // Backend list may ignore employee filter; filter client-side.
       });
-      const rows = (res.data.data || []) as Array<
-        TimesheetRow & { employee?: { id?: number; details?: { id?: number } } }
-      >;
+      const rows = (res.data.data || []) as TimesheetRow[];
       const eid = Number(employeeId);
       return rows.filter((row) => {
         const id = row.employee?.details?.id ?? row.employee?.id;
@@ -67,12 +76,26 @@ export function ReportsPage() {
     ? timesheetsQuery.data
     : [];
 
+  const selectedTimesheet = timesheets.find(
+    (ts) => String(ts.id) === String(timesheetId),
+  );
+
   const rateQuery = useQuery({
-    queryKey: ["reports-rate", employeeId, timesheetId] as const,
+    queryKey: [
+      "reports-rate",
+      employeeId,
+      timesheetId,
+      selectedTimesheet?.period_start_date,
+      selectedTimesheet?.period_end_date,
+    ] as const,
     queryFn: async () => {
+      const { from, to } = periodParams(selectedTimesheet);
       const res = await reportsApi.rateByPerTimesheetDay({
         employee_id: employeeId,
         timesheet_id: timesheetId,
+        // Vue Index-31gw6HeB.js passes period_start_date / period_end_date as from / to
+        ...(from ? { from } : {}),
+        ...(to ? { to } : {}),
       });
       return (res.data as { data: RateDayRow[] }).data;
     },

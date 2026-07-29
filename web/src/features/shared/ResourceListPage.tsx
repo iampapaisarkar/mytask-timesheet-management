@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { getErrorMessage } from "@mytask/utils";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
@@ -74,6 +74,7 @@ export function ResourceListPage({
   rowActions?: (row: Row) => ReactNode;
 }) {
   const { orgCode = "" } = useParams();
+  const navigate = useNavigate();
   const rows = (Array.isArray(query.data) ? query.data : []) as Row[];
 
   if (query.isLoading) return <LoadingState />;
@@ -84,6 +85,16 @@ export function ResourceListPage({
         onRetry={() => query.refetch()}
       />
     );
+  }
+
+  function handleRowActivate(row: Row, index: number) {
+    if (onRowClick) {
+      onRowClick(row);
+      return;
+    }
+    if (detailPath) {
+      navigate(detailPath(orgCode, getRowId(row, index)));
+    }
   }
 
   return (
@@ -126,7 +137,7 @@ export function ResourceListPage({
                     {col.label}
                   </th>
                 ))}
-                {rowActions ? (
+                {rowActions || detailPath ? (
                   <th className="px-4 py-3 font-medium">Actions</th>
                 ) : null}
               </tr>
@@ -134,18 +145,15 @@ export function ResourceListPage({
             <tbody>
               {rows.map((row, idx) => {
                 const id = getRowId(row, idx);
+                const canOpen = Boolean(onRowClick || detailPath);
                 return (
                   <tr
                     key={String(id)}
                     className={`border-b border-border last:border-0 transition hover:bg-primary-muted/40 ${
-                      onRowClick ? "cursor-pointer" : ""
+                      canOpen ? "cursor-pointer" : ""
                     }`}
                     onClick={
-                      onRowClick
-                        ? () => {
-                            onRowClick(row);
-                          }
-                        : undefined
+                      canOpen ? () => handleRowActivate(row, idx) : undefined
                     }
                   >
                     {columns.map((col, colIdx) => {
@@ -176,12 +184,22 @@ export function ResourceListPage({
                         </td>
                       );
                     })}
-                    {rowActions ? (
+                    {rowActions || detailPath ? (
                       <td
                         className="px-4 py-3"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        {rowActions(row)}
+                        <div className="flex items-center gap-3">
+                          {rowActions ? rowActions(row) : null}
+                          {detailPath ? (
+                            <Link
+                              to={detailPath(orgCode, id)}
+                              className="text-sm font-medium text-primary hover:underline"
+                            >
+                              Open
+                            </Link>
+                          ) : null}
+                        </div>
                       </td>
                     ) : null}
                   </tr>

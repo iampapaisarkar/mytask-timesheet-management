@@ -55,7 +55,7 @@ export const ORG_NAV = [
   { key: "home", label: "Home", path: "", acl: null },
   {
     key: "timesheet",
-    label: "My Timesheets",
+    label: "My Sheets",
     path: "timesheet",
     acl: { action: "timesheet", permission: "list" },
   },

@@ -276,6 +276,36 @@ async function getTimesheetDays(
       return { success: false, code: 404 };
     }
 
+    // Enrich days for list/detail UIs (Vue TimesheetPage expects day_name + hours)
+    if (Array.isArray(timesheet.days)) {
+      timesheet.days = timesheet.days.map((day) => {
+        const tasks = Array.isArray(day.tasks) ? day.tasks : [];
+        const totalHours = tasks.reduce((sum, task) => {
+          const h = parseFloat(task.total_hours);
+          return sum + (Number.isFinite(h) ? h : 0);
+        }, 0);
+        let dayName = day.day_name;
+        if (!dayName && day.date) {
+          try {
+            dayName = new Date(`${day.date}T12:00:00`).toLocaleDateString(
+              "en-AU",
+              { weekday: "long" },
+            );
+          } catch {
+            dayName = null;
+          }
+        }
+        return {
+          ...day,
+          day_name: dayName,
+          total_hours:
+            day.total_hours != null
+              ? day.total_hours
+              : Number(totalHours.toFixed(2)),
+        };
+      });
+    }
+
     return { success: true, data: timesheet };
   } catch (err) {
     console.error("Error fetching timesheetDays:", err);

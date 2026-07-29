@@ -27,7 +27,8 @@ export function getOrganisationAcl(
   const rolePermissions: Record<string, OrganisationAcl> = {
     owner: {
       organisationSetting: perms(false, true, false, true, false),
-      timesheet: none(),
+      // Owner is also an employee (created with the organisation) — My Sheets is their own timesheets
+      timesheet: perms(true, true, false, true, false),
       timesheetManagement: perms(true, true, true, true, false),
       report: perms(true, true, false, false, false),
       employee: perms(true, false, true, true, false),

@@ -24,6 +24,13 @@ export async function list(req, res, next) {
     });
   }
   try {
+    if (!organisation?.employee?.id) {
+      return res.status(400).json({
+        message:
+          "No employee profile is linked to your account in this organisation. My Timesheets requires an employee record.",
+      });
+    }
+
     const rowsPerPage = parseInt(rows_per_page) || 10;
     const pageNumber = parseInt(page_number) || 1;
     const offset = (pageNumber - 1) * rowsPerPage;
@@ -32,7 +39,7 @@ export async function list(req, res, next) {
 
     let whereCondition = {
       organisation_id: organisation.id,
-      employee_id: organisation?.employee?.id,
+      employee_id: organisation.employee.id,
     };
 
     if (search && search.trim() !== "") {
@@ -115,9 +122,16 @@ export async function get(req, res, next) {
     });
   }
   try {
+    if (!organisation?.employee?.id) {
+      return res.status(400).json({
+        message:
+          "No employee profile is linked to your account in this organisation. My Timesheets requires an employee record.",
+      });
+    }
+
     let whereCondition = {
       organisation_id: organisation.id,
-      employee_id: organisation?.employee?.id,
+      employee_id: organisation.employee.id,
       id: id,
     };
 
@@ -137,7 +151,7 @@ export async function get(req, res, next) {
 
     if (!response.success) {
       return res.status(response?.code || 500).json({
-        message: response?.message || null,
+        message: response?.message || "Timesheet not found",
       });
     }
     let timesheet = response?.data;

@@ -54,8 +54,8 @@ export const timesheetsApi = {
   list(params: ListParams = {}) {
     return getApiClient().get("/timesheets/list", { params: buildListQuery(params) });
   },
-  get(id: string | number) {
-    return getApiClient().get(`/timesheets/${id}/get`);
+  get(id: string | number, params?: Record<string, unknown>) {
+    return getApiClient().get(`/timesheets/${id}/get`, { params });
   },
   getDay(id: string | number, params?: Record<string, unknown>) {
     return getApiClient().get(`/timesheets/${id}/get-day`, { params });

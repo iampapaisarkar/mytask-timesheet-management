@@ -24,8 +24,10 @@ export async function rateByTimesheetPeriod(req, res) {
     return res.json({ data: result });
   } catch (err) {
     console.error("rateByTimesheetPeriod error", err);
-    return res
-      .status(500)
-      .json({ message: "Error computing rates", details: err.message });
+    const status = err.statusCode || 500;
+    return res.status(status).json({
+      message: err.message || "Error computing rates",
+      details: err.message,
+    });
   }
 }

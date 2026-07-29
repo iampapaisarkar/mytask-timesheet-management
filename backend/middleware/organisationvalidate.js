@@ -12,6 +12,7 @@ const {
 } = models;
 import redisUtils from "../utils/redis.utils.js";
 import organisationService from "../service/organisation.service.js";
+import { Acl } from "#acl";
 
 const OrganisationValidate = async (req, res, next) => {
   try {
@@ -24,6 +25,9 @@ const OrganisationValidate = async (req, res, next) => {
     const cacheKey = `organisation:${orgId}:${user.id}`;
     const cached = await redisUtils.getCache(cacheKey);
     if (cached) {
+      // Always refresh ACL from code so permission changes apply without waiting for cache expiry
+      const roleCode = cached?.role?.code || cached?.role_code;
+      cached.acl = await Acl.organisationAcl(roleCode);
       req.body.organisation = cached;
       return next();
     }
