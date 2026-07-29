@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useTimesheetDayEditorScreen } from "@mytask/hooks";
 import { timesheetsApi, timesheetManagementApi } from "@mytask/api";
-import { useJobs } from "@mytask/hooks";
 import { getErrorMessage } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
 import { FullScreenModal } from "@/components/ui/FullScreenModal";
@@ -199,31 +198,12 @@ export function TimesheetDayEditor({
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [viewTab, setViewTab] = useState<"grid" | "map">("grid");
 
-  const dayQuery = useQuery({
-    queryKey: ["timesheet-day", mode, dayId, employeeId] as const,
-    queryFn: async ({ signal }) => {
-      if (mode === "management") {
-        const res = await timesheetManagementApi.getDay(
-          dayId!,
-          {
-            employee_id: employeeId,
-          },
-          { signal },
-        );
-        return (res.data as { data: DayPayload }).data;
-      }
-      const res = await timesheetsApi.getDay(dayId!, undefined, { signal });
-      return (res.data as { data: DayPayload }).data;
-    },
-    enabled: open && dayId != null && dayId !== "",
-  });
-
-  const jobsQuery = useJobs(
-    { rows_per_page: 100, sort_by: "id" },
-    open,
+  const dayQuery = useTimesheetDayEditorScreen(
+    { mode, dayId, employeeId },
+    open && dayId != null && dayId !== "",
   );
 
-  const day = dayQuery.data;
+  const day = dayQuery.data as (DayPayload & { available_jobs?: JobRow[] }) | undefined;
   const canSave = Boolean(day?.permissions?.can_save);
 
   useEffect(() => {
@@ -238,13 +218,15 @@ export function TimesheetDayEditor({
   }, [day]);
 
   const jobOptions = useMemo(() => {
-    const rows = (Array.isArray(jobsQuery.data) ? jobsQuery.data : []) as JobRow[];
+    const rows = (Array.isArray(day?.available_jobs)
+      ? day.available_jobs
+      : []) as JobRow[];
     return rows.map((row) => {
       const id = row.details?.id ?? row.id;
       const name = row.details?.name ?? row.name ?? `Job #${id}`;
       return { id, name, row };
     });
-  }, [jobsQuery.data]);
+  }, [day?.available_jobs]);
 
   const mapJobs: MapJob[] = useMemo(() => {
     const fromTasks = (day?.tasks || [])

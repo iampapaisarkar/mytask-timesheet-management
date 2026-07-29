@@ -20,6 +20,7 @@ import Notification from "./notifications/index.js";
 import TimesheetActivity from "./timesheet-activity/index.js";
 import Xero from "./xero/index.js";
 import Report from "./report/index.js";
+import screens from "./screens/index.js";
 import { SocketIO } from "#socketio";
 import { NodeMailer } from "#nodemailer";
 import { FirebaseMessaging } from "#firebasemessaging";
@@ -66,6 +67,7 @@ router.use("/system", TokenValidate, system);
 router.use("/notifications", TokenValidate, Notification);
 router.use("/timesheet-activity", TimesheetActivity);
 router.use("/reports", TokenValidate, OrganisationValidate, Report);
+router.use("/screens", TokenValidate, screens);
 router.use("/xero", TokenValidate, Xero);
 
 router.get("/mail-test", async (req, res) => {

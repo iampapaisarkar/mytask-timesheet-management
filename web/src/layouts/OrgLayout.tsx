@@ -1,8 +1,6 @@
 import { useEffect } from "react";
 import { Link, NavLink, Outlet, useLocation, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { organisationsApi } from "@mytask/api";
-import { queryKeys } from "@mytask/hooks";
+import { useOrgBootstrap } from "@mytask/hooks";
 import { ORG_NAV, ROUTES } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import type { CrudPermission, OrganisationAcl } from "@mytask/types";
@@ -58,27 +56,21 @@ export function OrgLayout() {
 
   const needsSync = !organisation || organisation.code !== orgCode;
 
-  const orgQuery = useQuery({
-    queryKey: queryKeys.organisation(orgCode),
-    queryFn: async ({ signal }) => {
-      const res = await organisationsApi.get(orgCode, { signal });
-      return res.data.data as Record<string, unknown>;
-    },
-    enabled: Boolean(orgCode),
-    staleTime: 30_000,
-  });
+  const bootstrapQuery = useOrgBootstrap(orgCode, Boolean(orgCode));
+  const orgData = bootstrapQuery.data?.organisation as
+    | Record<string, unknown>
+    | undefined;
 
   useEffect(() => {
-    if (!orgQuery.data) return;
-    const data = orgQuery.data;
+    if (!orgData) return;
     setOrganisation({
-      id: data.id as string | number,
-      code: String(data.code || orgCode),
-      name: String(data.name || orgCode),
-      role: getOrganisationRoleCode(data as never),
-      role_code: getOrganisationRoleCode(data as never),
+      id: orgData.id as string | number,
+      code: String(orgData.code || orgCode),
+      name: String(orgData.name || orgCode),
+      role: getOrganisationRoleCode(orgData as never),
+      role_code: getOrganisationRoleCode(orgData as never),
     });
-  }, [orgQuery.data, orgCode, setOrganisation]);
+  }, [orgData, orgCode, setOrganisation]);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -115,7 +107,7 @@ export function OrgLayout() {
     );
   });
 
-  if (needsSync && orgQuery.isLoading) {
+  if (needsSync && bootstrapQuery.isLoading) {
     return (
       <div className="min-h-screen bg-page p-6">
         <LoadingState label="Loading organisation…" />
@@ -123,12 +115,15 @@ export function OrgLayout() {
     );
   }
 
-  if (needsSync && orgQuery.isError) {
+  if (needsSync && bootstrapQuery.isError) {
     return (
       <div className="min-h-screen bg-page p-6">
         <ErrorState
-          message={getErrorMessage(orgQuery.error, "Unable to open organisation")}
-          onRetry={() => void orgQuery.refetch()}
+          message={getErrorMessage(
+            bootstrapQuery.error,
+            "Unable to open organisation",
+          )}
+          onRetry={() => void bootstrapQuery.refetch()}
         />
         <div className="mt-4 text-center">
           <Link to={ROUTES.home} className="text-sm font-medium text-primary">

@@ -1,198 +1,208 @@
 # API Architecture
 
-Restore point: `master` @ `ce8f917` (pre-refactor).  
-Active work: branch `api-architecture-refactor`.
+## Rollback
+
+| Commit / branch | Meaning |
+|-----------------|---------|
+| `d279c9a` / `api-architecture-refactor` | Client + React Query layer (restore before screen APIs) |
+| `ce8f917` / `master` | Pre client-refactor working app |
+| `screen-api-redesign` (this branch) | Screen-oriented `/api/screens/*` + UI migration |
 
 ```bash
-# Roll back to previous working API layer
+# Leave screen APIs; keep shared client
+git checkout api-architecture-refactor
+
+# Or fully restore pre-refactor master
 git checkout master
 
-# Or reset this branch to the restore point
-git checkout api-architecture-refactor
-git reset --hard ce8f917
+# Hard reset this branch only
+git checkout screen-api-redesign
+git reset --hard d279c9a
 ```
 
-## Goals
+## Why these changes
 
-Improve how web and mobile talk to the Express API **without changing endpoints or business rules**:
+Previously the UI was **resource-oriented**: each screen assembled itself from many small CRUD/system GETs (org + orgs list + notifications; 9 employee-form lookups; get-day + jobs; dashboard pulled 100 timesheets and used mock charts).
 
-- One shared HTTP client with consistent errors
-- Shared React Query defaults (cache, retry, dedupe)
-- Request cancellation via `AbortSignal`
-- Fewer duplicate fetches through shared query keys
-- Clear docs for adding new endpoints
+Large platforms (Notion, Linear, Slack-style BFFs) expose **screen-oriented reads**: one endpoint returns a stable UI DTO. Mutations stay on resource APIs.
 
-## Folder structure
-
-```
-packages/api/
-  src/client.ts          # Axios singleton, auth/org interceptors, ApiError, GET retry
-  src/http.ts            # unwrapData / apiGet / apiPost helpers
-  src/auth.api.ts
-  src/organisations.api.ts
-  src/resources.api.ts   # Domain resources (timesheets, jobs, …)
-  src/index.ts
-
-packages/hooks/
-  src/queryClient.ts     # createAppQueryClient()
-  src/index.ts           # queryKeys + useQuery/useMutation wrappers
-
-packages/utils/
-  src/index.ts           # getErrorMessage (reads ApiError), buildListQuery
-```
-
-Apps wire the client once:
-
-- Web: [`web/src/providers/AppProviders.tsx`](../web/src/providers/AppProviders.tsx)
-- Mobile: [`mobile/App.tsx`](../mobile/App.tsx)
-
-## Request flow
+## Architecture layers
 
 ```mermaid
-sequenceDiagram
-  participant UI as UI_Component
-  participant Hook as useQuery_or_Mutation
-  participant RQ as ReactQueryCache
-  participant API as packages_api
-  participant AX as AxiosClient
-  participant BE as Backend
+flowchart TB
+  UI[UI_Screen]
+  Hook[packages_hooks]
+  Cache[ReactQuery_Cache]
+  Client[packages_api]
+  Screens["/api/screens"]
+  CRUD["/api resource CRUD"]
+  Svc[screens.service + mappers]
+  DB[(MySQL)]
 
-  UI->>Hook: render / mutate
-  Hook->>RQ: queryKey + queryFn
-  alt cache_fresh
-    RQ-->>UI: cached data
-  else network
-    Hook->>API: domainApi.list(params, { signal })
-    API->>AX: get/post + Bearer + org headers
-    AX->>BE: HTTP
-    BE-->>AX: JSON envelope
-    AX-->>API: response or ApiError
-    API-->>Hook: data
-    Hook-->>RQ: store
-    RQ-->>UI: data / error / isLoading
-  end
+  UI --> Hook
+  Hook --> Cache
+  Hook --> Client
+  Client --> Screens
+  Client --> CRUD
+  Screens --> Svc
+  Svc --> DB
+  CRUD --> DB
 ```
 
-## Response handling
+### Folder structure
 
-Backend envelope (unchanged): `{ data: T, message?: string, … }`.
+```
+backend/
+  routes/screens/index.js
+  controller/screens.controller.js
+  service/screens.service.js
+  mappers/screen.mapper.js
 
-| Layer | Behaviour |
-|-------|-----------|
-| Axios success | Pass through |
-| Axios failure | Normalized to `ApiError` (`code`, `status`, `message`, `details`) |
-| UI | `getErrorMessage(err)` for friendly copy |
+packages/types/     # OrgBootstrapView, HomeBootstrapView, …
+packages/api/       # screens.api.ts (+ existing resource APIs)
+packages/hooks/     # useOrgBootstrap, useHomeBootstrap, …
+```
 
-`ApiErrorCode`: `network` | `timeout` | `unauthorized` | `forbidden` | `not_found` | `validation` | `server` | `cancelled` | `unknown`.
+Existing CRUD under `/api/organisations`, `/api/employees`, `/api/system`, etc. **remains** for mutations and screens not yet migrated.
 
-`401` still triggers `onUnauthorized()` (clear session) then rejects as `unauthorized`.
+## Screen → endpoint map (Phase 1)
 
-## Caching strategy (React Query)
+| Screen | Before | After | Endpoint |
+|--------|--------|-------|----------|
+| Org shell (layout + switcher + bell seed) | 3 GETs | **1** | `GET /api/screens/org-bootstrap?org_code=` |
+| Home (web + mobile) | 2 GETs | **1** | `GET /api/screens/home` |
+| Create employee (step ≥ 1) | 9 GETs | **1** | `GET /api/screens/employee-form` |
+| Timesheet day editor | 2 GETs | **1** | `GET /api/screens/timesheet-day-editor` |
+| Org dashboard | 1 list (≤100) + mock charts | **1** live overview | `GET /api/screens/dashboard` |
 
-Defaults from `createAppQueryClient()`:
+Approximate **first-paint savings**: ~**11–14 fewer requests** across a typical login → home → org → create employee → day edit path (exact count depends on ACL).
 
-| Setting | Value | Why |
-|---------|-------|-----|
-| `staleTime` | 30s | Stale-while-revalidate; fewer refetches on navigation |
-| `gcTime` | 5m | Keep unused cache briefly |
-| `retry` | 1 for transient; **0** for 4xx / cancelled | Avoid hammering auth/validation errors |
-| `refetchOnWindowFocus` | false | Predictable; org apps are chatty enough |
-| `refetchOnReconnect` | true | Recover after offline |
-| Mutations `retry` | false | Prevent duplicate POSTs |
+## Endpoint responsibilities & response models
 
-**Deduplication:** identical `queryKey` + in-flight request is shared automatically by React Query.
+All responses use the existing envelope `{ data, info }`.
 
-**Invalidation:** mutations invalidate list prefixes (`["jobs"]`, `["organisation"]`, etc.).
+### `GET /screens/org-bootstrap?org_code=`
 
-### Shared keys (important)
-
-| Data | Key | Consumers |
-|------|-----|-----------|
-| Org GET | `["organisation", orgCode]` | OrgLayout + Organisation details |
-| Jobs list | `queryKeys.jobs(params)` | Jobs page + Timesheet day editor |
-| System lookups | `["system", path]` | Employee wizard, forms (`staleTime` 5m) |
-| Notifications | `["notifications", "list"]` | Bell (paused when tab hidden) |
-
-## Retry behaviour
-
-1. **HTTP (Axios):** one retry for idempotent GET/HEAD on network/timeout/502–504.
-2. **React Query:** one retry for non-4xx query failures.
-
-POSTs / mutations are never auto-retried.
-
-## Authentication
-
-1. Request interceptor attaches `Authorization: Bearer <token>`.
-2. Org context headers (`ms-organisation-id|code|name`) from Zustand.
-3. `401` → clear auth + org stores; UI routes to login.
-
-Token refresh is not used (Firebase ID tokens are refreshed by the Firebase SDK before login; API uses the stored Bearer from session).
-
-## Loading strategy
-
-- Prefer cached data while revalidating (`staleTime`).
-- Day editor / dialogs gate with `enabled: open` so closed modals do not fetch.
-- Notifications poll only while the document is visible.
-- Skeletons / `LoadingState` remain in feature UI (unchanged UX contracts).
-
-## Performance improvements (before → after)
-
-| Screen / area | Before | After |
-|---------------|--------|-------|
-| Timesheet day editor | Separate `jobs-for-day-editor` fetch | Reuses `useJobs` cache |
-| Org details | Second key `organisation-details` | Same key as OrgLayout |
-| System lookups | Refetch often | `staleTime` 5 minutes |
-| Notifications | Poll every 30–60s even in background tab | Pause when `document.hidden` |
-| Unmount | Requests could finish after leave | `signal` cancels Axios where wired |
-| Errors | Ad-hoc Axios shapes | Single `ApiError` + `getErrorMessage` |
-
-Approximate impact: **1 fewer jobs list call** per day open when jobs were already loaded; **1 fewer org GET** when opening settings details after shell load; **~50% fewer notification polls** for background tabs.
-
-## Adding a new endpoint
-
-1. Add method on the right object in `packages/api` (same URL style as backend). Accept optional `RequestOptions` (`signal`, `timeout`).
-2. Add `queryKeys.*` entry in `packages/hooks`.
-3. Export `useX` query/mutation that passes `{ signal }` from `queryFn` context.
-4. Invalidate the list prefix on successful mutations.
-5. Do **not** call Axios from UI components.
-
-Example:
+Token only (resolves org by code — deep-link safe).
 
 ```ts
-// packages/api
-export const widgetsApi = {
-  list(params: ListParams = {}, options?: RequestOptions) {
-    return getApiClient().get("/widgets/list", {
-      params: buildListQuery(params),
-      signal: options?.signal,
-    });
-  },
-};
-
-// packages/hooks
-queryKeys.widgets = (params?: ListParams) => ["widgets", params] as const;
-
-export function useWidgets(params: ListParams = {}) {
-  return useQuery({
-    queryKey: queryKeys.widgets(params),
-    queryFn: async ({ signal }) => {
-      const res = await widgetsApi.list(params, { signal });
-      return res.data.data;
-    },
-  });
+OrgBootstrapView {
+  organisation: /* ACL + settings (same shape as org get) */
+  organisations: OrganisationMembership[]
+  notifications: { items: AppNotification[]; unread_count: number }
 }
 ```
 
-## Benefits
+Client seeds React Query keys for org get, orgs list (`rows_per_page: 50`), and notifications list.
 
-- Easier mental model: UI → hooks → api → Axios → backend
-- Safer errors and less duplicate traffic
-- Web and mobile share the same client + query defaults
-- Safe rollback via Git branch / `ce8f917`
+### `GET /screens/home`
 
-## Out of scope (intentionally)
+```ts
+HomeBootstrapView {
+  organisations: OrganisationMembership[]
+  invitations: OrganisationInvitation[]
+}
+```
 
-- Changing REST paths or payloads
-- GraphQL / BFF aggregation
-- Offline-first persistence (beyond RQ memory cache)
-- Automatic Firebase token refresh interceptor (not required by current auth flow)
+### `GET /screens/employee-form`
+
+Token + OrgValidate. ACL: employee create or edit.
+
+```ts
+EmployeeFormLookupsView {
+  roles, regions, nok_relations, employment_status, employment_types,
+  timesheet_submission_frequencies, payroll_calendars, award_rates,
+  management_groups: NamedLookup[]
+}
+```
+
+### `GET /screens/timesheet-day-editor`
+
+Query: `mode=self|management`, `timesheet_day_id`, `employee_id?`  
+Returns day editor payload **plus** `available_jobs: JobOptionView[]`.  
+Same self/management ACL as existing get-day routes.
+
+### `GET /screens/dashboard`
+
+Token + OrgValidate. ACL: timesheetManagement.list **or** timesheet.list.  
+Server computes KPIs, status donut, weekly/monthly progress, productivity trend, team activity, recent notifications — **no mock chart constants**.
+
+## Request / response flow
+
+```mermaid
+sequenceDiagram
+  participant UI as OrgLayout
+  participant Hook as useOrgBootstrap
+  participant API as screensApi
+  participant BE as screens_router
+  participant Svc as screens_service
+  participant DB as DB
+
+  UI->>Hook: mount orgCode
+  Hook->>API: GET /screens/org-bootstrap
+  API->>BE: Bearer + optional org headers
+  BE->>Svc: getOrgBootstrap
+  Svc->>DB: org + orgs list + notifications
+  DB-->>Svc: rows
+  Svc-->>BE: UI_DTO
+  BE-->>Hook: data
+  Hook->>Hook: seed RQ caches
+  Hook-->>UI: organisation for shell
+```
+
+## Caching strategy
+
+| Layer | Behaviour |
+|-------|-----------|
+| React Query | `createAppQueryClient()` — 30s staleTime, dedupe, AbortSignal |
+| Screen hooks | Bootstrap staleTime 30s; employee-form 5m |
+| Org Redis | Reused for organisation payload inside bootstrap |
+| Notifications | Seeded by bootstrap; bell polls `/notifications/list` after staleTime |
+
+### Invalidation
+
+- Invitation accept/reject → invalidate `screens.home`, organisations, invitations
+- Mutations (employees, timesheets, …) continue to invalidate resource prefixes
+- Prefer invalidating `["screens", "dashboard", orgCode]` after timesheet approve/submit when wiring further (optional follow-up)
+
+## Auth & security
+
+- `/screens/*` mounted behind `TokenValidate`
+- Org-scoped routes use `OrganisationValidate` (except org-bootstrap / home)
+- Dashboard and day-editor reuse the same ACL and employee scoping as list/get-day
+- Mappers omit secrets; Xero tokens are not added to screen DTOs
+
+## Client HTTP layer (unchanged principles)
+
+See also earlier work on this branch lineage:
+
+- `ApiError` normalisation, GET retry, timeouts, AbortSignal
+- Resource APIs for writes: `employeesApi.create`, timesheet save/approve, etc.
+
+## How to add a new screen endpoint
+
+1. Add aggregation in `backend/service/screens.service.js` (+ mapper if needed).
+2. Expose in `screens.controller.js` + `routes/screens/index.js`.
+3. Add a typed view model in `packages/types`.
+4. Add method on `screensApi` and a hook under `queryKeys.screens.*`.
+5. Migrate the screen to the hook; seed related resource caches if child screens still use CRUD gets.
+6. Document the screen → endpoint row in this file.
+7. Keep mutations on resource routes unless there is a strong reason not to.
+
+## Phase 2 (not in this branch)
+
+- Jobs list slim DTO
+- Settings shells (holiday/payroll/org)
+- Reports pay-summary aggregate
+- Timesheet week-view (days without full task timelines)
+
+## Performance improvements (Phase 1)
+
+| Area | Improvement |
+|------|-------------|
+| Org navigation | 3 → 1 network round-trip for shell data |
+| Home | Parallel 2 → 1 |
+| Employee create | 9 → 1 lookup payload |
+| Day editor | 2 → 1 (day + jobs) |
+| Dashboard | No over-fetch of 100 rows for charts; live KPIs instead of mocks |
+| Maintainability | UI no longer orchestrates multi-resource fan-out for these screens |

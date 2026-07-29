@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   useCreateEmployee,
+  useEmployeeFormLookups,
   useInviteEmployee,
-  useManagementGroups,
   useSearchEmployeeByEmail,
-  useSystemLookup,
 } from "@mytask/hooks";
 import { getErrorMessage } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
@@ -147,36 +146,19 @@ export function CreateEmployeeDialog({
   const [form, setForm] = useState<EmployeeForm>(() => emptyForm());
 
   const enabled = open && step >= 1;
-  const rolesQuery = useSystemLookup<NamedId[]>("organisation-roles", enabled);
-  const regionsQuery = useSystemLookup<NamedId[]>("regions", enabled);
-  const nokQuery = useSystemLookup<NamedId[]>("nok-relations", enabled);
-  const empStatusQuery = useSystemLookup<NamedId[]>(
-    "employment-status",
-    enabled,
-  );
-  const empTypesQuery = useSystemLookup<NamedId[]>("employment-types", enabled);
-  const frequenciesQuery = useSystemLookup<NamedId[]>(
-    "timesheet-submission-frequencies",
-    enabled,
-  );
-  const calendarsQuery = useSystemLookup<NamedId[]>(
-    "payroll-calendars",
-    enabled,
-  );
-  const awardRatesQuery = useSystemLookup<NamedId[]>("award-rates", enabled);
-  const groupsQuery = useManagementGroups({ rows_per_page: 200 }, enabled);
+  const formLookupsQuery = useEmployeeFormLookups(enabled);
+  const lookups = formLookupsQuery.data;
 
-  const roles = (rolesQuery.data || []) as NamedId[];
-  const regions = (regionsQuery.data || []) as NamedId[];
-  const nokRelations = (nokQuery.data || []) as NamedId[];
-  const employmentStatuses = (empStatusQuery.data || []) as NamedId[];
-  const employmentTypes = (empTypesQuery.data || []) as NamedId[];
-  const frequencies = (frequenciesQuery.data || []) as NamedId[];
-  const calendars = (calendarsQuery.data || []) as NamedId[];
-  const awardRates = (awardRatesQuery.data || []) as NamedId[];
-  const groups = (Array.isArray(groupsQuery.data)
-    ? groupsQuery.data
-    : []) as NamedId[];
+  const roles = (lookups?.roles || []) as NamedId[];
+  const regions = (lookups?.regions || []) as NamedId[];
+  const nokRelations = (lookups?.nok_relations || []) as NamedId[];
+  const employmentStatuses = (lookups?.employment_status || []) as NamedId[];
+  const employmentTypes = (lookups?.employment_types || []) as NamedId[];
+  const frequencies = (lookups?.timesheet_submission_frequencies ||
+    []) as NamedId[];
+  const calendars = (lookups?.payroll_calendars || []) as NamedId[];
+  const awardRates = (lookups?.award_rates || []) as NamedId[];
+  const groups = (lookups?.management_groups || []) as NamedId[];
 
   const roleCode = form.details.role?.code;
 

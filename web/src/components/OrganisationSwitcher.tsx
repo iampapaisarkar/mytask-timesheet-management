@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useOrganisations } from "@mytask/hooks";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useHomeBootstrap, useOrgBootstrap } from "@mytask/hooks";
 import { ROUTES } from "@mytask/constants";
 import { getOrganisationRoleCode } from "@mytask/utils";
 import type { OrganisationMembership } from "@mytask/types";
@@ -16,8 +16,19 @@ export function OrganisationSwitcher() {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const { data, isLoading } = useOrganisations({ rows_per_page: 50 });
-  const organisations = asOrgs(data);
+  const { orgCode } = useParams();
+  const inOrg = Boolean(orgCode);
+
+  const orgBootstrap = useOrgBootstrap(orgCode || "", inOrg);
+  const homeBootstrap = useHomeBootstrap(!inOrg);
+
+  const organisations = asOrgs(
+    inOrg
+      ? orgBootstrap.data?.organisations
+      : homeBootstrap.data?.organisations,
+  );
+  const isLoading = inOrg ? orgBootstrap.isLoading : homeBootstrap.isLoading;
+
   const organisation = useOrganisationStore((s) => s.organisation);
   const setOrganisation = useOrganisationStore((s) => s.setOrganisation);
 
@@ -58,48 +69,41 @@ export function OrganisationSwitcher() {
       </button>
       {open ? (
         <div className="absolute right-0 z-40 mt-2 w-72 overflow-hidden rounded-2xl border border-border bg-[var(--mt-surface)] shadow-lg">
-          <div className="border-b border-border px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted">
-            Switch organisation
-          </div>
-          <div className="max-h-64 overflow-y-auto py-1">
+          <div className="max-h-72 overflow-y-auto p-2">
             {isLoading ? (
               <p className="px-3 py-2 text-sm text-muted">Loading…</p>
-            ) : null}
-            {!isLoading && !organisations.length ? (
-              <p className="px-3 py-2 text-sm text-muted">No organisations yet</p>
-            ) : null}
-            {organisations.map((org) => {
-              const active = organisation?.code === org.code;
-              return (
+            ) : organisations.length === 0 ? (
+              <p className="px-3 py-2 text-sm text-muted">No organisations</p>
+            ) : (
+              organisations.map((org) => (
                 <button
                   key={String(org.id)}
                   type="button"
+                  role="option"
+                  aria-selected={organisation?.code === org.code}
                   onClick={() => selectOrg(org)}
                   className={clsx(
-                    "flex w-full flex-col px-3 py-2 text-left text-sm hover:bg-[var(--mt-bg)]",
-                    active ? "bg-primary-muted text-primary" : "text-[var(--mt-text)]",
+                    "flex w-full flex-col rounded-xl px-3 py-2.5 text-left text-sm hover:bg-primary-muted",
+                    organisation?.code === org.code && "bg-primary-muted",
                   )}
                 >
-                  <span className="font-medium">{org.name}</span>
-                  <span className="text-xs text-muted">{org.code}</span>
+                  <span className="font-medium text-[var(--mt-text)]">
+                    {org.name}
+                  </span>
+                  <span className="text-xs text-muted">
+                    {getOrganisationRoleCode(org) || org.code}
+                  </span>
                 </button>
-              );
-            })}
+              ))
+            )}
           </div>
           <div className="border-t border-border p-2">
             <Link
               to={ROUTES.createOrganisation}
               onClick={() => setOpen(false)}
-              className="block rounded-xl px-3 py-2 text-sm font-medium text-primary hover:bg-[var(--mt-bg)]"
+              className="block rounded-xl px-3 py-2 text-sm font-medium text-primary hover:bg-primary-muted"
             >
-              + Create organisation
-            </Link>
-            <Link
-              to={ROUTES.home}
-              onClick={() => setOpen(false)}
-              className="block rounded-xl px-3 py-2 text-sm text-[var(--mt-text)] hover:bg-[var(--mt-bg)]"
-            >
-              All organisations
+              Create organisation
             </Link>
           </div>
         </div>

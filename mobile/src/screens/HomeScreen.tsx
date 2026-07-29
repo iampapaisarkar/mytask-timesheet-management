@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useOrganisations } from "@mytask/hooks";
+import { useHomeBootstrap } from "@mytask/hooks";
 import { spacing } from "@mytask/theme";
 import type { OrganisationMembership } from "@mytask/types";
 import type { RootStackParamList } from "../navigation/RootNavigator";
@@ -21,9 +21,9 @@ import { useToastStore } from "../store/toastStore";
 export function HomeScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { data, isLoading, isError, refetch } = useOrganisations();
+  const { data, isLoading, isError, refetch } = useHomeBootstrap();
   const setOrganisation = useOrganisationStore((s) => s.setOrganisation);
-  const organisations = (data || []) as OrganisationMembership[];
+  const organisations = (data?.organisations || []) as OrganisationMembership[];
   const c = useThemeStore((s) => s.colors);
   const toast = useToastStore();
 

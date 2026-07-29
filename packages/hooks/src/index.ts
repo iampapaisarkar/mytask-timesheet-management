@@ -9,13 +9,22 @@ import {
   jobsApi,
   managementGroupsApi,
   systemApi,
+  screensApi,
 } from "@mytask/api";
-import type { ListParams } from "@mytask/types";
+import type {
+  DashboardOverviewView,
+  EmployeeFormLookupsView,
+  HomeBootstrapView,
+  ListParams,
+  OrgBootstrapView,
+  TimesheetDayEditorView,
+} from "@mytask/types";
 
 export const queryKeys = {
   me: ["auth", "me"] as const,
   organisations: (params?: ListParams) => ["organisations", params] as const,
   organisation: (orgCode: string) => ["organisation", orgCode] as const,
+  organisationInvitations: ["organisation-invitations"] as const,
   timesheets: (params?: ListParams) => ["timesheets", params] as const,
   timesheet: (id: string | number) => ["timesheets", id] as const,
   timesheetDay: (mode: string, dayId: string | number) =>
@@ -37,7 +46,134 @@ export const queryKeys = {
   payrollCalendars: ["payroll-calendars"] as const,
   earningRates: ["earning-rates"] as const,
   awardRates: ["award-rates"] as const,
+  screens: {
+    orgBootstrap: (orgCode: string) =>
+      ["screens", "org-bootstrap", orgCode] as const,
+    home: ["screens", "home"] as const,
+    employeeForm: ["screens", "employee-form"] as const,
+    timesheetDayEditor: (
+      mode: string,
+      dayId: string | number,
+      employeeId?: string | number,
+    ) => ["screens", "timesheet-day-editor", mode, dayId, employeeId] as const,
+    dashboard: (orgCode: string) =>
+      ["screens", "dashboard", orgCode] as const,
+  },
 };
+
+const ORG_LIST_SEED_PARAMS: ListParams = { rows_per_page: 50 };
+
+function seedOrgBootstrapCaches(
+  qc: ReturnType<typeof useQueryClient>,
+  orgCode: string,
+  data: OrgBootstrapView,
+) {
+  qc.setQueryData(queryKeys.organisation(orgCode), data.organisation);
+  qc.setQueryData(
+    queryKeys.organisations(ORG_LIST_SEED_PARAMS),
+    data.organisations,
+  );
+  qc.setQueryData(queryKeys.notificationsList, {
+    data: data.notifications.items,
+    unread_count: data.notifications.unread_count,
+  });
+}
+
+function seedHomeCaches(
+  qc: ReturnType<typeof useQueryClient>,
+  data: HomeBootstrapView,
+) {
+  qc.setQueryData(
+    queryKeys.organisations(ORG_LIST_SEED_PARAMS),
+    data.organisations,
+  );
+  qc.setQueryData(queryKeys.organisationInvitations, data.invitations);
+}
+
+export function useOrgBootstrap(orgCode: string, enabled = true) {
+  const qc = useQueryClient();
+  return useQuery({
+    queryKey: queryKeys.screens.orgBootstrap(orgCode),
+    queryFn: async ({ signal }) => {
+      const res = await screensApi.orgBootstrap(orgCode, { signal });
+      const data = res.data.data as OrgBootstrapView;
+      seedOrgBootstrapCaches(qc, orgCode, data);
+      return data;
+    },
+    enabled: enabled && Boolean(orgCode),
+    staleTime: 30_000,
+  });
+}
+
+export function useHomeBootstrap(enabled = true) {
+  const qc = useQueryClient();
+  return useQuery({
+    queryKey: queryKeys.screens.home,
+    queryFn: async ({ signal }) => {
+      const res = await screensApi.home({ signal });
+      const data = res.data.data as HomeBootstrapView;
+      seedHomeCaches(qc, data);
+      return data;
+    },
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useEmployeeFormLookups(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.screens.employeeForm,
+    queryFn: async ({ signal }) => {
+      const res = await screensApi.employeeForm({ signal });
+      return res.data.data as EmployeeFormLookupsView;
+    },
+    enabled,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useTimesheetDayEditorScreen(
+  params: {
+    mode: "self" | "management";
+    dayId?: string | number | null;
+    employeeId?: string | number;
+  },
+  enabled = true,
+) {
+  const { mode, dayId, employeeId } = params;
+  return useQuery({
+    queryKey: queryKeys.screens.timesheetDayEditor(
+      mode,
+      dayId || "unknown",
+      employeeId,
+    ),
+    queryFn: async ({ signal }) => {
+      const res = await screensApi.timesheetDayEditor(
+        {
+          mode,
+          timesheet_day_id: dayId!,
+          employee_id: employeeId,
+        },
+        { signal },
+      );
+      return res.data.data as TimesheetDayEditorView;
+    },
+    enabled: enabled && dayId != null && dayId !== "",
+  });
+}
+
+export function useDashboardOverview(orgCode: string, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.screens.dashboard(orgCode),
+    queryFn: async ({ signal }) => {
+      const res = await screensApi.dashboard({ signal });
+      return res.data.data as DashboardOverviewView;
+    },
+    enabled: enabled && Boolean(orgCode),
+    staleTime: 30_000,
+  });
+}
+
 
 export function useAuthUser(enabled = true) {
   return useQuery({

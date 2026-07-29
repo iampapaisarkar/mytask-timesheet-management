@@ -153,3 +153,79 @@ export type OrgAclRequirement = {
   action: keyof OrganisationAcl;
   permission: keyof CrudPermission;
 };
+
+/** Screen-oriented API DTOs (UI view models — not DB tables). */
+
+export interface NamedLookup {
+  id: number | string;
+  name: string | null;
+  code?: string;
+}
+
+export interface OrgBootstrapView {
+  organisation: Record<string, unknown>;
+  organisations: OrganisationMembership[];
+  notifications: {
+    items: AppNotification[];
+    unread_count: number;
+  };
+}
+
+export interface HomeBootstrapView {
+  organisations: OrganisationMembership[];
+  invitations: OrganisationInvitation[];
+}
+
+export interface EmployeeFormLookupsView {
+  roles: NamedLookup[];
+  regions: NamedLookup[];
+  nok_relations: NamedLookup[];
+  employment_status: NamedLookup[];
+  employment_types: NamedLookup[];
+  timesheet_submission_frequencies: NamedLookup[];
+  payroll_calendars: NamedLookup[];
+  award_rates: NamedLookup[];
+  management_groups: NamedLookup[];
+}
+
+export interface JobOptionView {
+  id: number | string;
+  name: string | null;
+  is_active?: boolean;
+}
+
+export interface TimesheetDayEditorView {
+  available_jobs: JobOptionView[];
+  permissions?: { can_save?: boolean; [key: string]: unknown };
+  tasks?: unknown[];
+  is_public_holiday?: boolean;
+  [key: string]: unknown;
+}
+
+export interface DashboardOverviewView {
+  source?: string;
+  kpis: {
+    approved: number;
+    draft: number;
+    submitted: number;
+    rejected: number;
+    total: number;
+    approval_rate_pct: number;
+  };
+  status_donut: Array<{ code: string; name: string; count: number }>;
+  weekly_progress: Array<{ day: string; completed: number; pending: number }>;
+  monthly_progress: Array<{ week: string; progress_pct: number }>;
+  productivity_trend: Array<{ label: string; value: number }>;
+  team_activity: Array<{ name: string; count: number }>;
+  recent_activity: Array<{
+    title: string;
+    meta: string;
+    at?: string | null;
+    url?: string | null;
+  }>;
+  quick_links_hint: {
+    has_pending_approvals: boolean;
+    open_timesheet_id: number | string | null;
+  };
+}
+

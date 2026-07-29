@@ -2,12 +2,12 @@ import { useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ROUTES } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
-import {
-  useTimesheetManagement,
-  useTimesheets,
-} from "@mytask/hooks";
+import { useDashboardOverview } from "@mytask/hooks";
+import type { DashboardOverviewView } from "@mytask/types";
 import { useOrganisationStore } from "@/store/organisationStore";
 import { Card, PageHeader } from "@/components/ui/Card";
+import { ErrorState, LoadingState } from "@/components/ui/States";
+import { getErrorMessage } from "@mytask/utils";
 import {
   Area,
   AreaChart,
@@ -31,46 +31,6 @@ import {
   Users,
 } from "lucide-react";
 
-const WEEKLY = [
-  { day: "Mon", completed: 12, pending: 4 },
-  { day: "Tue", completed: 15, pending: 3 },
-  { day: "Wed", completed: 9, pending: 6 },
-  { day: "Thu", completed: 18, pending: 2 },
-  { day: "Fri", completed: 14, pending: 5 },
-  { day: "Sat", completed: 6, pending: 1 },
-  { day: "Sun", completed: 4, pending: 2 },
-];
-
-const MONTHLY = [
-  { week: "W1", progress: 62 },
-  { week: "W2", progress: 71 },
-  { week: "W3", progress: 68 },
-  { week: "W4", progress: 84 },
-];
-
-const TREND = [
-  { label: "Jan", value: 58 },
-  { label: "Feb", value: 64 },
-  { label: "Mar", value: 61 },
-  { label: "Apr", value: 72 },
-  { label: "May", value: 78 },
-  { label: "Jun", value: 82 },
-];
-
-const ACTIVITY = [
-  { name: "Timesheets", count: 24 },
-  { name: "Approvals", count: 11 },
-  { name: "Jobs", count: 8 },
-  { name: "Team", count: 16 },
-];
-
-const RECENT = [
-  { title: "Timesheet submitted", meta: "Alex · 12 min ago" },
-  { title: "Job updated", meta: "Site A · 41 min ago" },
-  { title: "Approval completed", meta: "Manager · 1h ago" },
-  { title: "Employee invited", meta: "HR · 3h ago" },
-];
-
 const STATUS_COLORS: Record<string, string> = {
   draft: "#94A3B8",
   submitted: "#F59E0B",
@@ -78,26 +38,71 @@ const STATUS_COLORS: Record<string, string> = {
   rejected: "#EF4444",
 };
 
-type TimesheetListRow = {
-  status?: { code?: string; name?: string };
-};
+function ChartTitle({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <div className="mb-3">
+      <h3 className="text-sm font-semibold text-[var(--mt-text)]">{title}</h3>
+      {subtitle ? (
+        <p className="text-xs text-muted">{subtitle}</p>
+      ) : null}
+    </div>
+  );
+}
 
-function statusDonutFromList(rows: TimesheetListRow[]) {
-  const counts = new Map<string, { name: string; value: number; color: string }>();
-  for (const row of rows) {
-    const code = row.status?.code || "unknown";
-    const name = row.status?.name || code;
-    const existing = counts.get(code);
-    if (existing) existing.value += 1;
-    else {
-      counts.set(code, {
-        name,
-        value: 1,
-        color: STATUS_COLORS[code] || "#64748B",
-      });
-    }
-  }
-  return Array.from(counts.values());
+function StatCard({
+  icon,
+  label,
+  value,
+  hint,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  hint: string;
+}) {
+  return (
+    <Card className="flex items-start gap-3">
+      <div className="rounded-xl bg-primary-muted p-2.5">{icon}</div>
+      <div>
+        <p className="text-xs font-medium uppercase tracking-wide text-muted">
+          {label}
+        </p>
+        <p className="mt-1 text-2xl font-semibold text-[var(--mt-text)]">
+          {value}
+        </p>
+        <p className="mt-0.5 text-xs text-muted">{hint}</p>
+      </div>
+    </Card>
+  );
+}
+
+function emptyDashboard(): DashboardOverviewView {
+  return {
+    kpis: {
+      approved: 0,
+      draft: 0,
+      submitted: 0,
+      rejected: 0,
+      total: 0,
+      approval_rate_pct: 0,
+    },
+    status_donut: [],
+    weekly_progress: [],
+    monthly_progress: [],
+    productivity_trend: [],
+    team_activity: [],
+    recent_activity: [],
+    quick_links_hint: {
+      has_pending_approvals: false,
+      open_timesheet_id: null,
+    },
+  };
 }
 
 export function OrganisationHomePage() {
@@ -107,34 +112,32 @@ export function OrganisationHomePage() {
 
   const canManage = can(acl, "timesheetManagement", "list");
   const canSelf = can(acl, "timesheet", "list");
+  const canViewDashboard = canManage || canSelf;
 
-  const managementQuery = useTimesheetManagement(
-    { rows_per_page: 100, sort_by: "id" },
-    canManage,
-  );
-  const selfQuery = useTimesheets(
-    { rows_per_page: 100, sort_by: "id" },
-    !canManage && canSelf,
-  );
-
-  const listRows = useMemo(() => {
-    const source = canManage ? managementQuery.data : selfQuery.data;
-    return (Array.isArray(source) ? source : []) as TimesheetListRow[];
-  }, [canManage, managementQuery.data, selfQuery.data]);
+  const dashboardQuery = useDashboardOverview(orgCode, canViewDashboard);
+  const overview = dashboardQuery.data || emptyDashboard();
 
   const statusDonut = useMemo(
-    () => statusDonutFromList(listRows),
-    [listRows],
+    () =>
+      overview.status_donut.map((row) => ({
+        name: row.name,
+        value: row.count,
+        color: STATUS_COLORS[row.code] || "#64748B",
+      })),
+    [overview.status_donut],
   );
 
-  const approved = listRows.filter((r) => r.status?.code === "approved").length;
-  const pending = listRows.filter(
-    (r) => r.status?.code === "draft" || r.status?.code === "submitted",
-  ).length;
-  const total = listRows.length;
-  const completionRate = total
-    ? Math.round((approved / total) * 100)
-    : 0;
+  const monthlyChart = useMemo(
+    () =>
+      overview.monthly_progress.map((row) => ({
+        week: row.week,
+        progress: row.progress_pct,
+      })),
+    [overview.monthly_progress],
+  );
+
+  const { approved, draft, submitted, total, approval_rate_pct } = overview.kpis;
+  const pending = draft + submitted;
 
   const quickLinks = [
     {
@@ -169,6 +172,22 @@ export function OrganisationHomePage() {
     },
   ].filter((item) => item.show);
 
+  if (canViewDashboard && dashboardQuery.isLoading) {
+    return <LoadingState label="Loading dashboard…" />;
+  }
+
+  if (canViewDashboard && dashboardQuery.isError) {
+    return (
+      <ErrorState
+        message={getErrorMessage(
+          dashboardQuery.error,
+          "Unable to load dashboard",
+        )}
+        onRetry={() => void dashboardQuery.refetch()}
+      />
+    );
+  }
+
   return (
     <div className="mt-fade-in flex flex-col gap-6">
       <PageHeader
@@ -196,7 +215,7 @@ export function OrganisationHomePage() {
           icon={<CheckCircle2 className="text-primary" size={20} />}
           label="Approved timesheets"
           value={String(approved)}
-          hint={total ? `${total} total loaded` : "No timesheets yet"}
+          hint={total ? `${total} total in scope` : "No timesheets yet"}
         />
         <StatCard
           icon={<Clock3 className="text-warning" size={20} />}
@@ -207,23 +226,27 @@ export function OrganisationHomePage() {
         <StatCard
           icon={<TrendingUp className="text-positive" size={20} />}
           label="Approval rate"
-          value={`${completionRate}%`}
-          hint={total ? "From current list" : "On track"}
+          value={`${approval_rate_pct}%`}
+          hint={total ? "Approved vs decided" : "On track"}
         />
         <StatCard
           icon={<Users className="text-info" size={20} />}
           label="Timesheets in view"
           value={String(total)}
-          hint={canManage ? "Management list" : "My timesheets"}
+          hint={
+            overview.source === "management"
+              ? "Management list"
+              : "My timesheets"
+          }
         />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <ChartTitle title="Weekly progress" subtitle="Completed vs pending" />
+          <ChartTitle title="Weekly progress" subtitle="Completed vs pending days" />
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={WEEKLY}>
+              <BarChart data={overview.weekly_progress}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--mt-border)" />
                 <XAxis dataKey="day" tick={{ fill: "var(--mt-muted)", fontSize: 12 }} />
                 <YAxis tick={{ fill: "var(--mt-muted)", fontSize: 12 }} />
@@ -242,10 +265,10 @@ export function OrganisationHomePage() {
         </Card>
 
         <Card>
-          <ChartTitle title="Productivity trend" subtitle="Last 6 months" />
+          <ChartTitle title="Productivity trend" subtitle="Approved timesheets · last 6 months" />
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={TREND}>
+              <AreaChart data={overview.productivity_trend}>
                 <defs>
                   <linearGradient id="prod" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#04B6B1" stopOpacity={0.4} />
@@ -277,10 +300,10 @@ export function OrganisationHomePage() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card>
-          <ChartTitle title="Monthly progress" subtitle="By week" />
+          <ChartTitle title="Monthly progress" subtitle="By week (this month)" />
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={MONTHLY}>
+              <BarChart data={monthlyChart}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--mt-border)" />
                 <XAxis dataKey="week" tick={{ fill: "var(--mt-muted)", fontSize: 12 }} />
                 <YAxis tick={{ fill: "var(--mt-muted)", fontSize: 12 }} />
@@ -302,7 +325,7 @@ export function OrganisationHomePage() {
             title="Timesheet status"
             subtitle={
               statusDonut.length
-                ? "Count by status (live list)"
+                ? "Count by status (live)"
                 : "No timesheet data yet"
             }
           />
@@ -351,10 +374,14 @@ export function OrganisationHomePage() {
         </Card>
 
         <Card>
-          <ChartTitle title="Team activity" subtitle="This week" />
+          <ChartTitle title="Team activity" subtitle="Timesheet volume" />
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={ACTIVITY} layout="vertical" margin={{ left: 16 }}>
+              <BarChart
+                data={overview.team_activity}
+                layout="vertical"
+                margin={{ left: 16 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--mt-border)" />
                 <XAxis type="number" tick={{ fill: "var(--mt-muted)", fontSize: 12 }} />
                 <YAxis
@@ -379,11 +406,14 @@ export function OrganisationHomePage() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-1">
-          <ChartTitle title="Recent activity" subtitle="Latest updates" />
+          <ChartTitle title="Recent activity" subtitle="Latest notifications" />
           <ul className="mt-2 flex flex-col gap-3">
-            {RECENT.map((item) => (
+            {(overview.recent_activity.length
+              ? overview.recent_activity
+              : [{ title: "No recent activity", meta: "Check back later", at: null, url: null }]
+            ).map((item, index) => (
               <li
-                key={item.title}
+                key={`${item.title}-${index}`}
                 className="flex items-start gap-3 rounded-xl border border-border px-3 py-2.5"
               >
                 <Activity size={16} className="mt-0.5 text-primary" />
@@ -413,44 +443,6 @@ export function OrganisationHomePage() {
           </div>
         </Card>
       </div>
-    </div>
-  );
-}
-
-function StatCard({
-  icon,
-  label,
-  value,
-  hint,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  hint: string;
-}) {
-  return (
-    <Card hover>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted">
-            {label}
-          </p>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-[var(--mt-text)]">
-            {value}
-          </p>
-          <p className="mt-1 text-xs text-muted">{hint}</p>
-        </div>
-        <div className="rounded-xl bg-primary-muted p-2.5">{icon}</div>
-      </div>
-    </Card>
-  );
-}
-
-function ChartTitle({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <div className="mb-4">
-      <h2 className="text-base font-semibold text-[var(--mt-text)]">{title}</h2>
-      <p className="text-xs text-muted">{subtitle}</p>
     </div>
   );
 }

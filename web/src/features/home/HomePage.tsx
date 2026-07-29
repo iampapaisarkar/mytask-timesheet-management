@@ -1,7 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { organisationsApi } from "@mytask/api";
-import { useOrganisations } from "@mytask/hooks";
+import { queryKeys, useHomeBootstrap } from "@mytask/hooks";
 import { ROUTES } from "@mytask/constants";
 import { getErrorMessage, getOrganisationRoleCode } from "@mytask/utils";
 import type {
@@ -15,10 +15,6 @@ import { useOrganisationStore } from "@/store/organisationStore";
 import { useToastStore } from "@/store/toastStore";
 import { ArrowRight, Building2, Mail, Plus } from "lucide-react";
 
-function asInvitations(data: unknown): OrganisationInvitation[] {
-  return (Array.isArray(data) ? data : []) as OrganisationInvitation[];
-}
-
 export function HomePage() {
   const qc = useQueryClient();
   const toast = useToastStore();
@@ -28,21 +24,10 @@ export function HomePage() {
     isError,
     error,
     refetch,
-  } = useOrganisations({
-    rows_per_page: 50,
-  });
+  } = useHomeBootstrap();
   const setOrganisation = useOrganisationStore((s) => s.setOrganisation);
-  const organisations = (data || []) as OrganisationMembership[];
-
-  const invitationsQuery = useQuery({
-    queryKey: ["organisation-invitations"],
-    queryFn: async () => {
-      const res = await organisationsApi.invitations();
-      return asInvitations(res.data.data);
-    },
-  });
-
-  const invitations = invitationsQuery.data || [];
+  const organisations = (data?.organisations || []) as OrganisationMembership[];
+  const invitations = (data?.invitations || []) as OrganisationInvitation[];
 
   const acceptMutation = useMutation({
     mutationFn: (invite: OrganisationInvitation) =>
@@ -55,8 +40,9 @@ export function HomePage() {
     onSuccess: async () => {
       toast.success("Invitation accepted");
       await Promise.all([
-        qc.invalidateQueries({ queryKey: ["organisation-invitations"] }),
+        qc.invalidateQueries({ queryKey: queryKeys.organisationInvitations }),
         qc.invalidateQueries({ queryKey: ["organisations"] }),
+        qc.invalidateQueries({ queryKey: queryKeys.screens.home }),
       ]);
     },
     onError: (err) => {
@@ -78,8 +64,9 @@ export function HomePage() {
     onSuccess: async () => {
       toast.success("Invitation rejected");
       await Promise.all([
-        qc.invalidateQueries({ queryKey: ["organisation-invitations"] }),
+        qc.invalidateQueries({ queryKey: queryKeys.organisationInvitations }),
         qc.invalidateQueries({ queryKey: ["organisations"] }),
+        qc.invalidateQueries({ queryKey: queryKeys.screens.home }),
       ]);
     },
     onError: (err) => {

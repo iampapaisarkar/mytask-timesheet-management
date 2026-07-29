@@ -58,6 +58,8 @@ export function NotificationsBell() {
       );
       return res.data as NotificationsListResponse;
     },
+    // Seeded by org-bootstrap; poll for freshness while visible
+    staleTime: 30_000,
     refetchInterval: pageVisible ? (open ? 30_000 : 60_000) : false,
     refetchIntervalInBackground: false,
   });
