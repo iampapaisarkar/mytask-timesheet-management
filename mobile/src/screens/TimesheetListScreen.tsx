@@ -3,15 +3,34 @@ import {
   FlatList,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useTimesheets } from "@mytask/hooks";
 import { spacing } from "@mytask/theme";
+import type { RootStackParamList } from "../navigation/RootNavigator";
 import { useThemeStore } from "../store/themeStore";
 
-export function TimesheetListScreen() {
-  const { data, isLoading, isError } = useTimesheets();
-  const rows = (Array.isArray(data) ? data : []) as Array<Record<string, unknown>>;
+type Props = NativeStackScreenProps<RootStackParamList, "Timesheets">;
+
+type TimesheetRow = {
+  id?: number | string;
+  code?: string;
+  period_range?: string;
+  status?: { name?: string; code?: string } | string;
+};
+
+function statusLabel(status: TimesheetRow["status"]) {
+  if (!status) return "—";
+  if (typeof status === "string") return status;
+  return status.name || status.code || "—";
+}
+
+export function TimesheetListScreen({ navigation, route }: Props) {
+  const { orgCode } = route.params;
+  const { data, isLoading, isError, refetch } = useTimesheets();
+  const rows = (Array.isArray(data) ? data : []) as TimesheetRow[];
   const c = useThemeStore((s) => s.colors);
 
   if (isLoading) {
@@ -26,6 +45,9 @@ export function TimesheetListScreen() {
     return (
       <View style={[styles.center, { backgroundColor: c.bg }]}>
         <Text style={{ color: c.text }}>Failed to load timesheets</Text>
+        <TouchableOpacity onPress={() => void refetch()}>
+          <Text style={[styles.link, { color: c.primary }]}>Try again</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -40,17 +62,27 @@ export function TimesheetListScreen() {
         <Text style={[styles.empty, { color: c.muted }]}>No timesheets found</Text>
       }
       renderItem={({ item }) => (
-        <View
+        <TouchableOpacity
           style={[
             styles.card,
             { backgroundColor: c.surface, borderColor: c.border },
           ]}
+          onPress={() => {
+            if (item.id == null) return;
+            navigation.navigate("TimesheetDetail", {
+              orgCode,
+              id: String(item.id),
+            });
+          }}
         >
           <Text style={[styles.id, { color: c.text }]}>
             #{String(item.id ?? "")}
+            {item.code ? ` · ${item.code}` : ""}
           </Text>
-          <Text style={{ color: c.muted }}>{String(item.status ?? "—")}</Text>
-        </View>
+          <Text style={{ color: c.muted }}>
+            {item.period_range || "—"} · {statusLabel(item.status)}
+          </Text>
+        </TouchableOpacity>
       )}
     />
   );
@@ -66,4 +98,5 @@ const styles = StyleSheet.create({
   },
   id: { fontWeight: "700", marginBottom: 4 },
   empty: { textAlign: "center", marginTop: 40 },
+  link: { fontWeight: "700", marginTop: 8 },
 });

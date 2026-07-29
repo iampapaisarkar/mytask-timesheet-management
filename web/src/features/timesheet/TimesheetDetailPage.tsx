@@ -1,14 +1,13 @@
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import {
-  useSubmitTimesheet,
-  useTimesheet,
-} from "@mytask/hooks";
+import { useSubmitTimesheet, useTimesheet } from "@mytask/hooks";
 import { ROUTES } from "@mytask/constants";
 import { getErrorMessage } from "@mytask/utils";
 import { Card, PageHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { useToastStore } from "@/store/toastStore";
+import { TimesheetDayEditor } from "@/features/timesheet/TimesheetDayEditor";
 
 type TimesheetDay = {
   id?: number;
@@ -27,7 +26,13 @@ type TimesheetDetail = {
   period_end_date?: string;
   status?: { name?: string; code?: string };
   days?: TimesheetDay[];
-  permissions?: { can_submit?: boolean; can_save?: boolean };
+  permissions?: {
+    can_submit?: boolean;
+    can_approve?: boolean;
+    can_reject?: boolean;
+    can_revert_to_draft?: boolean;
+    can_save?: boolean;
+  };
   employee?: { user?: { full_name?: string } };
 };
 
@@ -36,12 +41,19 @@ export function TimesheetDetailPage() {
   const toast = useToastStore();
   const query = useTimesheet(id);
   const submit = useSubmitTimesheet();
+  const [selectedDayId, setSelectedDayId] = useState<number | null>(null);
   const data = query.data as TimesheetDetail | undefined;
 
   async function handleSubmit() {
+    const remarks = window.prompt("Optional remarks for submit:") ?? undefined;
     try {
       await submit.mutateAsync(id);
-      toast.success("Submitted", "Timesheet submitted for approval");
+      toast.success(
+        "Submitted",
+        remarks?.trim()
+          ? "Timesheet submitted for approval"
+          : "Timesheet submitted for approval",
+      );
       void query.refetch();
     } catch (err) {
       toast.error("Submit failed", getErrorMessage(err));
@@ -59,6 +71,7 @@ export function TimesheetDetailPage() {
   }
 
   const days = Array.isArray(data?.days) ? data.days : [];
+  const perms = data?.permissions;
 
   return (
     <div className="mt-fade-in flex flex-col gap-4">
@@ -70,8 +83,7 @@ export function TimesheetDetailPage() {
             <Link to={ROUTES.timesheet(orgCode)}>
               <Button variant="secondary">Back</Button>
             </Link>
-            {data?.permissions?.can_submit !== false &&
-            data?.status?.code === "draft" ? (
+            {perms?.can_submit ? (
               <Button loading={submit.isPending} onClick={() => void handleSubmit()}>
                 Submit for approval
               </Button>
@@ -109,6 +121,10 @@ export function TimesheetDetailPage() {
         <h2 className="mb-3 text-base font-semibold text-[var(--mt-text)]">
           Days
         </h2>
+        <p className="mb-3 text-xs text-muted">
+          Click a day to view or edit tasks
+          {perms?.can_save === false ? " (read-only for this status)" : ""}.
+        </p>
         {!days.length ? (
           <p className="text-sm text-muted">No days on this timesheet yet.</p>
         ) : (
@@ -126,7 +142,8 @@ export function TimesheetDetailPage() {
                 {days.map((day) => (
                   <tr
                     key={String(day.id ?? day.date)}
-                    className="border-b border-border last:border-0"
+                    className="cursor-pointer border-b border-border last:border-0 hover:bg-primary-muted/40"
+                    onClick={() => day.id != null && setSelectedDayId(day.id)}
                   >
                     <td className="px-3 py-2">{day.date || "—"}</td>
                     <td className="px-3 py-2">
@@ -143,6 +160,15 @@ export function TimesheetDetailPage() {
           </div>
         )}
       </Card>
+
+      <TimesheetDayEditor
+        mode="self"
+        timesheetId={id}
+        dayId={selectedDayId}
+        open={selectedDayId != null}
+        onClose={() => setSelectedDayId(null)}
+        onSaved={() => void query.refetch()}
+      />
     </div>
   );
 }

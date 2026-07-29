@@ -1,20 +1,22 @@
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useOrganisations } from "@mytask/hooks";
 import { spacing } from "@mytask/theme";
 import type { OrganisationMembership } from "@mytask/types";
 import type { RootStackParamList } from "../navigation/RootNavigator";
+import { blockOrgSwitch } from "../services/trackingSession";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
+import { useToastStore } from "../store/toastStore";
 
 export function HomeScreen() {
   const navigation =
@@ -23,6 +25,7 @@ export function HomeScreen() {
   const setOrganisation = useOrganisationStore((s) => s.setOrganisation);
   const organisations = (data || []) as OrganisationMembership[];
   const c = useThemeStore((s) => s.colors);
+  const toast = useToastStore();
 
   if (isLoading) {
     return (
@@ -66,6 +69,14 @@ export function HomeScreen() {
               { backgroundColor: c.surface, borderColor: c.border },
             ]}
             onPress={async () => {
+              if (await blockOrgSwitch(item.code)) {
+                Alert.alert(
+                  "Tracking in progress",
+                  "Stop clock-in tracking for the other organisation before switching.",
+                );
+                toast.warning("Stop tracking before switching organisations");
+                return;
+              }
               await setOrganisation({
                 id: item.id,
                 code: item.code,

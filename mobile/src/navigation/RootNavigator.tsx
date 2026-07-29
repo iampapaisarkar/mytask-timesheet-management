@@ -7,6 +7,11 @@ import { LoginScreen } from "../screens/LoginScreen";
 import { HomeScreen } from "../screens/HomeScreen";
 import { OrgHomeScreen } from "../screens/OrgHomeScreen";
 import { TimesheetListScreen } from "../screens/TimesheetListScreen";
+import { TimesheetDetailScreen } from "../screens/TimesheetDetailScreen";
+import { TimesheetDayDetailScreen } from "../screens/TimesheetDayDetailScreen";
+import { TimesheetManagementListScreen } from "../screens/TimesheetManagementListScreen";
+import { EmployeesListScreen } from "../screens/EmployeesListScreen";
+import { SettingsHubScreen } from "../screens/SettingsHubScreen";
 import { ProfileScreen } from "../screens/ProfileScreen";
 
 export type RootStackParamList = {
@@ -14,6 +19,15 @@ export type RootStackParamList = {
   MainTabs: undefined;
   OrgHome: { orgCode: string };
   Timesheets: { orgCode: string };
+  TimesheetDetail: { orgCode: string; id: string };
+  TimesheetDayDetail: {
+    orgCode: string;
+    timesheetId: string;
+    dayId: string;
+  };
+  TimesheetManagementList: { orgCode: string };
+  EmployeesList: { orgCode: string };
+  SettingsHub: { orgCode: string };
 };
 
 export type MainTabParamList = {
@@ -112,6 +126,31 @@ export function RootNavigator() {
             name="Timesheets"
             component={TimesheetListScreen}
             options={{ title: "My Timesheets" }}
+          />
+          <Stack.Screen
+            name="TimesheetDetail"
+            component={TimesheetDetailScreen}
+            options={{ title: "Timesheet" }}
+          />
+          <Stack.Screen
+            name="TimesheetDayDetail"
+            component={TimesheetDayDetailScreen}
+            options={{ title: "Day detail" }}
+          />
+          <Stack.Screen
+            name="TimesheetManagementList"
+            component={TimesheetManagementListScreen}
+            options={{ title: "Timesheet management" }}
+          />
+          <Stack.Screen
+            name="EmployeesList"
+            component={EmployeesListScreen}
+            options={{ title: "Employees" }}
+          />
+          <Stack.Screen
+            name="SettingsHub"
+            component={SettingsHubScreen}
+            options={{ title: "Settings" }}
           />
         </>
       )}

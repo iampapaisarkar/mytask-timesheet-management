@@ -57,10 +57,13 @@ export const namedEntitySchema = z.object({
 
 export const customerSchema = z.object({
   name: z.string().min(1, "Please enter name"),
+  abn: z.string().optional().nullable(),
+  address: z.string().optional().nullable(),
   contact_name: z.string().optional().nullable(),
   contact_email: z.string().email().optional().or(z.literal("")).nullable(),
   contact_phone_number: z.string().optional().nullable(),
   hourly_rate: z.union([z.number(), z.string()]).optional().nullable(),
+  is_active: z.boolean().optional(),
   active: z.boolean().optional(),
 });
 

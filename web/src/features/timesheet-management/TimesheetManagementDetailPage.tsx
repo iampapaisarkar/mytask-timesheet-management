@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import {
   useApproveTimesheet,
   useRejectTimesheet,
+  useRevertTimesheet,
   useSubmitTimesheetManagement,
   useTimesheetManagementItem,
 } from "@mytask/hooks";
@@ -13,6 +14,7 @@ import { Button } from "@/components/ui/Button";
 import { TextInput } from "@/components/ui/TextInput";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { useToastStore } from "@/store/toastStore";
+import { TimesheetDayEditor } from "@/features/timesheet/TimesheetDayEditor";
 
 type TimesheetDay = {
   id?: number;
@@ -34,46 +36,84 @@ type TimesheetDetail = {
     can_submit?: boolean;
     can_approve?: boolean;
     can_reject?: boolean;
+    can_revert_to_draft?: boolean;
+    can_save?: boolean;
   };
-  employee?: { user?: { full_name?: string }; details?: { full_name?: string } };
+  employee?: {
+    id?: number;
+    details?: { id?: number; full_name?: string };
+    user?: { full_name?: string };
+  };
 };
 
 export function TimesheetManagementDetailPage() {
   const { orgCode = "", id = "" } = useParams();
   const toast = useToastStore();
   const [reason, setReason] = useState("");
+  const [selectedDayId, setSelectedDayId] = useState<number | null>(null);
   const query = useTimesheetManagementItem(id);
   const submit = useSubmitTimesheetManagement();
   const approve = useApproveTimesheet();
   const reject = useRejectTimesheet();
+  const revert = useRevertTimesheet();
   const data = query.data as TimesheetDetail | undefined;
 
   const employeeName =
     data?.employee?.user?.full_name ||
     data?.employee?.details?.full_name ||
     "Employee";
+  const employeeId = data?.employee?.details?.id ?? data?.employee?.id;
+  const perms = data?.permissions;
 
-  async function run(
-    action: "submit" | "approve" | "reject",
-  ) {
+  async function run(action: "submit" | "approve" | "reject" | "revert") {
+    if (employeeId == null) {
+      toast.error("Missing employee", "Employee id required for this action");
+      return;
+    }
     try {
-      if (action === "submit") await submit.mutateAsync(id);
-      if (action === "approve")
-        await approve.mutateAsync({ id, reason });
+      if (action === "submit") {
+        window.prompt("Optional remarks for submit:");
+        await submit.mutateAsync({ id, employeeId });
+        toast.success("Submitted");
+      }
+      if (action === "approve") {
+        const approvalReason =
+          reason.trim() ||
+          window.prompt("Optional approval remarks:") ||
+          "";
+        await approve.mutateAsync({
+          id,
+          employeeId,
+          reason: approvalReason,
+        });
+        toast.success("Approved");
+      }
       if (action === "reject") {
-        if (!reason.trim()) {
+        const rejectReason =
+          reason.trim() || window.prompt("Reject reason (required):") || "";
+        if (!rejectReason.trim()) {
           toast.warning("Reason required", "Please enter a reject reason");
           return;
         }
-        await reject.mutateAsync({ id, reason });
+        await reject.mutateAsync({
+          id,
+          employeeId,
+          reason: rejectReason,
+        });
+        toast.success("Rejected");
       }
-      toast.success(
-        action === "submit"
-          ? "Submitted"
-          : action === "approve"
-            ? "Approved"
-            : "Rejected",
-      );
+      if (action === "revert") {
+        const revertReason =
+          reason.trim() ||
+          window.prompt("Optional revert remarks:") ||
+          "";
+        await revert.mutateAsync({
+          id,
+          employeeId,
+          remarks: revertReason,
+        });
+        toast.success("Reverted", "Timesheet returned to draft");
+      }
       setReason("");
       void query.refetch();
     } catch (err) {
@@ -92,8 +132,11 @@ export function TimesheetManagementDetailPage() {
   }
 
   const days = Array.isArray(data?.days) ? data.days : [];
-  const statusCode = data?.status?.code;
-  const busy = submit.isPending || approve.isPending || reject.isPending;
+  const busy =
+    submit.isPending ||
+    approve.isPending ||
+    reject.isPending ||
+    revert.isPending;
 
   return (
     <div className="mt-fade-in flex flex-col gap-4">
@@ -111,7 +154,7 @@ export function TimesheetManagementDetailPage() {
         <Card>
           <p className="text-xs font-medium uppercase text-muted">Status</p>
           <p className="mt-1 text-lg font-semibold">
-            {data?.status?.name || statusCode || "—"}
+            {data?.status?.name || data?.status?.code || "—"}
           </p>
         </Card>
         <Card>
@@ -129,35 +172,47 @@ export function TimesheetManagementDetailPage() {
       <Card className="flex flex-col gap-3">
         <h2 className="text-base font-semibold">Actions</h2>
         <TextInput
-          label="Reason (required for reject)"
+          label="Remarks (approve / reject / revert)"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
         />
         <div className="flex flex-wrap gap-2">
-          {statusCode === "draft" ? (
+          {perms?.can_submit ? (
             <Button loading={busy} onClick={() => void run("submit")}>
               Submit for approval
             </Button>
           ) : null}
-          {statusCode === "submitted" ? (
-            <>
-              <Button loading={busy} onClick={() => void run("approve")}>
-                Approve
-              </Button>
-              <Button
-                variant="danger"
-                loading={busy}
-                onClick={() => void run("reject")}
-              >
-                Reject
-              </Button>
-            </>
+          {perms?.can_approve ? (
+            <Button loading={busy} onClick={() => void run("approve")}>
+              Approve
+            </Button>
+          ) : null}
+          {perms?.can_reject ? (
+            <Button
+              variant="danger"
+              loading={busy}
+              onClick={() => void run("reject")}
+            >
+              Reject
+            </Button>
+          ) : null}
+          {perms?.can_revert_to_draft ? (
+            <Button
+              variant="secondary"
+              loading={busy}
+              onClick={() => void run("revert")}
+            >
+              Revert to draft
+            </Button>
           ) : null}
         </div>
       </Card>
 
       <Card>
         <h2 className="mb-3 text-base font-semibold">Days</h2>
+        <p className="mb-3 text-xs text-muted">
+          Click a day to view or edit tasks.
+        </p>
         {!days.length ? (
           <p className="text-sm text-muted">No days loaded for this timesheet.</p>
         ) : (
@@ -175,7 +230,8 @@ export function TimesheetManagementDetailPage() {
                 {days.map((day) => (
                   <tr
                     key={String(day.id ?? day.date)}
-                    className="border-b border-border last:border-0"
+                    className="cursor-pointer border-b border-border last:border-0 hover:bg-primary-muted/40"
+                    onClick={() => day.id != null && setSelectedDayId(day.id)}
                   >
                     <td className="px-3 py-2">{day.date || "—"}</td>
                     <td className="px-3 py-2">{day.day_name || "—"}</td>
@@ -190,6 +246,16 @@ export function TimesheetManagementDetailPage() {
           </div>
         )}
       </Card>
+
+      <TimesheetDayEditor
+        mode="management"
+        timesheetId={id}
+        dayId={selectedDayId}
+        employeeId={employeeId}
+        open={selectedDayId != null}
+        onClose={() => setSelectedDayId(null)}
+        onSaved={() => void query.refetch()}
+      />
     </div>
   );
 }

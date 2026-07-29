@@ -21,12 +21,28 @@ export const organisationsApi = {
     return getApiClient().post("/organisations/update-settings", payload);
   },
   invitations() {
-    return getApiClient().get("/organisations/organisation-invitations");
+    return getApiClient().get<ApiResponse<unknown[]>>(
+      "/organisations/organisation-invitations",
+    );
   },
-  acceptInvitation(payload: Record<string, unknown>) {
+  /**
+   * Accept / reject require: id, organisation_id, invitation_token, employee_id
+   * (see backend organisation.controller acceptInvitation / rejectInvitation).
+   */
+  acceptInvitation(payload: {
+    id: string | number;
+    organisation_id: string | number;
+    invitation_token: string;
+    employee_id: string | number;
+  }) {
     return getApiClient().post("/organisations/accept-invitation", payload);
   },
-  rejectInvitation(payload: Record<string, unknown>) {
+  rejectInvitation(payload: {
+    id: string | number;
+    organisation_id: string | number;
+    invitation_token: string;
+    employee_id: string | number;
+  }) {
     return getApiClient().post("/organisations/reject-invitation", payload);
   },
 };

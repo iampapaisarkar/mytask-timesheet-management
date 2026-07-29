@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signupSchema, type SignupFormValues } from "@mytask/validation";
@@ -14,6 +14,9 @@ import { useToastStore } from "@/store/toastStore";
 
 export function SignupPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const invitationToken =
+    searchParams.get("token") || searchParams.get("invitation_token") || "";
   const setSession = useAuthStore((s) => s.setSession);
   const toast = useToastStore();
   const [error, setError] = useState<string | null>(null);
@@ -41,10 +44,20 @@ export function SignupPage() {
         providerData: credential.user.providerData as unknown as unknown[],
         platform: "web",
         timezone: getTimezone(),
+        ...(invitationToken
+          ? { invitation_token: invitationToken }
+          : {}),
       });
       setSession(token, response.data.data);
       toast.success("Account created", "Welcome to myTask");
-      navigate(ROUTES.home);
+      if (invitationToken) {
+        navigate(
+          `${ROUTES.orgInvitation}?token=${encodeURIComponent(invitationToken)}`,
+          { replace: true },
+        );
+      } else {
+        navigate(ROUTES.home);
+      }
     } catch (err) {
       const message = getErrorMessage(err, "Unable to sign up. Please try again.");
       setError(message);
@@ -80,7 +93,14 @@ export function SignupPage() {
       </form>
       <p className="text-sm">
         Already have an account?{" "}
-        <Link to={ROUTES.login} className="font-medium text-primary">
+        <Link
+          to={
+            invitationToken
+              ? `${ROUTES.login}?token=${encodeURIComponent(invitationToken)}`
+              : ROUTES.login
+          }
+          className="font-medium text-primary"
+        >
           Login
         </Link>
       </p>

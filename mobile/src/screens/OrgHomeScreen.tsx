@@ -1,6 +1,7 @@
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { spacing } from "@mytask/theme";
+import { ClockInOut } from "../components/ClockInOut";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import type { RootStackParamList } from "../navigation/RootNavigator";
@@ -12,6 +13,20 @@ const STATS = [
   { label: "Pending", value: "34", hint: "6 due today" },
   { label: "Rate", value: "72%", hint: "On track" },
   { label: "Team", value: "46", hint: "Active" },
+];
+
+const NAV_ITEMS: Array<{
+  label: string;
+  route:
+    | "Timesheets"
+    | "TimesheetManagementList"
+    | "EmployeesList"
+    | "SettingsHub";
+}> = [
+  { label: "My Timesheets", route: "Timesheets" },
+  { label: "Timesheet Management", route: "TimesheetManagementList" },
+  { label: "Employees", route: "EmployeesList" },
+  { label: "Settings", route: "SettingsHub" },
 ];
 
 export function OrgHomeScreen({ navigation, route }: Props) {
@@ -30,6 +45,8 @@ export function OrgHomeScreen({ navigation, route }: Props) {
       <Text style={[styles.sub, { color: c.muted }]}>
         Organisation dashboard
       </Text>
+
+      <ClockInOut />
 
       <View style={styles.grid}>
         {STATS.map((stat) => (
@@ -77,12 +94,16 @@ export function OrgHomeScreen({ navigation, route }: Props) {
         </View>
       </View>
 
-      <TouchableOpacity
-        style={[styles.cta, { backgroundColor: c.primary }]}
-        onPress={() => navigation.navigate("Timesheets", { orgCode })}
-      >
-        <Text style={styles.ctaText}>My Timesheets</Text>
-      </TouchableOpacity>
+      <Text style={[styles.navHeading, { color: c.text }]}>Go to</Text>
+      {NAV_ITEMS.map((item) => (
+        <TouchableOpacity
+          key={item.route}
+          style={[styles.navBtn, { backgroundColor: c.primary }]}
+          onPress={() => navigation.navigate(item.route, { orgCode })}
+        >
+          <Text style={styles.navBtnText}>{item.label}</Text>
+        </TouchableOpacity>
+      ))}
     </ScrollView>
   );
 }
@@ -108,7 +129,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: spacing.md,
   },
-  cardTitle: { fontSize: 15, fontWeight: "700", marginBottom: spacing.md },
+  cardTitle: { fontSize: 15, fontWeight: "700", marginBottom: spacing.sm },
   bars: {
     flexDirection: "row",
     alignItems: "flex-end",
@@ -118,11 +139,17 @@ const styles = StyleSheet.create({
   barCol: { alignItems: "center", flex: 1 },
   bar: { width: 18, borderRadius: 8, marginBottom: 6 },
   barLabel: { fontSize: 10 },
-  cta: {
+  navHeading: {
     marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  navBtn: {
     borderRadius: 14,
     paddingVertical: 15,
     alignItems: "center",
+    marginBottom: spacing.sm,
   },
-  ctaText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  navBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
 });

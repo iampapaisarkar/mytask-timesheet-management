@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { getErrorMessage } from "@mytask/utils";
@@ -60,6 +61,8 @@ export function ResourceListPage({
   detailPath,
   createLabel,
   onCreate,
+  onRowClick,
+  rowActions,
 }: {
   title: string;
   query: UseQueryResult<unknown>;
@@ -67,6 +70,8 @@ export function ResourceListPage({
   detailPath?: (orgCode: string, id: string | number) => string;
   createLabel?: string;
   onCreate?: () => void;
+  onRowClick?: (row: Row) => void;
+  rowActions?: (row: Row) => ReactNode;
 }) {
   const { orgCode = "" } = useParams();
   const rows = (Array.isArray(query.data) ? query.data : []) as Row[];
@@ -86,11 +91,13 @@ export function ResourceListPage({
       <PageHeader
         title={title}
         actions={
-          createLabel ? (
-            <Button type="button" onClick={onCreate} disabled={!onCreate}>
-              {createLabel}
-            </Button>
-          ) : undefined
+          <div className="flex flex-wrap items-center gap-2">
+            {createLabel ? (
+              <Button type="button" onClick={onCreate} disabled={!onCreate}>
+                {createLabel}
+              </Button>
+            ) : null}
+          </div>
         }
       />
       {!rows.length ? (
@@ -119,6 +126,9 @@ export function ResourceListPage({
                     {col.label}
                   </th>
                 ))}
+                {rowActions ? (
+                  <th className="px-4 py-3 font-medium">Actions</th>
+                ) : null}
               </tr>
             </thead>
             <tbody>
@@ -127,7 +137,16 @@ export function ResourceListPage({
                 return (
                   <tr
                     key={String(id)}
-                    className="border-b border-border last:border-0 transition hover:bg-primary-muted/40"
+                    className={`border-b border-border last:border-0 transition hover:bg-primary-muted/40 ${
+                      onRowClick ? "cursor-pointer" : ""
+                    }`}
+                    onClick={
+                      onRowClick
+                        ? () => {
+                            onRowClick(row);
+                          }
+                        : undefined
+                    }
                   >
                     {columns.map((col, colIdx) => {
                       const raw =
@@ -141,6 +160,7 @@ export function ResourceListPage({
                             <Link
                               to={detailPath(orgCode, id)}
                               className="font-medium text-primary hover:underline"
+                              onClick={(e) => e.stopPropagation()}
                             >
                               {text}
                             </Link>
@@ -156,6 +176,14 @@ export function ResourceListPage({
                         </td>
                       );
                     })}
+                    {rowActions ? (
+                      <td
+                        className="px-4 py-3"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {rowActions(row)}
+                      </td>
+                    ) : null}
                   </tr>
                 );
               })}

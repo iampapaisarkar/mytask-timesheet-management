@@ -137,12 +137,22 @@ export function useSubmitTimesheet() {
 export function useSubmitTimesheetManagement() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string | number) => {
-      const res = await timesheetManagementApi.submitForApproval(id);
+    mutationFn: async ({
+      id,
+      employeeId,
+    }: {
+      id: string | number;
+      employeeId: string | number;
+    }) => {
+      const res = await timesheetManagementApi.submitForApproval(id, {
+        employee_id: employeeId,
+      });
       return res.data;
     },
-    onSuccess: (_data, id) => {
-      void qc.invalidateQueries({ queryKey: ["timesheet-management", id] });
+    onSuccess: (_data, vars) => {
+      void qc.invalidateQueries({
+        queryKey: ["timesheet-management", vars.id],
+      });
       void qc.invalidateQueries({ queryKey: ["timesheet-management"] });
     },
   });
@@ -153,13 +163,16 @@ export function useApproveTimesheet() {
   return useMutation({
     mutationFn: async ({
       id,
+      employeeId,
       reason,
     }: {
       id: string | number;
+      employeeId: string | number;
       reason?: string;
     }) => {
       const res = await timesheetManagementApi.approve(id, {
-        approval_reason: reason || "",
+        employee_id: employeeId,
+        remarks: reason || "",
       });
       return res.data;
     },
@@ -177,13 +190,43 @@ export function useRejectTimesheet() {
   return useMutation({
     mutationFn: async ({
       id,
+      employeeId,
       reason,
     }: {
       id: string | number;
+      employeeId: string | number;
       reason?: string;
     }) => {
       const res = await timesheetManagementApi.reject(id, {
-        reject_reason: reason || "",
+        employee_id: employeeId,
+        remarks: reason || "",
+      });
+      return res.data;
+    },
+    onSuccess: (_data, vars) => {
+      void qc.invalidateQueries({
+        queryKey: ["timesheet-management", vars.id],
+      });
+      void qc.invalidateQueries({ queryKey: ["timesheet-management"] });
+    },
+  });
+}
+
+export function useRevertTimesheet() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      employeeId,
+      remarks,
+    }: {
+      id: string | number;
+      employeeId: string | number;
+      remarks?: string;
+    }) => {
+      const res = await timesheetManagementApi.revert(id, {
+        employee_id: employeeId,
+        remarks: remarks || "",
       });
       return res.data;
     },
@@ -220,11 +263,41 @@ export function useEmployeePayrollCycles(employeeId: string | number | undefined
   });
 }
 
+export function useSystemLookup<T = unknown[]>(path: string, enabled = true) {
+  return useQuery({
+    queryKey: ["system", path] as const,
+    queryFn: async () => {
+      const res = await systemApi.get(path);
+      return (res.data as { data: T }).data;
+    },
+    enabled,
+  });
+}
+
 export function useCreateCustomer() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (payload: Record<string, unknown>) => {
       const res = await customersApi.create(payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["customers"] });
+    },
+  });
+}
+
+export function useUpdateCustomer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      payload,
+    }: {
+      id: string | number;
+      payload: Record<string, unknown>;
+    }) => {
+      const res = await customersApi.update(id, payload);
       return res.data;
     },
     onSuccess: () => {
@@ -242,6 +315,111 @@ export function useCreateJob() {
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["jobs"] });
+    },
+  });
+}
+
+export function useUpdateJob() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      payload,
+    }: {
+      id: string | number;
+      payload: Record<string, unknown>;
+    }) => {
+      const res = await jobsApi.update(id, payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["jobs"] });
+    },
+  });
+}
+
+export function useCreateEmployee() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: Record<string, unknown>) => {
+      const res = await employeesApi.create(payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["employees"] });
+    },
+  });
+}
+
+export function useUpdateEmployee() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      payload,
+    }: {
+      id: string | number;
+      payload: Record<string, unknown>;
+    }) => {
+      const res = await employeesApi.update(id, payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["employees"] });
+    },
+  });
+}
+
+export function useInviteEmployee() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string | number) => {
+      const res = await employeesApi.invite(id);
+      return res.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["employees"] });
+    },
+  });
+}
+
+export function useSearchEmployeeByEmail() {
+  return useMutation({
+    mutationFn: async (email: string) => {
+      const res = await employeesApi.searchByEmail({ email });
+      return (res.data as { data: Record<string, unknown> }).data;
+    },
+  });
+}
+
+export function useCreateManagementGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: Record<string, unknown>) => {
+      const res = await managementGroupsApi.create(payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["management-groups"] });
+    },
+  });
+}
+
+export function useUpdateManagementGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      payload,
+    }: {
+      id: string | number;
+      payload: Record<string, unknown>;
+    }) => {
+      const res = await managementGroupsApi.update(id, payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["management-groups"] });
     },
   });
 }

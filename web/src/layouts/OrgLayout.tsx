@@ -10,6 +10,7 @@ import { useOrganisationStore } from "@/store/organisationStore";
 import { useAuthStore } from "@/store/authStore";
 import { displayName } from "@mytask/utils";
 import { OrganisationSwitcher } from "@/components/OrganisationSwitcher";
+import { NotificationsBell } from "@/features/notifications";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useSidebarStore } from "@/store/sidebarStore";
 import { ErrorState, LoadingState } from "@/components/ui/States";
@@ -274,6 +275,7 @@ export function OrgLayout() {
             </h1>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <NotificationsBell />
             <OrganisationSwitcher />
             <ThemeToggle />
           </div>

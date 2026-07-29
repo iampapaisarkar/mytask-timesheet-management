@@ -118,3 +118,38 @@ export interface AuthSignupPayload {
   platform?: string;
   timezone?: string;
 }
+
+export interface OrganisationInvitation {
+  id: number | string;
+  organisation_id: number | string;
+  employee_id: number | string;
+  invitation_token: string;
+  email?: string;
+  organisation?: { id?: number | string; name?: string } | null;
+  role?: { id?: number | string; name?: string; code?: string } | null;
+  status?: { id?: number | string; name?: string; code?: string } | null;
+  employee?: {
+    id?: number | string;
+    creator?: {
+      full_name?: string;
+      first_name?: string;
+      last_name?: string;
+    } | null;
+  } | null;
+  [key: string]: unknown;
+}
+
+export interface AppNotification {
+  id: number | string;
+  title?: string;
+  body?: string;
+  url?: string | null;
+  sent_at?: string;
+  status?: { id?: number | string; name?: string; code?: string } | null;
+  [key: string]: unknown;
+}
+
+export type OrgAclRequirement = {
+  action: keyof OrganisationAcl;
+  permission: keyof CrudPermission;
+};

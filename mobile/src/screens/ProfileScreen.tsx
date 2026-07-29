@@ -1,5 +1,6 @@
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { spacing } from "@mytask/theme";
+import { isTracking } from "../services/trackingSession";
 import { useAuthStore } from "../store/authStore";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
@@ -15,6 +16,14 @@ export function ProfileScreen() {
   const toast = useToastStore();
 
   async function logout() {
+    if (await isTracking()) {
+      Alert.alert(
+        "Tracking in progress",
+        "Stop clock-in tracking before signing out.",
+      );
+      toast.warning("Stop tracking before logout");
+      return;
+    }
     await clearSession();
     await clearOrg();
     toast.info("Signed out");

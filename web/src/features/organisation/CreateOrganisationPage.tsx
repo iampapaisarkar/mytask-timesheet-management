@@ -6,13 +6,16 @@ import {
   createOrganisationSchema,
   type CreateOrganisationFormValues,
 } from "@mytask/validation";
-import { useCreateOrganisation, useSystemStates } from "@mytask/hooks";
+import { useCreateOrganisation } from "@mytask/hooks";
 import { ROUTES } from "@mytask/constants";
 import { getErrorMessage, getOrganisationRoleCode } from "@mytask/utils";
 import type { OrganisationMembership, UserProfile } from "@mytask/types";
 import { TextInput } from "@/components/ui/TextInput";
 import { Button } from "@/components/ui/Button";
-import { LoadingState } from "@/components/ui/States";
+import {
+  GoogleAddress,
+  type AddressValue,
+} from "@/components/GoogleAddress";
 import { useAuthStore } from "@/store/authStore";
 import { useOrganisationStore } from "@/store/organisationStore";
 
@@ -21,12 +24,21 @@ export function CreateOrganisationPage() {
   const setUser = useAuthStore((s) => s.setUser);
   const setOrganisation = useOrganisationStore((s) => s.setOrganisation);
   const createMutation = useCreateOrganisation();
-  const { data: states, isLoading: statesLoading } = useSystemStates();
   const [error, setError] = useState<string | null>(null);
+  const [address, setAddress] = useState<AddressValue>({
+    address_1: "",
+    address_2: "",
+    city: "",
+    state: null,
+    postcode: "",
+    latitude: null,
+    longitude: null,
+  });
 
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<CreateOrganisationFormValues>({
     resolver: zodResolver(createOrganisationSchema),
@@ -43,6 +55,15 @@ export function CreateOrganisationPage() {
     },
   });
 
+  function handleAddressChange(next: AddressValue) {
+    setAddress(next);
+    setValue("address_1", next.address_1, { shouldValidate: true });
+    setValue("address_2", next.address_2 || "", { shouldValidate: true });
+    setValue("city", next.city, { shouldValidate: true });
+    setValue("state_id", next.state?.id || 0, { shouldValidate: true });
+    setValue("postcode", next.postcode, { shouldValidate: true });
+  }
+
   async function onSubmit(values: CreateOrganisationFormValues) {
     setError(null);
     try {
@@ -57,8 +78,8 @@ export function CreateOrganisationPage() {
           city: values.city,
           state: { id: values.state_id },
           postcode: values.postcode,
-          latitude: null,
-          longitude: null,
+          latitude: address.latitude || null,
+          longitude: address.longitude || null,
         },
       });
 
@@ -99,10 +120,6 @@ export function CreateOrganisationPage() {
     }
   }
 
-  if (statesLoading) {
-    return <LoadingState label="Loading form…" />;
-  }
-
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-6 flex items-start justify-between gap-4">
@@ -140,44 +157,28 @@ export function CreateOrganisationPage() {
           error={errors.email?.message}
           {...register("email")}
         />
-        <TextInput
-          label="Address Line 1"
-          error={errors.address_1?.message}
-          {...register("address_1")}
-        />
-        <TextInput label="Address Line 2" {...register("address_2")} />
-        <TextInput
-          label="City"
-          error={errors.city?.message}
-          {...register("city")}
-        />
-        <label className="flex w-full flex-col gap-1.5 text-sm">
-          <span className="font-medium text-[var(--mt-text)]">State</span>
-          <select
-            className={`mt-focus rounded-xl border border-border bg-[var(--mt-surface)] px-3.5 py-3 text-[var(--mt-text)] outline-none focus:border-primary ${
-              errors.state_id ? "border-negative" : ""
-            }`}
-            {...register("state_id")}
-            defaultValue=""
-          >
-            <option value="" disabled>
-              Select state
-            </option>
-            {(states || []).map((state) => (
-              <option key={state.id} value={state.id}>
-                {state.name}
-              </option>
-            ))}
-          </select>
-          {errors.state_id ? (
-            <span className="text-xs text-negative">{errors.state_id.message}</span>
+
+        <div>
+          <p className="mb-2 text-sm font-medium text-[var(--mt-text)]">
+            Address
+          </p>
+          <GoogleAddress
+            value={address}
+            onChange={handleAddressChange}
+            requireCoordinates={false}
+          />
+          {errors.address_1?.message ||
+          errors.city?.message ||
+          errors.state_id?.message ||
+          errors.postcode?.message ? (
+            <p className="mt-2 text-xs text-negative">
+              {errors.address_1?.message ||
+                errors.city?.message ||
+                errors.state_id?.message ||
+                errors.postcode?.message}
+            </p>
           ) : null}
-        </label>
-        <TextInput
-          label="Postcode"
-          error={errors.postcode?.message}
-          {...register("postcode")}
-        />
+        </div>
 
         {error ? <p className="text-sm text-negative">{error}</p> : null}
 

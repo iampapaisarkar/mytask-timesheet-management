@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, type LoginFormValues } from "@mytask/validation";
@@ -14,6 +14,9 @@ import { useToastStore } from "@/store/toastStore";
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const invitationToken =
+    searchParams.get("token") || searchParams.get("invitation_token") || "";
   const setSession = useAuthStore((s) => s.setSession);
   const toast = useToastStore();
   const [error, setError] = useState<string | null>(null);
@@ -36,10 +39,20 @@ export function LoginPage() {
         email: values.email,
         platform: "web",
         timezone: getTimezone(),
+        ...(invitationToken
+          ? { invitation_token: invitationToken }
+          : {}),
       });
       setSession(token, response.data.data);
       toast.success("Welcome back", "You are signed in to myTask");
-      navigate(ROUTES.home);
+      if (invitationToken) {
+        navigate(
+          `${ROUTES.orgInvitation}?token=${encodeURIComponent(invitationToken)}`,
+          { replace: true },
+        );
+      } else {
+        navigate(ROUTES.home);
+      }
     } catch (err) {
       const message = getErrorMessage(err, "Unable to login. Please try again.");
       setError(message);
@@ -81,7 +94,14 @@ export function LoginPage() {
         <Link to={ROUTES.forgotPassword} className="font-medium text-primary">
           I forgot my password
         </Link>
-        <Link to={ROUTES.signup} className="font-medium text-primary">
+        <Link
+          to={
+            invitationToken
+              ? `${ROUTES.signup}?token=${encodeURIComponent(invitationToken)}`
+              : ROUTES.signup
+          }
+          className="font-medium text-primary"
+        >
           Signup
         </Link>
       </div>

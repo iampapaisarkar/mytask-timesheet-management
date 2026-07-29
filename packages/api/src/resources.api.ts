@@ -120,11 +120,20 @@ export const notificationsApi = {
       params: buildListQuery(params),
     });
   },
-  markAs(id: string | number, payload: Record<string, unknown>) {
-    return getApiClient().post(`/notifications/${id}/mark-as`, payload);
+  /** Backend reads status code from query `type` (e.g. `read`). */
+  markAs(id: string | number, type = "read") {
+    return getApiClient().post(
+      `/notifications/${id}/mark-as`,
+      {},
+      { params: { type } },
+    );
   },
-  markAllAs(payload: Record<string, unknown> = {}) {
-    return getApiClient().post("/notifications/mark-all-as", payload);
+  markAllAs(type = "read") {
+    return getApiClient().post(
+      "/notifications/mark-all-as",
+      {},
+      { params: { type } },
+    );
   },
 };
 

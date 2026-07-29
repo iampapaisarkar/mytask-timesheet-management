@@ -29,6 +29,9 @@ export const authApi = {
     return getApiClient().post("/auth/update-fcm-token", payload);
   },
   verifyOrganisationInvitationToken(payload: { token: string }) {
-    return getApiClient().post("/auth/verify-organisation-invitation-token", payload);
+    // Backend expects `invitation_token` (Vue parity).
+    return getApiClient().post("/auth/verify-organisation-invitation-token", {
+      invitation_token: payload.token,
+    });
   },
 };

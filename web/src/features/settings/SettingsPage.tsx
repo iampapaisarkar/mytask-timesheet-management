@@ -1,7 +1,11 @@
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ROUTES } from "@mytask/constants";
+import { getErrorMessage } from "@mytask/utils";
 import { Card, PageHeader } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 import { ChevronRight } from "lucide-react";
+import { useToastStore } from "@/store/toastStore";
+import { startXeroConnect } from "@/features/xero/XeroAuthenticatePage";
 
 const SETTINGS_LINKS = [
   { label: "Organisation details", path: "organisation-details" as const },
@@ -14,6 +18,19 @@ const SETTINGS_LINKS = [
 
 export function SettingsPage() {
   const { orgCode = "" } = useParams();
+  const toast = useToastStore();
+  const [connecting, setConnecting] = useState(false);
+
+  async function handleConnectXero() {
+    setConnecting(true);
+    try {
+      await startXeroConnect();
+    } catch (err) {
+      toast.error("Xero connect failed", getErrorMessage(err));
+      setConnecting(false);
+    }
+  }
+
   return (
     <div className="mt-fade-in flex flex-col gap-4">
       <PageHeader
@@ -38,15 +55,15 @@ export function SettingsPage() {
             </Card>
           </Link>
         ))}
-        <Link to={ROUTES.xeroAuthenticate} className="group">
-          <Card hover className="flex items-center justify-between gap-3">
-            <span className="font-semibold text-[var(--mt-text)]">Xero</span>
-            <ChevronRight
-              size={18}
-              className="text-muted transition group-hover:text-primary"
-            />
-          </Card>
-        </Link>
+        <Card className="flex items-center justify-between gap-3">
+          <div>
+            <p className="font-semibold text-[var(--mt-text)]">Xero</p>
+            <p className="text-xs text-muted">Connect payroll integration</p>
+          </div>
+          <Button loading={connecting} onClick={() => void handleConnectXero()}>
+            Connect Xero
+          </Button>
+        </Card>
       </div>
     </div>
   );

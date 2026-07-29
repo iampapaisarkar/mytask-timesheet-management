@@ -103,6 +103,56 @@ export const ORG_NAV = [
   },
 ] as const;
 
+/**
+ * Route-level ACL for org child paths (relative to `/org/:orgCode`).
+ * Mirrors Vue `meta.acl` / ROUTE_ANALYSIS.md.
+ */
+export const ORG_ROUTE_ACL = [
+  { path: "timesheet", acl: { action: "timesheet", permission: "list" } },
+  {
+    path: "timesheet/:id/details",
+    acl: { action: "timesheet", permission: "view" },
+  },
+  {
+    path: "timesheet-management",
+    acl: { action: "timesheetManagement", permission: "list" },
+  },
+  {
+    path: "timesheet-management/:id/details",
+    acl: { action: "timesheetManagement", permission: "view" },
+  },
+  { path: "reports", acl: { action: "report", permission: "view" } },
+  { path: "settings", acl: { action: "setting", permission: "list" } },
+  {
+    path: "settings/organisation-details",
+    acl: { action: "organisationSetting", permission: "view" },
+  },
+  { path: "settings/regions", acl: { action: "region", permission: "list" } },
+  {
+    path: "settings/holiday-calendars",
+    acl: { action: "holidayCalendar", permission: "list" },
+  },
+  {
+    path: "settings/payroll-calendars",
+    acl: { action: "payrollCalendar", permission: "list" },
+  },
+  {
+    path: "settings/earning-rates",
+    acl: { action: "earningRate", permission: "list" },
+  },
+  {
+    path: "settings/earning-rate-rules",
+    acl: { action: "awardRate", permission: "list" },
+  },
+  { path: "employees", acl: { action: "employee", permission: "list" } },
+  { path: "customers", acl: { action: "customer", permission: "list" } },
+  {
+    path: "management-group",
+    acl: { action: "managementGroup", permission: "list" },
+  },
+  { path: "jobs", acl: { action: "job", permission: "list" } },
+] as const;
+
 export const TIMESHEET_STATUSES = [
   "Draft",
   "Submitted",

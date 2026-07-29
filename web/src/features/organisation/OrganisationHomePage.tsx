@@ -1,6 +1,11 @@
+import { useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ROUTES } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
+import {
+  useTimesheetManagement,
+  useTimesheets,
+} from "@mytask/hooks";
 import { useOrganisationStore } from "@/store/organisationStore";
 import { Card, PageHeader } from "@/components/ui/Card";
 import {
@@ -21,6 +26,7 @@ import {
   Activity,
   CheckCircle2,
   Clock3,
+  Smartphone,
   TrendingUp,
   Users,
 } from "lucide-react";
@@ -51,12 +57,6 @@ const TREND = [
   { label: "Jun", value: 82 },
 ];
 
-const COMPLETION = [
-  { name: "Completed", value: 72, color: "#04B6B1" },
-  { name: "Pending", value: 18, color: "#F59E0B" },
-  { name: "Overdue", value: 10, color: "#EF4444" },
-];
-
 const ACTIVITY = [
   { name: "Timesheets", count: 24 },
   { name: "Approvals", count: 11 },
@@ -71,10 +71,70 @@ const RECENT = [
   { title: "Employee invited", meta: "HR · 3h ago" },
 ];
 
+const STATUS_COLORS: Record<string, string> = {
+  draft: "#94A3B8",
+  submitted: "#F59E0B",
+  approved: "#04B6B1",
+  rejected: "#EF4444",
+};
+
+type TimesheetListRow = {
+  status?: { code?: string; name?: string };
+};
+
+function statusDonutFromList(rows: TimesheetListRow[]) {
+  const counts = new Map<string, { name: string; value: number; color: string }>();
+  for (const row of rows) {
+    const code = row.status?.code || "unknown";
+    const name = row.status?.name || code;
+    const existing = counts.get(code);
+    if (existing) existing.value += 1;
+    else {
+      counts.set(code, {
+        name,
+        value: 1,
+        color: STATUS_COLORS[code] || "#64748B",
+      });
+    }
+  }
+  return Array.from(counts.values());
+}
+
 export function OrganisationHomePage() {
   const { orgCode = "" } = useParams();
   const organisation = useOrganisationStore((s) => s.organisation);
   const acl = getOrganisationAcl(organisation?.role || organisation?.role_code);
+
+  const canManage = can(acl, "timesheetManagement", "list");
+  const canSelf = can(acl, "timesheet", "list");
+
+  const managementQuery = useTimesheetManagement(
+    { rows_per_page: 100, sort_by: "id" },
+    canManage,
+  );
+  const selfQuery = useTimesheets(
+    { rows_per_page: 100, sort_by: "id" },
+    !canManage && canSelf,
+  );
+
+  const listRows = useMemo(() => {
+    const source = canManage ? managementQuery.data : selfQuery.data;
+    return (Array.isArray(source) ? source : []) as TimesheetListRow[];
+  }, [canManage, managementQuery.data, selfQuery.data]);
+
+  const statusDonut = useMemo(
+    () => statusDonutFromList(listRows),
+    [listRows],
+  );
+
+  const approved = listRows.filter((r) => r.status?.code === "approved").length;
+  const pending = listRows.filter(
+    (r) => r.status?.code === "draft" || r.status?.code === "submitted",
+  ).length;
+  const total = listRows.length;
+  const completionRate = total
+    ? Math.round((approved / total) * 100)
+    : 0;
 
   const quickLinks = [
     {
@@ -116,30 +176,45 @@ export function OrganisationHomePage() {
         description="Overview of tasks, progress, and team activity"
       />
 
+      <Card className="flex items-start gap-3 border-primary/30 bg-primary-muted/40">
+        <div className="rounded-xl bg-primary-muted p-2.5">
+          <Smartphone size={20} className="text-primary" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-[var(--mt-text)]">
+            Clock in / out is mobile-only
+          </p>
+          <p className="mt-1 text-sm text-muted">
+            Live tracking and background geolocation run in the myTask mobile
+            app. Use the web app for timesheet review, approvals, and reporting.
+          </p>
+        </div>
+      </Card>
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           icon={<CheckCircle2 className="text-primary" size={20} />}
-          label="Tasks completed"
-          value="128"
-          hint="+12% this week"
+          label="Approved timesheets"
+          value={String(approved)}
+          hint={total ? `${total} total loaded` : "No timesheets yet"}
         />
         <StatCard
           icon={<Clock3 className="text-warning" size={20} />}
-          label="Tasks pending"
-          value="34"
-          hint="6 due today"
+          label="Draft / submitted"
+          value={String(pending)}
+          hint="Awaiting completion or approval"
         />
         <StatCard
           icon={<TrendingUp className="text-positive" size={20} />}
-          label="Completion rate"
-          value="72%"
-          hint="On track"
+          label="Approval rate"
+          value={`${completionRate}%`}
+          hint={total ? "From current list" : "On track"}
         />
         <StatCard
           icon={<Users className="text-info" size={20} />}
-          label="Team activity"
-          value="46"
-          hint="Active this week"
+          label="Timesheets in view"
+          value={String(total)}
+          hint={canManage ? "Management list" : "My timesheets"}
         />
       </div>
 
@@ -223,40 +298,53 @@ export function OrganisationHomePage() {
         </Card>
 
         <Card>
-          <ChartTitle title="Completion rate" subtitle="Status mix" />
+          <ChartTitle
+            title="Timesheet status"
+            subtitle={
+              statusDonut.length
+                ? "Count by status (live list)"
+                : "No timesheet data yet"
+            }
+          />
           <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={COMPLETION}
-                  dataKey="value"
-                  nameKey="name"
-                  innerRadius={48}
-                  outerRadius={72}
-                  paddingAngle={3}
-                >
-                  {COMPLETION.map((entry) => (
-                    <Cell key={entry.name} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    background: "var(--mt-surface)",
-                    border: "1px solid var(--mt-border)",
-                    borderRadius: 12,
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            {statusDonut.length ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={statusDonut}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={48}
+                    outerRadius={72}
+                    paddingAngle={3}
+                  >
+                    {statusDonut.map((entry) => (
+                      <Cell key={entry.name} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      background: "var(--mt-surface)",
+                      border: "1px solid var(--mt-border)",
+                      borderRadius: 12,
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-muted">
+                No status data to chart
+              </div>
+            )}
           </div>
           <div className="mt-2 flex flex-wrap justify-center gap-3 text-xs text-muted">
-            {COMPLETION.map((c) => (
+            {statusDonut.map((c) => (
               <span key={c.name} className="inline-flex items-center gap-1.5">
                 <span
                   className="h-2 w-2 rounded-full"
                   style={{ background: c.color }}
                 />
-                {c.name}
+                {c.name} ({c.value})
               </span>
             ))}
           </div>
