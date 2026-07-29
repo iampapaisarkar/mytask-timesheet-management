@@ -413,7 +413,7 @@ async function sendEmailAndNotification(
       include: [
         {
           model: Users,
-          as: "users",
+          as: "user",
         },
         {
           model: OrganisationRoles,

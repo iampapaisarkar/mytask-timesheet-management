@@ -31,7 +31,7 @@ const UserOrganisationRoles = db.define(
 UserOrganisationRoles.associate = (models) => {
   models.UserOrganisationRoles.belongsTo(models.Users, {
     foreignKey: "user_id",
-    as: "users",
+    as: "user",
   });
   models.UserOrganisationRoles.belongsTo(models.OrganisationRoles, {
     foreignKey: "role_id",

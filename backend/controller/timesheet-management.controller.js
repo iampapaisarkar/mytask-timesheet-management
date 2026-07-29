@@ -496,12 +496,19 @@ export async function create(req, res, next) {
 
     await transaction.commit();
 
-    await timsheetService.sendEmailAndNotification(
-      user,
-      organisation,
-      timesheet,
-      "create",
-    );
+    try {
+      await timsheetService.sendEmailAndNotification(
+        user,
+        organisation,
+        timesheet,
+        "create",
+      );
+    } catch (notifyErr) {
+      console.error(
+        "Timesheet created but notification failed:",
+        notifyErr?.message || notifyErr,
+      );
+    }
 
     if (organisation?.xero_connection && push_to_xero) {
       await enqueueSingleTimesheetToXero({
@@ -517,7 +524,9 @@ export async function create(req, res, next) {
     });
   } catch (err) {
     console.log("error::", err);
-    await transaction.rollback();
+    if (transaction && !transaction.finished) {
+      await transaction.rollback();
+    }
     return res.status(err.statusCode || 500).json({
       message:
         err.message || "Unable to create timesheet. Please ty again later.",
