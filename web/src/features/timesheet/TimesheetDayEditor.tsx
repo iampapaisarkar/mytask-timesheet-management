@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { jobsApi, timesheetsApi, timesheetManagementApi } from "@mytask/api";
+import { timesheetsApi, timesheetManagementApi } from "@mytask/api";
+import { useJobs } from "@mytask/hooks";
 import { getErrorMessage } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
 import { FullScreenModal } from "@/components/ui/FullScreenModal";
@@ -200,27 +201,27 @@ export function TimesheetDayEditor({
 
   const dayQuery = useQuery({
     queryKey: ["timesheet-day", mode, dayId, employeeId] as const,
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (mode === "management") {
-        const res = await timesheetManagementApi.getDay(dayId!, {
-          employee_id: employeeId,
-        });
+        const res = await timesheetManagementApi.getDay(
+          dayId!,
+          {
+            employee_id: employeeId,
+          },
+          { signal },
+        );
         return (res.data as { data: DayPayload }).data;
       }
-      const res = await timesheetsApi.getDay(dayId!);
+      const res = await timesheetsApi.getDay(dayId!, undefined, { signal });
       return (res.data as { data: DayPayload }).data;
     },
     enabled: open && dayId != null && dayId !== "",
   });
 
-  const jobsQuery = useQuery({
-    queryKey: ["jobs-for-day-editor"] as const,
-    queryFn: async () => {
-      const res = await jobsApi.list({ rows_per_page: 100, sort_by: "id" });
-      return res.data.data as JobRow[];
-    },
-    enabled: open,
-  });
+  const jobsQuery = useJobs(
+    { rows_per_page: 100, sort_by: "id" },
+    open,
+  );
 
   const day = dayQuery.data;
   const canSave = Boolean(day?.permissions?.can_save);
@@ -237,7 +238,7 @@ export function TimesheetDayEditor({
   }, [day]);
 
   const jobOptions = useMemo(() => {
-    const rows = Array.isArray(jobsQuery.data) ? jobsQuery.data : [];
+    const rows = (Array.isArray(jobsQuery.data) ? jobsQuery.data : []) as JobRow[];
     return rows.map((row) => {
       const id = row.details?.id ?? row.id;
       const name = row.details?.name ?? row.name ?? `Job #${id}`;

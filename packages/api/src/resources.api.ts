@@ -1,19 +1,49 @@
-import { getApiClient } from "./client";
+import type { AxiosRequestConfig } from "axios";
+import { getApiClient, type RequestOptions } from "./client";
 import { buildListQuery } from "@mytask/utils";
 import type { ApiResponse, ListParams } from "@mytask/types";
 
+/** Optional AbortSignal / timeout without changing endpoint URLs. */
+function req(
+  options?: RequestOptions,
+  params?: Record<string, unknown>,
+): AxiosRequestConfig {
+  const mergedParams =
+    params || options?.params
+      ? { ...params, ...options?.params }
+      : undefined;
+  return {
+    ...(mergedParams ? { params: mergedParams } : {}),
+    ...(options?.signal ? { signal: options.signal } : {}),
+    ...(options?.timeout != null ? { timeout: options.timeout } : {}),
+    ...(options?.headers ? { headers: options.headers } : {}),
+  };
+}
+
 function resourceApi(base: string) {
   return {
-    list(params: ListParams = {}) {
+    list(params: ListParams = {}, options?: RequestOptions) {
       return getApiClient().get<ApiResponse<unknown[]>>(`${base}/list`, {
-        params: buildListQuery(params),
+        ...req(options, buildListQuery(params)),
       });
     },
-    create(payload: Record<string, unknown>) {
-      return getApiClient().post<ApiResponse<unknown>>(`${base}/create`, payload);
+    create(payload: Record<string, unknown>, options?: RequestOptions) {
+      return getApiClient().post<ApiResponse<unknown>>(
+        `${base}/create`,
+        payload,
+        req(options),
+      );
     },
-    update(id: string | number, payload: Record<string, unknown>) {
-      return getApiClient().post<ApiResponse<unknown>>(`${base}/${id}/update`, payload);
+    update(
+      id: string | number,
+      payload: Record<string, unknown>,
+      options?: RequestOptions,
+    ) {
+      return getApiClient().post<ApiResponse<unknown>>(
+        `${base}/${id}/update`,
+        payload,
+        req(options),
+      );
     },
   };
 }
@@ -37,150 +67,254 @@ export const earningRatesApi = resourceApi("/earning-rates");
 export const awardRatesApi = resourceApi("/award-rates");
 
 export const payrollCalendarsApi = {
-  list(params: ListParams = {}) {
+  list(params: ListParams = {}, options?: RequestOptions) {
     return getApiClient().get("/payroll-calendars/list", {
-      params: buildListQuery(params),
+      ...req(options, buildListQuery(params)),
     });
   },
-  create(payload: Record<string, unknown>) {
-    return getApiClient().post("/payroll-calendars/create", payload);
+  create(payload: Record<string, unknown>, options?: RequestOptions) {
+    return getApiClient().post(
+      "/payroll-calendars/create",
+      payload,
+      req(options),
+    );
   },
-  pullFromXero(payload: Record<string, unknown> = {}) {
-    return getApiClient().post("/payroll-calendars/pull-from-xero-to-app", payload);
+  pullFromXero(
+    payload: Record<string, unknown> = {},
+    options?: RequestOptions,
+  ) {
+    return getApiClient().post(
+      "/payroll-calendars/pull-from-xero-to-app",
+      payload,
+      req(options),
+    );
   },
 };
 
 export const timesheetsApi = {
-  list(params: ListParams = {}) {
-    return getApiClient().get("/timesheets/list", { params: buildListQuery(params) });
+  list(params: ListParams = {}, options?: RequestOptions) {
+    return getApiClient().get("/timesheets/list", {
+      ...req(options, buildListQuery(params)),
+    });
   },
-  get(id: string | number, params?: Record<string, unknown>) {
-    return getApiClient().get(`/timesheets/${id}/get`, { params });
+  get(
+    id: string | number,
+    params?: Record<string, unknown>,
+    options?: RequestOptions,
+  ) {
+    return getApiClient().get(`/timesheets/${id}/get`, req(options, params));
   },
-  getDay(id: string | number, params?: Record<string, unknown>) {
-    return getApiClient().get(`/timesheets/${id}/get-day`, { params });
+  getDay(
+    id: string | number,
+    params?: Record<string, unknown>,
+    options?: RequestOptions,
+  ) {
+    return getApiClient().get(`/timesheets/${id}/get-day`, req(options, params));
   },
-  save(id: string | number, payload: Record<string, unknown>) {
-    return getApiClient().post(`/timesheets/${id}/save`, payload);
+  save(
+    id: string | number,
+    payload: Record<string, unknown>,
+    options?: RequestOptions,
+  ) {
+    return getApiClient().post(`/timesheets/${id}/save`, payload, req(options));
   },
-  submitForApproval(id: string | number, payload: Record<string, unknown> = {}) {
-    return getApiClient().post(`/timesheets/${id}/submit-for-approval`, payload);
+  submitForApproval(
+    id: string | number,
+    payload: Record<string, unknown> = {},
+    options?: RequestOptions,
+  ) {
+    return getApiClient().post(
+      `/timesheets/${id}/submit-for-approval`,
+      payload,
+      req(options),
+    );
   },
 };
 
 export const timesheetManagementApi = {
-  list(params: ListParams = {}) {
+  list(params: ListParams = {}, options?: RequestOptions) {
     return getApiClient().get("/timesheet-management/list", {
-      params: buildListQuery(params),
+      ...req(options, buildListQuery(params)),
     });
   },
-  get(id: string | number) {
-    return getApiClient().get(`/timesheet-management/${id}/get`);
+  get(id: string | number, options?: RequestOptions) {
+    return getApiClient().get(`/timesheet-management/${id}/get`, req(options));
   },
-  getDay(id: string | number, params?: Record<string, unknown>) {
-    return getApiClient().get(`/timesheet-management/${id}/get-day`, { params });
+  getDay(
+    id: string | number,
+    params?: Record<string, unknown>,
+    options?: RequestOptions,
+  ) {
+    return getApiClient().get(
+      `/timesheet-management/${id}/get-day`,
+      req(options, params),
+    );
   },
-  create(payload: Record<string, unknown>) {
-    return getApiClient().post("/timesheet-management/create", payload);
+  create(payload: Record<string, unknown>, options?: RequestOptions) {
+    return getApiClient().post(
+      "/timesheet-management/create",
+      payload,
+      req(options),
+    );
   },
-  save(id: string | number, payload: Record<string, unknown>) {
-    return getApiClient().post(`/timesheet-management/${id}/save`, payload);
+  save(
+    id: string | number,
+    payload: Record<string, unknown>,
+    options?: RequestOptions,
+  ) {
+    return getApiClient().post(
+      `/timesheet-management/${id}/save`,
+      payload,
+      req(options),
+    );
   },
-  submitForApproval(id: string | number, payload: Record<string, unknown> = {}) {
+  submitForApproval(
+    id: string | number,
+    payload: Record<string, unknown> = {},
+    options?: RequestOptions,
+  ) {
     return getApiClient().post(
       `/timesheet-management/${id}/submit-for-approval`,
       payload,
+      req(options),
     );
   },
-  approve(id: string | number, payload: Record<string, unknown> = {}) {
-    return getApiClient().post(`/timesheet-management/${id}/approve`, payload);
+  approve(
+    id: string | number,
+    payload: Record<string, unknown> = {},
+    options?: RequestOptions,
+  ) {
+    return getApiClient().post(
+      `/timesheet-management/${id}/approve`,
+      payload,
+      req(options),
+    );
   },
-  reject(id: string | number, payload: Record<string, unknown> = {}) {
-    return getApiClient().post(`/timesheet-management/${id}/reject`, payload);
+  reject(
+    id: string | number,
+    payload: Record<string, unknown> = {},
+    options?: RequestOptions,
+  ) {
+    return getApiClient().post(
+      `/timesheet-management/${id}/reject`,
+      payload,
+      req(options),
+    );
   },
-  revert(id: string | number, payload: Record<string, unknown> = {}) {
-    return getApiClient().post(`/timesheet-management/${id}/revert`, payload);
+  revert(
+    id: string | number,
+    payload: Record<string, unknown> = {},
+    options?: RequestOptions,
+  ) {
+    return getApiClient().post(
+      `/timesheet-management/${id}/revert`,
+      payload,
+      req(options),
+    );
   },
-  employeePayrollCycles(employeeId: string | number) {
+  employeePayrollCycles(employeeId: string | number, options?: RequestOptions) {
     return getApiClient().get(
       `/timesheet-management/${employeeId}/employee-payroll-cycles`,
+      req(options),
     );
   },
 };
 
 export const systemApi = {
-  get(path: string, params?: Record<string, unknown>) {
-    return getApiClient().get(`/system/${path}`, { params });
+  get(
+    path: string,
+    params?: Record<string, unknown>,
+    options?: RequestOptions,
+  ) {
+    return getApiClient().get(`/system/${path}`, req(options, params));
   },
 };
 
 export const notificationsApi = {
-  list(params: ListParams = {}) {
+  list(params: ListParams = {}, options?: RequestOptions) {
     return getApiClient().get("/notifications/list", {
-      params: buildListQuery(params),
+      ...req(options, buildListQuery(params)),
     });
   },
   /** Backend reads status code from query `type` (e.g. `read`). */
-  markAs(id: string | number, type = "read") {
-    return getApiClient().post(
-      `/notifications/${id}/mark-as`,
-      {},
-      { params: { type } },
-    );
+  markAs(id: string | number, type = "read", options?: RequestOptions) {
+    return getApiClient().post(`/notifications/${id}/mark-as`, {}, {
+      ...req(options),
+      params: { type, ...options?.params },
+    });
   },
-  markAllAs(type = "read") {
-    return getApiClient().post(
-      "/notifications/mark-all-as",
-      {},
-      { params: { type } },
-    );
+  markAllAs(type = "read", options?: RequestOptions) {
+    return getApiClient().post("/notifications/mark-all-as", {}, {
+      ...req(options),
+      params: { type, ...options?.params },
+    });
   },
 };
 
 export const reportsApi = {
-  rateByPerTimesheetDay(params: Record<string, unknown> = {}) {
-    return getApiClient().get("/reports/rate-by-per-timesheet-day", { params });
+  rateByPerTimesheetDay(
+    params: Record<string, unknown> = {},
+    options?: RequestOptions,
+  ) {
+    return getApiClient().get(
+      "/reports/rate-by-per-timesheet-day",
+      req(options, params),
+    );
   },
 };
 
 export const xeroApi = {
-  connect(payload: Record<string, unknown> = {}) {
-    return getApiClient().post("/xero/connect", payload);
+  connect(payload: Record<string, unknown> = {}, options?: RequestOptions) {
+    return getApiClient().post("/xero/connect", payload, req(options));
   },
-  finalize(payload: Record<string, unknown> = {}) {
-    return getApiClient().post("/xero/finalize", payload);
+  finalize(payload: Record<string, unknown> = {}, options?: RequestOptions) {
+    return getApiClient().post("/xero/finalize", payload, req(options));
   },
-  disconnect(payload: Record<string, unknown> = {}) {
-    return getApiClient().post("/xero/disconnect", payload);
+  disconnect(payload: Record<string, unknown> = {}, options?: RequestOptions) {
+    return getApiClient().post("/xero/disconnect", payload, req(options));
   },
-  fetchEarningRates() {
-    return getApiClient().get("/xero/fetch-earning-rates");
+  fetchEarningRates(options?: RequestOptions) {
+    return getApiClient().get("/xero/fetch-earning-rates", req(options));
   },
-  fetchAccounts() {
-    return getApiClient().get("/xero/fetch-accounts");
+  fetchAccounts(options?: RequestOptions) {
+    return getApiClient().get("/xero/fetch-accounts", req(options));
   },
-  fetchPayrollCalendars() {
-    return getApiClient().get("/xero/fetch-payroll-calendars");
+  fetchPayrollCalendars(options?: RequestOptions) {
+    return getApiClient().get("/xero/fetch-payroll-calendars", req(options));
   },
-  pushData(payload: Record<string, unknown> = {}) {
-    return getApiClient().post("/xero/push-data", payload);
+  pushData(payload: Record<string, unknown> = {}, options?: RequestOptions) {
+    return getApiClient().post("/xero/push-data", payload, req(options));
   },
-  pushTimesheet(payload: Record<string, unknown> = {}) {
-    return getApiClient().post("/xero/push-timesheet", payload);
+  pushTimesheet(
+    payload: Record<string, unknown> = {},
+    options?: RequestOptions,
+  ) {
+    return getApiClient().post("/xero/push-timesheet", payload, req(options));
   },
 };
 
 export const timesheetActivityApi = {
-  store(payload: Record<string, unknown>) {
-    return getApiClient().post("/timesheet-activity/store", payload);
+  store(payload: Record<string, unknown>, options?: RequestOptions) {
+    return getApiClient().post(
+      "/timesheet-activity/store",
+      payload,
+      req(options),
+    );
   },
-  list(params: Record<string, unknown> = {}) {
-    return getApiClient().get("/timesheet-activity", { params });
+  list(params: Record<string, unknown> = {}, options?: RequestOptions) {
+    return getApiClient().get("/timesheet-activity", req(options, params));
   },
-  validate(params: Record<string, unknown> = {}) {
-    return getApiClient().get("/timesheet-activity/validate", { params });
+  validate(params: Record<string, unknown> = {}, options?: RequestOptions) {
+    return getApiClient().get(
+      "/timesheet-activity/validate",
+      req(options, params),
+    );
   },
-  sendLocation(payload: Record<string, unknown>) {
-    return getApiClient().post("/timesheet-activity/send-location", payload);
+  sendLocation(payload: Record<string, unknown>, options?: RequestOptions) {
+    return getApiClient().post(
+      "/timesheet-activity/send-location",
+      payload,
+      req(options),
+    );
   },
 };

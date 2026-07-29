@@ -186,7 +186,6 @@ export function useUpdateOrganisation() {
       organisationsApi.update(payload),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["organisation"] });
-      void qc.invalidateQueries({ queryKey: ["organisation-details"] });
     },
   });
 }
@@ -198,7 +197,6 @@ export function useUpdateOrganisationSettings() {
       organisationsApi.updateSettings(payload),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["organisation"] });
-      void qc.invalidateQueries({ queryKey: ["organisation-details"] });
     },
   });
 }

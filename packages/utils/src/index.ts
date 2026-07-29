@@ -1,11 +1,22 @@
-export function getErrorMessage(error: unknown, fallback = "Something went wrong"): string {
+export function getErrorMessage(
+  error: unknown,
+  fallback = "Something went wrong",
+): string {
   if (!error) return fallback;
   if (typeof error === "string") return error;
   if (typeof error === "object" && error !== null) {
     const e = error as {
       message?: string;
-      response?: { data?: { message?: string; info?: { message?: string | null } } };
+      code?: string;
+      isApiError?: boolean;
+      response?: {
+        data?: { message?: string; info?: { message?: string | null } };
+      };
     };
+    if (e.code === "ERR_CANCELED" || e.message === "Request cancelled") {
+      return fallback;
+    }
+    if (e.isApiError && e.message) return e.message;
     return (
       e.response?.data?.info?.message ||
       e.response?.data?.message ||
@@ -16,7 +27,9 @@ export function getErrorMessage(error: unknown, fallback = "Something went wrong
   return fallback;
 }
 
-export function buildListQuery(params: Record<string, unknown> = {}): Record<string, unknown> {
+export function buildListQuery(
+  params: Record<string, unknown> = {},
+): Record<string, unknown> {
   const {
     page = 1,
     per_page = 10,
@@ -62,7 +75,9 @@ export function displayName(user: {
   last_name?: string | null;
   email?: string;
 }): string {
-  const parts = [user.first_name, user.middle_name, user.last_name].filter(Boolean);
+  const parts = [user.first_name, user.middle_name, user.last_name].filter(
+    Boolean,
+  );
   return parts.length ? parts.join(" ") : user.email || "User";
 }
 

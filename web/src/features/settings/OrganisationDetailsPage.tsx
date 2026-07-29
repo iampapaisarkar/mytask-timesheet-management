@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { organisationsApi } from "@mytask/api";
+import { queryKeys } from "@mytask/hooks";
 import { getErrorMessage } from "@mytask/utils";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { useOrganisationStore } from "@/store/organisationStore";
@@ -29,9 +30,9 @@ export function OrganisationDetailsPage() {
   const updateSettings = useUpdateOrganisationSettings();
 
   const query = useQuery({
-    queryKey: ["organisation-details", orgCode],
-    queryFn: async () => {
-      const res = await organisationsApi.get(orgCode);
+    queryKey: queryKeys.organisation(orgCode),
+    queryFn: async ({ signal }) => {
+      const res = await organisationsApi.get(orgCode, { signal });
       return res.data.data as Record<string, unknown>;
     },
     enabled: Boolean(orgCode),

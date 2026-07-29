@@ -31,20 +31,35 @@ function unreadCountFrom(payload: unknown, items: AppNotification[]): number {
 
 export function NotificationsBell() {
   const [open, setOpen] = useState(false);
+  const [pageVisible, setPageVisible] = useState(
+    () => typeof document === "undefined" || document.visibilityState === "visible",
+  );
   const rootRef = useRef<HTMLDivElement>(null);
   const qc = useQueryClient();
   const toast = useToastStore();
 
+  useEffect(() => {
+    function onVisibility() {
+      setPageVisible(document.visibilityState === "visible");
+    }
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
+
   const listQuery = useQuery({
     queryKey: ["notifications", "list"],
-    queryFn: async () => {
-      const res = await notificationsApi.list({
-        rows_per_page: 20,
-        page_number: 1,
-      });
+    queryFn: async ({ signal }) => {
+      const res = await notificationsApi.list(
+        {
+          rows_per_page: 20,
+          page_number: 1,
+        },
+        { signal },
+      );
       return res.data as NotificationsListResponse;
     },
-    refetchInterval: open ? 30_000 : 60_000,
+    refetchInterval: pageVisible ? (open ? 30_000 : 60_000) : false,
+    refetchIntervalInBackground: false,
   });
 
   const items = asNotifications(listQuery.data);

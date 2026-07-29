@@ -15,22 +15,35 @@ import type { ListParams } from "@mytask/types";
 export const queryKeys = {
   me: ["auth", "me"] as const,
   organisations: (params?: ListParams) => ["organisations", params] as const,
+  organisation: (orgCode: string) => ["organisation", orgCode] as const,
   timesheets: (params?: ListParams) => ["timesheets", params] as const,
   timesheet: (id: string | number) => ["timesheets", id] as const,
+  timesheetDay: (mode: string, dayId: string | number) =>
+    ["timesheet-day", mode, dayId] as const,
   timesheetManagement: (params?: ListParams) =>
     ["timesheet-management", params] as const,
+  timesheetManagementItem: (id: string | number) =>
+    ["timesheet-management", id] as const,
   employees: (params?: ListParams) => ["employees", params] as const,
   customers: (params?: ListParams) => ["customers", params] as const,
   jobs: (params?: ListParams) => ["jobs", params] as const,
   managementGroups: (params?: ListParams) =>
     ["management-groups", params] as const,
+  system: (path: string) => ["system", path] as const,
+  notifications: ["notifications"] as const,
+  notificationsList: ["notifications", "list"] as const,
+  regions: ["regions"] as const,
+  holidayCalendars: ["holiday-calendars"] as const,
+  payrollCalendars: ["payroll-calendars"] as const,
+  earningRates: ["earning-rates"] as const,
+  awardRates: ["award-rates"] as const,
 };
 
 export function useAuthUser(enabled = true) {
   return useQuery({
     queryKey: queryKeys.me,
-    queryFn: async () => {
-      const res = await authApi.me();
+    queryFn: async ({ signal }) => {
+      const res = await authApi.me({ signal });
       return res.data.data;
     },
     enabled,
@@ -40,8 +53,8 @@ export function useAuthUser(enabled = true) {
 export function useOrganisations(params: ListParams = {}, enabled = true) {
   return useQuery({
     queryKey: queryKeys.organisations(params),
-    queryFn: async () => {
-      const res = await organisationsApi.list(params);
+    queryFn: async ({ signal }) => {
+      const res = await organisationsApi.list(params, { signal });
       return res.data.data;
     },
     enabled,
@@ -50,12 +63,13 @@ export function useOrganisations(params: ListParams = {}, enabled = true) {
 
 export function useSystemStates(enabled = true) {
   return useQuery({
-    queryKey: ["system", "states"] as const,
-    queryFn: async () => {
-      const res = await systemApi.get("states");
+    queryKey: queryKeys.system("states"),
+    queryFn: async ({ signal }) => {
+      const res = await systemApi.get("states", undefined, { signal });
       return (res.data as { data: Array<{ id: number; name: string }> }).data;
     },
     enabled,
+    staleTime: 5 * 60_000,
   });
 }
 
@@ -76,8 +90,8 @@ export function useCreateOrganisation() {
 export function useTimesheets(params: ListParams = {}, enabled = true) {
   return useQuery({
     queryKey: queryKeys.timesheets(params),
-    queryFn: async () => {
-      const res = await timesheetsApi.list(params);
+    queryFn: async ({ signal }) => {
+      const res = await timesheetsApi.list(params, { signal });
       return res.data.data;
     },
     enabled,
@@ -87,8 +101,8 @@ export function useTimesheets(params: ListParams = {}, enabled = true) {
 export function useTimesheet(id: string | number | undefined, enabled = true) {
   return useQuery({
     queryKey: queryKeys.timesheet(id || "unknown"),
-    queryFn: async () => {
-      const res = await timesheetsApi.get(id!);
+    queryFn: async ({ signal }) => {
+      const res = await timesheetsApi.get(id!, undefined, { signal });
       return (res.data as { data: unknown }).data;
     },
     enabled: enabled && id != null && id !== "",
@@ -98,8 +112,8 @@ export function useTimesheet(id: string | number | undefined, enabled = true) {
 export function useTimesheetManagement(params: ListParams = {}, enabled = true) {
   return useQuery({
     queryKey: queryKeys.timesheetManagement(params),
-    queryFn: async () => {
-      const res = await timesheetManagementApi.list(params);
+    queryFn: async ({ signal }) => {
+      const res = await timesheetManagementApi.list(params, { signal });
       return res.data.data;
     },
     enabled,
@@ -111,9 +125,9 @@ export function useTimesheetManagementItem(
   enabled = true,
 ) {
   return useQuery({
-    queryKey: ["timesheet-management", id] as const,
-    queryFn: async () => {
-      const res = await timesheetManagementApi.get(id!);
+    queryKey: queryKeys.timesheetManagementItem(id || "unknown"),
+    queryFn: async ({ signal }) => {
+      const res = await timesheetManagementApi.get(id!, { signal });
       return (res.data as { data: unknown }).data;
     },
     enabled: enabled && id != null && id !== "",
@@ -255,8 +269,11 @@ export function useCreateTimesheetManagement() {
 export function useEmployeePayrollCycles(employeeId: string | number | undefined) {
   return useQuery({
     queryKey: ["employee-payroll-cycles", employeeId] as const,
-    queryFn: async () => {
-      const res = await timesheetManagementApi.employeePayrollCycles(employeeId!);
+    queryFn: async ({ signal }) => {
+      const res = await timesheetManagementApi.employeePayrollCycles(
+        employeeId!,
+        { signal },
+      );
       return (res.data as { data: unknown }).data;
     },
     enabled: employeeId != null && employeeId !== "",
@@ -265,12 +282,13 @@ export function useEmployeePayrollCycles(employeeId: string | number | undefined
 
 export function useSystemLookup<T = unknown[]>(path: string, enabled = true) {
   return useQuery({
-    queryKey: ["system", path] as const,
-    queryFn: async () => {
-      const res = await systemApi.get(path);
+    queryKey: queryKeys.system(path),
+    queryFn: async ({ signal }) => {
+      const res = await systemApi.get(path, undefined, { signal });
       return (res.data as { data: T }).data;
     },
     enabled,
+    staleTime: 5 * 60_000,
   });
 }
 
@@ -427,8 +445,8 @@ export function useUpdateManagementGroup() {
 export function useEmployees(params: ListParams = {}, enabled = true) {
   return useQuery({
     queryKey: queryKeys.employees(params),
-    queryFn: async () => {
-      const res = await employeesApi.list(params);
+    queryFn: async ({ signal }) => {
+      const res = await employeesApi.list(params, { signal });
       return res.data.data;
     },
     enabled,
@@ -438,8 +456,8 @@ export function useEmployees(params: ListParams = {}, enabled = true) {
 export function useCustomers(params: ListParams = {}, enabled = true) {
   return useQuery({
     queryKey: queryKeys.customers(params),
-    queryFn: async () => {
-      const res = await customersApi.list(params);
+    queryFn: async ({ signal }) => {
+      const res = await customersApi.list(params, { signal });
       return res.data.data;
     },
     enabled,
@@ -449,8 +467,8 @@ export function useCustomers(params: ListParams = {}, enabled = true) {
 export function useJobs(params: ListParams = {}, enabled = true) {
   return useQuery({
     queryKey: queryKeys.jobs(params),
-    queryFn: async () => {
-      const res = await jobsApi.list(params);
+    queryFn: async ({ signal }) => {
+      const res = await jobsApi.list(params, { signal });
       return res.data.data;
     },
     enabled,
@@ -460,8 +478,8 @@ export function useJobs(params: ListParams = {}, enabled = true) {
 export function useManagementGroups(params: ListParams = {}, enabled = true) {
   return useQuery({
     queryKey: queryKeys.managementGroups(params),
-    queryFn: async () => {
-      const res = await managementGroupsApi.list(params);
+    queryFn: async ({ signal }) => {
+      const res = await managementGroupsApi.list(params, { signal });
       return res.data.data;
     },
     enabled,
@@ -478,4 +496,5 @@ export function useLogoutMutation() {
   });
 }
 
+export { createAppQueryClient } from "./queryClient";
 export { useQuery, useMutation, useQueryClient };

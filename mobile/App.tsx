@@ -2,9 +2,10 @@ import 'react-native-gesture-handler';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StatusBar, StyleSheet, View } from 'react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { createApiClient } from '@mytask/api';
+import { createAppQueryClient } from '@mytask/hooks';
 import { colors } from '@mytask/theme';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { useAuthStore } from './src/store/authStore';
@@ -13,11 +14,7 @@ import { useThemeStore } from './src/store/themeStore';
 import { ToastViewport } from './src/components/ToastViewport';
 import { ENV } from './src/config/env';
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: { retry: 1, staleTime: 30_000 },
-  },
-});
+const queryClient = createAppQueryClient();
 
 function App() {
   const [ready, setReady] = useState(false);

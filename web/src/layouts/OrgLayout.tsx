@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link, NavLink, Outlet, useLocation, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { organisationsApi } from "@mytask/api";
+import { queryKeys } from "@mytask/hooks";
 import { ORG_NAV, ROUTES } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import type { CrudPermission, OrganisationAcl } from "@mytask/types";
@@ -58,13 +59,13 @@ export function OrgLayout() {
   const needsSync = !organisation || organisation.code !== orgCode;
 
   const orgQuery = useQuery({
-    queryKey: ["organisation", orgCode],
-    queryFn: async () => {
-      const res = await organisationsApi.get(orgCode);
+    queryKey: queryKeys.organisation(orgCode),
+    queryFn: async ({ signal }) => {
+      const res = await organisationsApi.get(orgCode, { signal });
       return res.data.data as Record<string, unknown>;
     },
-    enabled: Boolean(orgCode) && needsSync,
-    retry: 1,
+    enabled: Boolean(orgCode),
+    staleTime: 30_000,
   });
 
   useEffect(() => {

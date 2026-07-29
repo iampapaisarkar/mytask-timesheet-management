@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { createApiClient } from "@mytask/api";
+import { createAppQueryClient } from "@mytask/hooks";
 import { useAuthStore } from "@/store/authStore";
 import { useOrganisationStore } from "@/store/organisationStore";
 import { useThemeStore } from "@/store/themeStore";
@@ -8,15 +9,7 @@ import { useSidebarStore } from "@/store/sidebarStore";
 import { initFirebase, isFirebaseConfigured } from "@/lib/firebase";
 import { ToastViewport } from "@/components/ui/ToastViewport";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
-      staleTime: 30_000,
-    },
-  },
-});
+const queryClient = createAppQueryClient();
 
 export function AppProviders({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
