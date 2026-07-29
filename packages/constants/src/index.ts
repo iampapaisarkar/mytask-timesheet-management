@@ -21,6 +21,7 @@ export const ROUTES = {
   orgInvitation: "/org-invitation",
   home: "/",
   profile: "/profile",
+  createOrganisation: "/organisations/create",
   org: (orgCode: string) => `/org/${orgCode}`,
   orgHome: (orgCode: string) => `/org/${orgCode}`,
   timesheet: (orgCode: string) => `/org/${orgCode}/timesheet`,

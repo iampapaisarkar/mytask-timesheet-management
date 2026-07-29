@@ -6,6 +6,7 @@ import { useAuthStore } from "@/store/authStore";
 import { useOrganisationStore } from "@/store/organisationStore";
 import { firebaseLogout } from "@/lib/firebase";
 import { Button } from "@/components/ui/Button";
+import { OrganisationSwitcher } from "@/components/OrganisationSwitcher";
 
 export function MainLayout() {
   const user = useAuthStore((s) => s.user);
@@ -31,12 +32,16 @@ export function MainLayout() {
 
   return (
     <div className="min-h-screen bg-page">
-      <header className="flex items-center justify-between border-b border-border bg-white px-6 py-3">
-        <Link to={ROUTES.home} className="text-xl font-bold text-primary">
+      <header className="flex items-center justify-between gap-4 border-b border-border bg-white px-6 py-3">
+        <Link to={ROUTES.home} className="shrink-0 text-xl font-bold text-primary">
           {APP_NAME}
         </Link>
         <div className="flex items-center gap-3">
-          <Link to={ROUTES.profile} className="text-sm text-dark hover:text-primary">
+          <OrganisationSwitcher />
+          <Link
+            to={ROUTES.profile}
+            className="hidden text-sm text-dark hover:text-primary sm:inline"
+          >
             {user ? displayName(user) : "Profile"}
           </Link>
           <Button variant="ghost" onClick={handleLogout}>

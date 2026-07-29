@@ -77,8 +77,11 @@ export interface OrganisationMembership {
   id: number | string;
   name: string;
   code: string;
-  role?: OrganisationRoleCode | string;
+  role?: OrganisationRoleCode | string | { id?: number; code?: string; name?: string };
   role_code?: OrganisationRoleCode | string;
+  user_organisations_role?: {
+    role?: { id?: number; code?: string; name?: string } | null;
+  } | null;
   [key: string]: unknown;
 }
 

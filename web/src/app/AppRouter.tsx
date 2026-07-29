@@ -16,6 +16,7 @@ import { JobsPage } from "@/features/jobs/JobsPage";
 import { ManagementGroupsPage } from "@/features/management-groups/ManagementGroupsPage";
 import { SettingsPage, PlaceholderPage } from "@/features/settings/SettingsPage";
 import { ProfilePage } from "@/features/profile/ProfilePage";
+import { CreateOrganisationPage } from "@/features/organisation/CreateOrganisationPage";
 
 export function AppRouter() {
   return (
@@ -45,6 +46,10 @@ export function AppRouter() {
           <Route element={<MainLayout />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route
+              path="/organisations/create"
+              element={<CreateOrganisationPage />}
+            />
           </Route>
 
           <Route path="/org/:orgCode" element={<OrgLayout />}>

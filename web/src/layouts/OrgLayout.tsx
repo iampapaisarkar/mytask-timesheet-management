@@ -5,6 +5,7 @@ import type { CrudPermission, OrganisationAcl } from "@mysheet/types";
 import { useOrganisationStore } from "@/store/organisationStore";
 import { useAuthStore } from "@/store/authStore";
 import { displayName } from "@mysheet/utils";
+import { OrganisationSwitcher } from "@/components/OrganisationSwitcher";
 
 export function OrgLayout() {
   const { orgCode = "" } = useParams();
@@ -63,13 +64,11 @@ export function OrgLayout() {
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-border bg-white px-6 py-3">
-          <h1 className="text-base font-semibold text-dark">
+        <header className="flex items-center justify-between gap-4 border-b border-border bg-white px-6 py-3">
+          <h1 className="truncate text-base font-semibold text-dark">
             {organisation?.name || "Organisation"}
           </h1>
-          <Link to={ROUTES.home} className="text-sm text-primary">
-            Switch organisation
-          </Link>
+          <OrganisationSwitcher />
         </header>
         <main className="flex-1 p-6">
           <Outlet />

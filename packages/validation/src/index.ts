@@ -53,3 +53,19 @@ export const customerSchema = z.object({
 });
 
 export type CustomerFormValues = z.infer<typeof customerSchema>;
+
+export const createOrganisationSchema = z.object({
+  name: z.string().min(1, "Please enter name"),
+  website: z.string().optional().or(z.literal("")),
+  phone_number: z.string().min(1, "Please enter phone number"),
+  email: z.string().email("Please enter a valid email"),
+  address_1: z.string().min(1, "Address Line 1 is required"),
+  address_2: z.string().optional().or(z.literal("")),
+  city: z.string().min(1, "City is required"),
+  state_id: z.coerce.number().min(1, "State is required"),
+  postcode: z.string().min(1, "Postcode is required"),
+});
+
+export type CreateOrganisationFormValues = z.infer<
+  typeof createOrganisationSchema
+>;

@@ -1,12 +1,16 @@
 import { Link } from "react-router-dom";
 import { useOrganisations } from "@mysheet/hooks";
 import { ROUTES } from "@mysheet/constants";
+import { getOrganisationRoleCode } from "@mysheet/utils";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
+import { Button } from "@/components/ui/Button";
 import { useOrganisationStore } from "@/store/organisationStore";
 import type { OrganisationMembership } from "@mysheet/types";
 
 export function HomePage() {
-  const { data, isLoading, isError, error, refetch } = useOrganisations();
+  const { data, isLoading, isError, error, refetch } = useOrganisations({
+    rows_per_page: 50,
+  });
   const setOrganisation = useOrganisationStore((s) => s.setOrganisation);
   const organisations = (data || []) as OrganisationMembership[];
 
@@ -14,7 +18,9 @@ export function HomePage() {
   if (isError) {
     return (
       <ErrorState
-        message={error instanceof Error ? error.message : "Failed to load organisations"}
+        message={
+          error instanceof Error ? error.message : "Failed to load organisations"
+        }
         onRetry={() => refetch()}
       />
     );
@@ -24,16 +30,26 @@ export function HomePage() {
     return (
       <EmptyState
         title="No organisations yet"
-        description="Create or accept an invitation to get started."
+        description="Create an organisation to start managing timesheets, or accept an invitation."
+        action={
+          <Link to={ROUTES.createOrganisation}>
+            <Button>Create organisation</Button>
+          </Link>
+        }
       />
     );
   }
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Your organisations</h1>
-        <p className="text-sm text-muted">Select an organisation to continue</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">Your organisations</h1>
+          <p className="text-sm text-muted">Select an organisation to continue</p>
+        </div>
+        <Link to={ROUTES.createOrganisation}>
+          <Button>Create organisation</Button>
+        </Link>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         {organisations.map((org) => (
@@ -45,7 +61,7 @@ export function HomePage() {
                 id: org.id,
                 code: org.code,
                 name: org.name,
-                role: (org.role || org.role_code) as string,
+                role: getOrganisationRoleCode(org),
               })
             }
             className="rounded-lg border border-border bg-white p-5 shadow-sm transition hover:border-primary"

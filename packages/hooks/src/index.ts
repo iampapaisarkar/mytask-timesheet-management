@@ -8,6 +8,7 @@ import {
   customersApi,
   jobsApi,
   managementGroupsApi,
+  systemApi,
 } from "@mysheet/api";
 import type { ListParams } from "@mysheet/types";
 
@@ -44,6 +45,31 @@ export function useOrganisations(params: ListParams = {}, enabled = true) {
       return res.data.data;
     },
     enabled,
+  });
+}
+
+export function useSystemStates(enabled = true) {
+  return useQuery({
+    queryKey: ["system", "states"] as const,
+    queryFn: async () => {
+      const res = await systemApi.get("states");
+      return (res.data as { data: Array<{ id: number; name: string }> }).data;
+    },
+    enabled,
+  });
+}
+
+export function useCreateOrganisation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: Record<string, unknown>) => {
+      const res = await organisationsApi.create(payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["organisations"] });
+      void qc.invalidateQueries({ queryKey: queryKeys.me });
+    },
   });
 }
 
