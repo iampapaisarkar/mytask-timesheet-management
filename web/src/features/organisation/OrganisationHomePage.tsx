@@ -1,5 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { ROUTES } from "@mytask/constants";
+import { can, getOrganisationAcl } from "@mytask/services";
 import { useOrganisationStore } from "@/store/organisationStore";
 import { Card, PageHeader } from "@/components/ui/Card";
 import {
@@ -73,15 +74,40 @@ const RECENT = [
 export function OrganisationHomePage() {
   const { orgCode = "" } = useParams();
   const organisation = useOrganisationStore((s) => s.organisation);
+  const acl = getOrganisationAcl(organisation?.role || organisation?.role_code);
 
   const quickLinks = [
-    { label: "My Timesheets", to: ROUTES.timesheet(orgCode) },
-    { label: "Timesheets", to: ROUTES.timesheetManagement(orgCode) },
-    { label: "Employees", to: ROUTES.employees(orgCode) },
-    { label: "Customers", to: ROUTES.customers(orgCode) },
-    { label: "Jobs", to: ROUTES.jobs(orgCode) },
-    { label: "Settings", to: ROUTES.settings(orgCode) },
-  ];
+    {
+      label: "My Timesheets",
+      to: ROUTES.timesheet(orgCode),
+      show: can(acl, "timesheet", "list"),
+    },
+    {
+      label: "Timesheets",
+      to: ROUTES.timesheetManagement(orgCode),
+      show: can(acl, "timesheetManagement", "list"),
+    },
+    {
+      label: "Employees",
+      to: ROUTES.employees(orgCode),
+      show: can(acl, "employee", "list"),
+    },
+    {
+      label: "Customers",
+      to: ROUTES.customers(orgCode),
+      show: can(acl, "customer", "list"),
+    },
+    {
+      label: "Jobs",
+      to: ROUTES.jobs(orgCode),
+      show: can(acl, "job", "list"),
+    },
+    {
+      label: "Settings",
+      to: ROUTES.settings(orgCode),
+      show: can(acl, "setting", "list"),
+    },
+  ].filter((item) => item.show);
 
   return (
     <div className="mt-fade-in flex flex-col gap-6">

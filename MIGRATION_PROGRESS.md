@@ -14,18 +14,18 @@
 | Shared packages (api/types/auth) | ✅ Done | 2026-07-29 | api, types, validation, services, hooks, theme, constants, utils |
 | Auth screens (web + mobile) | ✅ Done | 2026-07-29 | Login/Signup/Forgot (web); Login (mobile) |
 | Layouts / navigation | ✅ Done | 2026-07-29 | Auth/Main/Org web; stack mobile |
-| Organisation home | ✅ Done | 2026-07-29 | Web + mobile |
-| Timesheets list | ✅ Done | 2026-07-29 | Wired to API hooks |
-| Timesheet management list | ✅ Done | 2026-07-29 | Web list |
-| Employees / Customers / Jobs / Mgmt groups | ✅ Done | 2026-07-29 | List pages wired |
-| Settings hub | ✅ Partial | 2026-07-29 | Hub + placeholders for subpages |
-| Timesheet detail / approve flows | ⏳ Pending | | |
-| Employee create wizard | ⏳ Pending | | |
-| Settings CRUD forms | ⏳ Pending | | |
+| **Milestone 2 — Shared auth & API + org entry** | ✅ Done | 2026-07-30 | Org URL sync, headers ready before child routes |
+| Organisation home | ✅ Done | 2026-07-29 | Web + mobile dashboard |
+| Timesheets list + detail | ✅ Done | 2026-07-30 | List fields fixed; detail + submit |
+| Timesheet management list + detail | ✅ Done | 2026-07-30 | Create dialog; approve/reject |
+| Employees / Customers / Jobs / Mgmt groups | ✅ Partial | 2026-07-30 | Lists mapped to API shapes; customer/job create |
+| Settings hub + lists | ✅ Partial | 2026-07-30 | Org details + region/holiday/payroll/rates lists |
+| Employee create wizard | ⏳ Pending | | Complex multi-step payload |
+| Settings CRUD forms | ⏳ Pending | | Create/edit dialogs |
 | Reports charts | ⏳ Pending | | |
 | Xero / Notifications / Activity | ⏳ Pending | | |
 | Parity QA | ⏳ Pending | | |
 
 ## Current focus
 
-Wire create/edit dialogs and timesheet detail pages; expand mobile navigation parity.
+Employee invite/create wizard and settings create/edit forms; expand mobile feature parity.

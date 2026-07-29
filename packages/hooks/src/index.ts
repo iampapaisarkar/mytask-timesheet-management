@@ -84,6 +84,17 @@ export function useTimesheets(params: ListParams = {}, enabled = true) {
   });
 }
 
+export function useTimesheet(id: string | number | undefined, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.timesheet(id || "unknown"),
+    queryFn: async () => {
+      const res = await timesheetsApi.get(id!);
+      return (res.data as { data: unknown }).data;
+    },
+    enabled: enabled && id != null && id !== "",
+  });
+}
+
 export function useTimesheetManagement(params: ListParams = {}, enabled = true) {
   return useQuery({
     queryKey: queryKeys.timesheetManagement(params),
@@ -92,6 +103,146 @@ export function useTimesheetManagement(params: ListParams = {}, enabled = true) 
       return res.data.data;
     },
     enabled,
+  });
+}
+
+export function useTimesheetManagementItem(
+  id: string | number | undefined,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: ["timesheet-management", id] as const,
+    queryFn: async () => {
+      const res = await timesheetManagementApi.get(id!);
+      return (res.data as { data: unknown }).data;
+    },
+    enabled: enabled && id != null && id !== "",
+  });
+}
+
+export function useSubmitTimesheet() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string | number) => {
+      const res = await timesheetsApi.submitForApproval(id);
+      return res.data;
+    },
+    onSuccess: (_data, id) => {
+      void qc.invalidateQueries({ queryKey: queryKeys.timesheet(id) });
+      void qc.invalidateQueries({ queryKey: ["timesheets"] });
+    },
+  });
+}
+
+export function useSubmitTimesheetManagement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string | number) => {
+      const res = await timesheetManagementApi.submitForApproval(id);
+      return res.data;
+    },
+    onSuccess: (_data, id) => {
+      void qc.invalidateQueries({ queryKey: ["timesheet-management", id] });
+      void qc.invalidateQueries({ queryKey: ["timesheet-management"] });
+    },
+  });
+}
+
+export function useApproveTimesheet() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      reason,
+    }: {
+      id: string | number;
+      reason?: string;
+    }) => {
+      const res = await timesheetManagementApi.approve(id, {
+        approval_reason: reason || "",
+      });
+      return res.data;
+    },
+    onSuccess: (_data, vars) => {
+      void qc.invalidateQueries({
+        queryKey: ["timesheet-management", vars.id],
+      });
+      void qc.invalidateQueries({ queryKey: ["timesheet-management"] });
+    },
+  });
+}
+
+export function useRejectTimesheet() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      reason,
+    }: {
+      id: string | number;
+      reason?: string;
+    }) => {
+      const res = await timesheetManagementApi.reject(id, {
+        reject_reason: reason || "",
+      });
+      return res.data;
+    },
+    onSuccess: (_data, vars) => {
+      void qc.invalidateQueries({
+        queryKey: ["timesheet-management", vars.id],
+      });
+      void qc.invalidateQueries({ queryKey: ["timesheet-management"] });
+    },
+  });
+}
+
+export function useCreateTimesheetManagement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: Record<string, unknown>) => {
+      const res = await timesheetManagementApi.create(payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["timesheet-management"] });
+    },
+  });
+}
+
+export function useEmployeePayrollCycles(employeeId: string | number | undefined) {
+  return useQuery({
+    queryKey: ["employee-payroll-cycles", employeeId] as const,
+    queryFn: async () => {
+      const res = await timesheetManagementApi.employeePayrollCycles(employeeId!);
+      return (res.data as { data: unknown }).data;
+    },
+    enabled: employeeId != null && employeeId !== "",
+  });
+}
+
+export function useCreateCustomer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: Record<string, unknown>) => {
+      const res = await customersApi.create(payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["customers"] });
+    },
+  });
+}
+
+export function useCreateJob() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: Record<string, unknown>) => {
+      const res = await jobsApi.create(payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["jobs"] });
+    },
   });
 }
 

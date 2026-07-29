@@ -1,11 +1,11 @@
-import { useManagementGroups } from "@mytask/hooks";
+import { useRegions } from "./settingsHooks";
 import { ResourceListPage } from "@/features/shared/ResourceListPage";
 
-export function ManagementGroupsPage() {
-  const query = useManagementGroups({ rows_per_page: 50, sort_by: "id" });
+export function RegionsPage() {
+  const query = useRegions();
   return (
     <ResourceListPage
-      title="Management groups"
+      title="Regions"
       query={query}
       columns={[
         { key: "id", label: "ID" },

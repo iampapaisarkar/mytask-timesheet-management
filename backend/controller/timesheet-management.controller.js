@@ -94,6 +94,11 @@ export async function list(req, res, next) {
         where: whereCondition,
         include: [
           {
+            model: TimesheetStatus,
+            as: "status",
+            attributes: ["id", "name", "code"],
+          },
+          {
             model: Employees.unscoped(),
             as: "employee",
             include: [
@@ -157,15 +162,19 @@ export async function get(req, res, next) {
     });
   }
   try {
-    const timesheetStatus = await TimesheetStatus.findOne({
-      where: { code: type },
-    });
-
     let whereCondition = {
       organisation_id: organisation.id,
       id: id,
-      status_id: timesheetStatus?.id,
     };
+
+    if (type) {
+      const timesheetStatus = await TimesheetStatus.findOne({
+        where: { code: type },
+      });
+      if (timesheetStatus?.id) {
+        whereCondition.status_id = timesheetStatus.id;
+      }
+    }
 
     if (organisation.role.code !== "owner") {
       whereCondition = {

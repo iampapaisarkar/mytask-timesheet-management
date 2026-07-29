@@ -9,12 +9,20 @@ import { ForgotPasswordPage } from "@/features/auth/ForgotPasswordPage";
 import { HomePage } from "@/features/home/HomePage";
 import { OrganisationHomePage } from "@/features/organisation/OrganisationHomePage";
 import { TimesheetListPage } from "@/features/timesheet/TimesheetListPage";
+import { TimesheetDetailPage } from "@/features/timesheet/TimesheetDetailPage";
 import { TimesheetManagementListPage } from "@/features/timesheet-management/TimesheetManagementListPage";
+import { TimesheetManagementDetailPage } from "@/features/timesheet-management/TimesheetManagementDetailPage";
 import { EmployeesPage } from "@/features/employees/EmployeesPage";
 import { CustomersPage } from "@/features/customers/CustomersPage";
 import { JobsPage } from "@/features/jobs/JobsPage";
 import { ManagementGroupsPage } from "@/features/management-groups/ManagementGroupsPage";
 import { SettingsPage, PlaceholderPage } from "@/features/settings/SettingsPage";
+import { OrganisationDetailsPage } from "@/features/settings/OrganisationDetailsPage";
+import { RegionsPage } from "@/features/settings/RegionsPage";
+import { HolidayCalendarsPage } from "@/features/settings/HolidayCalendarsPage";
+import { PayrollCalendarsPage } from "@/features/settings/PayrollCalendarsPage";
+import { EarningRatesPage } from "@/features/settings/EarningRatesPage";
+import { EarningRateRulesPage } from "@/features/settings/EarningRateRulesPage";
 import { ProfilePage } from "@/features/profile/ProfilePage";
 import { CreateOrganisationPage } from "@/features/organisation/CreateOrganisationPage";
 
@@ -57,7 +65,7 @@ export function AppRouter() {
             <Route path="timesheet" element={<TimesheetListPage />} />
             <Route
               path="timesheet/:id/details"
-              element={<PlaceholderPage title="Timesheet Details" />}
+              element={<TimesheetDetailPage />}
             />
             <Route
               path="timesheet-management"
@@ -65,33 +73,30 @@ export function AppRouter() {
             />
             <Route
               path="timesheet-management/:id/details"
-              element={<PlaceholderPage title="Timesheet Management Details" />}
+              element={<TimesheetManagementDetailPage />}
             />
             <Route path="reports" element={<PlaceholderPage title="Reports" />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route
               path="settings/organisation-details"
-              element={<PlaceholderPage title="Organisation Details" />}
+              element={<OrganisationDetailsPage />}
             />
-            <Route
-              path="settings/regions"
-              element={<PlaceholderPage title="Regions" />}
-            />
+            <Route path="settings/regions" element={<RegionsPage />} />
             <Route
               path="settings/holiday-calendars"
-              element={<PlaceholderPage title="Holiday Calendars" />}
+              element={<HolidayCalendarsPage />}
             />
             <Route
               path="settings/payroll-calendars"
-              element={<PlaceholderPage title="Payroll Calendars" />}
+              element={<PayrollCalendarsPage />}
             />
             <Route
               path="settings/earning-rates"
-              element={<PlaceholderPage title="Earning Rates" />}
+              element={<EarningRatesPage />}
             />
             <Route
               path="settings/earning-rate-rules"
-              element={<PlaceholderPage title="Earning Rate Rules" />}
+              element={<EarningRateRulesPage />}
             />
             <Route path="employees" element={<EmployeesPage />} />
             <Route path="customers" element={<CustomersPage />} />

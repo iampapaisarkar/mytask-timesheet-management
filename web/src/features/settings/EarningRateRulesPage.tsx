@@ -1,16 +1,15 @@
-import { useManagementGroups } from "@mytask/hooks";
+import { useAwardRates } from "./settingsHooks";
 import { ResourceListPage } from "@/features/shared/ResourceListPage";
 
-export function ManagementGroupsPage() {
-  const query = useManagementGroups({ rows_per_page: 50, sort_by: "id" });
+export function EarningRateRulesPage() {
+  const query = useAwardRates();
   return (
     <ResourceListPage
-      title="Management groups"
+      title="Earning rate rules"
       query={query}
       columns={[
         { key: "id", label: "ID" },
         { key: "name", label: "Name" },
-        { key: "code", label: "Code" },
       ]}
     />
   );

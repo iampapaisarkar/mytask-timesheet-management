@@ -1,16 +1,16 @@
-import { useManagementGroups } from "@mytask/hooks";
+import { usePayrollCalendars } from "./settingsHooks";
 import { ResourceListPage } from "@/features/shared/ResourceListPage";
 
-export function ManagementGroupsPage() {
-  const query = useManagementGroups({ rows_per_page: 50, sort_by: "id" });
+export function PayrollCalendarsPage() {
+  const query = usePayrollCalendars();
   return (
     <ResourceListPage
-      title="Management groups"
+      title="Payroll calendars"
       query={query}
       columns={[
         { key: "id", label: "ID" },
         { key: "name", label: "Name" },
-        { key: "code", label: "Code" },
+        { key: "calendar_type", label: "Type" },
       ]}
     />
   );

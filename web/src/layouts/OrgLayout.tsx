@@ -1,14 +1,18 @@
 import { useEffect } from "react";
 import { Link, NavLink, Outlet, useLocation, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { organisationsApi } from "@mytask/api";
 import { ORG_NAV, ROUTES } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import type { CrudPermission, OrganisationAcl } from "@mytask/types";
+import { getErrorMessage, getOrganisationRoleCode } from "@mytask/utils";
 import { useOrganisationStore } from "@/store/organisationStore";
 import { useAuthStore } from "@/store/authStore";
 import { displayName } from "@mytask/utils";
 import { OrganisationSwitcher } from "@/components/OrganisationSwitcher";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useSidebarStore } from "@/store/sidebarStore";
+import { ErrorState, LoadingState } from "@/components/ui/States";
 import {
   Briefcase,
   Building2,
@@ -42,14 +46,63 @@ export function OrgLayout() {
   const { orgCode = "" } = useParams();
   const location = useLocation();
   const organisation = useOrganisationStore((s) => s.organisation);
+  const setOrganisation = useOrganisationStore((s) => s.setOrganisation);
   const user = useAuthStore((s) => s.user);
   const collapsed = useSidebarStore((s) => s.collapsed);
   const mobileOpen = useSidebarStore((s) => s.mobileOpen);
   const toggleSidebar = useSidebarStore((s) => s.toggle);
   const setMobileOpen = useSidebarStore((s) => s.setMobileOpen);
   const toggleMobile = useSidebarStore((s) => s.toggleMobile);
+
+  const needsSync = !organisation || organisation.code !== orgCode;
+
+  const orgQuery = useQuery({
+    queryKey: ["organisation", orgCode],
+    queryFn: async () => {
+      const res = await organisationsApi.get(orgCode);
+      return res.data.data as Record<string, unknown>;
+    },
+    enabled: Boolean(orgCode) && needsSync,
+    retry: 1,
+  });
+
+  useEffect(() => {
+    if (!orgQuery.data) return;
+    const data = orgQuery.data;
+    setOrganisation({
+      id: data.id as string | number,
+      code: String(data.code || orgCode),
+      name: String(data.name || orgCode),
+      role: getOrganisationRoleCode(data as never),
+      role_code: getOrganisationRoleCode(data as never),
+    });
+  }, [orgQuery.data, orgCode, setOrganisation]);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname, setMobileOpen]);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const onChange = () => {
+      if (mq.matches) setMobileOpen(false);
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [setMobileOpen]);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [mobileOpen]);
+
   const role = organisation?.role || organisation?.role_code;
   const acl = getOrganisationAcl(role);
+  const showLabels = !collapsed;
 
   const items = ORG_NAV.filter((item) => {
     if (!item.acl) return true;
@@ -60,37 +113,40 @@ export function OrgLayout() {
     );
   });
 
-  // Close mobile drawer on navigation
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [location.pathname, setMobileOpen]);
+  if (needsSync && orgQuery.isLoading) {
+    return (
+      <div className="min-h-screen bg-page p-6">
+        <LoadingState label="Loading organisation…" />
+      </div>
+    );
+  }
 
-  // Close drawer when switching to desktop breakpoint
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 768px)");
-    const onChange = () => {
-      if (mq.matches) setMobileOpen(false);
-    };
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, [setMobileOpen]);
+  if (needsSync && orgQuery.isError) {
+    return (
+      <div className="min-h-screen bg-page p-6">
+        <ErrorState
+          message={getErrorMessage(orgQuery.error, "Unable to open organisation")}
+          onRetry={() => void orgQuery.refetch()}
+        />
+        <div className="mt-4 text-center">
+          <Link to={ROUTES.home} className="text-sm font-medium text-primary">
+            Back to organisations
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
-  // Lock body scroll while mobile drawer is open
-  useEffect(() => {
-    if (!mobileOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [mobileOpen]);
-
-  // Desktop icon-rail only; mobile drawer always shows labels
-  const showLabels = !collapsed;
+  if (!organisation || organisation.code !== orgCode) {
+    return (
+      <div className="min-h-screen bg-page p-6">
+        <LoadingState label="Preparing organisation…" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-page">
-      {/* Mobile backdrop */}
       <button
         type="button"
         aria-label="Close menu"
@@ -105,10 +161,8 @@ export function OrgLayout() {
         id="org-sidebar"
         className={clsx(
           "flex flex-col border-r border-white/10 bg-[var(--mt-sidebar)] text-[var(--mt-sidebar-text)] transition-transform duration-300 ease-out md:sticky md:top-0 md:h-screen md:transition-[width] md:duration-300",
-          // Mobile: full overlay drawer
           "fixed inset-y-0 left-0 z-50 w-[min(100vw-3rem,18rem)] shadow-2xl md:static md:z-auto md:shadow-none",
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
-          // Desktop width
           collapsed ? "md:w-[72px]" : "md:w-64",
         )}
       >
@@ -129,12 +183,7 @@ export function OrgLayout() {
               className="h-9 w-9 rounded-xl object-cover"
             />
           </Link>
-          <div
-            className={clsx(
-              "min-w-0 flex-1",
-              collapsed && "md:hidden",
-            )}
-          >
+          <div className={clsx("min-w-0 flex-1", collapsed && "md:hidden")}>
             <div className="truncate text-sm font-bold text-white">myTask</div>
             <p className="truncate text-[11px] text-white/60">
               {organisation?.name || orgCode}
@@ -173,12 +222,7 @@ export function OrgLayout() {
                 }
               >
                 <Icon size={18} className="shrink-0" />
-                <span
-                  className={clsx(
-                    "truncate",
-                    collapsed && "md:hidden",
-                  )}
-                >
+                <span className={clsx("truncate", collapsed && "md:hidden")}>
                   {item.label}
                 </span>
               </NavLink>
@@ -187,7 +231,6 @@ export function OrgLayout() {
         </nav>
 
         <div className="border-t border-white/10 p-2">
-          {/* Desktop collapse control only */}
           <button
             type="button"
             onClick={toggleSidebar}
