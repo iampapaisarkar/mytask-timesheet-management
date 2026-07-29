@@ -943,7 +943,7 @@ export async function revert(req, res, next) {
 }
 
 export async function employeePayrollCycles(req, res, next) {
-  const { user, name, organisation } = req.body;
+  const { organisation } = req.body;
   const employee_id = req?.params?.employee_id;
   if (!organisation.acl.timesheetManagement.create) {
     return res.status(403).json({
@@ -951,20 +951,33 @@ export async function employeePayrollCycles(req, res, next) {
     });
   }
   try {
-    let whereCondition = {
-      organisation_id: organisation.id,
-      id: employee_id,
-    };
-
-    const employee = await Employees.scope("defaultScope").findOne({
-      where: whereCondition,
-      col: "Employees.id",
+    const employeeRow = await Employees.scope("defaultScope").findOne({
+      where: {
+        organisation_id: organisation.id,
+        id: employee_id,
+      },
     });
 
-    if (!employee?.wage && !employee?.wage?.payroll_calendar) {
-      return res.status(500).json({
+    if (!employeeRow) {
+      return res.status(404).json({
+        message: "Employee not found.",
+      });
+    }
+
+    const employee = employeeRow.toJSON();
+    const calendar = employee?.wage?.payroll_calendar;
+
+    if (!calendar?.id) {
+      return res.status(400).json({
         message:
           "Payroll calendar is not configured. Please set up the payroll calendar and complete the required information on the employee page.",
+      });
+    }
+
+    if (!calendar.start_date || !calendar.end_date) {
+      return res.status(400).json({
+        message:
+          "Payroll calendar is missing start/end dates. Update the payroll calendar in settings.",
       });
     }
 
@@ -972,7 +985,7 @@ export async function employeePayrollCycles(req, res, next) {
       where: {
         organisation_id: organisation.id,
         employee_id: employee_id,
-        payroll_calendar_id: employee?.wage?.payroll_calendar?.id,
+        payroll_calendar_id: calendar.id,
       },
       order: [["created_at", "DESC"]],
       raw: true,
@@ -983,84 +996,84 @@ export async function employeePayrollCycles(req, res, next) {
     const formatDisplay = (d) => moment(d, "YYYY-MM-DD").format("DD MMM YYYY");
     const parse = (d) => moment(d, "YYYY-MM-DD");
 
-    if (!existingTimesheet) {
+    function pushPeriod(start, end) {
+      if (!start || !end || !moment(start).isValid() || !moment(end).isValid()) {
+        return;
+      }
+      const start_date = moment(start).format("YYYY-MM-DD");
+      const end_date = moment(end).format("YYYY-MM-DD");
       periods.push({
-        start_date: moment(employee?.wage?.payroll_calendar?.start_date).format(
-          "YYYY-MM-DD",
-        ),
-        end_date: moment(employee?.wage?.payroll_calendar?.end_date).format(
-          "YYYY-MM-DD",
-        ),
-        label: `${formatDisplay(
-          employee?.wage?.payroll_calendar?.start_date,
-        )} - ${formatDisplay(employee?.wage?.payroll_calendar?.end_date)}`,
+        start_date,
+        end_date,
+        label: `${formatDisplay(start_date)} - ${formatDisplay(end_date)}`,
       });
-    } else {
-      let lastPeriodEnd = parse(existingTimesheet.period_end_date);
-      const nextTimesheetStartDate = lastPeriodEnd.clone().add(1, "day");
-      let nextTimesheetEndDate = null;
-      const payCycleFrequency =
-        employee?.wage?.payroll_calendar?.pay_cycle?.code;
+    }
 
+    function nextEndFromFrequency(startMoment, payCycleFrequency) {
       switch (payCycleFrequency) {
         case "WEEKLY":
-          nextTimesheetEndDate = nextTimesheetStartDate
-            .clone()
-            .add(7, "days")
-            .subtract(1, "day");
-          break;
-
+          return startMoment.clone().add(7, "days").subtract(1, "day");
         case "FORTNIGHTLY":
-          nextTimesheetEndDate = nextTimesheetStartDate
-            .clone()
-            .add(14, "days")
-            .subtract(1, "day");
-          break;
-
+          return startMoment.clone().add(14, "days").subtract(1, "day");
         case "FOURWEEKLY":
-          nextTimesheetEndDate = nextTimesheetStartDate
-            .clone()
-            .add(28, "days")
-            .subtract(1, "day");
-          break;
-
+          return startMoment.clone().add(28, "days").subtract(1, "day");
         case "MONTHLY":
-          nextTimesheetEndDate = nextTimesheetStartDate
-            .clone()
-            .add(1, "month")
-            .subtract(1, "day");
-          break;
-
-        case "TWICEMONTHLY":
-          // Usually 1–15 and 16–end of month
-          const day = nextTimesheetStartDate.date();
-
+          return startMoment.clone().add(1, "month").subtract(1, "day");
+        case "TWICEMONTHLY": {
+          const day = startMoment.date();
           if (day <= 15) {
-            nextTimesheetEndDate = nextTimesheetStartDate.clone().date(15);
-          } else {
-            nextTimesheetEndDate = nextTimesheetStartDate
-              .clone()
-              .endOf("month");
+            return startMoment.clone().date(15);
           }
-          break;
-
+          return startMoment.clone().endOf("month");
+        }
         case "QUARTERLY":
-          nextTimesheetEndDate = nextTimesheetStartDate
-            .clone()
-            .add(3, "months")
-            .subtract(1, "day");
-          break;
-
+          return startMoment.clone().add(3, "months").subtract(1, "day");
         default:
-          throw new Error("Unsupported pay cycle frequency");
+          return null;
+      }
+    }
+
+    if (!existingTimesheet) {
+      pushPeriod(calendar.start_date, calendar.end_date);
+
+      // Offer a few upcoming periods when pay cycle is known (matches payroll calendar UX)
+      const payCycleFrequency = calendar?.pay_cycle?.code;
+      if (payCycleFrequency && periods.length > 0) {
+        let lastEnd = parse(periods[0].end_date);
+        for (let i = 0; i < 3; i += 1) {
+          const nextStart = lastEnd.clone().add(1, "day");
+          const nextEnd = nextEndFromFrequency(nextStart, payCycleFrequency);
+          if (!nextEnd) break;
+          pushPeriod(nextStart, nextEnd);
+          lastEnd = nextEnd;
+        }
+      }
+    } else {
+      const lastPeriodEnd = parse(existingTimesheet.period_end_date);
+      const nextTimesheetStartDate = lastPeriodEnd.clone().add(1, "day");
+      const payCycleFrequency = calendar?.pay_cycle?.code;
+      let nextTimesheetEndDate = nextEndFromFrequency(
+        nextTimesheetStartDate,
+        payCycleFrequency,
+      );
+
+      if (!nextTimesheetEndDate) {
+        // Fall back to the calendar's configured period length
+        const calStart = parse(calendar.start_date);
+        const calEnd = parse(calendar.end_date);
+        const lengthDays = Math.max(calEnd.diff(calStart, "days"), 0);
+        nextTimesheetEndDate = nextTimesheetStartDate
+          .clone()
+          .add(lengthDays, "days");
       }
 
-      periods.push({
-        start_date: moment(nextTimesheetStartDate).format("YYYY-MM-DD"),
-        end_date: moment(nextTimesheetEndDate).format("YYYY-MM-DD"),
-        label: `${formatDisplay(nextTimesheetStartDate)} - ${formatDisplay(
-          nextTimesheetEndDate,
-        )}`,
+      pushPeriod(nextTimesheetStartDate, nextTimesheetEndDate);
+    }
+
+    if (!periods.length) {
+      return res.status(400).json({
+        message:
+          "No payroll periods available for this employee. Check the payroll calendar configuration.",
       });
     }
 
@@ -1071,8 +1084,8 @@ export async function employeePayrollCycles(req, res, next) {
     console.log("error::", err);
     res.status(500).json({
       message:
-        "Unable to fetch timesheet employee payroll cycle. Please ty again later.",
-      details: err,
+        "Unable to fetch timesheet employee payroll cycle. Please try again later.",
+      details: err.message || err,
     });
   }
 }

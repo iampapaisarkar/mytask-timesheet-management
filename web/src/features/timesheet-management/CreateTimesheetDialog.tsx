@@ -97,7 +97,8 @@ export function CreateTimesheetDialog({
       }
     >
       <p className="mb-4 text-sm text-muted">
-        Choose an employee and payroll period.
+        Choose an employee and payroll period. The employee must have a payroll
+        calendar configured on their wage settings.
       </p>
 
       <div className="flex flex-col gap-3">
@@ -136,7 +137,11 @@ export function CreateTimesheetDialog({
             disabled={!employeeId || cyclesQuery.isLoading}
           >
             <option value="">
-              {cyclesQuery.isLoading ? "Loading periods…" : "Select period"}
+              {cyclesQuery.isLoading
+                ? "Loading periods…"
+                : cyclesQuery.isError
+                  ? "Unable to load periods"
+                  : "Select period"}
             </option>
             {periods.map((p) => (
               <option
@@ -147,6 +152,23 @@ export function CreateTimesheetDialog({
               </option>
             ))}
           </select>
+          {employeeId && cyclesQuery.isError ? (
+            <span className="text-xs text-warning">
+              {getErrorMessage(
+                cyclesQuery.error,
+                "Could not load periods for this employee",
+              )}
+            </span>
+          ) : null}
+          {employeeId &&
+          !cyclesQuery.isLoading &&
+          !cyclesQuery.isError &&
+          periods.length === 0 ? (
+            <span className="text-xs text-muted">
+              No periods available. Assign a payroll calendar on the employee
+              wage settings, then try again.
+            </span>
+          ) : null}
         </label>
       </div>
     </FullScreenModal>

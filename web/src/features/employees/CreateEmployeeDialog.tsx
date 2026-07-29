@@ -4,6 +4,7 @@ import {
   useEmployeeFormLookups,
   useInviteEmployee,
   useSearchEmployeeByEmail,
+  useUpdateEmployee,
 } from "@mytask/hooks";
 import { getErrorMessage } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
@@ -21,6 +22,18 @@ const selectClass =
 const STEPS = ["Email", "Details", "Management group", "Wage", "Payroll"] as const;
 
 type NamedId = { id: number; name?: string; code?: string };
+
+export type EmployeeListRow = {
+  id?: number | string;
+  details?: Record<string, unknown> & {
+    id?: number | string;
+    invitation?: { status?: { code?: string } };
+  };
+  wage?: Record<string, unknown> | null;
+  payroll?: Record<string, unknown> | null;
+  management_group?: Record<string, unknown> | null;
+  invitation?: { status?: { code?: string } };
+};
 
 type EmployeeForm = {
   action: { create_user: boolean; message?: string } | null;
@@ -131,21 +144,93 @@ function asNamed(raw: unknown): NamedId | null {
   };
 }
 
+function formFromEmployeeRow(row: EmployeeListRow): EmployeeForm {
+  const details = (row.details || {}) as Record<string, unknown>;
+  const addressRaw =
+    details.address && typeof details.address === "object"
+      ? (details.address as Record<string, unknown>)
+      : {};
+  const mg = (row.management_group || {}) as Record<string, unknown>;
+  const wage = (row.wage || {}) as Record<string, unknown>;
+  const payroll = (row.payroll || {}) as Record<string, unknown>;
+
+  return {
+    action: { create_user: false },
+    details: {
+      first_name: String(details.first_name || ""),
+      middle_name: String(details.middle_name || ""),
+      last_name: String(details.last_name || ""),
+      email: String(details.email || ""),
+      preferred_name: String(details.preferred_name || ""),
+      dob: String(details.dob || ""),
+      phone_number: String(details.phone_number || ""),
+      address: {
+        address_1: String(addressRaw.address_1 || ""),
+        address_2: String(addressRaw.address_2 || ""),
+        city: String(addressRaw.city || ""),
+        state: asNamed(addressRaw.state),
+        postcode: String(addressRaw.postcode || ""),
+      },
+      role: asNamed(details.role),
+      region: asNamed(details.region),
+      nok: String(details.nok || ""),
+      nok_relationship: asNamed(details.nok_relationship),
+      nok_phone_number: String(details.nok_phone_number || ""),
+    },
+    management_group: {
+      manager_of_groups: Array.isArray(mg.manager_of_groups)
+        ? (mg.manager_of_groups as unknown[])
+            .map(asNamed)
+            .filter((x): x is NamedId => x != null)
+        : [],
+      staff_of_group: asNamed(mg.staff_of_group),
+    },
+    wage: {
+      start_date: String(wage.start_date || ""),
+      employment_status: asNamed(wage.employment_status),
+      payroll_calendar: asNamed(wage.payroll_calendar),
+      employment_type: asNamed(wage.employment_type),
+      hourly_rate_exc_super: String(wage.hourly_rate_exc_super || ""),
+      timesheet_submission_frequency: String(
+        wage.timesheet_submission_frequency || "organisation-default",
+      ),
+      award_rate: asNamed(wage.award_rate),
+    },
+    payroll: {
+      tax_file_number: String(payroll.tax_file_number || ""),
+      superannuation_fund: String(payroll.superannuation_fund || ""),
+      superannuation_member_number: String(
+        payroll.superannuation_member_number || "",
+      ),
+      bank_bsb: String(payroll.bank_bsb || ""),
+      bank_account_number: String(payroll.bank_account_number || ""),
+      bank_account_name: String(payroll.bank_account_name || ""),
+      bank_statement_text: String(payroll.bank_statement_text || ""),
+    },
+    push_to_xero: false,
+  };
+}
+
 export function CreateEmployeeDialog({
   open,
   onClose,
+  employee = null,
 }: {
   open: boolean;
   onClose: () => void;
+  employee?: EmployeeListRow | null;
 }) {
   const toast = useToastStore();
   const searchMutation = useSearchEmployeeByEmail();
   const createMutation = useCreateEmployee();
-  const [step, setStep] = useState(0);
+  const updateMutation = useUpdateEmployee();
+  const isEdit = employee != null && (employee.details?.id != null || employee.id != null);
+  const employeeId = employee?.details?.id ?? employee?.id;
+  const [step, setStep] = useState(isEdit ? 1 : 0);
   const [email, setEmail] = useState("");
   const [form, setForm] = useState<EmployeeForm>(() => emptyForm());
 
-  const enabled = open && step >= 1;
+  const enabled = open && (isEdit || step >= 1);
   const formLookupsQuery = useEmployeeFormLookups(enabled);
   const lookups = formLookupsQuery.data;
 
@@ -167,8 +252,19 @@ export function CreateEmployeeDialog({
       setStep(0);
       setEmail("");
       setForm(emptyForm());
+      return;
     }
-  }, [open]);
+    if (employee) {
+      const next = formFromEmployeeRow(employee);
+      setForm(next);
+      setEmail(next.details.email);
+      setStep(1);
+    } else {
+      setStep(0);
+      setEmail("");
+      setForm(emptyForm());
+    }
+  }, [open, employee]);
 
   const stepLabel = useMemo(() => STEPS[step] || "", [step]);
 
@@ -422,11 +518,19 @@ export function CreateEmployeeDialog({
     };
 
     try {
-      await createMutation.mutateAsync(payload);
-      toast.success("Employee created & invitation sent");
+      if (isEdit && employeeId != null) {
+        await updateMutation.mutateAsync({ id: employeeId, payload });
+        toast.success("Employee updated");
+      } else {
+        await createMutation.mutateAsync(payload);
+        toast.success("Employee created & invitation sent");
+      }
       onClose();
     } catch (err) {
-      toast.error("Create failed", getErrorMessage(err));
+      toast.error(
+        isEdit ? "Update failed" : "Create failed",
+        getErrorMessage(err),
+      );
     }
   }
 
@@ -439,7 +543,7 @@ export function CreateEmployeeDialog({
         <div className="flex w-full items-start justify-between gap-3 border-b border-border px-5 py-4 sm:px-8">
           <div>
             <h2 className="text-lg font-bold text-[var(--mt-text)]">
-              Create employee
+              {isEdit ? "Edit employee" : "Create employee"}
             </h2>
             <p className="mt-1 text-sm text-muted">
               Step {step + 1} of {STEPS.length}: {stepLabel}
@@ -488,15 +592,17 @@ export function CreateEmployeeDialog({
             Cancel
           </Button>
           <div className="flex gap-2">
-            {step > 0 ? (
+            {step > (isEdit ? 1 : 0) ? (
               <Button
                 variant="secondary"
-                onClick={() => setStep((s) => Math.max(0, s - 1))}
+                onClick={() =>
+                  setStep((s) => Math.max(isEdit ? 1 : 0, s - 1))
+                }
               >
                 Back
               </Button>
             ) : null}
-            {step === 0 ? (
+            {step === 0 && !isEdit ? (
               <Button
                 loading={searchMutation.isPending}
                 onClick={() => void handleSearch()}
@@ -509,10 +615,12 @@ export function CreateEmployeeDialog({
             ) : null}
             {step === STEPS.length - 1 ? (
               <Button
-                loading={createMutation.isPending}
+                loading={
+                  createMutation.isPending || updateMutation.isPending
+                }
                 onClick={() => void handleCreate()}
               >
-                Create & invite
+                {isEdit ? "Save changes" : "Create & invite"}
               </Button>
             ) : null}
           </div>
