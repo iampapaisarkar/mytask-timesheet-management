@@ -1,6 +1,6 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
-import { ROUTES } from "@mysheet/constants";
+import { ROUTES } from "@mytask/constants";
 
 export function ProtectedRoute() {
   const token = useAuthStore((s) => s.token);

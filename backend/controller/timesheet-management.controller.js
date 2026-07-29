@@ -14,7 +14,7 @@ import { TimesheetConfig } from "../class/timesheet.config.js";
 import timsheetService from "../service/timsheet.service.js";
 import timeUtils from "../utils/time.utils.js";
 import redisUtils from "../utils/redis.utils.js";
-import { mysheet } from "../database.js";
+import { db } from "../database.js";
 import { enqueueSingleTimesheetToXero } from "../queue-jobs/push-single-timesheet.job.js";
 
 export async function list(req, res, next) {
@@ -377,7 +377,7 @@ export async function create(req, res, next) {
       message: "Access denied: You are not authorized to access this action.",
     });
   }
-  const transaction = await mysheet.transaction();
+  const transaction = await db.transaction();
   try {
     const employeeJson = await Employees.scope("defaultScope").findOne(
       {

@@ -10,6 +10,6 @@ alwaysApply: false
 - Navigation: React Navigation. Persistence: AsyncStorage (or Keychain later) — not Expo SecureStore.
 - Config: `mobile/src/config/env.ts` (API + Firebase). For Android emulator API host use `10.0.2.2`.
 - Metro is monorepo-aware (`mobile/metro.config.js`) — keep `watchFolders` / `nodeModulesPaths`.
-- Share logic via `@mysheet/*`. UI stays in `mobile/src/screens` (and future `components`).
+- Share logic via `@mytask/*`. UI stays in `mobile/src/screens` (and future `components`).
 - After adding native deps: run CocoaPods (`npm run pods`) and rebuild the native app.
 - Aim for feature parity with web where practical; prioritise timesheets, activity, notifications.

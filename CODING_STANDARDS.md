@@ -32,7 +32,7 @@
 
 - **Web:** Tailwind + CSS variables mapped to theme tokens
 - **Mobile:** StyleSheet / theme tokens from `packages/theme`
-- Primary brand colour from original Quasar: `#6900ff`
+- Primary brand colour from original Quasar: `#04B6B1`
 
 ## Git
 

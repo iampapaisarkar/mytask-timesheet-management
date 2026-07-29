@@ -1,5 +1,5 @@
 {
-  "name": "@mysheet/api",
+  "name": "@mytask/api",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,9 +9,9 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@mysheet/constants": "*",
-    "@mysheet/types": "*",
-    "@mysheet/utils": "*",
+    "@mytask/constants": "*",
+    "@mytask/types": "*",
+    "@mytask/utils": "*",
     "axios": "^1.9.0"
   },
   "devDependencies": {

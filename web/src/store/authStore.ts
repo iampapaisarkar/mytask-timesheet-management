@@ -1,6 +1,6 @@
 import { create } from "zustand";
-import { STORAGE_KEYS } from "@mysheet/constants";
-import type { UserProfile } from "@mysheet/types";
+import { STORAGE_KEYS } from "@mytask/constants";
+import type { UserProfile } from "@mytask/types";
 
 interface AuthState {
   token: string | null;

@@ -1,4 +1,4 @@
-import { useJobs } from "@mysheet/hooks";
+import { useJobs } from "@mytask/hooks";
 import { ResourceListPage } from "@/features/shared/ResourceListPage";
 
 export function JobsPage() {

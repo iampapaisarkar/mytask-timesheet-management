@@ -1,6 +1,6 @@
 # Backend
 
-Express API for **mySheet**. Full operational docs are in [`docs/`](./docs/).
+Express API for **myTask**. Full operational docs are in [`docs/`](./docs/).
 
 ## Quick start
 

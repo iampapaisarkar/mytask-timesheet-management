@@ -1,5 +1,5 @@
 {
-  "name": "@mysheet/hooks",
+  "name": "@mytask/hooks",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -13,7 +13,7 @@
     "react": ">=18"
   },
   "dependencies": {
-    "@mysheet/api": "*",
-    "@mysheet/types": "*"
+    "@mytask/api": "*",
+    "@mytask/types": "*"
   }
 }

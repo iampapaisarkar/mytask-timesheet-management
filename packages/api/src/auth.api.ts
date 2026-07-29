@@ -4,7 +4,7 @@ import type {
   AuthLoginPayload,
   AuthSignupPayload,
   UserProfile,
-} from "@mysheet/types";
+} from "@mytask/types";
 
 export const authApi = {
   login(payload: AuthLoginPayload) {

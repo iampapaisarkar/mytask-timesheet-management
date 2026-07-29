@@ -1,12 +1,12 @@
 import { DataTypes } from "sequelize";
-import { mysheet } from "../database.js";
+import { db } from "../database.js";
 import ManagementGroupEmployees from "./managementGroupEmployees.js";
 import Users from "./users.js";
 import Employees from "./employees.js";
 import UserOrganisationRoles from "./userOrganisationRoles.js";
 import OrganisationRoles from "./organisationRoles.js";
 
-const ManagementGroups = mysheet.define(
+const ManagementGroups = db.define(
   "ManagementGroups",
   {
     id: {

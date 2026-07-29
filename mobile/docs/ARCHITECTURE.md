@@ -1,6 +1,6 @@
 # Mobile Architecture
 
-React Native CLI bare app sharing business logic via `@mysheet/*` packages.
+React Native CLI bare app sharing business logic via `@mytask/*` packages.
 
 ```
 mobile/

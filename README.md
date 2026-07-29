@@ -1,6 +1,6 @@
-# mySheet — Timesheet Management Monorepo
+# myTask — Timesheet Management Monorepo
 
-Cross-platform rebuild of **mySheet** (time tracking and working log app).
+Cross-platform rebuild of **myTask** (time tracking and working log app).
 
 | Area | Stack |
 |------|--------|
@@ -242,6 +242,7 @@ npx react-native run-ios --device
 ```
 
 You can also open `mobile/ios/MySheetMobile.xcworkspace` in Xcode and press Run.
+(Xcode project folder name remains `MySheetMobile` for native tooling stability; display name and bundle ID are **myTask** / `com.mytask.app`.)
 
 ### 4.5 Run on Android (Emulator or device)
 
@@ -337,6 +338,8 @@ Auth flow: Firebase email/password on the client → ID token → `POST /api/aut
 
 ## Product URLs (reference)
 
-- Client (prod): `https://app.mysheet.au/`
-- API (example): `https://api.mysheet.com.au/api`
+- Client (legacy prod hostname): `https://app.mysheet.au/`
+- API (legacy example): `https://api.mysheet.com.au/api`
 - Dev API seen in old build: `https://mysheetserver.iampapaisarkar.com/api`
+
+> Product branding is **myTask**. Legacy hostnames above are infrastructure / historical references from the original deployment.

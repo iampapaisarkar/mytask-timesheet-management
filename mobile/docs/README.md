@@ -1,6 +1,6 @@
 # Mobile documentation index
 
-React Native CLI app for mySheet.
+React Native CLI app for myTask.
 
 | Doc | Topic |
 |-----|--------|

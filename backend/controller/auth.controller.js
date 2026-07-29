@@ -13,7 +13,7 @@ import admin from "firebase-admin";
 import { FirebaseMessaging } from "#firebasemessaging";
 import { enqueueSendEmail } from "../queue-jobs/send-email.job.js";
 import redisUtils from "../utils/redis.utils.js";
-import { mysheet } from "../database.js";
+import { db } from "../database.js";
 
 export async function login(req, res, next) {
   const { email, invitation_token, fcmToken, oldFcmToken, platform, timezone } =
@@ -121,7 +121,7 @@ export async function signup(req, res, next) {
     }
 
     // 2. Start the transaction
-    transaction = await mysheet.transaction();
+    transaction = await db.transaction();
 
     const currentUTCTime = moment().utc().format();
 

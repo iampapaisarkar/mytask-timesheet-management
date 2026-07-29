@@ -2,7 +2,7 @@
 
 ## Product
 
-**mySheet** is a multi-tenant timesheet and workforce management application. Users belong to one or more organisations, work under organisation roles (`owner`, `moderator`, `manager`, `staff`), and manage timesheets, employees, jobs, customers, payroll calendars, earning/award rates, reports, and Xero integration.
+**myTask** is a multi-tenant timesheet and workforce management application. Users belong to one or more organisations, work under organisation roles (`owner`, `moderator`, `manager`, `staff`), and manage timesheets, employees, jobs, customers, payroll calendars, earning/award rates, reports, and Xero integration.
 
 ## Source of truth
 

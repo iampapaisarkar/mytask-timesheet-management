@@ -1,5 +1,5 @@
 import { DataTypes } from "sequelize";
-import { mysheet } from "../database.js";
+import { db } from "../database.js";
 import Regions from "./regions.js";
 import Users from "./users.js";
 import NokRelations from "./nokRelations.js";
@@ -21,7 +21,7 @@ import HolidayCalendars from "./holidayCalendars.js";
 import States from "./states.js";
 import EmployeeAddress from "./employeeAddress.js";
 
-const Employees = mysheet.define(
+const Employees = db.define(
   "Employees",
   {
     id: {

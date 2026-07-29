@@ -1,5 +1,5 @@
 import { fn, col, literal, Op } from "sequelize";
-import { mysheet } from "../database.js";
+import { db } from "../database.js";
 import models from "../models/index.js";
 const {
   Users,
@@ -35,7 +35,7 @@ async function saveUpdateTimesheetAndTask(
   tasks,
   remarks = null,
 ) {
-  const transaction = await mysheet.transaction();
+  const transaction = await db.transaction();
   try {
     const currentUTCTime = moment().utc().format();
 

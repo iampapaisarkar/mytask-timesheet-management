@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { STORAGE_KEYS } from '@mysheet/constants';
-import type { OrganisationContext } from '@mysheet/types';
+import { STORAGE_KEYS } from '@mytask/constants';
+import type { OrganisationContext } from '@mytask/types';
 
 interface OrganisationState {
   organisation: OrganisationContext | null;

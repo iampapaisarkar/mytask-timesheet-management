@@ -8,8 +8,8 @@ alwaysApply: false
 
 - React + Vite + TypeScript + Tailwind v4 + React Router.
 - Feature folders under `web/src/features/`; layouts in `web/src/layouts/`.
-- Use `@mysheet/*` for API, hooks, validation, ACL, theme tokens.
-- No API calls inside presentational components — use hooks / `@mysheet/api`.
+- Use `@mytask/*` for API, hooks, validation, ACL, theme tokens.
+- No API calls inside presentational components — use hooks / `@mytask/api`.
 - Guards: `GuestRoute` / `ProtectedRoute`. Routes must match `ROUTE_ANALYSIS.md`.
 - Env via `VITE_*` in `web/.env` (see `.env.example`).
 - Prefer composition; loading / empty / error states on every list/detail screen.

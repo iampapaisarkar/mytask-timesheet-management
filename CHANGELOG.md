@@ -18,7 +18,7 @@
 - API, backend, frontend, route, and component analysis derived from `backend/` and `origianl-frontend-vue-js/`
 - `IMPLEMENTATION_PLAN.md`, `PROJECT_RULES.md`, `CODING_STANDARDS.md`, `RECOVERY_NOTES.md`, `MIGRATION_PROGRESS.md`
 - npm workspaces monorepo: `packages/*`, `web/`, `mobile/`
-- Shared packages: `@mysheet/api`, `types`, `validation`, `services` (ACL), `hooks`, `constants`, `theme`, `utils`
+- Shared packages: `@mytask/api`, `types`, `validation`, `services` (ACL), `hooks`, `constants`, `theme`, `utils`
 - Web app: Vite + React + Tailwind + auth + org shell + list pages for core domains
 - Mobile app: React Native CLI + React Navigation + login + org home + timesheets list
 - App docs under `web/docs/`, `mobile/docs/`, `backend/docs/`

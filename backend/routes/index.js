@@ -73,10 +73,10 @@ router.get("/mail-test", async (req, res) => {
 
   try {
     const message = {
-      subject: "Logix26 invite you to their organisation 🎉",
+      subject: "Organisation invitation 🎉",
       template: "organisation-invitation.html",
       variables: {
-        title: "Logix26 invite you to their organisation",
+        title: "Organisation invitation",
         message:
           "Joel invite you to their organisation as Manager role. Click below button to accept.",
         button_url: "http://localhost:9000/#/",
@@ -152,7 +152,7 @@ router.get("/firebase-messaging-test", async (req, res) => {
   try {
     // Example: send FCM message
     let message = {
-      title: "mySheet test data message",
+      title: "myTask test data message",
     };
 
     const response = await FirebaseMessaging.sendMessage([user_id], message);

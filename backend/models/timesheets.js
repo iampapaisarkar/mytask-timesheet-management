@@ -1,8 +1,8 @@
 import { DataTypes, Sequelize, Op } from "sequelize";
-import { mysheet } from "../database.js";
+import { db } from "../database.js";
 import moment from "moment-timezone";
 
-const Timesheets = mysheet.define(
+const Timesheets = db.define(
   "Timesheets",
   {
     id: {

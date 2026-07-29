@@ -1,24 +1,28 @@
-import { useState } from 'react';
 import {
-  Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { loginSchema, type LoginFormValues } from '@mysheet/validation';
-import { authApi } from '@mysheet/api';
-import { colors, spacing } from '@mysheet/theme';
-import { getErrorMessage, getTimezone } from '@mysheet/utils';
-import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { useAuthStore } from '../store/authStore';
-import { ENV } from '../config/env';
+} from "react-native";
+import { useState } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { loginSchema, type LoginFormValues } from "@mytask/validation";
+import { authApi } from "@mytask/api";
+import { spacing } from "@mytask/theme";
+import { getErrorMessage, getTimezone } from "@mytask/utils";
+import { initializeApp, getApps } from "firebase/app";
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useAuthStore } from "../store/authStore";
+import { useThemeStore } from "../store/themeStore";
+import { useToastStore } from "../store/toastStore";
+import { ENV } from "../config/env";
 
 function getFirebaseAuth() {
   const config = {
@@ -35,10 +39,15 @@ function getFirebaseAuth() {
 
 export function LoginScreen() {
   const setSession = useAuthStore((s) => s.setSession);
+  const c = useThemeStore((s) => s.colors);
+  const toggleTheme = useThemeStore((s) => s.toggle);
+  const mode = useThemeStore((s) => s.mode);
+  const toast = useToastStore();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const { control, handleSubmit } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: { email: "", password: "" },
   });
 
   async function onSubmit(values: LoginFormValues) {
@@ -57,8 +66,9 @@ export function LoginScreen() {
         timezone: getTimezone(),
       });
       await setSession(token, response.data.data);
+      toast.success("Welcome back", "You are signed in to myTask");
     } catch (err) {
-      Alert.alert('Login failed', getErrorMessage(err));
+      toast.error("Login failed", getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -66,90 +76,145 @@ export function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={[styles.flex, { backgroundColor: c.bg, paddingTop: insets.top }]}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <Text style={styles.brand}>mySheet</Text>
-      <Text style={styles.title}>Log in to mySheet</Text>
-      <Controller
-        control={control}
-        name="email"
-        render={({ field: { onChange, value }, fieldState }) => (
-          <View style={styles.field}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              autoCapitalize="none"
-              keyboardType="email-address"
-              style={styles.input}
-              value={value}
-              onChangeText={onChange}
-            />
-            {fieldState.error ? (
-              <Text style={styles.error}>{fieldState.error.message}</Text>
-            ) : null}
-          </View>
-        )}
-      />
-      <Controller
-        control={control}
-        name="password"
-        render={({ field: { onChange, value }, fieldState }) => (
-          <View style={styles.field}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              secureTextEntry
-              style={styles.input}
-              value={value}
-              onChangeText={onChange}
-            />
-            {fieldState.error ? (
-              <Text style={styles.error}>{fieldState.error.message}</Text>
-            ) : null}
-          </View>
-        )}
-      />
-      <TouchableOpacity
-        style={styles.button}
-        onPress={handleSubmit(onSubmit)}
-        disabled={loading}
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.buttonText}>{loading ? 'Please wait…' : 'Login'}</Text>
-      </TouchableOpacity>
+        <TouchableOpacity onPress={() => void toggleTheme()} style={styles.themeBtn}>
+          <Text style={{ color: c.primary, fontWeight: "600" }}>
+            {mode === "dark" ? "Light" : "Dark"}
+          </Text>
+        </TouchableOpacity>
+
+        <View style={styles.brandRow}>
+          <Image
+            source={require("../../assets/logo.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={[styles.brand, { color: c.text }]}>myTask</Text>
+        </View>
+        <Text style={[styles.title, { color: c.text }]}>Log in to myTask</Text>
+        <Text style={[styles.subtitle, { color: c.muted }]}>
+          Track work, manage teams, stay in sync.
+        </Text>
+
+        <Controller
+          control={control}
+          name="email"
+          render={({ field: { onChange, value }, fieldState }) => (
+            <View style={styles.field}>
+              <Text style={[styles.label, { color: c.muted }]}>Email</Text>
+              <TextInput
+                autoCapitalize="none"
+                keyboardType="email-address"
+                style={[
+                  styles.input,
+                  { borderColor: c.border, backgroundColor: c.surface, color: c.text },
+                ]}
+                value={value}
+                onChangeText={onChange}
+                placeholderTextColor={c.muted}
+              />
+              {fieldState.error ? (
+                <Text style={[styles.error, { color: c.negative }]}>
+                  {fieldState.error.message}
+                </Text>
+              ) : null}
+            </View>
+          )}
+        />
+        <Controller
+          control={control}
+          name="password"
+          render={({ field: { onChange, value }, fieldState }) => (
+            <View style={styles.field}>
+              <Text style={[styles.label, { color: c.muted }]}>Password</Text>
+              <TextInput
+                secureTextEntry
+                style={[
+                  styles.input,
+                  { borderColor: c.border, backgroundColor: c.surface, color: c.text },
+                ]}
+                value={value}
+                onChangeText={onChange}
+                placeholderTextColor={c.muted}
+              />
+              {fieldState.error ? (
+                <Text style={[styles.error, { color: c.negative }]}>
+                  {fieldState.error.message}
+                </Text>
+              ) : null}
+            </View>
+          )}
+        />
+
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: c.primary, opacity: loading ? 0.7 : 1 }]}
+          onPress={handleSubmit(onSubmit)}
+          disabled={loading}
+        >
+          <Text style={styles.buttonText}>
+            {loading ? "Please wait…" : "Login"}
+          </Text>
+        </TouchableOpacity>
+
+        <Text style={[styles.notice, { color: c.muted }]}>
+          <Text style={{ fontWeight: "700", color: c.text }}>
+            Project is for showcasing purposes only.{" "}
+          </Text>
+          This is a real project concept. All original concept ownership and
+          authorization belong to Joel Couchman. This version has been rebuilt
+          solely for demonstration purposes.
+        </Text>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   container: {
-    flex: 1,
-    justifyContent: 'center',
+    flexGrow: 1,
+    justifyContent: "center",
     padding: spacing.lg,
-    backgroundColor: colors.background,
+    paddingBottom: spacing.xxl,
   },
-  brand: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: colors.primary,
+  themeBtn: { alignSelf: "flex-end", marginBottom: spacing.md },
+  brandRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
     marginBottom: spacing.sm,
   },
-  title: { fontSize: 20, fontWeight: '600', marginBottom: spacing.lg },
+  logo: { width: 44, height: 44, borderRadius: 12 },
+  brand: { fontSize: 28, fontWeight: "700" },
+  title: { fontSize: 22, fontWeight: "700", marginTop: spacing.sm },
+  subtitle: { marginTop: 6, marginBottom: spacing.lg, fontSize: 14 },
   field: { marginBottom: spacing.md },
-  label: { marginBottom: 6, fontWeight: '500' },
+  label: { marginBottom: 6, fontWeight: "600", fontSize: 13 },
   input: {
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: colors.white,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    fontSize: 16,
   },
-  error: { color: colors.negative, marginTop: 4, fontSize: 12 },
+  error: { marginTop: 4, fontSize: 12 },
   button: {
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: "center",
     marginTop: spacing.sm,
   },
-  buttonText: { color: colors.white, fontWeight: '600' },
+  buttonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  notice: {
+    marginTop: spacing.xl,
+    fontSize: 11,
+    lineHeight: 16,
+    textAlign: "center",
+  },
 });

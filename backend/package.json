@@ -1,9 +1,9 @@
 {
-  "name": "mysheet",
+  "name": "mytask",
   "version": "1.0.0",
-  "description": "the mysheet hub server",
+  "description": "the myTask hub server",
   "main": "index.js",
-  "author": "papai@logix26.com",
+  "author": "papai.app",
   "license": "UNLICENSED",
   "type": "module",
   "scripts": {

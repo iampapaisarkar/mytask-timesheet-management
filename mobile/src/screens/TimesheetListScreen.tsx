@@ -5,40 +5,51 @@ import {
   Text,
   View,
 } from "react-native";
-import { useTimesheets } from "@mysheet/hooks";
-import { colors, spacing } from "@mysheet/theme";
+import { useTimesheets } from "@mytask/hooks";
+import { spacing } from "@mytask/theme";
+import { useThemeStore } from "../store/themeStore";
 
 export function TimesheetListScreen() {
   const { data, isLoading, isError } = useTimesheets();
   const rows = (Array.isArray(data) ? data : []) as Array<Record<string, unknown>>;
+  const c = useThemeStore((s) => s.colors);
 
   if (isLoading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.primary} />
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <ActivityIndicator color={c.primary} />
       </View>
     );
   }
 
   if (isError) {
     return (
-      <View style={styles.center}>
-        <Text>Failed to load timesheets</Text>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <Text style={{ color: c.text }}>Failed to load timesheets</Text>
       </View>
     );
   }
 
   return (
     <FlatList
-      style={styles.list}
+      style={{ flex: 1, backgroundColor: c.bg }}
       contentContainerStyle={{ padding: spacing.md }}
       data={rows}
       keyExtractor={(item, index) => String(item.id ?? index)}
-      ListEmptyComponent={<Text style={styles.empty}>No timesheets found</Text>}
+      ListEmptyComponent={
+        <Text style={[styles.empty, { color: c.muted }]}>No timesheets found</Text>
+      }
       renderItem={({ item }) => (
-        <View style={styles.card}>
-          <Text style={styles.id}>#{String(item.id ?? "")}</Text>
-          <Text>{String(item.status ?? "—")}</Text>
+        <View
+          style={[
+            styles.card,
+            { backgroundColor: c.surface, borderColor: c.border },
+          ]}
+        >
+          <Text style={[styles.id, { color: c.text }]}>
+            #{String(item.id ?? "")}
+          </Text>
+          <Text style={{ color: c.muted }}>{String(item.status ?? "—")}</Text>
         </View>
       )}
     />
@@ -46,16 +57,13 @@ export function TimesheetListScreen() {
 }
 
 const styles = StyleSheet.create({
-  list: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   card: {
-    backgroundColor: colors.white,
-    borderRadius: 10,
+    borderRadius: 16,
     padding: spacing.md,
     marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   id: { fontWeight: "700", marginBottom: 4 },
-  empty: { textAlign: "center", color: colors.greyDark, marginTop: 40 },
+  empty: { textAlign: "center", marginTop: 40 },
 });

@@ -5,11 +5,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   createOrganisationSchema,
   type CreateOrganisationFormValues,
-} from "@mysheet/validation";
-import { useCreateOrganisation, useSystemStates } from "@mysheet/hooks";
-import { ROUTES } from "@mysheet/constants";
-import { getErrorMessage, getOrganisationRoleCode } from "@mysheet/utils";
-import type { OrganisationMembership, UserProfile } from "@mysheet/types";
+} from "@mytask/validation";
+import { useCreateOrganisation, useSystemStates } from "@mytask/hooks";
+import { ROUTES } from "@mytask/constants";
+import { getErrorMessage, getOrganisationRoleCode } from "@mytask/utils";
+import type { OrganisationMembership, UserProfile } from "@mytask/types";
 import { TextInput } from "@/components/ui/TextInput";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/States";
@@ -104,20 +104,25 @@ export function CreateOrganisationPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl rounded-lg border border-border bg-white p-6">
+    <div className="mx-auto max-w-2xl">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Create organisation</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--mt-text)]">
+            Create organisation
+          </h1>
           <p className="mt-1 text-sm text-muted">
             You can create up to 3 organisations.
           </p>
         </div>
-        <Link to={ROUTES.home} className="text-sm text-primary">
+        <Link to={ROUTES.home} className="text-sm font-medium text-primary">
           Cancel
         </Link>
       </div>
 
-      <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)}>
+      <form
+        className="mt-card mt-fade-in flex flex-col gap-4 p-6"
+        onSubmit={handleSubmit(onSubmit)}
+      >
         <TextInput
           label="Name"
           error={errors.name?.message}
@@ -147,9 +152,9 @@ export function CreateOrganisationPage() {
           {...register("city")}
         />
         <label className="flex w-full flex-col gap-1.5 text-sm">
-          <span className="font-medium text-dark">State</span>
+          <span className="font-medium text-[var(--mt-text)]">State</span>
           <select
-            className={`rounded-md border border-border bg-white px-3 py-2.5 outline-none ring-primary focus:ring-2 ${
+            className={`mt-focus rounded-xl border border-border bg-[var(--mt-surface)] px-3.5 py-3 text-[var(--mt-text)] outline-none focus:border-primary ${
               errors.state_id ? "border-negative" : ""
             }`}
             {...register("state_id")}

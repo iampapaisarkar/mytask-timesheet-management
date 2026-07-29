@@ -1,6 +1,8 @@
 import { Link, useParams } from "react-router-dom";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
+import { PageHeader } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 
 type Row = Record<string, unknown> & { id?: string | number };
 
@@ -31,24 +33,21 @@ export function ResourceListPage({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">{title}</h1>
-        {createLabel ? (
-          <button
-            type="button"
-            className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-white"
-          >
-            {createLabel}
-          </button>
-        ) : null}
-      </div>
+    <div className="mt-fade-in flex flex-col gap-4">
+      <PageHeader
+        title={title}
+        actions={
+          createLabel ? (
+            <Button type="button">{createLabel}</Button>
+          ) : undefined
+        }
+      />
       {!rows.length ? (
         <EmptyState title={`No ${title.toLowerCase()} found`} />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border bg-white">
+        <div className="mt-card overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-border bg-page text-muted">
+            <thead className="border-b border-border bg-[var(--mt-bg)] text-muted">
               <tr>
                 {columns.map((col) => (
                   <th key={col.key} className="px-4 py-3 font-medium">
@@ -63,17 +62,17 @@ export function ResourceListPage({
                 return (
                   <tr
                     key={String(id)}
-                    className="border-b border-border last:border-0 hover:bg-page/80"
+                    className="border-b border-border last:border-0 transition hover:bg-primary-muted/40"
                   >
                     {columns.map((col, colIdx) => {
                       const cell = (
-                        <td key={col.key} className="px-4 py-3 text-dark">
+                        <td key={col.key} className="px-4 py-3 text-[var(--mt-text)]">
                           {formatCell(row[col.key])}
                         </td>
                       );
                       if (detailPath && colIdx === 0) {
                         return (
-                          <td key={col.key} className="px-4 py-3 text-dark">
+                          <td key={col.key} className="px-4 py-3">
                             <Link
                               to={detailPath(orgCode, id)}
                               className="font-medium text-primary hover:underline"

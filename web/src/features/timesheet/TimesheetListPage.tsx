@@ -1,5 +1,5 @@
-import { useTimesheets } from "@mysheet/hooks";
-import { ROUTES } from "@mysheet/constants";
+import { useTimesheets } from "@mytask/hooks";
+import { ROUTES } from "@mytask/constants";
 import { ResourceListPage } from "@/features/shared/ResourceListPage";
 
 export function TimesheetListPage() {

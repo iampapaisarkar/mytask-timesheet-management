@@ -10,5 +10,5 @@ alwaysApply: false
 - Packages: `api`, `hooks`, `types`, `utils`, `validation`, `constants`, `services`, `theme`.
 - Export from each package `src/index.ts`.
 - API modules call `getApiClient()` — never create ad-hoc Axios instances in apps.
-- ACL must stay aligned with `backend/class/acl.js` (`@mysheet/services`).
+- ACL must stay aligned with `backend/class/acl.js` (`@mytask/services`).
 - Prefer small, composable modules over large catch-all files.

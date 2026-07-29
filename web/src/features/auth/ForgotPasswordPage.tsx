@@ -5,15 +5,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   forgotPasswordSchema,
   type ForgotPasswordFormValues,
-} from "@mysheet/validation";
-import { authApi } from "@mysheet/api";
-import { ROUTES } from "@mysheet/constants";
-import { getErrorMessage } from "@mysheet/utils";
+} from "@mytask/validation";
+import { authApi } from "@mytask/api";
+import { ROUTES } from "@mytask/constants";
+import { getErrorMessage } from "@mytask/utils";
 import { TextInput } from "@/components/ui/TextInput";
 import { Button } from "@/components/ui/Button";
 import { firebaseForgotPassword } from "@/lib/firebase";
+import { useToastStore } from "@/store/toastStore";
 
 export function ForgotPasswordPage() {
+  const toast = useToastStore();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const {
@@ -31,19 +33,25 @@ export function ForgotPasswordPage() {
       try {
         await authApi.forgotPassword({ email: values.email });
       } catch {
-        // Fall back to Firebase client reset if backend path differs
         await firebaseForgotPassword(values.email);
       }
-      setSuccess("Password reset instructions have been sent if the account exists.");
+      const msg =
+        "Password reset instructions have been sent if the account exists.";
+      setSuccess(msg);
+      toast.info("Check your email", msg);
     } catch (err) {
-      setError(getErrorMessage(err));
+      const message = getErrorMessage(err);
+      setError(message);
+      toast.error("Reset failed", message);
     }
   }
 
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold text-dark">Forgot password</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-[var(--mt-text)]">
+          Forgot password
+        </h1>
         <p className="mt-1 text-sm text-muted">We will email you a reset link</p>
       </div>
       <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)}>
@@ -55,11 +63,11 @@ export function ForgotPasswordPage() {
         />
         {error ? <p className="text-sm text-negative">{error}</p> : null}
         {success ? <p className="text-sm text-positive">{success}</p> : null}
-        <Button type="submit" loading={isSubmitting}>
+        <Button type="submit" loading={isSubmitting} className="w-full">
           Send reset link
         </Button>
       </form>
-      <Link to={ROUTES.login} className="text-sm text-primary">
+      <Link to={ROUTES.login} className="text-sm font-medium text-primary">
         Back to login
       </Link>
     </div>

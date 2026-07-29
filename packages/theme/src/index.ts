@@ -1,24 +1,51 @@
-/** Colour tokens recovered from Quasar build (`--q-primary`, etc.). */
+/** myTask design tokens — primary #04B6B1 */
 export const colors = {
-  primary: "#6900ff",
-  secondary: "#26a69a",
-  accent: "#9c27b0",
-  positive: "#21ba45",
-  negative: "#c10015",
-  info: "#31ccec",
-  warning: "#f2c037",
-  dark: "#1d272d",
-  darkPage: "#1d272d",
-  white: "#ffffff",
-  grey: "#9e9e9e",
-  greyDark: "#757575",
-  border: "#e0e0e0",
-  background: "#f5f5f5",
+  primary: "#04B6B1",
+  primaryHover: "#039E9A",
+  primaryMuted: "rgba(4, 182, 177, 0.12)",
+  secondary: "#0F766E",
+  accent: "#14B8A6",
+  positive: "#10B981",
+  negative: "#EF4444",
+  info: "#3B82F6",
+  warning: "#F59E0B",
+  white: "#FFFFFF",
+  black: "#0B1220",
+  /** Light-mode defaults for React Native StyleSheet usage */
+  background: "#F4F7F8",
+  surface: "#FFFFFF",
+  border: "#D7E0E4",
+  text: "#0F172A",
+  textMuted: "#64748B",
+} as const;
+
+export const light = {
+  bg: "#F4F7F8",
+  bgElevated: "#FFFFFF",
+  bgMuted: "#E8EEF0",
+  text: "#0F172A",
+  textMuted: "#64748B",
+  border: "#D7E0E4",
+  sidebar: "#0B1F24",
+  sidebarText: "#E6F4F3",
+  shadow: "0 10px 30px rgba(15, 23, 42, 0.08)",
+} as const;
+
+export const dark = {
+  bg: "#071316",
+  bgElevated: "#0E1C20",
+  bgMuted: "#13262B",
+  text: "#E8F2F2",
+  textMuted: "#94A8AE",
+  border: "#1F3338",
+  sidebar: "#050D10",
+  sidebarText: "#D7EDEB",
+  shadow: "0 12px 32px rgba(0, 0, 0, 0.35)",
 } as const;
 
 export const typography = {
   fontFamily:
-    'Roboto, "Helvetica Neue", Helvetica, Arial, sans-serif',
+    '"DM Sans", "Segoe UI", Roboto, "Helvetica Neue", Helvetica, Arial, sans-serif',
   sizes: {
     xs: 12,
     sm: 14,
@@ -35,13 +62,24 @@ export const spacing = {
   md: 16,
   lg: 24,
   xl: 32,
+  xxl: 48,
 } as const;
 
 export const radii = {
-  sm: 4,
-  md: 8,
-  lg: 12,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  full: 999,
 } as const;
 
-export const theme = { colors, typography, spacing, radii } as const;
+export const theme = {
+  colors,
+  light,
+  dark,
+  typography,
+  spacing,
+  radii,
+} as const;
+
 export type Theme = typeof theme;

@@ -1,5 +1,5 @@
 import { DataTypes } from "sequelize";
-import { mysheet } from "../database.js";
+import { db } from "../database.js";
 import moment from "moment";
 
 function getNextPayPeriods(startDate, endDate, payCycleType) {
@@ -79,7 +79,7 @@ function getNextPayPeriod(startDate, endDate) {
   ).format("DD MMM YYYY")}`;
 }
 
-const PayrollCalendars = mysheet.define(
+const PayrollCalendars = db.define(
   "PayrollCalendars",
   {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },

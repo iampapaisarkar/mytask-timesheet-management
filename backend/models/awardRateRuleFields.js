@@ -1,6 +1,6 @@
 // award-rate-rule-fields.model.js
 import { DataTypes, Op } from "sequelize";
-import { mysheet } from "../database.js";
+import { db } from "../database.js";
 import AwardRateRuleComparators from "./awardRateRuleComparators.js";
 
 /**
@@ -39,7 +39,7 @@ async function getComparators(code) {
 }
 
 // Define model
-const AwardRateRuleFields = mysheet.define(
+const AwardRateRuleFields = db.define(
   "AwardRateRuleFields",
   {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },

@@ -1,5 +1,5 @@
 import { DataTypes } from "sequelize";
-import { mysheet } from "../database.js";
+import { db } from "../database.js";
 import Users from "./users.js";
 import Employees from "./employees.js";
 import UserOrganisationRoles from "./userOrganisationRoles.js";
@@ -8,7 +8,7 @@ import XeroConnections from "./xeroConnections.js";
 import OrganisationAddress from "./organisationAddress.js";
 import States from "./states.js";
 
-const Organisations = mysheet.define(
+const Organisations = db.define(
   "Organisations",
   {
     id: {

@@ -9,8 +9,8 @@ import {
   jobsApi,
   managementGroupsApi,
   systemApi,
-} from "@mysheet/api";
-import type { ListParams } from "@mysheet/types";
+} from "@mytask/api";
+import type { ListParams } from "@mytask/types";
 
 export const queryKeys = {
   me: ["auth", "me"] as const,

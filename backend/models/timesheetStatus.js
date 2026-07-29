@@ -1,7 +1,7 @@
 import { DataTypes } from "sequelize";
-import { mysheet } from "../database.js";
+import { db } from "../database.js";
 
-const TimesheetStatus = mysheet.define(
+const TimesheetStatus = db.define(
   "TimesheetStatus",
   {
     id: {

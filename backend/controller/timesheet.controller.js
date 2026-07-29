@@ -1,5 +1,5 @@
 import { fn, col, literal, Op } from "sequelize";
-import { mysheet } from "../database.js";
+import { db } from "../database.js";
 import models from "../models/index.js";
 const {
   Users,

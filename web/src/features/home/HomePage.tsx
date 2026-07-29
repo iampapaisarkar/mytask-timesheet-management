@@ -1,11 +1,13 @@
 import { Link } from "react-router-dom";
-import { useOrganisations } from "@mysheet/hooks";
-import { ROUTES } from "@mysheet/constants";
-import { getOrganisationRoleCode } from "@mysheet/utils";
+import { useOrganisations } from "@mytask/hooks";
+import { ROUTES } from "@mytask/constants";
+import { getOrganisationRoleCode } from "@mytask/utils";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { Button } from "@/components/ui/Button";
+import { Card, PageHeader } from "@/components/ui/Card";
 import { useOrganisationStore } from "@/store/organisationStore";
-import type { OrganisationMembership } from "@mysheet/types";
+import type { OrganisationMembership } from "@mytask/types";
+import { ArrowRight, Building2, Plus } from "lucide-react";
 
 export function HomePage() {
   const { data, isLoading, isError, error, refetch } = useOrganisations({
@@ -33,7 +35,10 @@ export function HomePage() {
         description="Create an organisation to start managing timesheets, or accept an invitation."
         action={
           <Link to={ROUTES.createOrganisation}>
-            <Button>Create organisation</Button>
+            <Button>
+              <Plus size={16} />
+              Create organisation
+            </Button>
           </Link>
         }
       />
@@ -42,16 +47,19 @@ export function HomePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">Your organisations</h1>
-          <p className="text-sm text-muted">Select an organisation to continue</p>
-        </div>
-        <Link to={ROUTES.createOrganisation}>
-          <Button>Create organisation</Button>
-        </Link>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <PageHeader
+        title="Your organisations"
+        description="Select an organisation to continue"
+        actions={
+          <Link to={ROUTES.createOrganisation}>
+            <Button>
+              <Plus size={16} />
+              Create organisation
+            </Button>
+          </Link>
+        }
+      />
+      <div className="grid gap-4 sm:grid-cols-2">
         {organisations.map((org) => (
           <Link
             key={String(org.id)}
@@ -64,10 +72,25 @@ export function HomePage() {
                 role: getOrganisationRoleCode(org),
               })
             }
-            className="rounded-lg border border-border bg-white p-5 shadow-sm transition hover:border-primary"
+            className="group block"
           >
-            <div className="font-semibold text-dark">{org.name}</div>
-            <div className="mt-1 text-xs text-muted">{org.code}</div>
+            <Card hover className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="rounded-xl bg-primary-muted p-2.5 text-primary">
+                  <Building2 size={20} />
+                </div>
+                <div>
+                  <div className="font-semibold text-[var(--mt-text)]">
+                    {org.name}
+                  </div>
+                  <div className="mt-0.5 text-xs text-muted">{org.code}</div>
+                </div>
+              </div>
+              <ArrowRight
+                size={18}
+                className="text-muted transition group-hover:translate-x-0.5 group-hover:text-primary"
+              />
+            </Card>
           </Link>
         ))}
       </div>

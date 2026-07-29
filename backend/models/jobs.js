@@ -1,5 +1,5 @@
 import { DataTypes } from "sequelize";
-import { mysheet } from "../database.js";
+import { db } from "../database.js";
 import Customers from "./customers.js";
 import ManagementGroups from "./managementGroups.js";
 import ManagementGroupJobs from "./managementGroupJobs.js";
@@ -9,7 +9,7 @@ import Users from "./users.js";
 import JobAddress from "./jobAddress.js";
 import States from "./states.js";
 
-const Jobs = mysheet.define(
+const Jobs = db.define(
   "withEmployee",
   {
     id: {

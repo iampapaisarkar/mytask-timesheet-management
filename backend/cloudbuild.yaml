@@ -53,7 +53,7 @@ steps:
           --set-env-vars="DB_USER=mysheetuser" \
           --set-env-vars="DB_HOST=/cloudsql/mysheet-prod:australia-southeast1:mysheet-mysql-prod" \
           --set-env-vars="DB_PORT=3306" \
-          --set-env-vars="APP_NAME=mySheet" \
+          --set-env-vars="APP_NAME=myTask" \
           --set-env-vars="MYSHEET_API_URL=${_MYSHEET_API_URL}" \
           --set-env-vars="CLIENT_URL=https://app.mysheet.au/" \
           --set-env-vars="SERVER_URL=https://mysheet-api-prod-460667421634.australia-southeast1.run.app/api" \

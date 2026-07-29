@@ -1,7 +1,7 @@
 import { DataTypes } from "sequelize";
-import { mysheet } from "../database.js";
+import { db } from "../database.js";
 
-const AwardRateRuleFieldTypes = mysheet.define(
+const AwardRateRuleFieldTypes = db.define(
   "AwardRateRuleFieldTypes",
   {
     id: {

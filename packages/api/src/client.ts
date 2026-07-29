@@ -3,8 +3,8 @@ import axios, {
   type AxiosInstance,
   type InternalAxiosRequestConfig,
 } from "axios";
-import { ORG_HEADERS } from "@mysheet/constants";
-import type { OrganisationContext } from "@mysheet/types";
+import { ORG_HEADERS } from "@mytask/constants";
+import type { OrganisationContext } from "@mytask/types";
 
 export type TokenGetter = () => string | null | Promise<string | null>;
 export type OrganisationGetter = () => OrganisationContext | null;

@@ -1,4 +1,4 @@
-export const APP_NAME = "mySheet";
+export const APP_NAME = "myTask";
 
 export const ORG_HEADERS = {
   id: "ms-organisation-id",
@@ -7,10 +7,10 @@ export const ORG_HEADERS = {
 } as const;
 
 export const STORAGE_KEYS = {
-  authToken: "mysheet.authToken",
-  user: "mysheet.user",
-  organisation: "mysheet.organisation",
-  fcmToken: "mysheet.fcmToken",
+  authToken: "mytask.authToken",
+  user: "mytask.user",
+  organisation: "mytask.organisation",
+  fcmToken: "mytask.fcmToken",
 } as const;
 
 export const ROUTES = {

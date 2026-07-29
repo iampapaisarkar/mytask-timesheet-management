@@ -1,7 +1,7 @@
 import { DataTypes } from "sequelize";
-import { mysheet } from "../database.js";
+import { db } from "../database.js";
 
-const OrganisationSettings = mysheet.define(
+const OrganisationSettings = db.define(
   "OrganisationSettings",
   {
     id: {

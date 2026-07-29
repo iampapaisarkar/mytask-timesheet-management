@@ -1,7 +1,7 @@
 import { DataTypes } from "sequelize";
-import { mysheet } from "../database.js";
+import { db } from "../database.js";
 
-const Notifications = mysheet.define(
+const Notifications = db.define(
   "Notifications",
   {
     id: {

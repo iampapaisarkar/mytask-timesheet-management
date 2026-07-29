@@ -40,7 +40,7 @@ async function pushDataToXero(user, organisation) {
         {
           user_id: user?.id,
           title: "Data Successfully Synced to Xero",
-          body: "The MySheet data has been successfully pushed to Xero.",
+          body: "The MyTask data has been successfully pushed to Xero.",
         },
         {
           headers: { Authorization: `Bearer ${user?.token}` },

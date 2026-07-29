@@ -22,7 +22,7 @@ import redisUtils from "../utils/redis.utils.js";
 import organisationService from "../service/organisation.service.js";
 import { enqueueSendEmail } from "../queue-jobs/send-email.job.js";
 import { enqueueSendNotification } from "../queue-jobs/send-notification.job.js";
-import { mysheet } from "../database.js";
+import { db } from "../database.js";
 import { SystemFunction } from "#systemfunction";
 
 export async function list(req, res, next) {
@@ -153,7 +153,7 @@ export async function create(req, res, next) {
       });
     }
 
-    transaction = await mysheet.transaction();
+    transaction = await db.transaction();
 
     const currentUTCTime = moment().utc().format();
 

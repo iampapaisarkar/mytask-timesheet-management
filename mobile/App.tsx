@@ -1,14 +1,16 @@
 import 'react-native-gesture-handler';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StatusBar, StyleSheet, View } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { createApiClient } from '@mysheet/api';
-import { colors } from '@mysheet/theme';
+import { createApiClient } from '@mytask/api';
+import { colors } from '@mytask/theme';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { useAuthStore } from './src/store/authStore';
 import { useOrganisationStore } from './src/store/organisationStore';
+import { useThemeStore } from './src/store/themeStore';
+import { ToastViewport } from './src/components/ToastViewport';
 import { ENV } from './src/config/env';
 
 const queryClient = new QueryClient({
@@ -19,6 +21,8 @@ const queryClient = new QueryClient({
 
 function App() {
   const [ready, setReady] = useState(false);
+  const mode = useThemeStore((s) => s.mode);
+  const c = useThemeStore((s) => s.colors);
 
   useEffect(() => {
     createApiClient({
@@ -33,6 +37,7 @@ function App() {
     Promise.all([
       useAuthStore.getState().hydrate(),
       useOrganisationStore.getState().hydrate(),
+      useThemeStore.getState().hydrate(),
     ]).finally(() => setReady(true));
   }, []);
 
@@ -44,12 +49,28 @@ function App() {
     );
   }
 
+  const navTheme = {
+    ...(mode === 'dark' ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(mode === 'dark' ? DarkTheme.colors : DefaultTheme.colors),
+      primary: c.primary,
+      background: c.bg,
+      card: c.surface,
+      text: c.text,
+      border: c.border,
+      notification: c.primary,
+    },
+  };
+
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
-        <NavigationContainer>
-          <StatusBar barStyle="dark-content" />
+        <NavigationContainer theme={navTheme}>
+          <StatusBar
+            barStyle={mode === 'dark' ? 'light-content' : 'dark-content'}
+          />
           <RootNavigator />
+          <ToastViewport />
         </NavigationContainer>
       </QueryClientProvider>
     </SafeAreaProvider>

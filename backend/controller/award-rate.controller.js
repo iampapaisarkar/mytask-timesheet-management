@@ -14,7 +14,7 @@ const {
   EarningRates,
 } = models;
 import moment from "moment";
-import { mysheet } from "../database.js";
+import { db } from "../database.js";
 import awardRateService from "../service/award-rate.service.js";
 import { earningRateQueue } from "../queue/earning-rate.queue.js";
 
@@ -144,7 +144,7 @@ export async function create(req, res) {
     return res.status(403).json({ message: "Access denied" });
   }
 
-  const transaction = await mysheet.transaction();
+  const transaction = await db.transaction();
 
   try {
     awardRateService.validateAwardRateInput({ name, settings, rules });
@@ -230,7 +230,7 @@ export async function update(req, res) {
     });
   }
 
-  const transaction = await mysheet.transaction();
+  const transaction = await db.transaction();
 
   try {
     awardRateService.validateAwardRateInput({ name, settings, rules });

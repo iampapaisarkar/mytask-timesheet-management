@@ -12,7 +12,7 @@ const {
   EmploymentTypes,
   PayrollCalendars,
 } = models;
-import { mysheet } from "../database.js";
+import { db } from "../database.js";
 import employeeService from "../service/employee.service.js";
 import { enqueueSingleEmployeeToXero } from "../queue-jobs/push-single-employee.job.js";
 import xeroService from "../service/xero.service.js";
@@ -171,7 +171,7 @@ export async function create(req, res, next) {
       message: "Access denied: You are not authorized to access this action.",
     });
   }
-  const transaction = await mysheet.transaction();
+  const transaction = await db.transaction();
   try {
     if (organisation?.xero_connection && push_to_xero) {
       if (!organisation?.settings?.default_ordinary_hours_earning_rate_type) {
@@ -289,7 +289,7 @@ export async function update(req, res, next) {
       message: "Access denied: You are not authorized to access this action.",
     });
   }
-  const transaction = await mysheet.transaction();
+  const transaction = await db.transaction();
   try {
     if (organisation?.xero_connection && push_to_xero) {
       if (organisation?.xero_connection && push_to_xero) {
@@ -391,7 +391,7 @@ export async function update(req, res, next) {
 export async function invite(req, res, next) {
   const { user, orgName, organisation } = req.body;
   const id = req?.params?.id;
-  const transaction = await mysheet.transaction();
+  const transaction = await db.transaction();
   try {
     const employeeResponse = await Employees.scope("defaultScope").findOne({
       where: {

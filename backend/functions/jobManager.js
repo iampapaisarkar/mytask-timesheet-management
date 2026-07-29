@@ -1,5 +1,5 @@
 import cron from "node-cron";
-import { mysheet } from "../database.js";
+import { db } from "../database.js";
 import { parseEventToCron } from "./jobParser.js";
 import { cronRegistry } from "./cronRegistry.js";
 import { fn, col, literal, Op, where, QueryTypes } from "sequelize";
@@ -8,7 +8,7 @@ import moment from "moment";
 export async function createJob(name, event, value) {
   if (!name || !event) throw new Error("Missing name or event");
 
-  const [existing] = await mysheet.query(
+  const [existing] = await db.query(
     "SELECT * FROM jobs WHERE name = :name",
     {
       replacements: { name },
@@ -18,7 +18,7 @@ export async function createJob(name, event, value) {
 
   if (existing) throw new Error("Job already exists");
 
-  await mysheet.query(
+  await db.query(
     "INSERT INTO jobs (name, event, value, created_at) VALUES (:name, :event, :value, :created_at)",
     {
       replacements: {
@@ -38,7 +38,7 @@ export async function createJob(name, event, value) {
 export async function startJob(name) {
   if (cronRegistry.has(name)) throw new Error("Job is already running");
 
-  const [job] = await mysheet.query("SELECT * FROM jobs WHERE name = :name", {
+  const [job] = await db.query("SELECT * FROM jobs WHERE name = :name", {
     replacements: { name },
     type: QueryTypes.SELECT,
   });
@@ -74,7 +74,7 @@ export async function stopJob(name) {
 }
 
 export async function deleteJob(name) {
-  const [job] = await mysheet.query("SELECT * FROM jobs WHERE name = :name", {
+  const [job] = await db.query("SELECT * FROM jobs WHERE name = :name", {
     replacements: { name },
     type: QueryTypes.SELECT,
   });
@@ -83,7 +83,7 @@ export async function deleteJob(name) {
 
   if (cronRegistry.has(name)) await stopJob(name);
 
-  await mysheet.query("DELETE FROM jobs WHERE name = :name", {
+  await db.query("DELETE FROM jobs WHERE name = :name", {
     replacements: { name },
     type: QueryTypes.DELETE,
   });

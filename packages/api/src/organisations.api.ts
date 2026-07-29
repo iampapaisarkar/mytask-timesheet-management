@@ -1,6 +1,6 @@
 import { getApiClient } from "./client";
-import { buildListQuery } from "@mysheet/utils";
-import type { ApiResponse, ListParams } from "@mysheet/types";
+import { buildListQuery } from "@mytask/utils";
+import type { ApiResponse, ListParams } from "@mytask/types";
 
 export const organisationsApi = {
   list(params: ListParams = {}) {

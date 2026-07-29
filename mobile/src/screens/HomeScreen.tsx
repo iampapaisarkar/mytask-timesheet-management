@@ -7,52 +7,64 @@ import {
   View,
 } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useOrganisations } from "@mysheet/hooks";
-import { colors, spacing } from "@mysheet/theme";
-import type { OrganisationMembership } from "@mysheet/types";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useOrganisations } from "@mytask/hooks";
+import { spacing } from "@mytask/theme";
+import type { OrganisationMembership } from "@mytask/types";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { useOrganisationStore } from "../store/organisationStore";
-import { useAuthStore } from "../store/authStore";
+import { useThemeStore } from "../store/themeStore";
 
-type Props = NativeStackScreenProps<RootStackParamList, "Home">;
-
-export function HomeScreen({ navigation }: Props) {
+export function HomeScreen() {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { data, isLoading, isError, refetch } = useOrganisations();
   const setOrganisation = useOrganisationStore((s) => s.setOrganisation);
-  const clearSession = useAuthStore((s) => s.clearSession);
   const organisations = (data || []) as OrganisationMembership[];
+  const c = useThemeStore((s) => s.colors);
 
   if (isLoading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.primary} />
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <ActivityIndicator color={c.primary} />
+        <Text style={{ color: c.muted, marginTop: 12 }}>Loading…</Text>
       </View>
     );
   }
 
   if (isError) {
     return (
-      <View style={styles.center}>
-        <Text>Failed to load organisations</Text>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
+        <Text style={{ color: c.text }}>Failed to load organisations</Text>
         <TouchableOpacity onPress={() => refetch()}>
-          <Text style={styles.link}>Try again</Text>
+          <Text style={[styles.link, { color: c.primary }]}>Try again</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity onPress={() => clearSession()} style={styles.logout}>
-        <Text style={styles.link}>Logout</Text>
-      </TouchableOpacity>
+    <View style={[styles.container, { backgroundColor: c.bg }]}>
+      <Text style={[styles.heading, { color: c.text }]}>Your organisations</Text>
+      <Text style={[styles.sub, { color: c.muted }]}>
+        Select an organisation to continue
+      </Text>
       <FlatList
         data={organisations}
         keyExtractor={(item) => String(item.id)}
-        ListEmptyComponent={<Text style={styles.empty}>No organisations yet</Text>}
+        contentContainerStyle={{ paddingBottom: 24 }}
+        ListEmptyComponent={
+          <Text style={[styles.empty, { color: c.muted }]}>
+            No organisations yet
+          </Text>
+        }
         renderItem={({ item }) => (
           <TouchableOpacity
-            style={styles.card}
+            style={[
+              styles.card,
+              { backgroundColor: c.surface, borderColor: c.border },
+            ]}
             onPress={async () => {
               await setOrganisation({
                 id: item.id,
@@ -63,8 +75,8 @@ export function HomeScreen({ navigation }: Props) {
               navigation.navigate("OrgHome", { orgCode: item.code });
             }}
           >
-            <Text style={styles.name}>{item.name}</Text>
-            <Text style={styles.code}>{item.code}</Text>
+            <Text style={[styles.name, { color: c.text }]}>{item.name}</Text>
+            <Text style={[styles.code, { color: c.muted }]}>{item.code}</Text>
           </TouchableOpacity>
         )}
       />
@@ -73,19 +85,18 @@ export function HomeScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: spacing.md },
+  container: { flex: 1, padding: spacing.lg },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  heading: { fontSize: 22, fontWeight: "700" },
+  sub: { marginTop: 4, marginBottom: spacing.md, fontSize: 13 },
   card: {
-    backgroundColor: colors.white,
-    borderRadius: 10,
+    borderRadius: 16,
     padding: spacing.md,
     marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: colors.border,
   },
-  name: { fontSize: 16, fontWeight: "600" },
-  code: { color: colors.greyDark, marginTop: 4 },
-  empty: { textAlign: "center", color: colors.greyDark, marginTop: 40 },
-  link: { color: colors.primary, fontWeight: "600" },
-  logout: { alignSelf: "flex-end", marginBottom: spacing.sm },
+  name: { fontSize: 16, fontWeight: "700" },
+  code: { marginTop: 4, fontSize: 12 },
+  empty: { textAlign: "center", marginTop: 40 },
+  link: { fontWeight: "700", marginTop: 8 },
 });

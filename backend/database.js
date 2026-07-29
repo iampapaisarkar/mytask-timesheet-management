@@ -4,18 +4,21 @@ import { Sequelize } from "sequelize";
 import { getDatabaseConfig } from "./config/config.js"; // Make sure to import your function
 
 // Get database configurations for each environment (development or production)
-const MYSHEETconfig = getDatabaseConfig();
+const dbConfig = getDatabaseConfig();
 
-// Sequelize instance for MYSHEET
-export const mysheet = new Sequelize(
-  MYSHEETconfig.database,
-  MYSHEETconfig.username,
-  MYSHEETconfig.password,
+// Sequelize instance
+export const db = new Sequelize(
+  dbConfig.database,
+  dbConfig.username,
+  dbConfig.password,
   {
-    host: MYSHEETconfig.host,
-    dialect: MYSHEETconfig.dialect || "mysql",
-    dialectOptions: MYSHEETconfig.dialectOptions,
+    host: dbConfig.host,
+    dialect: dbConfig.dialect || "mysql",
+    dialectOptions: dbConfig.dialectOptions,
     // logging: console.log,
     logging: false,
   },
 );
+
+/** @deprecated use db */
+export const mysheet = db;

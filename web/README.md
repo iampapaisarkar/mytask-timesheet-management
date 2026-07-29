@@ -1,6 +1,6 @@
 # Web (React + Vite)
 
-SPA for **mySheet**. Dev server runs on port **9000**.
+SPA for **myTask**. Dev server runs on port **9000**.
 
 ## Quick start
 

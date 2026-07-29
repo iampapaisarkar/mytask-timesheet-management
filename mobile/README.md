@@ -30,7 +30,7 @@ npm run android -w mobile    # Android emulator / device
 - React Native CLI 0.86
 - React Navigation
 - TanStack Query + Zustand
-- Shared `@mysheet/*` packages
+- Shared `@mytask/*` packages
 - AsyncStorage for session persistence
 
 See `docs/` for architecture, navigation, and deployment.

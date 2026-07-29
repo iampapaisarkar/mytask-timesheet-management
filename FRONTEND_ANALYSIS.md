@@ -19,7 +19,7 @@
 
 ## App identity
 
-- Title: **mySheet**
+- Title: **myTask**
 - Description: “Time tracking and working log app”
 - Primary colour: `--q-primary: #6900ff`
 - Secondary: `#26a69a`, Accent: `#9c27b0`, Dark: `#1d272d`
@@ -46,7 +46,7 @@ See `ROUTE_ANALYSIS.md` and `COMPONENT_ANALYSIS.md`.
 ## Auth UX
 
 - Login: Email + Password; “I forgot my password”; link to Signup
-- Title: “Log in to mySheet”
+- Title: “Log in to myTask”
 - Firebase client auth → backend `/auth/login`
 
 ## Data patterns recovered

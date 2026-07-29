@@ -8,5 +8,5 @@ alwaysApply: true
 - Dev server: `npm run dev` (port **9000**). Env: `web/.env` from `.env.example`.
 - Architecture docs: `web/docs/`.
 - Import aliases: `@/` → `web/src/`.
-- Consume `@mysheet/*` workspaces; do not copy API/ACL into web.
+- Consume `@mytask/*` workspaces; do not copy API/ACL into web.
 - Never introduce React Native or Expo dependencies here.

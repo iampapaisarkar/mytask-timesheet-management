@@ -1,4 +1,4 @@
-import { useCustomers } from "@mysheet/hooks";
+import { useCustomers } from "@mytask/hooks";
 import { ResourceListPage } from "@/features/shared/ResourceListPage";
 
 export function CustomersPage() {

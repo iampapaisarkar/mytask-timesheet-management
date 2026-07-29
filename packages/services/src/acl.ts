@@ -2,7 +2,7 @@ import type {
   CrudPermission,
   OrganisationAcl,
   OrganisationRoleCode,
-} from "@mysheet/types";
+} from "@mytask/types";
 
 const none = (): CrudPermission => ({
   list: false,

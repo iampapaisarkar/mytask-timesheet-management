@@ -1,19 +1,46 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap");
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #6900ff;
-  --color-secondary: #26a69a;
-  --color-accent: #9c27b0;
-  --color-positive: #21ba45;
-  --color-negative: #c10015;
-  --color-info: #31ccec;
-  --color-warning: #f2c037;
-  --color-dark: #1d272d;
-  --color-surface: #ffffff;
-  --color-muted: #757575;
-  --color-border: #e0e0e0;
-  --color-page: #f4f5f7;
-  --font-sans: Roboto, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --color-primary: #04b6b1;
+  --color-primary-hover: #039e9a;
+  --color-primary-muted: rgba(4, 182, 177, 0.12);
+  --color-secondary: #0f766e;
+  --color-positive: #10b981;
+  --color-negative: #ef4444;
+  --color-info: #3b82f6;
+  --color-warning: #f59e0b;
+  --color-page: var(--mt-bg);
+  --color-surface: var(--mt-surface);
+  --color-muted: var(--mt-muted);
+  --color-border: var(--mt-border);
+  --color-dark: var(--mt-text);
+  --font-sans: "DM Sans", "Segoe UI", Roboto, "Helvetica Neue", Helvetica, Arial,
+    sans-serif;
+}
+
+:root {
+  --mt-bg: #f4f7f8;
+  --mt-surface: #ffffff;
+  --mt-muted: #64748b;
+  --mt-border: #d7e0e4;
+  --mt-text: #0f172a;
+  --mt-sidebar: #0b1f24;
+  --mt-sidebar-text: #e6f4f3;
+  --mt-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  color-scheme: light;
+}
+
+html.dark {
+  --mt-bg: #071316;
+  --mt-surface: #0e1c20;
+  --mt-muted: #94a8ae;
+  --mt-border: #1f3338;
+  --mt-text: #e8f2f2;
+  --mt-sidebar: #050d10;
+  --mt-sidebar-text: #d7edeb;
+  --mt-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
 }
 
 html,
@@ -25,6 +52,63 @@ body,
 body {
   margin: 0;
   font-family: var(--font-sans);
-  background: var(--color-page);
-  color: var(--color-dark);
+  background: var(--mt-bg);
+  color: var(--mt-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  background: rgba(4, 182, 177, 0.25);
+}
+
+@keyframes mt-shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
+
+@keyframes mt-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mt-fade-in {
+  animation: mt-fade-in 0.35s ease both;
+}
+
+.mt-skeleton {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--mt-border) 70%, transparent),
+    color-mix(in srgb, var(--mt-surface) 80%, var(--mt-border)),
+    color-mix(in srgb, var(--mt-border) 70%, transparent)
+  );
+  background-size: 800px 100%;
+  animation: mt-shimmer 1.4s infinite linear;
+  border-radius: 10px;
+}
+
+.mt-card {
+  background: var(--mt-surface);
+  border: 1px solid var(--mt-border);
+  border-radius: 16px;
+  box-shadow: var(--mt-shadow);
+}
+
+.mt-focus:focus-visible {
+  outline: 2px solid #04b6b1;
+  outline-offset: 2px;
 }

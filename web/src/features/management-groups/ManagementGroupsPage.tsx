@@ -1,4 +1,4 @@
-import { useManagementGroups } from "@mysheet/hooks";
+import { useManagementGroups } from "@mytask/hooks";
 import { ResourceListPage } from "@/features/shared/ResourceListPage";
 
 export function ManagementGroupsPage() {

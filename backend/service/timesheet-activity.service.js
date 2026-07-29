@@ -1,7 +1,7 @@
 import { Op } from "sequelize";
 import Auth from "#auth";
 import moment from "moment-timezone";
-import { mysheet } from "../database.js";
+import { db } from "../database.js";
 import models from "../models/index.js";
 import redisUtils from "../utils/redis.utils.js";
 import timeUtils from "../utils/time.utils.js";
@@ -360,7 +360,7 @@ async function storeLocation({
   fcmToken,
 }) {
   // Start transaction early (we will rollback on any early return)
-  const transaction = await mysheet.transaction();
+  const transaction = await db.transaction();
 
   try {
     if (typeof location === "string") location = JSON.parse(location);

@@ -1,3 +1,3 @@
 # Mobile Styling
 
-StyleSheet + `@mysheet/theme` tokens.
+StyleSheet + `@mytask/theme` tokens.
