@@ -472,7 +472,13 @@ export async function getDashboardOverview(user, organisation) {
 
   const timesheets = await Timesheets.unscoped().findAll({
     where: whereCondition,
-    attributes: ["id", "code", "period_start_date", "period_end_date", "updated_at"],
+    attributes: [
+      "id",
+      "code",
+      "period_start_date",
+      "period_end_date",
+      "created_at",
+    ],
     include: [
       {
         model: TimesheetStatus,
@@ -480,7 +486,7 @@ export async function getDashboardOverview(user, organisation) {
         attributes: ["id", "name", "code"],
       },
     ],
-    order: [["updated_at", "desc"]],
+    order: [["created_at", "desc"]],
     limit: 500,
     raw: false,
     nest: true,
@@ -596,7 +602,7 @@ export async function getDashboardOverview(user, organisation) {
   for (const ts of timesheets) {
     const plain = ts.toJSON ? ts.toJSON() : ts;
     if (plain.status?.code !== "approved") continue;
-    const key = moment(plain.period_end_date || plain.updated_at).format(
+    const key = moment(plain.period_end_date || plain.created_at).format(
       "YYYY-MM",
     );
     if (trendBuckets[key]) trendBuckets[key].value += 1;
