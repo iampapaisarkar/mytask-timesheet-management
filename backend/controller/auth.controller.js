@@ -9,11 +9,15 @@ const {
 } = models;
 import Auth from "#auth";
 import moment from "moment";
-import admin from "firebase-admin";
 import { FirebaseMessaging } from "#firebasemessaging";
 import { enqueueSendEmail } from "../queue-jobs/send-email.job.js";
 import redisUtils from "../utils/redis.utils.js";
 import { db } from "../database.js";
+import {
+  generateEmailVerificationAppLink,
+  generatePasswordResetAppLink,
+  sendFirebasePasswordResetEmail,
+} from "../utils/firebase-auth-links.js";
 
 export async function login(req, res, next) {
   const { email, invitation_token, fcmToken, oldFcmToken, platform, timezone } =
@@ -195,38 +199,31 @@ export async function signup(req, res, next) {
 
     /** * Post-Transaction: External Services (Firebase, Email)
      **/
-    const actionCodeSettings = {
-      url: `${process.env.CLIENT_URL}auth-actions?email=${email}`,
-      handleCodeInApp: true,
-    };
-
-    const firebaseLink = await admin
-      .auth()
-      .generateEmailVerificationLink(email, actionCodeSettings);
-    const urlParams = new URLSearchParams(firebaseLink.split("?")[1]);
-
-    const customLink = `${
-      process.env.CLIENT_URL
-    }auth-actions?mode=${urlParams.get("mode")}&oobCode=${urlParams.get(
-      "oobCode",
-    )}`;
-
-    await enqueueSendEmail({
-      user: existingUser || { email, first_name },
-      organisation: null,
-      userEmails: [email],
-      message: {
-        subject: `${process.env.APP_NAME} - Verify email`,
-        template: "email-verification.html",
-        variables: {
-          title: `${process.env.APP_NAME} - Verify email`,
-          message: `Verify your email address. Click below button to verify.`,
-          button_url: customLink,
-          button_label: "Verify Now",
+    try {
+      const appName = process.env.APP_NAME || "myTask";
+      const customLink = await generateEmailVerificationAppLink(email);
+      await enqueueSendEmail({
+        user: existingUser || { email, first_name },
+        organisation: null,
+        userEmails: [email],
+        message: {
+          subject: `${appName} - Verify email`,
+          template: "email-verification.html",
+          variables: {
+            title: `${appName} - Verify email`,
+            message: `Welcome to ${appName}. Verify your email address by clicking the button below.`,
+            button_url: customLink,
+            button_label: "Verify email",
+          },
         },
-      },
-    });
-
+        immediate: true,
+      });
+    } catch (mailErr) {
+      console.error(
+        "Verification email failed (signup continues):",
+        mailErr?.message || mailErr,
+      );
+    }
     let sessionCreationResponse = await Auth.createSession(authUserId, token);
 
     if (sessionCreationResponse.success) {
@@ -266,52 +263,71 @@ export async function signup(req, res, next) {
 export async function forgotPassword(req, res, next) {
   const { email } = req.body;
 
-  try {
-    const actionCodeSettings = {
-      url: `${process.env.CLIENT_URL}auth-actions?email=${email}`,
-      handleCodeInApp: true,
-    };
-
-    const firebaseLink = await admin
-      .auth()
-      .generatePasswordResetLink(email, actionCodeSettings);
-
-    // Extract key params from Firebase link
-    const urlParams = new URLSearchParams(firebaseLink.split("?")[1]);
-    const oobCode = urlParams.get("oobCode");
-    const mode = urlParams.get("mode");
-
-    // Construct your custom frontend URL
-    const customLink = `${process.env.CLIENT_URL}auth-actions?mode=${mode}&oobCode=${oobCode}`;
-
-    const subject = `${process.env.APP_NAME} - Reset password`;
-
-    const message = {
-      subject: subject,
-      template: "forgot-password.html",
-      variables: {
-        title: subject,
-        message: `Here is you reset password link. Click below button to reset your password.`,
-        button_url: customLink,
-        button_label: "Reset Now",
-      },
-    };
-    // Add to queue
-    await enqueueSendEmail({
-      user: { email },
-      organisation: null,
-      userEmails: [email],
-      message: message,
+  if (!email) {
+    return res.status(400).json({
+      message: "Email is required",
     });
+  }
+
+  try {
+    const appName = process.env.APP_NAME || "myTask";
+    let delivery = "firebase";
+
+    // 1) Preferred: Admin reset link + myTask branded email over SMTP (same path as /mail-test)
+    try {
+      const customLink = await generatePasswordResetAppLink(email);
+      const subject = `${appName} - Reset password`;
+      await enqueueSendEmail({
+        user: { email },
+        organisation: null,
+        userEmails: [email],
+        message: {
+          subject,
+          template: "forgot-password.html",
+          variables: {
+            title: subject,
+            message:
+              "We received a request to reset your password. Click the button below to choose a new password.",
+            button_url: customLink,
+            button_label: "Reset password",
+          },
+        },
+        immediate: true,
+      });
+      delivery = "branded-smtp";
+      console.log(`[forgotPassword] branded SMTP sent to ${email}`);
+    } catch (brandedErr) {
+      console.warn(
+        "[forgotPassword] branded SMTP path failed:",
+        brandedErr?.message || brandedErr,
+      );
+      // 2) Fallback: Firebase sends its own reset email via API key
+      await sendFirebasePasswordResetEmail(email);
+      delivery = "firebase-api";
+      console.log(`[forgotPassword] Firebase API reset triggered for ${email}`);
+    }
 
     return res.status(200).json({
-      message: "Password reset link sent to your email",
+      message:
+        "If an account exists for that email, password reset instructions have been sent.",
+      delivery,
     });
   } catch (err) {
-    console.log("err::", err);
-    res.status(500).json({
-      message: "Unable to reset password. Please ty again later.",
-      details: err,
+    console.error("forgotPassword error:", err);
+    const code = err?.code || err?.message || "";
+    if (
+      String(code).includes("EMAIL_NOT_FOUND") ||
+      String(code).includes("USER_NOT_FOUND") ||
+      String(err?.message || "").toLowerCase().includes("no user")
+    ) {
+      return res.status(200).json({
+        message:
+          "If an account exists for that email, password reset instructions have been sent.",
+      });
+    }
+    return res.status(500).json({
+      message: "Unable to send password reset email. Please try again later.",
+      details: err?.message || String(err),
     });
   }
 }

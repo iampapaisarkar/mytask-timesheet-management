@@ -553,20 +553,20 @@ async function inviteEmployee(
     /* ----------------------------------
      * 5. Send Email (if email exists)
      * ---------------------------------- */
-    const subject = `${orgName} Invited You to Their Organisation 🎉`;
+    const subject = `${process.env.APP_NAME || "myTask"} · ${orgName} invited you`;
 
     const message = {
       subject,
       template: "organisation-invitation.html",
       variables: {
         title: subject,
-        message: `${user.full_name} invited you to their organisation as ${
+        message: `${user.full_name} invited you to join ${orgName} as ${
           role?.name || "Employee"
         }. Click the button below to accept.`,
         button_url: `${
           process.env.CLIENT_URL
         }org-invitation?token=${encodeURIComponent(invitationToken)}`,
-        button_label: "Join Now",
+        button_label: "Accept invitation",
       },
     };
 

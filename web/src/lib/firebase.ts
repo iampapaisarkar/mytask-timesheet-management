@@ -62,7 +62,11 @@ export async function firebaseSignup(
 }
 
 export async function firebaseForgotPassword(email: string): Promise<void> {
-  await sendPasswordResetEmail(getFirebaseAuth(), email);
+  const continueUrl = `${window.location.origin}/auth-actions?email=${encodeURIComponent(email)}`;
+  await sendPasswordResetEmail(getFirebaseAuth(), email, {
+    url: continueUrl,
+    handleCodeInApp: true,
+  });
 }
 
 export async function firebaseLogout(): Promise<void> {

@@ -32,15 +32,20 @@ export function ForgotPasswordPage() {
     try {
       try {
         await authApi.forgotPassword({ email: values.email });
-      } catch {
+      } catch (apiErr) {
+        // Backend may fail if Admin SDK is misconfigured; client Firebase still sends mail.
+        console.warn("Backend forgot-password failed, using Firebase client", apiErr);
         await firebaseForgotPassword(values.email);
       }
       const msg =
-        "Password reset instructions have been sent if the account exists.";
+        "If an account exists for that email, password reset instructions have been sent.";
       setSuccess(msg);
-      toast.info("Check your email", msg);
+      toast.success("Check your email", msg);
     } catch (err) {
-      const message = getErrorMessage(err);
+      const message = getErrorMessage(
+        err,
+        "Unable to send reset email. Please try again.",
+      );
       setError(message);
       toast.error("Reset failed", message);
     }
@@ -52,12 +57,15 @@ export function ForgotPasswordPage() {
         <h1 className="text-2xl font-bold tracking-tight text-[var(--mt-text)]">
           Forgot password
         </h1>
-        <p className="mt-1 text-sm text-muted">We will email you a reset link</p>
+        <p className="mt-1 text-sm text-muted">
+          Enter your email and we will send a myTask reset link
+        </p>
       </div>
       <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)}>
         <TextInput
           label="Email"
           type="email"
+          autoComplete="email"
           error={errors.email?.message}
           {...register("email")}
         />

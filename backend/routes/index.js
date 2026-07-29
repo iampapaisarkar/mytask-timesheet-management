@@ -69,21 +69,33 @@ router.use("/reports", TokenValidate, OrganisationValidate, Report);
 router.use("/xero", TokenValidate, Xero);
 
 router.get("/mail-test", async (req, res) => {
-  const { user_id = null } = req.query;
+  const { email = null } = req.query;
+  const appName = process.env.APP_NAME || "myTask";
+
+  if (!email) {
+    return res.status(400).json({
+      message: "Pass ?email=you@example.com to send a test message",
+    });
+  }
 
   try {
     const message = {
-      subject: "Organisation invitation 🎉",
-      template: "organisation-invitation.html",
+      subject: `${appName} - Mail test`,
+      template: "forgot-password.html",
       variables: {
-        title: "Organisation invitation",
+        title: `${appName} mail test`,
         message:
-          "Joel invite you to their organisation as Manager role. Click below button to accept.",
-        button_url: "http://localhost:9000/#/",
-        button_label: "Join Now",
+          "If you can read this, myTask SMTP delivery is working with the updated templates.",
+        button_url: process.env.CLIENT_URL || "http://localhost:9000/",
+        button_label: "Open myTask",
       },
     };
-    const response = await NodeMailer.send([user_id], message);
+    const response = await NodeMailer.send(
+      { email },
+      null,
+      [email],
+      message,
+    );
 
     res.json({ response });
   } catch (err) {

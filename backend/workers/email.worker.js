@@ -30,12 +30,15 @@ async function sendMail(user, organisation, userEmails, message) {
       user,
       organisation,
       userEmails,
-      message
+      message,
     );
+    if (!response?.success) {
+      throw new Error(response?.message || "Email send failed");
+    }
     return true;
   } catch (err) {
     console.error("Error sending email", err);
-    return { success: false, error: err.message };
+    throw err;
   }
 }
 
