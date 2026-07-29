@@ -1,90 +1,66 @@
 import { useState } from "react";
-import { getErrorMessage } from "@mytask/utils";
+import { useQuery } from "@tanstack/react-query";
+import { organisationsApi } from "@mytask/api";
+import { queryKeys } from "@mytask/hooks";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { useOrganisationStore } from "@/store/organisationStore";
-import { TextInput } from "@/components/ui/TextInput";
-import { FormDialog } from "@/components/ui/FormDialog";
-import { useToastStore } from "@/store/toastStore";
-import { ResourceListPage } from "@/features/shared/ResourceListPage";
-import { useAwardRates, useCreateAwardRate } from "./settingsHooks";
+import { ResourceListPage, type Row } from "@/features/shared/ResourceListPage";
+import { useAwardRates } from "./settingsHooks";
+import { AwardRateRulesFormDialog } from "./AwardRateRulesFormDialog";
 
-/**
- * Simplified award-rate (earning rate rules) create.
- * Full IF/THEN rule builder can expand later; Vue stored complex nested settings/rules.
- * This creates a named award rate with minimal ordinary-hours settings so the list is usable.
- */
 export function EarningRateRulesPage() {
   const query = useAwardRates();
-  const toast = useToastStore();
+  const orgCode = useOrganisationStore((s) => s.organisation?.code) || "";
   const role = useOrganisationStore((s) => s.organisation?.role);
   const acl = getOrganisationAcl(role);
   const canCreate = can(acl, "awardRate", "create");
-  const createMutation = useCreateAwardRate();
+  const canEdit = can(acl, "awardRate", "edit");
+
+  const orgQuery = useQuery({
+    queryKey: queryKeys.organisation(orgCode),
+    queryFn: async () => {
+      const res = await organisationsApi.get(orgCode);
+      return res.data.data as Record<string, unknown>;
+    },
+    enabled: Boolean(orgCode),
+    staleTime: 30_000,
+  });
+
+  const hasXero = Boolean(orgQuery.data?.xero_connection);
 
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
+  const [editing, setEditing] = useState<Row | null>(null);
 
-  async function handleSave() {
-    if (!name.trim()) {
-      toast.warning("Name required");
-      return;
-    }
-    try {
-      await createMutation.mutateAsync({
-        name: name.trim(),
-        settings: {
-          ordinary_hours: 7.6,
-          rounding_interval: { id: 1 },
-        },
-        rules: [],
-        earning_rates: [],
-        push_to_xero: false,
-      });
-      toast.success("Earning rate rule created");
-      setOpen(false);
-      setName("");
-    } catch (err) {
-      toast.error("Create failed", getErrorMessage(err));
-    }
+  function openCreate() {
+    setEditing(null);
+    setOpen(true);
+  }
+
+  function openEdit(row: Row) {
+    if (!canEdit) return;
+    setEditing(row);
+    setOpen(true);
   }
 
   return (
     <>
       <ResourceListPage
-        title="Earning rate rules"
+        title="Earning Rate Rules"
         query={query}
-        columns={[
-          { key: "id", label: "ID" },
-          { key: "name", label: "Name" },
-        ]}
-        createLabel={canCreate ? "Create rule set" : undefined}
-        onCreate={
-          canCreate
-            ? () => {
-                setName("");
-                setOpen(true);
-              }
-            : undefined
-        }
+        columns={[{ key: "name", label: "Name" }]}
+        createLabel={canCreate ? "Create" : undefined}
+        onCreate={canCreate ? openCreate : undefined}
+        onRowClick={canEdit ? openEdit : undefined}
       />
-      <FormDialog
+      <AwardRateRulesFormDialog
         open={open}
-        title="Create earning rate rules"
-        onClose={() => setOpen(false)}
-        onSubmit={() => void handleSave()}
-        loading={createMutation.isPending}
-        submitLabel="Create"
-      >
-        <TextInput
-          label="Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <p className="text-xs text-muted">
-          Creates an award-rate container with default ordinary hours. Detailed
-          IF/THEN rules can be refined to match the full Vue rule builder.
-        </p>
-      </FormDialog>
+        awardRate={editing}
+        hasXero={hasXero}
+        onClose={() => {
+          setOpen(false);
+          setEditing(null);
+        }}
+      />
     </>
   );
 }

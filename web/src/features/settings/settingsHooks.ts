@@ -171,12 +171,119 @@ export function useUpdateEarningRate() {
 }
 
 export function useCreateAwardRate() {
-  const invalidate = useInvalidate(["award-rates"]);
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (payload: Record<string, unknown>) =>
       awardRatesApi.create(payload),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["award-rates"] });
+      void qc.invalidateQueries({ queryKey: ["system", "earning-rates"] });
+    },
   });
+}
+
+export function useUpdateAwardRate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...payload
+    }: {
+      id: string | number;
+    } & Record<string, unknown>) => awardRatesApi.update(id, payload),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["award-rates"] });
+      void qc.invalidateQueries({ queryKey: ["system", "earning-rates"] });
+    },
+  });
+}
+
+export type RoundingInterval = {
+  id: number;
+  name?: string;
+  value?: number;
+};
+
+export type AwardRuleDay = {
+  id: number;
+  name?: string;
+  code?: string;
+  locked?: boolean;
+  show_default?: boolean;
+};
+
+export type AwardRuleComparator = {
+  id: number;
+  name?: string;
+  code?: string;
+};
+
+export type AwardRuleField = {
+  id: number;
+  name?: string;
+  code?: string;
+  category?: string;
+  field_type?: { id?: number; name?: string; code?: string };
+  comparators?: AwardRuleComparator[];
+};
+
+export type EarningRateOption = {
+  id: number;
+  name?: string;
+  rate?: string | number;
+};
+
+export function useAwardRateRuleLookups(enabled = true) {
+  const fields = useQuery({
+    queryKey: ["system", "award-rate-rule-fields"],
+    queryFn: async () => {
+      const res = await systemApi.get("award-rate-rule-fields");
+      return (res.data as { data: AwardRuleField[] }).data;
+    },
+    enabled,
+    staleTime: 5 * 60_000,
+  });
+  const days = useQuery({
+    queryKey: ["system", "award-rate-rule-days"],
+    queryFn: async () => {
+      const res = await systemApi.get("award-rate-rule-days");
+      return (res.data as { data: AwardRuleDay[] }).data;
+    },
+    enabled,
+    staleTime: 5 * 60_000,
+  });
+  const rounding = useQuery({
+    queryKey: ["system", "rounding-intervals"],
+    queryFn: async () => {
+      const res = await systemApi.get("rounding-intervals");
+      return (res.data as { data: RoundingInterval[] }).data;
+    },
+    enabled,
+    staleTime: 5 * 60_000,
+  });
+  const earningRates = useQuery({
+    queryKey: ["system", "earning-rates"],
+    queryFn: async () => {
+      const res = await systemApi.get("earning-rates", { paginate: false });
+      return (res.data as { data: EarningRateOption[] }).data;
+    },
+    enabled,
+    staleTime: 30_000,
+  });
+
+  return {
+    fields: fields.data || [],
+    days: days.data || [],
+    roundingIntervals: rounding.data || [],
+    earningRates: earningRates.data || [],
+    isLoading:
+      fields.isLoading ||
+      days.isLoading ||
+      rounding.isLoading ||
+      earningRates.isLoading,
+    isError:
+      fields.isError || days.isError || rounding.isError || earningRates.isError,
+  };
 }
 
 export function useUpdateOrganisation() {

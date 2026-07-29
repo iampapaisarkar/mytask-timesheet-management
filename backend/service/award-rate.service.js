@@ -160,7 +160,7 @@ async function createAwardRateRules({
             organisation_id: organisation.id,
             award_rate_rule_id: awardRateRule.id,
             award_rate_field_id: ifx.field.id,
-            award_rate_comparison_id: ifx.comparison.id,
+            award_rate_comparison_id: ifx.comparison?.id ?? null,
             value: ifx.value ?? null,
             from: ifx.from ?? null,
             to: ifx.to ?? null,
