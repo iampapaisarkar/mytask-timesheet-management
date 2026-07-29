@@ -21,6 +21,7 @@ import { enqueueSendEmail } from "../queue-jobs/send-email.job.js";
 import { enqueueSendNotification } from "../queue-jobs/send-notification.job.js";
 import { SystemFunction } from "#systemfunction";
 import moment from "moment";
+import { resolveStateId } from "../utils/state.utils.js";
 class AppError extends Error {
   constructor(message, statusCode = 400) {
     super(message);
@@ -116,6 +117,13 @@ async function createOrUpdateEmployeeDetails(
 
       // Create address
       if (details?.address) {
+        const stateId = await resolveStateId(
+          details.address.state,
+          transaction,
+        );
+        if (!stateId) {
+          throw new AppError("State / region is required!", 400);
+        }
         await EmployeeAddress.create(
           {
             organisation_id: organisation.id,
@@ -123,8 +131,8 @@ async function createOrUpdateEmployeeDetails(
             address_1: details?.address?.address_1,
             address_2: details?.address?.address_2,
             city: details?.address?.city,
-            state_id: details?.address?.state?.id,
-            postcode: details?.address?.postcode,
+            state_id: stateId,
+            postcode: String(details?.address?.postcode ?? ""),
           },
           { transaction },
         );
@@ -177,6 +185,13 @@ async function createOrUpdateEmployeeDetails(
 
       // Create Address
       if (details?.address) {
+        const stateId = await resolveStateId(
+          details.address.state,
+          transaction,
+        );
+        if (!stateId) {
+          throw new AppError("State / region is required!", 400);
+        }
         await EmployeeAddress.create(
           {
             organisation_id: organisation.id,
@@ -184,8 +199,8 @@ async function createOrUpdateEmployeeDetails(
             address_1: details?.address?.address_1,
             address_2: details?.address?.address_2,
             city: details?.address?.city,
-            state_id: details?.address?.state?.id,
-            postcode: details?.address?.postcode,
+            state_id: stateId,
+            postcode: String(details?.address?.postcode ?? ""),
           },
           { transaction },
         );

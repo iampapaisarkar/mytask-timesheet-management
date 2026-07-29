@@ -24,6 +24,7 @@ import { enqueueSendEmail } from "../queue-jobs/send-email.job.js";
 import { enqueueSendNotification } from "../queue-jobs/send-notification.job.js";
 import { db } from "../database.js";
 import { SystemFunction } from "#systemfunction";
+import { resolveStateId } from "../utils/state.utils.js";
 
 export async function list(req, res, next) {
   const { user } = req.body;
@@ -174,14 +175,21 @@ export async function create(req, res, next) {
 
     // Create Address
     if (address) {
+      const stateId = await resolveStateId(address.state, transaction);
+      if (!stateId) {
+        await transaction.rollback();
+        return res.status(501).json({
+          message: "State / region is required!",
+        });
+      }
       await OrganisationAddress.create(
         {
           organisation_id: response.id,
           address_1: address?.address_1,
           address_2: address?.address_2,
           city: address?.city,
-          state_id: address?.state?.id,
-          postcode: address?.postcode,
+          state_id: stateId,
+          postcode: String(address?.postcode ?? ""),
           latitude: address?.latitude,
           longitude: address?.longitude,
         },
@@ -337,13 +345,19 @@ export async function update(req, res, next) {
 
     // Create Address
     if (address) {
+      const stateId = await resolveStateId(address.state);
+      if (!stateId) {
+        return res.status(501).json({
+          message: "State / region is required!",
+        });
+      }
       await OrganisationAddress.create({
         organisation_id: organisation.id,
         address_1: address?.address_1,
         address_2: address?.address_2,
         city: address?.city,
-        state_id: address?.state?.id,
-        postcode: address?.postcode,
+        state_id: stateId,
+        postcode: String(address?.postcode ?? ""),
         latitude: address?.latitude,
         longitude: address?.longitude,
       });

@@ -5,11 +5,14 @@ import {
   useManagementGroups,
   useSearchEmployeeByEmail,
   useSystemLookup,
-  useSystemStates,
 } from "@mytask/hooks";
 import { getErrorMessage } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
 import { TextInput } from "@/components/ui/TextInput";
+import {
+  GoogleAddress,
+  type AddressValue,
+} from "@/components/GoogleAddress";
 import { useToastStore } from "@/store/toastStore";
 
 const selectClass =
@@ -33,7 +36,7 @@ type EmployeeForm = {
       address_1: string;
       address_2: string;
       city: string;
-      state: NamedId | null;
+      state: { id?: number; name?: string; code?: string } | null;
       postcode: string;
     };
     role: NamedId | null;
@@ -160,7 +163,6 @@ export function CreateEmployeeDialog({
     enabled,
   );
   const awardRatesQuery = useSystemLookup<NamedId[]>("award-rates", enabled);
-  const statesQuery = useSystemStates(enabled);
   const groupsQuery = useManagementGroups({ rows_per_page: 200 }, enabled);
 
   const roles = (rolesQuery.data || []) as NamedId[];
@@ -171,7 +173,6 @@ export function CreateEmployeeDialog({
   const frequencies = (frequenciesQuery.data || []) as NamedId[];
   const calendars = (calendarsQuery.data || []) as NamedId[];
   const awardRates = (awardRatesQuery.data || []) as NamedId[];
-  const states = statesQuery.data || [];
   const groups = (Array.isArray(groupsQuery.data)
     ? groupsQuery.data
     : []) as NamedId[];
@@ -319,8 +320,9 @@ export function CreateEmployeeDialog({
     if (!d.dob) return "Date of birth is required";
     if (!d.address.address_1.trim()) return "Address line 1 is required";
     if (!d.address.city.trim()) return "City is required";
-    if (!d.address.state?.id) return "State is required";
-    if (!d.address.postcode.trim()) return "Postcode is required";
+    if (!d.address.state?.id && !d.address.state?.name?.trim())
+      return "State / province / region is required";
+    if (!d.address.postcode.trim()) return "Postcode / ZIP is required";
     if (!d.phone_number.trim()) return "Phone number is required";
     if (!d.role?.id) return "Role is required";
     if (!d.region?.id) return "Region is required";
@@ -553,52 +555,25 @@ export function CreateEmployeeDialog({
                   }
                 />
               </div>
-              <TextInput
-                label="Address Line 1"
-                value={form.details.address.address_1}
-                onChange={(e) => patchAddress({ address_1: e.target.value })}
+              <GoogleAddress
+                value={
+                  {
+                    ...form.details.address,
+                    latitude: null,
+                    longitude: null,
+                  } as AddressValue
+                }
+                onChange={(next) =>
+                  patchAddress({
+                    address_1: next.address_1,
+                    address_2: next.address_2 || "",
+                    city: next.city,
+                    state: next.state,
+                    postcode: next.postcode,
+                  })
+                }
+                requireCoordinates={false}
               />
-              <TextInput
-                label="Address Line 2"
-                value={form.details.address.address_2}
-                onChange={(e) => patchAddress({ address_2: e.target.value })}
-              />
-              <div className="grid gap-3 sm:grid-cols-3">
-                <TextInput
-                  label="City"
-                  value={form.details.address.city}
-                  onChange={(e) => patchAddress({ city: e.target.value })}
-                />
-                <label className="flex w-full flex-col gap-1.5 text-sm">
-                  <span className="font-medium">State</span>
-                  <select
-                    className={selectClass}
-                    value={form.details.address.state?.id ?? ""}
-                    onChange={(e) => {
-                      const id = Number(e.target.value);
-                      const matched =
-                        states.find((s) => s.id === id) || null;
-                      patchAddress({
-                        state: matched
-                          ? { id: matched.id, name: matched.name }
-                          : null,
-                      });
-                    }}
-                  >
-                    <option value="">Select</option>
-                    {states.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <TextInput
-                  label="Postcode"
-                  value={form.details.address.postcode}
-                  onChange={(e) => patchAddress({ postcode: e.target.value })}
-                />
-              </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="flex w-full flex-col gap-1.5 text-sm">
                   <span className="font-medium">Role</span>

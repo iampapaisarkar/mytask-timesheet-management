@@ -50,7 +50,8 @@ export function CreateOrganisationPage() {
       address_1: "",
       address_2: "",
       city: "",
-      state_id: 0,
+      state_id: undefined,
+      state_name: "",
       postcode: "",
     },
   });
@@ -60,7 +61,10 @@ export function CreateOrganisationPage() {
     setValue("address_1", next.address_1, { shouldValidate: true });
     setValue("address_2", next.address_2 || "", { shouldValidate: true });
     setValue("city", next.city, { shouldValidate: true });
-    setValue("state_id", next.state?.id || 0, { shouldValidate: true });
+    setValue("state_id", next.state?.id, { shouldValidate: true });
+    setValue("state_name", next.state?.name || next.state?.code || "", {
+      shouldValidate: true,
+    });
     setValue("postcode", next.postcode, { shouldValidate: true });
   }
 
@@ -76,7 +80,11 @@ export function CreateOrganisationPage() {
           address_1: values.address_1,
           address_2: values.address_2 || null,
           city: values.city,
-          state: { id: values.state_id },
+          state: {
+            ...(values.state_id ? { id: values.state_id } : {}),
+            name: values.state_name,
+            code: address.state?.code,
+          },
           postcode: values.postcode,
           latitude: address.latitude || null,
           longitude: address.longitude || null,
@@ -169,12 +177,12 @@ export function CreateOrganisationPage() {
           />
           {errors.address_1?.message ||
           errors.city?.message ||
-          errors.state_id?.message ||
+          errors.state_name?.message ||
           errors.postcode?.message ? (
             <p className="mt-2 text-xs text-negative">
               {errors.address_1?.message ||
                 errors.city?.message ||
-                errors.state_id?.message ||
+                errors.state_name?.message ||
                 errors.postcode?.message}
             </p>
           ) : null}

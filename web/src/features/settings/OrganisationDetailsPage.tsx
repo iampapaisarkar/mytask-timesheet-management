@@ -110,7 +110,13 @@ export function OrganisationDetailsPage() {
           address_2: address.address_2?.trim() || null,
           city: address.city.trim(),
           postcode: address.postcode.trim(),
-          state: address.state ? { id: address.state.id } : null,
+          state: address.state
+            ? {
+                ...(address.state.id ? { id: address.state.id } : {}),
+                name: address.state.name,
+                code: address.state.code,
+              }
+            : null,
           latitude: address.latitude === "" ? null : address.latitude,
           longitude: address.longitude === "" ? null : address.longitude,
         },

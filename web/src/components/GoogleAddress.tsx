@@ -1,13 +1,21 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useSystemStates } from "@mytask/hooks";
 import { TextInput } from "@/components/ui/TextInput";
+import {
+  hasGooglePlaces,
+  loadGoogleMaps,
+  type GoogleAutocomplete,
+  type GooglePlaceComponents,
+} from "@/lib/googleMaps";
 
 export type AddressValue = {
   address_1: string;
   address_2?: string;
   city: string;
-  state: { id: number; name?: string; code?: string } | null;
+  /** Region / state / province — id optional; backend upserts by name when missing */
+  state: { id?: number; name?: string; code?: string } | null;
   postcode: string;
+  country?: string;
   latitude: string | number | null;
   longitude: string | number | null;
 };
@@ -18,6 +26,7 @@ const emptyAddress = (): AddressValue => ({
   city: "",
   state: null,
   postcode: "",
+  country: "",
   latitude: "",
   longitude: "",
 });
@@ -25,78 +34,46 @@ const emptyAddress = (): AddressValue => ({
 const selectClass =
   "mt-focus rounded-xl border border-border bg-[var(--mt-surface)] px-3.5 py-3 text-[var(--mt-text)] outline-none focus:border-primary";
 
-declare global {
-  interface Window {
-    google?: {
-      maps?: {
-        places?: {
-          Autocomplete: new (
-            input: HTMLInputElement,
-            opts?: {
-              fields?: string[];
-              componentRestrictions?: { country: string | string[] };
-            },
-          ) => {
-            addListener: (event: string, handler: () => void) => void;
-            getPlace: () => {
-              formatted_address?: string;
-              address_components?: Array<{
-                long_name: string;
-                short_name: string;
-                types: string[];
-              }>;
-              geometry?: {
-                location?: { lat: () => number; lng: () => number };
-              };
-            };
-          };
-        };
-        event?: { clearInstanceListeners?: (instance: unknown) => void };
-      };
-    };
-    __mtGoogleMapsPromise?: Promise<void>;
-  }
-}
-
-function loadGoogleMaps(apiKey: string): Promise<void> {
-  if (window.google?.maps?.places) return Promise.resolve();
-  if (window.__mtGoogleMapsPromise) return window.__mtGoogleMapsPromise;
-
-  window.__mtGoogleMapsPromise = new Promise((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>(
-      "script[data-mt-google-maps]",
-    );
-    if (existing) {
-      existing.addEventListener("load", () => resolve());
-      existing.addEventListener("error", () =>
-        reject(new Error("Failed to load Google Maps")),
-      );
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places`;
-    script.async = true;
-    script.dataset.mtGoogleMaps = "1";
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Failed to load Google Maps"));
-    document.head.appendChild(script);
-  });
-
-  return window.__mtGoogleMapsPromise;
-}
-
 function component(
-  components: Array<{
-    long_name: string;
-    short_name: string;
-    types: string[];
-  }>,
+  components: GooglePlaceComponents,
   type: string,
   short = false,
 ): string {
   const match = components.find((c) => c.types.includes(type));
   if (!match) return "";
   return short ? match.short_name : match.long_name;
+}
+
+function buildStreetLine(parts: GooglePlaceComponents): string {
+  const number = component(parts, "street_number");
+  const route = component(parts, "route");
+  const line = [number, route].filter(Boolean).join(" ").trim();
+  if (line) return line;
+  return (
+    component(parts, "premise") ||
+    component(parts, "subpremise") ||
+    ""
+  );
+}
+
+function matchKnownState(
+  stateList: Array<{ id: number; name: string; code?: string }> | undefined,
+  name: string,
+  code: string,
+) {
+  if (!stateList?.length) return null;
+  const byName = stateList.find(
+    (s) => s.name.toLowerCase() === name.toLowerCase(),
+  );
+  if (byName) return byName;
+  if (!code) return null;
+  return (
+    stateList.find(
+      (s) =>
+        (s.code || "").toLowerCase() === code.toLowerCase() &&
+        s.name.toLowerCase() === name.toLowerCase(),
+    ) || null
+  );
 }
 
 export function GoogleAddress({
@@ -113,6 +90,7 @@ export function GoogleAddress({
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
   const hasMaps = Boolean(apiKey?.trim());
   const searchId = useId();
+  const regionListId = useId();
   const searchRef = useRef<HTMLInputElement>(null);
   const form: AddressValue = { ...emptyAddress(), ...(value || {}) };
   const { data: states } = useSystemStates();
@@ -131,64 +109,66 @@ export function GoogleAddress({
   useEffect(() => {
     if (!hasMaps || !apiKey) return;
     let cancelled = false;
-    let autocomplete: {
-      addListener: (event: string, handler: () => void) => void;
-      getPlace: () => unknown;
-    } | null = null;
+    let autocomplete: GoogleAutocomplete | null = null;
 
     void loadGoogleMaps(apiKey)
       .then(() => {
-        if (cancelled || !searchRef.current || !window.google?.maps?.places) {
+        if (cancelled || !searchRef.current || !hasGooglePlaces()) {
           return;
         }
         setMapsReady(true);
-        autocomplete = new window.google.maps.places.Autocomplete(
-          searchRef.current,
-          {
-            fields: ["formatted_address", "address_components", "geometry"],
-            componentRestrictions: { country: "au" },
-          },
-        );
-        autocomplete.addListener("place_changed", () => {
-          const place = autocomplete?.getPlace() as {
-            formatted_address?: string;
-            address_components?: Array<{
-              long_name: string;
-              short_name: string;
-              types: string[];
-            }>;
-            geometry?: {
-              location?: { lat: () => number; lng: () => number };
-            };
-          };
-          const parts = place.address_components || [];
+        setMapsError(null);
+
+        const Places = window.google?.maps?.places;
+        if (!Places) return;
+
+        autocomplete = new Places.Autocomplete(searchRef.current, {
+          fields: ["formatted_address", "address_components", "geometry"],
+          types: ["address"],
+        });
+
+        const instance = autocomplete;
+        instance.addListener("place_changed", () => {
+          const place = instance.getPlace();
+          if (!place?.address_components?.length) {
+            return;
+          }
+          const parts = place.address_components;
+          const stateName = component(parts, "administrative_area_level_1");
           const stateCode = component(
             parts,
             "administrative_area_level_1",
             true,
           );
-          const stateList = statesRef.current || [];
-          const matchedState =
-            stateList.find(
-              (s) =>
-                (s as { code?: string }).code === stateCode ||
-                s.name === component(parts, "administrative_area_level_1"),
-            ) || null;
+          const matchedState = matchKnownState(
+            statesRef.current as
+              | Array<{ id: number; name: string; code?: string }>
+              | undefined,
+            stateName,
+            stateCode,
+          );
+
+          const street = buildStreetLine(parts);
           onChangeRef.current({
-            address_1: place.formatted_address || component(parts, "route") || "",
+            address_1: street || place.formatted_address || "",
             address_2: "",
             city:
               component(parts, "locality") ||
               component(parts, "postal_town") ||
+              component(parts, "sublocality") ||
+              component(parts, "administrative_area_level_2") ||
               "",
-            state: matchedState
-              ? {
-                  id: matchedState.id,
-                  name: matchedState.name,
-                  code: (matchedState as { code?: string }).code,
-                }
+            state: stateName || stateCode
+              ? matchedState
+                ? {
+                    id: matchedState.id,
+                    name: matchedState.name,
+                    code: matchedState.code,
+                  }
+                : { name: stateName || stateCode, code: stateCode || undefined }
               : null,
             postcode: component(parts, "postal_code"),
+            country: component(parts, "country"),
             latitude: place.geometry?.location?.lat() ?? "",
             longitude: place.geometry?.location?.lng() ?? "",
           });
@@ -210,6 +190,8 @@ export function GoogleAddress({
     };
   }, [hasMaps, apiKey]);
 
+  const regionValue = form.state?.name || form.state?.code || "";
+
   return (
     <div className={className ?? "flex flex-col gap-3"}>
       {hasMaps ? (
@@ -221,7 +203,7 @@ export function GoogleAddress({
             ref={searchRef}
             id={searchId}
             type="text"
-            placeholder="Start typing (e.g. 100 George St…)"
+            placeholder="Start typing any address worldwide…"
             className={selectClass}
             autoComplete="off"
           />
@@ -229,11 +211,16 @@ export function GoogleAddress({
             <span className="text-xs text-negative">{mapsError}</span>
           ) : !mapsReady ? (
             <span className="text-xs text-muted">Loading Google Places…</span>
-          ) : null}
+          ) : (
+            <span className="text-xs text-muted">
+              Pick a suggestion to fill the fields below (worldwide).
+            </span>
+          )}
         </label>
       ) : (
         <p className="text-xs text-muted">
-          Set <code className="text-[var(--mt-text)]">VITE_GOOGLE_MAPS_API_KEY</code>{" "}
+          Set{" "}
+          <code className="text-[var(--mt-text)]">VITE_GOOGLE_MAPS_API_KEY</code>{" "}
           for address autocomplete. Enter address manually below.
         </p>
       )}
@@ -248,43 +235,54 @@ export function GoogleAddress({
         value={form.address_2 || ""}
         onChange={(e) => patch({ address_2: e.target.value })}
       />
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <TextInput
-          label="City / Suburb"
+          label="City"
           value={form.city}
           onChange={(e) => patch({ city: e.target.value })}
         />
         <label className="flex w-full flex-col gap-1.5 text-sm">
-          <span className="font-medium text-[var(--mt-text)]">State</span>
-          <select
+          <span className="font-medium text-[var(--mt-text)]">
+            State / Province / Region
+          </span>
+          <input
+            list={regionListId}
             className={selectClass}
-            value={form.state?.id ?? ""}
+            value={regionValue}
+            placeholder="e.g. California, NSW, Ontario"
             onChange={(e) => {
-              const id = Number(e.target.value);
-              const matched = (states || []).find((s) => s.id === id) || null;
+              const name = e.target.value;
+              const matched = (states || []).find(
+                (s) => s.name.toLowerCase() === name.toLowerCase(),
+              );
               patch({
-                state: matched
-                  ? {
-                      id: matched.id,
-                      name: matched.name,
-                      code: (matched as { code?: string }).code,
-                    }
+                state: name
+                  ? matched
+                    ? {
+                        id: matched.id,
+                        name: matched.name,
+                        code: (matched as { code?: string }).code,
+                      }
+                    : { name }
                   : null,
               });
             }}
-          >
-            <option value="">Select state</option>
+          />
+          <datalist id={regionListId}>
             {(states || []).map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
+              <option key={s.id} value={s.name} />
             ))}
-          </select>
+          </datalist>
         </label>
         <TextInput
-          label="Postcode"
+          label="Postcode / ZIP"
           value={form.postcode}
           onChange={(e) => patch({ postcode: e.target.value })}
+        />
+        <TextInput
+          label="Country"
+          value={form.country || ""}
+          onChange={(e) => patch({ country: e.target.value })}
         />
       </div>
 

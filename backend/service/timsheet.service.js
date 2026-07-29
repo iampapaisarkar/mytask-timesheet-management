@@ -288,7 +288,7 @@ async function getTimesheetDays(
         if (!dayName && day.date) {
           try {
             dayName = new Date(`${day.date}T12:00:00`).toLocaleDateString(
-              "en-AU",
+              undefined,
               { weekday: "long" },
             );
           } catch {

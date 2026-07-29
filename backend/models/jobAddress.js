@@ -28,7 +28,7 @@ const JobAddress = db.define(
       type: DataTypes.INTEGER,
     },
     postcode: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.STRING(32),
     },
     latitude: {
       type: DataTypes.DECIMAL(17, 14),

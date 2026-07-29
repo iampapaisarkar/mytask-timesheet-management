@@ -77,8 +77,10 @@ export const createOrganisationSchema = z.object({
   address_1: z.string().min(1, "Address Line 1 is required"),
   address_2: z.string().optional().or(z.literal("")),
   city: z.string().min(1, "City is required"),
-  state_id: z.coerce.number().min(1, "State is required"),
-  postcode: z.string().min(1, "Postcode is required"),
+  /** Optional when region is a free-text worldwide value; backend upserts by name */
+  state_id: z.coerce.number().optional(),
+  state_name: z.string().min(1, "State / province / region is required"),
+  postcode: z.string().min(1, "Postcode / ZIP is required"),
 });
 
 export type CreateOrganisationFormValues = z.infer<

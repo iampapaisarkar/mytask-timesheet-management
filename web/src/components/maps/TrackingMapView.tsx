@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { loadGoogleMaps } from "@/lib/googleMaps";
 
 export type TrackingPoint = {
   latitude?: number | string | null;
@@ -34,12 +35,6 @@ const TYPE_COLORS: Record<string, string> = {
   break: "#F59E0B",
   travel: "#3B82F6",
 };
-
-declare global {
-  interface Window {
-    __mtGoogleMapsPromise?: Promise<void>;
-  }
-}
 
 type GoogleMapsNs = {
   Map: new (el: HTMLElement, opts: Record<string, unknown>) => GoogleMap;
@@ -102,22 +97,6 @@ function flattenCoords(logs?: TrackingLogs | null) {
   );
 }
 
-function loadGoogleMaps(apiKey: string): Promise<void> {
-  if (getGoogleMaps()) return Promise.resolve();
-  if (window.__mtGoogleMapsPromise) return window.__mtGoogleMapsPromise;
-
-  window.__mtGoogleMapsPromise = new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}`;
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Failed to load Google Maps"));
-    document.head.appendChild(script);
-  });
-
-  return window.__mtGoogleMapsPromise;
-}
-
 export function TrackingMapView({
   trackingLogs,
   jobs = [],
@@ -176,8 +155,9 @@ export function TrackingMapView({
         if (!maps) return;
 
         const map = new maps.Map(mapRef.current, {
-          center: { lat: -25.2744, lng: 133.7751 },
-          zoom: 4,
+          // Neutral world view until fitBounds runs on real points
+          center: { lat: 20, lng: 0 },
+          zoom: 2,
           mapTypeId: maps.MapTypeId.ROADMAP,
           disableDefaultUI: true,
           zoomControl: true,

@@ -94,12 +94,12 @@ export function CreateJobDialog({
       toast.warning("City is required");
       return;
     }
-    if (!address.state?.id) {
-      toast.warning("State is required");
+    if (!address.state?.id && !address.state?.name?.trim()) {
+      toast.warning("State / province / region is required");
       return;
     }
     if (!address.postcode.trim()) {
-      toast.warning("Postcode is required");
+      toast.warning("Postcode / ZIP is required");
       return;
     }
     if (address.latitude === "" || address.latitude == null) {
@@ -127,7 +127,11 @@ export function CreateJobDialog({
           address_1: address.address_1.trim(),
           address_2: address.address_2?.trim() || null,
           city: address.city.trim(),
-          state: { id: address.state.id },
+          state: {
+            ...(address.state.id ? { id: address.state.id } : {}),
+            name: address.state.name,
+            code: address.state.code,
+          },
           postcode: address.postcode.trim(),
           latitude: Number(address.latitude),
           longitude: Number(address.longitude),
