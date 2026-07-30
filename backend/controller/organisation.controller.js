@@ -13,6 +13,7 @@ const {
   OrganisationAddress,
   PayCycles,
   PayrollCalendars,
+  HolidayCalendars,
 } = models;
 import Auth from "#auth";
 import { SystemFunction } from "#systemfunction";
@@ -251,6 +252,7 @@ export async function create(req, res, next) {
           .includes("week"),
       ) || payCycles[0];
 
+    let defaultPayrollCalendar = null;
     if (preferredPayCycle) {
       const startDate = moment().format("YYYY-MM-DD");
       const firstPaymentDate = moment().add(14, "days").format("YYYY-MM-DD");
@@ -258,7 +260,7 @@ export async function create(req, res, next) {
         preferredPayCycle.code,
         startDate,
       );
-      await PayrollCalendars.create(
+      defaultPayrollCalendar = await PayrollCalendars.create(
         {
           organisation_id: response.id,
           name: "Default",
@@ -276,11 +278,26 @@ export async function create(req, res, next) {
       );
     }
 
-    // create org admin as first employee
+    // Seed a starter holiday so org setup (holiday + payroll) is complete.
+    await HolidayCalendars.create(
+      {
+        organisation_id: response.id,
+        name: "Republic Day",
+        date: `${moment().year()}-01-26`,
+        created_at: currentUTCTime,
+        created_by: user.id,
+        updated_at: currentUTCTime,
+        updated_by: user.id,
+      },
+      { transaction },
+    );
+
+    // create org admin as first employee (with wage/payroll when calendar exists)
     await organisationService.createOrgAdminEmployee(
       response.id,
       user,
       transaction,
+      { payrollCalendarId: defaultPayrollCalendar?.id || null },
     );
 
     await transaction.commit();

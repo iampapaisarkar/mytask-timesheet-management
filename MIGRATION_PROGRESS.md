@@ -23,6 +23,7 @@
 | MVP Payouts | ✅ Done | 2026-07-30 | API + web list/eligible/create/mark-paid |
 | Global address system | ✅ Done | 2026-07-30 | Shared model + Places autofill + map geolocation/reverse-geocode |
 | Timesheet requires Job | ✅ Done | 2026-07-30 | Many-to-many `timesheet_jobs`; create = Employee → Period → Jobs |
+| Demo env reset + seed + QA | ✅ Done | 2026-07-30 | `npm run demo:reset-seed`; org `SILDEMO1`; see `DEMO_QA_REPORT.md` |
 
 ## Vue ↔ Web ↔ Mobile gap matrix
 

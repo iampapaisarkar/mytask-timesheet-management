@@ -104,14 +104,20 @@ async function createOrgAdminEmployee(
   organisationId,
   user,
   transaction,
+  options = {},
 ) {
   try {
     const currentUTCTime = moment().utc().format();
+    const { payrollCalendarId = null } = options;
 
     const employee = await Employees.create(
       {
         user_id: user.id,
         organisation_id: organisationId,
+        preferred_name: user.first_name || null,
+        phone_number: user.phone_number || null,
+        phone_country_code: user.phone_country_code || null,
+        phone_country_iso: user.phone_country_iso || null,
         created_at: currentUTCTime,
         created_by: user.id,
         updated_at: currentUTCTime,
@@ -119,6 +125,55 @@ async function createOrgAdminEmployee(
       },
       { transaction },
     );
+
+    // Owner needs a wage row linked to the org payroll calendar so timesheets
+    // and pay-period lookups work immediately after signup.
+    if (payrollCalendarId) {
+      const { EmployeeWages, EmployeePayrolls, EmploymentTypes } = models;
+      const fullTime = await EmploymentTypes.findOne({
+        where: { code: "FULLTIME" },
+        raw: true,
+        transaction,
+      });
+
+      await EmployeeWages.create(
+        {
+          organisation_id: organisationId,
+          employee_id: employee.id,
+          start_date: moment().format("YYYY-MM-DD"),
+          payroll_calendar_id: payrollCalendarId,
+          employment_type_id: fullTime?.id || null,
+          pay_type: "HOURLY",
+          currency: "INR",
+          hourly_rate_exc_super: 500,
+          fixed_rate_exc_super: null,
+          created_at: currentUTCTime,
+          created_by: user.id,
+          updated_at: currentUTCTime,
+          updated_by: user.id,
+        },
+        { transaction },
+      );
+
+      await EmployeePayrolls.create(
+        {
+          organisation_id: organisationId,
+          employee_id: employee.id,
+          payment_method: "BANK_TRANSFER",
+          account_holder_name: [user.first_name, user.last_name]
+            .filter(Boolean)
+            .join(" "),
+          bank_name: "Demo Bank",
+          bank_account_number: "0000000000",
+          ifsc_code: "DEMO0000001",
+          created_at: currentUTCTime,
+          created_by: user.id,
+          updated_at: currentUTCTime,
+          updated_by: user.id,
+        },
+        { transaction },
+      );
+    }
 
     return employee;
   } catch (err) {

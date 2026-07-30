@@ -9,6 +9,11 @@
 - Scoped UOR includes to the employee/org context; invite accept now updates an existing role instead of always inserting
 - Org bootstrap (`Employees.organisation_id` unknown in ON clause): stop joining UOR inside Employees defaultScope; attach the org-scoped role in `afterFind` so nested `employee` aliases work
 
+### Changed
+
+- Organisation create now seeds a starter holiday calendar and creates the owner employee with wage + payroll linked to the default payroll calendar (setup-complete for operational workflows)
+- Added `npm run demo:reset-seed` to wipe app data (keeping lookup seeders) and rebuild a full Siliguri demo org; `npm test` runs node:test suites for signup + ACL
+
 ### Added
 
 - Timesheet ↔ jobs many-to-many (`timesheet_jobs`): one timesheet can include multiple jobs; the same job can be used by many employees
