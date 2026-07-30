@@ -44,7 +44,7 @@ export function CustomersPage() {
         columns={[
           { key: "id", label: "ID" },
           { key: "name", label: "Name" },
-          { key: "abn", label: "ABN" },
+          { key: "abn", label: "Business / tax ID" },
           { key: "contact_name", label: "Contact" },
           { key: "contact_email", label: "Email" },
           {

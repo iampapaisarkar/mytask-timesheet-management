@@ -14,7 +14,8 @@ import { TextInput } from "@/components/ui/TextInput";
 import { GlobalPhoneInput } from "@/components/ui/GlobalPhoneInput";
 import { Button } from "@/components/ui/Button";
 import {
-  GoogleAddress,
+  GoogleAddressAutocomplete,
+  emptyAddress,
   type AddressValue,
 } from "@/components/GoogleAddress";
 import { useAuthStore } from "@/store/authStore";
@@ -26,15 +27,7 @@ export function CreateOrganisationPage() {
   const setOrganisation = useOrganisationStore((s) => s.setOrganisation);
   const createMutation = useCreateOrganisation();
   const [error, setError] = useState<string | null>(null);
-  const [address, setAddress] = useState<AddressValue>({
-    address_1: "",
-    address_2: "",
-    city: "",
-    state: null,
-    postcode: "",
-    latitude: null,
-    longitude: null,
-  });
+  const [address, setAddress] = useState<AddressValue>(emptyAddress);
 
   const {
     register,
@@ -67,14 +60,27 @@ export function CreateOrganisationPage() {
 
   function handleAddressChange(next: AddressValue) {
     setAddress(next);
-    setValue("address_1", next.address_1, { shouldValidate: true });
-    setValue("address_2", next.address_2 || "", { shouldValidate: true });
-    setValue("city", next.city, { shouldValidate: true });
-    setValue("state_id", next.state?.id, { shouldValidate: true });
-    setValue("state_name", next.state?.name || next.state?.code || "", {
+    setValue("address_1", next.street_address || next.address_1, {
       shouldValidate: true,
     });
-    setValue("postcode", next.postcode, { shouldValidate: true });
+    setValue("formatted_address", next.formatted_address || "", {
+      shouldValidate: true,
+    });
+    setValue("address_2", next.address_2 || "", { shouldValidate: true });
+    setValue("city", next.city || "", { shouldValidate: true });
+    setValue("state_id", next.state?.id, { shouldValidate: true });
+    setValue(
+      "state_name",
+      next.administrative_area || next.state?.name || next.state?.code || "",
+      { shouldValidate: true },
+    );
+    setValue("postcode", next.postal_code || next.postcode || "", {
+      shouldValidate: true,
+    });
+    setValue("country", next.country || null);
+    setValue("country_code", next.country_code || null);
+    setValue("place_id", next.place_id || null);
+    setValue("administrative_area", next.administrative_area || null);
   }
 
   async function onSubmit(values: CreateOrganisationFormValues) {
@@ -86,20 +92,24 @@ export function CreateOrganisationPage() {
         phone_number: values.phone_number,
         phone_country_code: values.phone_country_code,
         phone_country_iso: values.phone_country_iso,
-        default_country: values.phone_country_iso || null,
+        default_country:
+          values.country_code || values.phone_country_iso || null,
         email: values.email,
         address: {
-          address_1: values.address_1,
-          address_2: values.address_2 || null,
-          city: values.city,
-          state: {
-            ...(values.state_id ? { id: values.state_id } : {}),
-            name: values.state_name,
-            code: address.state?.code,
-          },
-          postcode: values.postcode,
-          latitude: address.latitude || null,
-          longitude: address.longitude || null,
+          address_1: address.street_address || address.address_1,
+          street_address: address.street_address || address.address_1,
+          formatted_address: address.formatted_address,
+          address_2: address.address_2 || null,
+          city: address.city || null,
+          state: address.state,
+          administrative_area: address.administrative_area || null,
+          postcode: address.postal_code || address.postcode || null,
+          postal_code: address.postal_code || address.postcode || null,
+          country: address.country || null,
+          country_code: address.country_code || null,
+          place_id: address.place_id || null,
+          latitude: address.latitude === "" ? null : address.latitude,
+          longitude: address.longitude === "" ? null : address.longitude,
         },
       });
 
@@ -196,25 +206,13 @@ export function CreateOrganisationPage() {
         />
 
         <div>
-          <p className="mb-2 text-sm font-medium text-[var(--mt-text)]">
-            Address
-          </p>
-          <GoogleAddress
+          <GoogleAddressAutocomplete
+            label="Address"
             value={address}
             onChange={handleAddressChange}
             requireCoordinates={false}
+            error={errors.address_1?.message}
           />
-          {errors.address_1?.message ||
-          errors.city?.message ||
-          errors.state_name?.message ||
-          errors.postcode?.message ? (
-            <p className="mt-2 text-xs text-negative">
-              {errors.address_1?.message ||
-                errors.city?.message ||
-                errors.state_name?.message ||
-                errors.postcode?.message}
-            </p>
-          ) : null}
         </div>
 
         {error ? <p className="text-sm text-negative">{error}</p> : null}

@@ -32,6 +32,7 @@ Index of monorepo documentation. For run instructions, see the root [README.md](
 - [web/docs](../web/docs/)
 - [mobile/docs](../mobile/docs/)
 - [international-phone.md](international-phone.md) — global E.164 phone support
+- [global-address.md](global-address.md) — Google Places worldwide addresses
 
 ## Cursor rules
 

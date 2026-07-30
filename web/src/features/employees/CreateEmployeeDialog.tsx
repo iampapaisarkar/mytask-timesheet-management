@@ -12,7 +12,8 @@ import { FullScreenModal } from "@/components/ui/FullScreenModal";
 import { TextInput } from "@/components/ui/TextInput";
 import { GlobalPhoneInput } from "@/components/ui/GlobalPhoneInput";
 import {
-  GoogleAddress,
+  GoogleAddressAutocomplete,
+  emptyAddress,
   type AddressValue,
 } from "@/components/GoogleAddress";
 import { useToastStore } from "@/store/toastStore";
@@ -54,6 +55,15 @@ type EmployeeForm = {
       city: string;
       state: { id?: number; name?: string; code?: string } | null;
       postcode: string;
+      formatted_address?: string;
+      street_address?: string;
+      administrative_area?: string;
+      postal_code?: string;
+      country?: string;
+      country_code?: string;
+      place_id?: string;
+      latitude?: string | number | null;
+      longitude?: string | number | null;
     };
     role: NamedId | null;
     region: NamedId | null;
@@ -107,6 +117,15 @@ function emptyForm(email = ""): EmployeeForm {
         city: "",
         state: null,
         postcode: "",
+        formatted_address: "",
+        street_address: "",
+        administrative_area: "",
+        postal_code: "",
+        country: "",
+        country_code: "",
+        place_id: "",
+        latitude: "",
+        longitude: "",
       },
       role: null,
       region: null,
@@ -181,6 +200,19 @@ function formFromEmployeeRow(row: EmployeeListRow): EmployeeForm {
         city: String(addressRaw.city || ""),
         state: asNamed(addressRaw.state),
         postcode: String(addressRaw.postcode || ""),
+        formatted_address: String(addressRaw.formatted_address || ""),
+        street_address: String(addressRaw.address_1 || ""),
+        administrative_area: String(
+          addressRaw.administrative_area ||
+            (addressRaw.state as { name?: string } | undefined)?.name ||
+            "",
+        ),
+        postal_code: String(addressRaw.postcode || ""),
+        country: String(addressRaw.country || ""),
+        country_code: String(addressRaw.country_code || ""),
+        place_id: String(addressRaw.place_id || ""),
+        latitude: (addressRaw.latitude as string | number | null) ?? "",
+        longitude: (addressRaw.longitude as string | number | null) ?? "",
       },
       role: asNamed(details.role),
       region: asNamed(details.region),
@@ -362,6 +394,19 @@ export function CreateEmployeeDialog({
             city: String(addressRaw.city || ""),
             state: asNamed(addressRaw.state),
             postcode: String(addressRaw.postcode || ""),
+            formatted_address: String(addressRaw.formatted_address || ""),
+            street_address: String(addressRaw.address_1 || ""),
+            administrative_area: String(
+              addressRaw.administrative_area ||
+                (addressRaw.state as { name?: string } | undefined)?.name ||
+                "",
+            ),
+            postal_code: String(addressRaw.postcode || ""),
+            country: String(addressRaw.country || ""),
+            country_code: String(addressRaw.country_code || ""),
+            place_id: String(addressRaw.place_id || ""),
+            latitude: (addressRaw.latitude as string | number | null) ?? "",
+            longitude: (addressRaw.longitude as string | number | null) ?? "",
           },
           role: asNamed(details.role),
           region: asNamed(details.region),
@@ -426,11 +471,9 @@ export function CreateEmployeeDialog({
     }
     if (!d.email.trim()) return "Email is required";
     if (!d.dob) return "Date of birth is required";
-    if (!d.address.address_1.trim()) return "Address line 1 is required";
-    if (!d.address.city.trim()) return "City is required";
-    if (!d.address.state?.id && !d.address.state?.name?.trim())
-      return "State / province / region is required";
-    if (!d.address.postcode.trim()) return "Postcode / ZIP is required";
+    if (!(d.address.address_1 || d.address.formatted_address || "").trim()) {
+      return "Please select an address from Google Places";
+    }
     if (!d.phone_number.trim()) return "Phone number is required";
     if (!isValidInternationalPhone(d.phone_number)) {
       return "Enter a valid international phone number";
@@ -525,11 +568,20 @@ export function CreateEmployeeDialog({
         phone_country_code: d.phone_country_code,
         phone_country_iso: d.phone_country_iso,
         address: {
-          address_1: d.address.address_1.trim(),
+          address_1: d.address.address_1.trim() || d.address.street_address || null,
+          street_address: d.address.street_address || d.address.address_1.trim(),
+          formatted_address: d.address.formatted_address || null,
           address_2: d.address.address_2.trim() || null,
-          city: d.address.city.trim(),
+          city: d.address.city.trim() || null,
           state: d.address.state,
-          postcode: d.address.postcode.trim(),
+          administrative_area: d.address.administrative_area || null,
+          postcode: d.address.postal_code || d.address.postcode.trim() || null,
+          postal_code: d.address.postal_code || d.address.postcode.trim() || null,
+          country: d.address.country || null,
+          country_code: d.address.country_code || null,
+          place_id: d.address.place_id || null,
+          latitude: d.address.latitude ?? null,
+          longitude: d.address.longitude ?? null,
         },
         role: d.role,
         region: d.region,
@@ -757,21 +809,42 @@ export function CreateEmployeeDialog({
                   }
                 />
               </div>
-              <GoogleAddress
+              <GoogleAddressAutocomplete
+                label="Address"
                 value={
                   {
+                    ...emptyAddress(),
                     ...form.details.address,
-                    latitude: null,
-                    longitude: null,
+                    street_address:
+                      form.details.address.street_address ||
+                      form.details.address.address_1,
+                    formatted_address:
+                      form.details.address.formatted_address || "",
+                    postal_code:
+                      form.details.address.postal_code ||
+                      form.details.address.postcode,
+                    administrative_area:
+                      form.details.address.administrative_area ||
+                      form.details.address.state?.name ||
+                      "",
                   } as AddressValue
                 }
                 onChange={(next) =>
                   patchAddress({
-                    address_1: next.address_1,
+                    address_1: next.street_address || next.address_1,
                     address_2: next.address_2 || "",
-                    city: next.city,
+                    city: next.city || "",
                     state: next.state,
-                    postcode: next.postcode,
+                    postcode: next.postal_code || next.postcode || "",
+                    formatted_address: next.formatted_address,
+                    street_address: next.street_address,
+                    administrative_area: next.administrative_area,
+                    postal_code: next.postal_code,
+                    country: next.country,
+                    country_code: next.country_code,
+                    place_id: next.place_id,
+                    latitude: next.latitude,
+                    longitude: next.longitude,
                   })
                 }
                 requireCoordinates={false}

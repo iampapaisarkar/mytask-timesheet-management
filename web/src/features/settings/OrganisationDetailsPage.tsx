@@ -16,7 +16,8 @@ import {
   useUpdateOrganisationSettings,
 } from "./settingsHooks";
 import {
-  GoogleAddress,
+  GoogleAddressAutocomplete,
+  emptyAddress,
   type AddressValue,
 } from "@/components/GoogleAddress";
 
@@ -48,15 +49,7 @@ export function OrganisationDetailsPage() {
     phone_country_iso: null,
   });
   const [website, setWebsite] = useState("");
-  const [address, setAddress] = useState<AddressValue>({
-    address_1: "",
-    address_2: "",
-    city: "",
-    state: null,
-    postcode: "",
-    latitude: "",
-    longitude: "",
-  });
+  const [address, setAddress] = useState<AddressValue>(emptyAddress);
   const [frequency, setFrequency] = useState("weekly");
 
   useEffect(() => {
@@ -79,13 +72,25 @@ export function OrganisationDetailsPage() {
     );
     setWebsite(String(data.website || ""));
     setAddress({
+      ...emptyAddress(),
+      formatted_address: String(addr.formatted_address || addr.address_1 || ""),
+      street_address: String(addr.address_1 || ""),
       address_1: String(addr.address_1 || ""),
       address_2: String(addr.address_2 || ""),
       city: String(addr.city || ""),
       state: state.id
         ? { id: state.id, name: state.name, code: state.code }
-        : null,
+        : addr.administrative_area
+          ? { name: String(addr.administrative_area) }
+          : null,
+      administrative_area: String(
+        addr.administrative_area || state.name || "",
+      ),
       postcode: String(addr.postcode || ""),
+      postal_code: String(addr.postcode || ""),
+      country: String(addr.country || ""),
+      country_code: String(addr.country_code || ""),
+      place_id: String(addr.place_id || ""),
       latitude: (addr.latitude as string | number | null) ?? "",
       longitude: (addr.longitude as string | number | null) ?? "",
     });
@@ -117,20 +122,21 @@ export function OrganisationDetailsPage() {
         phone_number: phone.phone_number,
         phone_country_code: phone.phone_country_code,
         phone_country_iso: phone.phone_country_iso,
-        default_country: phone.phone_country_iso,
+        default_country: phone.phone_country_iso || address.country_code,
         website: website.trim() || null,
         address: {
-          address_1: address.address_1.trim(),
-          address_2: address.address_2?.trim() || null,
-          city: address.city.trim(),
-          postcode: address.postcode.trim(),
-          state: address.state
-            ? {
-                ...(address.state.id ? { id: address.state.id } : {}),
-                name: address.state.name,
-                code: address.state.code,
-              }
-            : null,
+          address_1: address.street_address || address.address_1,
+          street_address: address.street_address || address.address_1,
+          formatted_address: address.formatted_address,
+          address_2: address.address_2 || null,
+          city: address.city || null,
+          state: address.state,
+          administrative_area: address.administrative_area || null,
+          postcode: address.postal_code || address.postcode || null,
+          postal_code: address.postal_code || address.postcode || null,
+          country: address.country || null,
+          country_code: address.country_code || null,
+          place_id: address.place_id || null,
           latitude: address.latitude === "" ? null : address.latitude,
           longitude: address.longitude === "" ? null : address.longitude,
         },
@@ -175,7 +181,12 @@ export function OrganisationDetailsPage() {
             onChange={setPhone}
           />
           <TextInput label="Website" value={website} onChange={(e) => setWebsite(e.target.value)} />
-          <GoogleAddress value={address} onChange={setAddress} />
+          <GoogleAddressAutocomplete
+            label="Address"
+            value={address}
+            onChange={setAddress}
+            requireCoordinates={false}
+          />
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-medium text-muted">
               Timesheet submission frequency
@@ -248,15 +259,19 @@ export function OrganisationDetailsPage() {
         <Card className="sm:col-span-2">
           <p className="text-xs font-medium uppercase text-muted">Address</p>
           <p className="mt-1 text-sm leading-relaxed text-[var(--mt-text)]">
-            {[
-              viewAddress.address_1,
-              viewAddress.address_2,
-              viewAddress.city,
-              viewState.name,
-              viewAddress.postcode,
-            ]
-              .filter(Boolean)
-              .join(", ") || "—"}
+            {String(
+              viewAddress.formatted_address ||
+                [
+                  viewAddress.address_1,
+                  viewAddress.address_2,
+                  viewAddress.city,
+                  viewState.name || viewAddress.administrative_area,
+                  viewAddress.postcode,
+                  viewAddress.country,
+                ]
+                  .filter(Boolean)
+                  .join(", "),
+            ) || "—"}
           </p>
         </Card>
       </div>

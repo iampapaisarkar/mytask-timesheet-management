@@ -30,6 +30,26 @@ const EmployeeAddress = db.define(
     postcode: {
       type: DataTypes.STRING(32),
     },
+    formatted_address: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    administrative_area: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+    country: {
+      type: DataTypes.STRING(128),
+      allowNull: true,
+    },
+    country_code: {
+      type: DataTypes.STRING(2),
+      allowNull: true,
+    },
+    place_id: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
     latitude: {
       type: DataTypes.DECIMAL(17, 14),
     },

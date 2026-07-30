@@ -4,15 +4,18 @@ export type GooglePlaceComponents = Array<{
   types: string[];
 }>;
 
+export type GooglePlaceResult = {
+  place_id?: string;
+  formatted_address?: string;
+  address_components?: GooglePlaceComponents;
+  geometry?: {
+    location?: { lat: () => number; lng: () => number };
+  };
+};
+
 export type GoogleAutocomplete = {
   addListener: (event: string, handler: () => void) => void;
-  getPlace: () => {
-    formatted_address?: string;
-    address_components?: GooglePlaceComponents;
-    geometry?: {
-      location?: { lat: () => number; lng: () => number };
-    };
-  };
+  getPlace: () => GooglePlaceResult;
 };
 
 export type GooglePlacesNs = {
@@ -21,6 +24,7 @@ export type GooglePlacesNs = {
     opts?: {
       fields?: string[];
       types?: string[];
+      /** Intentionally omitted: no country lock — worldwide. */
     },
   ) => GoogleAutocomplete;
 };
@@ -114,4 +118,9 @@ export function loadGoogleMaps(apiKey: string): Promise<void> {
 
 export function hasGooglePlaces(): boolean {
   return Boolean(window.google?.maps?.places?.Autocomplete);
+}
+
+export function getGoogleMapsApiKey(): string | undefined {
+  const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
+  return key?.trim() || undefined;
 }

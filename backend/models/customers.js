@@ -18,6 +18,42 @@ const Customers = db.define(
     address: {
       type: DataTypes.TEXT,
     },
+    formatted_address: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    administrative_area: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+    city: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+    postal_code: {
+      type: DataTypes.STRING(32),
+      allowNull: true,
+    },
+    country: {
+      type: DataTypes.STRING(128),
+      allowNull: true,
+    },
+    country_code: {
+      type: DataTypes.STRING(2),
+      allowNull: true,
+    },
+    place_id: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+    latitude: {
+      type: DataTypes.DECIMAL(17, 14),
+      allowNull: true,
+    },
+    longitude: {
+      type: DataTypes.DECIMAL(17, 14),
+      allowNull: true,
+    },
     abn: {
       type: DataTypes.STRING,
     },

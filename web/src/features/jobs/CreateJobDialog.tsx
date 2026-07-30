@@ -10,23 +10,14 @@ import { FullScreenModal } from "@/components/ui/FullScreenModal";
 import { TextInput } from "@/components/ui/TextInput";
 import { GlobalPhoneInput } from "@/components/ui/GlobalPhoneInput";
 import {
-  GoogleAddress,
+  GoogleAddressAutocomplete,
+  emptyAddress,
   type AddressValue,
 } from "@/components/GoogleAddress";
 import { useToastStore } from "@/store/toastStore";
 
 const selectClass =
   "mt-focus rounded-xl border border-border bg-[var(--mt-surface)] px-3.5 py-3 text-[var(--mt-text)] outline-none focus:border-primary";
-
-const emptyAddress = (): AddressValue => ({
-  address_1: "",
-  address_2: "",
-  city: "",
-  state: null,
-  postcode: "",
-  latitude: "",
-  longitude: "",
-});
 
 export function CreateJobDialog({
   open,
@@ -89,28 +80,16 @@ export function CreateJobDialog({
       toast.warning("Customer required");
       return;
     }
-    if (!address.address_1.trim()) {
-      toast.warning("Address Line 1 is required");
-      return;
-    }
-    if (!address.city.trim()) {
-      toast.warning("City is required");
-      return;
-    }
-    if (!address.state?.id && !address.state?.name?.trim()) {
-      toast.warning("State / province / region is required");
-      return;
-    }
-    if (!address.postcode.trim()) {
-      toast.warning("Postcode / ZIP is required");
+    if (!(address.street_address || address.address_1 || address.formatted_address)?.trim()) {
+      toast.warning("Please select an address from Google Places");
       return;
     }
     if (address.latitude === "" || address.latitude == null) {
-      toast.warning("Latitude is required");
+      toast.warning("Please select an address with map coordinates");
       return;
     }
     if (address.longitude === "" || address.longitude == null) {
-      toast.warning("Longitude is required");
+      toast.warning("Please select an address with map coordinates");
       return;
     }
     if (!radius.trim()) {
@@ -127,15 +106,18 @@ export function CreateJobDialog({
         name: name.trim(),
         customer: { id: Number(customerId) },
         address: {
-          address_1: address.address_1.trim(),
+          address_1: (address.street_address || address.address_1).trim(),
+          street_address: (address.street_address || address.address_1).trim(),
+          formatted_address: address.formatted_address || null,
           address_2: address.address_2?.trim() || null,
-          city: address.city.trim(),
-          state: {
-            ...(address.state.id ? { id: address.state.id } : {}),
-            name: address.state.name,
-            code: address.state.code,
-          },
-          postcode: address.postcode.trim(),
+          city: address.city || null,
+          state: address.state,
+          administrative_area: address.administrative_area || null,
+          postcode: address.postal_code || address.postcode || null,
+          postal_code: address.postal_code || address.postcode || null,
+          country: address.country || null,
+          country_code: address.country_code || null,
+          place_id: address.place_id || null,
           latitude: Number(address.latitude),
           longitude: Number(address.longitude),
         },
@@ -201,7 +183,12 @@ export function CreateJobDialog({
           <p className="mb-2 text-sm font-medium text-[var(--mt-text)]">
             Site address
           </p>
-          <GoogleAddress value={address} onChange={setAddress} />
+          <GoogleAddressAutocomplete
+            label="Site address"
+            value={address}
+            onChange={setAddress}
+            requireCoordinates
+          />
         </div>
 
         <TextInput

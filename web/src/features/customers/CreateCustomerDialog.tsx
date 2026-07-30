@@ -8,6 +8,11 @@ import { Button } from "@/components/ui/Button";
 import { FullScreenModal } from "@/components/ui/FullScreenModal";
 import { TextInput } from "@/components/ui/TextInput";
 import { GlobalPhoneInput } from "@/components/ui/GlobalPhoneInput";
+import {
+  GoogleAddressAutocomplete,
+  emptyAddress,
+  type AddressValue,
+} from "@/components/GoogleAddress";
 import { useToastStore } from "@/store/toastStore";
 
 export type CustomerRow = {
@@ -15,6 +20,15 @@ export type CustomerRow = {
   name?: string;
   abn?: string | null;
   address?: string | null;
+  formatted_address?: string | null;
+  administrative_area?: string | null;
+  city?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+  country_code?: string | null;
+  place_id?: string | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
   contact_name?: string | null;
   contact_email?: string | null;
   contact_phone_number?: string | null;
@@ -40,7 +54,7 @@ export function CustomerFormDialog({
 
   const [name, setName] = useState("");
   const [abn, setAbn] = useState("");
-  const [address, setAddress] = useState("");
+  const [address, setAddress] = useState<AddressValue>(emptyAddress);
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState<PhoneValue>({
@@ -55,7 +69,26 @@ export function CustomerFormDialog({
     if (!open) return;
     setName(customer?.name || "");
     setAbn(customer?.abn || "");
-    setAddress(customer?.address || "");
+    const formatted =
+      customer?.formatted_address || customer?.address || "";
+    setAddress({
+      ...emptyAddress(),
+      formatted_address: formatted,
+      street_address: formatted,
+      address_1: formatted,
+      city: customer?.city || "",
+      administrative_area: customer?.administrative_area || "",
+      postcode: customer?.postal_code || "",
+      postal_code: customer?.postal_code || "",
+      country: customer?.country || "",
+      country_code: customer?.country_code || "",
+      place_id: customer?.place_id || "",
+      latitude: customer?.latitude ?? "",
+      longitude: customer?.longitude ?? "",
+      state: customer?.administrative_area
+        ? { name: customer.administrative_area }
+        : null,
+    });
     setContactName(customer?.contact_name || "");
     setContactEmail(customer?.contact_email || "");
     setContactPhone(
@@ -77,10 +110,24 @@ export function CustomerFormDialog({
       toast.warning("Name required");
       return;
     }
+    const formatted =
+      address.formatted_address ||
+      address.street_address ||
+      address.address_1 ||
+      null;
     const payload = {
       name: name.trim(),
       abn: abn.trim() || null,
-      address: address.trim() || null,
+      address: formatted,
+      formatted_address: formatted,
+      administrative_area: address.administrative_area || null,
+      city: address.city || null,
+      postal_code: address.postal_code || address.postcode || null,
+      country: address.country || null,
+      country_code: address.country_code || null,
+      place_id: address.place_id || null,
+      latitude: address.latitude === "" ? null : address.latitude,
+      longitude: address.longitude === "" ? null : address.longitude,
       contact_name: contactName.trim() || null,
       contact_email: contactEmail.trim() || null,
       contact_phone_number: contactPhone.phone_number,
@@ -129,14 +176,15 @@ export function CustomerFormDialog({
           onChange={(e) => setName(e.target.value)}
         />
         <TextInput
-          label="ABN"
+          label="Business / tax ID"
           value={abn}
           onChange={(e) => setAbn(e.target.value)}
         />
-        <TextInput
+        <GoogleAddressAutocomplete
           label="Address"
           value={address}
-          onChange={(e) => setAddress(e.target.value)}
+          onChange={setAddress}
+          requireCoordinates={false}
         />
         <TextInput
           label="Contact name"

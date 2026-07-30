@@ -23,6 +23,7 @@ import { SystemFunction } from "#systemfunction";
 import moment from "moment";
 import { resolveStateId } from "../utils/state.utils.js";
 import { resolvePhoneFields } from "../utils/phone.js";
+import { buildAddressRow } from "../utils/address.utils.js";
 class AppError extends Error {
   constructor(message, statusCode = 400) {
     super(message);
@@ -55,17 +56,11 @@ async function createOrUpdateEmployeeDetails(
       throw new AppError("Date of Birth is required!", 400);
     }
 
-    if (!details?.address?.address_1) {
-      throw new AppError("Address line 1 is required!", 400);
-    }
-    if (!details?.address?.city) {
-      throw new AppError("City is required!", 400);
-    }
-    if (!details?.address?.state) {
-      throw new AppError("State is required!", 400);
-    }
-    if (!details?.address?.postcode) {
-      throw new AppError("Postcode is required!", 400);
+    if (!details?.address?.address_1 && !details?.address?.formatted_address) {
+      throw new AppError(
+        "Please select an address from Google Places suggestions.",
+        400,
+      );
     }
     let phoneFields;
     let nokPhoneFields;
@@ -139,24 +134,17 @@ async function createOrUpdateEmployeeDetails(
       // Create address
       if (details?.address) {
         const stateId = await resolveStateId(
-          details.address.state,
+          details.address.state ||
+            (details.address.administrative_area
+              ? { name: details.address.administrative_area }
+              : null),
           transaction,
         );
-        if (!stateId) {
-          throw new AppError("State / region is required!", 400);
-        }
-        await EmployeeAddress.create(
-          {
-            organisation_id: organisation.id,
-            employee_id: id,
-            address_1: details?.address?.address_1,
-            address_2: details?.address?.address_2,
-            city: details?.address?.city,
-            state_id: stateId,
-            postcode: String(details?.address?.postcode ?? ""),
-          },
-          { transaction },
-        );
+        const row = buildAddressRow(details.address, {
+          organisationId: organisation.id,
+          extra: { employee_id: id, state_id: stateId },
+        });
+        await EmployeeAddress.create(row, { transaction });
       }
 
       if (userId) {
@@ -211,24 +199,17 @@ async function createOrUpdateEmployeeDetails(
       // Create Address
       if (details?.address) {
         const stateId = await resolveStateId(
-          details.address.state,
+          details.address.state ||
+            (details.address.administrative_area
+              ? { name: details.address.administrative_area }
+              : null),
           transaction,
         );
-        if (!stateId) {
-          throw new AppError("State / region is required!", 400);
-        }
-        await EmployeeAddress.create(
-          {
-            organisation_id: organisation.id,
-            employee_id: employee.id,
-            address_1: details?.address?.address_1,
-            address_2: details?.address?.address_2,
-            city: details?.address?.city,
-            state_id: stateId,
-            postcode: String(details?.address?.postcode ?? ""),
-          },
-          { transaction },
-        );
+        const row = buildAddressRow(details.address, {
+          organisationId: organisation.id,
+          extra: { employee_id: employee.id, state_id: stateId },
+        });
+        await EmployeeAddress.create(row, { transaction });
       }
 
       // if (userId) {

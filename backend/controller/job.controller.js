@@ -13,6 +13,7 @@ import { enqueueSendEmail } from "../queue-jobs/send-email.job.js";
 import { enqueueSendNotification } from "../queue-jobs/send-notification.job.js";
 import { resolveStateId } from "../utils/state.utils.js";
 import { resolvePhoneFields } from "../utils/phone.js";
+import { buildAddressRow } from "../utils/address.utils.js";
 
 export async function list(req, res, next) {
   const { user, organisation } = req.body;
@@ -122,32 +123,17 @@ export async function create(req, res, next) {
         message: "Customer is required!",
       });
     }
-    if (!address?.address_1) {
-      return res.status(501).json({
-        message: "Address Line 1 is required!",
+    if (!address?.address_1 && !address?.formatted_address && !address?.street_address) {
+      return res.status(400).json({
+        message: "Please select an address from Google Places suggestions.",
       });
     }
-    if (!address?.city) {
-      return res.status(501).json({
-        message: "City is required!",
-      });
-    }
-    if (!address?.state) {
-      return res.status(501).json({
-        message: "State is required!",
-      });
-    }
-    if (!address?.postcode) {
-      return res.status(501).json({
-        message: "Postcode is required!",
-      });
-    }
-    if (!address?.latitude) {
+    if (!address?.latitude && address?.latitude !== 0) {
       return res.status(501).json({
         message: "Latitude is required!",
       });
     }
-    if (!address?.longitude) {
+    if (!address?.longitude && address?.longitude !== 0) {
       return res.status(501).json({
         message: "Longitude is required!",
       });
@@ -214,23 +200,17 @@ export async function create(req, res, next) {
 
     // Create Address
     if (address) {
-      const stateId = await resolveStateId(address.state);
-      if (!stateId) {
-        return res.status(501).json({
-          message: "State / region is required!",
-        });
-      }
-      await JobAddress.create({
-        organisation_id: organisation.id,
-        job_id: job.id,
-        address_1: address?.address_1,
-        address_2: address?.address_2,
-        city: address?.city,
-        state_id: stateId,
-        postcode: String(address?.postcode ?? ""),
-        latitude: address?.latitude,
-        longitude: address?.longitude,
+      const stateId = await resolveStateId(
+        address.state ||
+          (address.administrative_area
+            ? { name: address.administrative_area }
+            : null),
+      );
+      const row = buildAddressRow(address, {
+        organisationId: organisation.id,
+        extra: { job_id: job.id, state_id: stateId },
       });
+      await JobAddress.create(row);
     }
 
     for (const group of management_groups) {
@@ -290,32 +270,17 @@ export async function update(req, res, next) {
         message: "Customer is required!",
       });
     }
-    if (!address?.address_1) {
-      return res.status(501).json({
-        message: "Address Line 1 is required!",
+    if (!address?.address_1 && !address?.formatted_address && !address?.street_address) {
+      return res.status(400).json({
+        message: "Please select an address from Google Places suggestions.",
       });
     }
-    if (!address?.city) {
-      return res.status(501).json({
-        message: "City is required!",
-      });
-    }
-    if (!address?.state) {
-      return res.status(501).json({
-        message: "State is required!",
-      });
-    }
-    if (!address?.postcode) {
-      return res.status(501).json({
-        message: "Postcode is required!",
-      });
-    }
-    if (!address?.latitude) {
+    if (!address?.latitude && address?.latitude !== 0) {
       return res.status(501).json({
         message: "Latitude is required!",
       });
     }
-    if (!address?.longitude) {
+    if (!address?.longitude && address?.longitude !== 0) {
       return res.status(501).json({
         message: "Longitude is required!",
       });
@@ -395,23 +360,17 @@ export async function update(req, res, next) {
 
     // Create Address
     if (address) {
-      const stateId = await resolveStateId(address.state);
-      if (!stateId) {
-        return res.status(501).json({
-          message: "State / region is required!",
-        });
-      }
-      await JobAddress.create({
-        organisation_id: organisation.id,
-        job_id: id,
-        address_1: address?.address_1,
-        address_2: address?.address_2,
-        city: address?.city,
-        state_id: stateId,
-        postcode: String(address?.postcode ?? ""),
-        latitude: address?.latitude,
-        longitude: address?.longitude,
+      const stateId = await resolveStateId(
+        address.state ||
+          (address.administrative_area
+            ? { name: address.administrative_area }
+            : null),
+      );
+      const row = buildAddressRow(address, {
+        organisationId: organisation.id,
+        extra: { job_id: id, state_id: stateId },
       });
+      await JobAddress.create(row);
     }
 
     const groupIds = management_groups.map((group) => group.id);

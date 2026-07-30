@@ -113,22 +113,35 @@ export const customerSchema = z.object({
 
 export type CustomerFormValues = z.infer<typeof customerSchema>;
 
-export const createOrganisationSchema = z.object({
-  name: z.string().min(1, "Please enter name"),
-  website: z.string().optional().or(z.literal("")),
-  phone_number: e164PhoneSchema,
-  phone_country_code: z.string().optional().nullable(),
-  phone_country_iso: phoneCountryIsoSchema.optional().nullable(),
-  default_country: phoneCountryIsoSchema.optional().nullable(),
-  email: z.string().email("Please enter a valid email"),
-  address_1: z.string().min(1, "Address Line 1 is required"),
-  address_2: z.string().optional().or(z.literal("")),
-  city: z.string().min(1, "City is required"),
-  /** Optional when region is a free-text worldwide value; backend upserts by name */
-  state_id: z.coerce.number().optional(),
-  state_name: z.string().min(1, "State / province / region is required"),
-  postcode: z.string().min(1, "Postcode / ZIP is required"),
-});
+export const createOrganisationSchema = z
+  .object({
+    name: z.string().min(1, "Please enter name"),
+    website: z.string().optional().or(z.literal("")),
+    phone_number: e164PhoneSchema,
+    phone_country_code: z.string().optional().nullable(),
+    phone_country_iso: phoneCountryIsoSchema.optional().nullable(),
+    default_country: phoneCountryIsoSchema.optional().nullable(),
+    email: z.string().email("Please enter a valid email"),
+    address_1: z.string().optional().or(z.literal("")),
+    formatted_address: z.string().optional().or(z.literal("")),
+    address_2: z.string().optional().or(z.literal("")),
+    city: z.string().optional().or(z.literal("")),
+    state_id: z.coerce.number().optional(),
+    state_name: z.string().optional().or(z.literal("")),
+    postcode: z.string().optional().or(z.literal("")),
+    country: z.string().optional().nullable(),
+    country_code: z.string().optional().nullable(),
+    place_id: z.string().optional().nullable(),
+    administrative_area: z.string().optional().nullable(),
+  })
+  .refine(
+    (data) =>
+      Boolean(data.address_1?.trim() || data.formatted_address?.trim()),
+    {
+      message: "Please select an address from Google Places",
+      path: ["address_1"],
+    },
+  );
 
 export type CreateOrganisationFormValues = z.infer<
   typeof createOrganisationSchema

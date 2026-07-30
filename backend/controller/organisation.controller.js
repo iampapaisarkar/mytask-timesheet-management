@@ -26,6 +26,10 @@ import { db } from "../database.js";
 import { SystemFunction } from "#systemfunction";
 import { resolveStateId } from "../utils/state.utils.js";
 import { resolvePhoneFields } from "../utils/phone.js";
+import {
+  assertAddressSelected,
+  buildAddressRow,
+} from "../utils/address.utils.js";
 
 export async function list(req, res, next) {
   const { user } = req.body;
@@ -133,24 +137,9 @@ export async function create(req, res, next) {
       });
     }
 
-    if (!address?.address_1) {
-      return res.status(501).json({
-        message: "Address Line 1 is required!",
-      });
-    }
-    if (!address?.city) {
-      return res.status(501).json({
-        message: "City is required!",
-      });
-    }
-    if (!address?.state) {
-      return res.status(501).json({
-        message: "State is required!",
-      });
-    }
-    if (!address?.postcode) {
-      return res.status(501).json({
-        message: "Postcode is required!",
+    if (!address?.address_1 && !address?.formatted_address && !address?.street_address) {
+      return res.status(400).json({
+        message: "Please select an address from Google Places suggestions.",
       });
     }
 
@@ -202,26 +191,18 @@ export async function create(req, res, next) {
 
     // Create Address
     if (address) {
-      const stateId = await resolveStateId(address.state, transaction);
-      if (!stateId) {
-        await transaction.rollback();
-        return res.status(501).json({
-          message: "State / region is required!",
-        });
-      }
-      await OrganisationAddress.create(
-        {
-          organisation_id: response.id,
-          address_1: address?.address_1,
-          address_2: address?.address_2,
-          city: address?.city,
-          state_id: stateId,
-          postcode: String(address?.postcode ?? ""),
-          latitude: address?.latitude,
-          longitude: address?.longitude,
-        },
-        { transaction },
+      const stateId = await resolveStateId(
+        address.state ||
+          (address.administrative_area
+            ? { name: address.administrative_area }
+            : null),
+        transaction,
       );
+      const row = buildAddressRow(address, {
+        organisationId: response.id,
+        extra: { state_id: stateId },
+      });
+      await OrganisationAddress.create(row, { transaction });
     }
 
     const role = await OrganisationRoles.findOne({
@@ -319,24 +300,9 @@ export async function update(req, res, next) {
       });
     }
 
-    if (!address?.address_1) {
-      return res.status(501).json({
-        message: "Address Line 1 is required!",
-      });
-    }
-    if (!address?.city) {
-      return res.status(501).json({
-        message: "City is required!",
-      });
-    }
-    if (!address?.state) {
-      return res.status(501).json({
-        message: "State is required!",
-      });
-    }
-    if (!address?.postcode) {
-      return res.status(501).json({
-        message: "Postcode is required!",
+    if (!address?.address_1 && !address?.formatted_address && !address?.street_address) {
+      return res.status(400).json({
+        message: "Please select an address from Google Places suggestions.",
       });
     }
 
@@ -391,22 +357,17 @@ export async function update(req, res, next) {
 
     // Create Address
     if (address) {
-      const stateId = await resolveStateId(address.state);
-      if (!stateId) {
-        return res.status(501).json({
-          message: "State / region is required!",
-        });
-      }
-      await OrganisationAddress.create({
-        organisation_id: organisation.id,
-        address_1: address?.address_1,
-        address_2: address?.address_2,
-        city: address?.city,
-        state_id: stateId,
-        postcode: String(address?.postcode ?? ""),
-        latitude: address?.latitude,
-        longitude: address?.longitude,
+      const stateId = await resolveStateId(
+        address.state ||
+          (address.administrative_area
+            ? { name: address.administrative_area }
+            : null),
+      );
+      const row = buildAddressRow(address, {
+        organisationId: organisation.id,
+        extra: { state_id: stateId },
       });
+      await OrganisationAddress.create(row);
     }
 
     await redisUtils.deleteMultiKeyCache(`organisation:${organisation.id}:*`);
