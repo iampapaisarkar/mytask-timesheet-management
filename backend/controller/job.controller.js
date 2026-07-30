@@ -102,7 +102,6 @@ export async function create(req, res, next) {
     site_contact_phone_number,
     site_contact_phone_country_code,
     site_contact_phone_country_iso,
-    is_active,
     organisation,
   } = req.body;
   if (!organisation.acl.job.create) {
@@ -189,7 +188,6 @@ export async function create(req, res, next) {
       site_contact_phone_number: sitePhone.phone_number,
       site_contact_phone_country_code: sitePhone.phone_country_code,
       site_contact_phone_country_iso: sitePhone.phone_country_iso,
-      is_active: is_active,
       created_at: currentUTCTime,
       created_by: user.id,
       updated_at: currentUTCTime,
@@ -239,7 +237,6 @@ export async function update(req, res, next) {
     site_contact_phone_number,
     site_contact_phone_country_code,
     site_contact_phone_country_iso,
-    is_active,
     organisation,
   } = req.body;
   const id = req?.params?.id;
@@ -316,16 +313,12 @@ export async function update(req, res, next) {
       {
         name: name,
         customer_id: customer.id,
-        address: address,
-        latitude: latitude,
-        longitude: longitude,
         radius: radius,
         site_contact_name: site_contact_name,
         site_contact_email: site_contact_email,
         site_contact_phone_number: sitePhone.phone_number,
         site_contact_phone_country_code: sitePhone.phone_country_code,
         site_contact_phone_country_iso: sitePhone.phone_country_iso,
-        is_active: is_active,
         updated_at: currentUTCTime,
         updated_by: user.id,
       },

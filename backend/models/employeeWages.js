@@ -30,6 +30,11 @@ const EmployeeWages = db.define(
       allowNull: false,
       defaultValue: "HOURLY",
     },
+    currency: {
+      type: DataTypes.STRING(3),
+      allowNull: false,
+      defaultValue: "AUD",
+    },
     hourly_rate_exc_super: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,

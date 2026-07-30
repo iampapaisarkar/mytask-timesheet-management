@@ -141,3 +141,44 @@ export const TIMESHEET_STATUSES = [
   "Approved",
   "Rejected",
 ] as const;
+
+/** Supported currencies for employee wages and customer pricing. */
+export const SUPPORTED_CURRENCIES = [
+  { code: "USD", label: "USD — US Dollar" },
+  { code: "AUD", label: "AUD — Australian Dollar" },
+  { code: "INR", label: "INR — Indian Rupee" },
+  { code: "GBP", label: "GBP — British Pound" },
+  { code: "EUR", label: "EUR — Euro" },
+  { code: "NZD", label: "NZD — New Zealand Dollar" },
+  { code: "CAD", label: "CAD — Canadian Dollar" },
+  { code: "SGD", label: "SGD — Singapore Dollar" },
+] as const;
+
+export type SupportedCurrencyCode =
+  (typeof SUPPORTED_CURRENCIES)[number]["code"];
+
+export const DEFAULT_CURRENCY: SupportedCurrencyCode = "AUD";
+
+export const SUPPORTED_CURRENCY_CODES = SUPPORTED_CURRENCIES.map(
+  (c) => c.code,
+) as readonly SupportedCurrencyCode[];
+
+export function isSupportedCurrency(
+  code: string | null | undefined,
+): code is SupportedCurrencyCode {
+  return Boolean(
+    code &&
+      SUPPORTED_CURRENCY_CODES.includes(
+        code.toUpperCase() as SupportedCurrencyCode,
+      ),
+  );
+}
+
+export function normalizeCurrency(
+  code: string | null | undefined,
+  fallback: SupportedCurrencyCode = DEFAULT_CURRENCY,
+): SupportedCurrencyCode {
+  if (!code) return fallback;
+  const upper = code.toUpperCase();
+  return isSupportedCurrency(upper) ? upper : fallback;
+}

@@ -11,9 +11,11 @@ const {
   OrganisationSettings,
   TimesheetSubmissionFrequencies,
   OrganisationAddress,
+  PayCycles,
   PayrollCalendars,
 } = models;
 import Auth from "#auth";
+import { SystemFunction } from "#systemfunction";
 import moment from "moment";
 import crypto from "crypto";
 import redisUtils from "../utils/redis.utils.js";
@@ -235,6 +237,43 @@ export async function create(req, res, next) {
       },
       { transaction },
     );
+
+    const payCycles = await PayCycles.findAll({
+      attributes: ["id", "name", "code"],
+      raw: true,
+      transaction,
+    });
+    const preferredPayCycle =
+      payCycles.find((c) =>
+        String(c.code || c.name || "")
+          .toLowerCase()
+          .includes("week"),
+      ) || payCycles[0];
+
+    if (preferredPayCycle) {
+      const startDate = moment().format("YYYY-MM-DD");
+      const firstPaymentDate = moment().add(14, "days").format("YYYY-MM-DD");
+      const endDate = await SystemFunction.getPayrollEndDateByPayCycleType(
+        preferredPayCycle.code,
+        startDate,
+      );
+      await PayrollCalendars.create(
+        {
+          organisation_id: response.id,
+          name: "Default",
+          pay_cycle_id: preferredPayCycle.id,
+          start_date: startDate,
+          end_date: endDate,
+          first_payment_date: firstPaymentDate,
+          default: true,
+          created_at: currentUTCTime,
+          created_by: user.id,
+          updated_at: currentUTCTime,
+          updated_by: user.id,
+        },
+        { transaction },
+      );
+    }
 
     // create org admin as first employee
     await organisationService.createOrgAdminEmployee(

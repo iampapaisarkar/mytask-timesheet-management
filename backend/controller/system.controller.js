@@ -91,7 +91,6 @@ export async function allCustomers(req, res, next) {
     const sortDirection = sort_direction || "asc";
 
     let whereCondition = {
-      is_active: true,
       organisation_id: organisation.id,
     };
 

@@ -41,9 +41,6 @@ const Jobs = db.define(
       type: DataTypes.STRING(2),
       allowNull: true,
     },
-    is_active: {
-      type: DataTypes.BOOLEAN,
-    },
     created_at: {
       type: DataTypes.DATE,
       field: "created_at",

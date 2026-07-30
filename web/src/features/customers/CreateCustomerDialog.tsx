@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
 import {
+  DEFAULT_CURRENCY,
+  SUPPORTED_CURRENCIES,
+  normalizeCurrency,
+  type SupportedCurrencyCode,
+} from "@mytask/constants";
+import {
   useCreateCustomer,
   useUpdateCustomer,
 } from "@mytask/hooks";
@@ -14,6 +20,9 @@ import {
   type AddressValue,
 } from "@/components/GoogleAddress";
 import { useToastStore } from "@/store/toastStore";
+
+const selectClass =
+  "mt-focus rounded-xl border border-border bg-[var(--mt-surface)] px-3.5 py-3 text-[var(--mt-text)] outline-none focus:border-primary";
 
 export type CustomerRow = {
   id?: number | string;
@@ -35,7 +44,7 @@ export type CustomerRow = {
   contact_phone_country_code?: string | null;
   contact_phone_country_iso?: string | null;
   hourly_rate?: number | string | null;
-  is_active?: boolean | null;
+  currency?: string | null;
 };
 
 export function CustomerFormDialog({
@@ -63,7 +72,8 @@ export function CustomerFormDialog({
     phone_country_iso: null,
   });
   const [hourlyRate, setHourlyRate] = useState("");
-  const [isActive, setIsActive] = useState(true);
+  const [currency, setCurrency] =
+    useState<SupportedCurrencyCode>(DEFAULT_CURRENCY);
 
   useEffect(() => {
     if (!open) return;
@@ -100,7 +110,7 @@ export function CustomerFormDialog({
     setHourlyRate(
       customer?.hourly_rate != null ? String(customer.hourly_rate) : "",
     );
-    setIsActive(customer?.is_active !== false);
+    setCurrency(normalizeCurrency(customer?.currency));
   }, [open, customer]);
 
   if (!open) return null;
@@ -134,7 +144,7 @@ export function CustomerFormDialog({
       contact_phone_country_code: contactPhone.phone_country_code,
       contact_phone_country_iso: contactPhone.phone_country_iso,
       hourly_rate: hourlyRate.trim() ? Number(hourlyRate) : null,
-      is_active: isActive,
+      currency,
     };
     try {
       if (isEdit && customer?.id != null) {
@@ -202,22 +212,31 @@ export function CustomerFormDialog({
           value={contactPhone}
           onChange={setContactPhone}
         />
-        <TextInput
-          label="Hourly rate"
-          type="number"
-          step="0.01"
-          value={hourlyRate}
-          onChange={(e) => setHourlyRate(e.target.value)}
-        />
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            className="size-4 accent-primary"
-            checked={isActive}
-            onChange={(e) => setIsActive(e.target.checked)}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <TextInput
+            label="Hourly rate"
+            type="number"
+            step="0.01"
+            value={hourlyRate}
+            onChange={(e) => setHourlyRate(e.target.value)}
           />
-          <span className="font-medium text-[var(--mt-text)]">Active</span>
-        </label>
+          <label className="flex w-full flex-col gap-1.5 text-sm">
+            <span className="font-medium text-[var(--mt-text)]">Currency</span>
+            <select
+              className={selectClass}
+              value={currency}
+              onChange={(e) =>
+                setCurrency(e.target.value as SupportedCurrencyCode)
+              }
+            >
+              {SUPPORTED_CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
     </FullScreenModal>
   );

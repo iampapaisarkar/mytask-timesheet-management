@@ -95,6 +95,5 @@ export function mapJobOption(job) {
   return {
     id: plain.id,
     name: plain.name,
-    is_active: plain.is_active !== false,
   };
 }

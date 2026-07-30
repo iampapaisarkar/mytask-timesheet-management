@@ -88,7 +88,7 @@ export async function create(req, res, next) {
     contact_phone_country_code,
     contact_phone_country_iso,
     hourly_rate,
-    is_active,
+    currency,
     name,
     organisation,
   } = req.body;
@@ -149,7 +149,9 @@ export async function create(req, res, next) {
       contact_phone_country_code: contactPhone.phone_country_code,
       contact_phone_country_iso: contactPhone.phone_country_iso,
       hourly_rate: hourly_rate,
-      is_active: is_active,
+      currency: (await import("../utils/currency.utils.js")).assertSupportedCurrency(
+        currency,
+      ),
       name: name,
       created_at: currentUTCTime,
       created_by: user.id,
@@ -162,8 +164,8 @@ export async function create(req, res, next) {
     });
   } catch (err) {
     console.log("error::", err);
-    res.status(500).json({
-      message: "Unable to create customer. Please ty again later.",
+    res.status(err.statusCode || 500).json({
+      message: err.message || "Unable to create customer. Please ty again later.",
       details: err,
     });
   }
@@ -189,7 +191,7 @@ export async function update(req, res, next) {
     contact_phone_country_code,
     contact_phone_country_iso,
     hourly_rate,
-    is_active,
+    currency,
     name,
     organisation,
   } = req.body;
@@ -246,7 +248,9 @@ export async function update(req, res, next) {
         contact_phone_country_code: contactPhone.phone_country_code,
         contact_phone_country_iso: contactPhone.phone_country_iso,
         hourly_rate: hourly_rate,
-        is_active: is_active,
+        currency: (await import("../utils/currency.utils.js")).assertSupportedCurrency(
+          currency,
+        ),
         name: name,
         updated_at: currentUTCTime,
         updated_by: user.id,
@@ -261,8 +265,8 @@ export async function update(req, res, next) {
     });
   } catch (err) {
     console.log("error::", err);
-    res.status(500).json({
-      message: "Unable to update customer. Please ty again later.",
+    res.status(err.statusCode || 500).json({
+      message: err.message || "Unable to update customer. Please ty again later.",
       details: err,
     });
   }

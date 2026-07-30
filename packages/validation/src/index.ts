@@ -107,8 +107,10 @@ export const customerSchema = z.object({
   contact_phone_country_code: z.string().optional().nullable(),
   contact_phone_country_iso: z.string().optional().nullable(),
   hourly_rate: z.union([z.number(), z.string()]).optional().nullable(),
-  is_active: z.boolean().optional(),
-  active: z.boolean().optional(),
+  currency: z
+    .enum(["USD", "AUD", "INR", "GBP", "EUR", "NZD", "CAD", "SGD"])
+    .optional()
+    .default("AUD"),
 });
 
 export type CustomerFormValues = z.infer<typeof customerSchema>;

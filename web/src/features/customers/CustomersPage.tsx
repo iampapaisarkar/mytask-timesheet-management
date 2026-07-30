@@ -57,9 +57,10 @@ export function CustomersPage() {
               ) || "—",
           },
           {
-            key: "is_active",
-            label: "Active",
-            accessor: (row) => (row.is_active === false ? "No" : "Yes"),
+            key: "currency",
+            label: "Currency",
+            accessor: (row) =>
+              (row.currency as string | undefined) || "—",
           },
         ]}
         rowActions={

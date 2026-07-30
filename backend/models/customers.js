@@ -77,8 +77,10 @@ const Customers = db.define(
     hourly_rate: {
       type: DataTypes.DECIMAL(10, 2),
     },
-    is_active: {
-      type: DataTypes.BOOLEAN,
+    currency: {
+      type: DataTypes.STRING(3),
+      allowNull: false,
+      defaultValue: "AUD",
     },
     created_at: {
       type: DataTypes.DATE,

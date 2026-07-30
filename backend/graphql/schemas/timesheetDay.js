@@ -23,7 +23,6 @@ export const schema = buildSchema(`
     site_contact_name: String
     site_contact_email: String
     site_contact_phone_number: String
-    is_active: Boolean
     created_at: Date
     created_by: Int
     updated_at: Date

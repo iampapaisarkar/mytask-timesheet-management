@@ -200,7 +200,6 @@ export interface EmployeeFormLookupsView {
 export interface JobOptionView {
   id: number | string;
   name: string | null;
-  is_active?: boolean;
 }
 
 export interface TimesheetDayEditorView {

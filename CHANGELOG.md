@@ -6,6 +6,9 @@
 
 - MVP Payouts API under `/api/payouts` (`list`, `eligible`, `create`, `/:id/mark-paid`) with org ACL (`payout.list` / `create` / `edit`)
 - Web Payouts page for eligible approved timesheets and marking payouts paid
+- Currency support (USD/AUD/INR/GBP/EUR/NZD/CAD/SGD) on employee wages and customer pricing
+- Interactive Google Map location picker for job site coordinates (pin drop + reverse geocode)
+- Job edit flow on the jobs list
 
 ### Changed
 
@@ -22,6 +25,9 @@
 - Redesigned employee wage/payroll (employment type, pay type, Cash/Direct Debit/Bank Transfer); removed next-of-kin
 - Aligned organisation ACL (manager employee CRUD, owner customer delete, gated org settings edit, payout permissions)
 - Required holiday + payroll calendars before operational creates; blocked moderator/manager self-approve/reject
+- Payroll calendars are view-only in settings UI; further creates are blocked after the first calendar; new organisations auto-receive a default payroll calendar
+- Removed Active status from customers and jobs
+- Holiday calendar list includes an explicit Edit action
 
 ## 2026-07-29
 

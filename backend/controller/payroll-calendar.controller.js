@@ -85,6 +85,15 @@ export async function create(req, res, next) {
     });
   }
   try {
+    const existingCount = await PayrollCalendars.count({
+      where: { organisation_id: organisation.id },
+    });
+    if (existingCount > 0) {
+      return res.status(403).json({
+        message: "Payroll calendars are read-only after initial setup.",
+      });
+    }
+
     if (!pay_cycle) {
       return res.status(501).json({
         message: "Pay cycle is required!",

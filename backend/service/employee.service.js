@@ -233,6 +233,11 @@ async function createOrUpdateEmployeeWage(
       throw new AppError("Pay type must be HOURLY or FIXED.", 400);
     }
 
+    const { assertSupportedCurrency } = await import(
+      "../utils/currency.utils.js"
+    );
+    const currency = assertSupportedCurrency(wage.currency);
+
     const hourly =
       wage.hourly_rate_exc_super === null ||
       wage.hourly_rate_exc_super === undefined ||
@@ -291,6 +296,7 @@ async function createOrUpdateEmployeeWage(
         payroll_calendar_id: wage.payroll_calendar?.id,
         employment_type_id: wage.employment_type?.id,
         pay_type: payType,
+        currency,
         hourly_rate_exc_super: payType === "HOURLY" ? hourly : null,
         fixed_rate_exc_super: payType === "FIXED" ? fixed : null,
         created_at: currentUTCTime,

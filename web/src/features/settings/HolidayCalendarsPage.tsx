@@ -2,6 +2,7 @@ import { useState } from "react";
 import { getErrorMessage } from "@mytask/utils";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { useOrganisationStore } from "@/store/organisationStore";
+import { Button } from "@/components/ui/Button";
 import { TextInput } from "@/components/ui/TextInput";
 import { FormDialog } from "@/components/ui/FormDialog";
 import { useToastStore } from "@/store/toastStore";
@@ -86,6 +87,19 @@ export function HolidayCalendarsPage() {
         createLabel={canCreate ? "Create holiday" : undefined}
         onCreate={canCreate ? openCreate : undefined}
         onRowClick={canEdit ? (row) => openEdit(row as Row) : undefined}
+        rowActions={
+          canEdit
+            ? (row) => (
+                <Button
+                  variant="soft"
+                  className="px-2.5 py-1.5 text-xs"
+                  onClick={() => openEdit(row as Row)}
+                >
+                  Edit
+                </Button>
+              )
+            : undefined
+        }
       />
       <FormDialog
         open={open}

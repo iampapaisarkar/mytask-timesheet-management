@@ -6,6 +6,12 @@ import {
   useSearchEmployeeByEmail,
   useUpdateEmployee,
 } from "@mytask/hooks";
+import {
+  DEFAULT_CURRENCY,
+  SUPPORTED_CURRENCIES,
+  isSupportedCurrency,
+  type SupportedCurrencyCode,
+} from "@mytask/constants";
 import { getErrorMessage, isValidInternationalPhone, phoneValueFromE164, type PhoneValue } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
 import { FullScreenModal } from "@/components/ui/FullScreenModal";
@@ -74,6 +80,7 @@ type EmployeeForm = {
     employment_type: NamedId | null;
     payroll_calendar: NamedId | null;
     pay_type: PayType;
+    currency: SupportedCurrencyCode;
     hourly_rate_exc_super: string;
     fixed_rate_exc_super: string;
   };
@@ -129,6 +136,7 @@ function emptyForm(email = ""): EmployeeForm {
       employment_type: null,
       payroll_calendar: null,
       pay_type: "HOURLY",
+      currency: DEFAULT_CURRENCY,
       hourly_rate_exc_super: "",
       fixed_rate_exc_super: "",
     },
@@ -167,11 +175,15 @@ function asPaymentMethod(raw: unknown): PaymentMethod {
 
 function mapWageFromRaw(wage: Record<string, unknown>): EmployeeForm["wage"] {
   const payType = asPayType(wage.pay_type);
+  const rawCurrency = String(wage.currency || DEFAULT_CURRENCY).toUpperCase();
   return {
     start_date: String(wage.start_date || ""),
     employment_type: asNamed(wage.employment_type),
     payroll_calendar: asNamed(wage.payroll_calendar),
     pay_type: payType,
+    currency: isSupportedCurrency(rawCurrency)
+      ? rawCurrency
+      : DEFAULT_CURRENCY,
     hourly_rate_exc_super:
       payType === "HOURLY" ? String(wage.hourly_rate_exc_super ?? "") : "",
     fixed_rate_exc_super:
@@ -489,16 +501,19 @@ export function CreateEmployeeDialog({
       return "Contract employment type is not allowed";
     }
     if (!w.payroll_calendar?.id) return "Payroll calendar is required";
+    if (!isSupportedCurrency(w.currency)) {
+      return "Currency must be a supported currency code";
+    }
     if (w.pay_type === "HOURLY") {
       if (!w.hourly_rate_exc_super.trim()) {
-        return "Hourly rate (exc super) is required";
+        return "Hourly rate is required";
       }
       if (Number(w.hourly_rate_exc_super) <= 0) {
         return "Hourly rate must be greater than 0";
       }
     } else {
       if (!w.fixed_rate_exc_super.trim()) {
-        return "Fixed rate (exc super) is required";
+        return "Fixed rate is required";
       }
       if (Number(w.fixed_rate_exc_super) <= 0) {
         return "Fixed rate must be greater than 0";
@@ -605,6 +620,7 @@ export function CreateEmployeeDialog({
           ? { id: w.payroll_calendar.id }
           : null,
         pay_type: w.pay_type,
+        currency: w.currency,
         hourly_rate_exc_super:
           w.pay_type === "HOURLY" ? w.hourly_rate_exc_super || null : null,
         fixed_rate_exc_super:
@@ -949,9 +965,28 @@ export function CreateEmployeeDialog({
                   />
                 </div>
               </fieldset>
+              <label className="flex w-full flex-col gap-1.5 text-sm">
+                <span className="font-medium">Currency</span>
+                <select
+                  className={selectClass}
+                  value={form.wage.currency}
+                  onChange={(e) => {
+                    const code = e.target.value.toUpperCase();
+                    if (isSupportedCurrency(code)) {
+                      patchWage({ currency: code });
+                    }
+                  }}
+                >
+                  {SUPPORTED_CURRENCIES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
               {form.wage.pay_type === "HOURLY" ? (
                 <TextInput
-                  label="Hourly rate (exc super)"
+                  label="Hourly rate"
                   type="number"
                   step="0.01"
                   min="0"
@@ -962,7 +997,7 @@ export function CreateEmployeeDialog({
                 />
               ) : (
                 <TextInput
-                  label="Fixed rate (exc super)"
+                  label="Fixed rate"
                   type="number"
                   step="0.01"
                   min="0"
