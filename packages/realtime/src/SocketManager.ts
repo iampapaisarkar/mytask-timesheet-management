@@ -79,7 +79,30 @@ export class SocketManager {
     if (!this.options) {
       throw new Error("SocketManager.configure() must be called before connect()");
     }
-    const token = this.options.getToken();
+    void this.connectAsync();
+  }
+
+  private async resolveToken(): Promise<string | null> {
+    const raw = this.options?.getToken();
+    const token = typeof raw === "string" || raw == null ? raw : await raw;
+    return token || null;
+  }
+
+  /**
+   * After Firebase ID token rotation: update handshake auth and reconnect if live.
+   */
+  async updateAuthToken(): Promise<void> {
+    const token = await this.resolveToken();
+    if (!this.socket || !token) return;
+    this.socket.auth = this.buildAuth(token);
+    if (this.socket.connected) {
+      this.socket.disconnect();
+      this.socket.connect();
+    }
+  }
+
+  private async connectAsync(): Promise<void> {
+    const token = await this.resolveToken();
     if (!token) {
       this.setStatus("idle");
       return;
@@ -98,14 +121,14 @@ export class SocketManager {
     }
 
     this.setStatus("connecting");
-    this.socket = io(this.options.url, {
-      path: this.options.path ?? "/socket.io",
-      transports: this.options.transports ?? ["websocket", "polling"],
+    this.socket = io(this.options!.url, {
+      path: this.options!.path ?? "/socket.io",
+      transports: this.options!.transports ?? ["websocket", "polling"],
       autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: this.options.reconnectionAttempts ?? Infinity,
+      reconnectionAttempts: this.options!.reconnectionAttempts ?? Infinity,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: this.options.reconnectionDelayMax ?? 15_000,
+      reconnectionDelayMax: this.options!.reconnectionDelayMax ?? 15_000,
       randomizationFactor: 0.5,
       auth: this.buildAuth(token),
       withCredentials: true,
@@ -179,11 +202,11 @@ export class SocketManager {
 
     this.socket.on("connect", () => {
       this.setStatus("connected");
-      // Refresh auth token for next reconnect
-      const token = this.options?.getToken();
-      if (token && this.socket) {
-        this.socket.auth = this.buildAuth(token);
-      }
+      void this.resolveToken().then((token) => {
+        if (token && this.socket) {
+          this.socket.auth = this.buildAuth(token);
+        }
+      });
       this.syncOrganisationRoom();
     });
 
@@ -196,10 +219,11 @@ export class SocketManager {
     });
 
     this.socket.io.on("reconnect_attempt", () => {
-      const token = this.options?.getToken();
-      if (token && this.socket) {
-        this.socket.auth = this.buildAuth(token);
-      }
+      void this.resolveToken().then((token) => {
+        if (token && this.socket) {
+          this.socket.auth = this.buildAuth(token);
+        }
+      });
       this.setStatus("reconnecting");
     });
 

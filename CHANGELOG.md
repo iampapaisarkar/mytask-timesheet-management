@@ -2,6 +2,15 @@
 
 ## 2026-07-31
 
+### Fixed
+
+- Random logouts: clients no longer send stale stored JWTs; `@mytask/auth` TokenManager single-flights Firebase ID token refresh, Axios retries once on 401 after force refresh, and sockets reconnect with rotated tokens
+
+### Changed
+
+- Backend auth uses Firebase Admin `verifyIdToken(checkRevoked)` with Redis claims cache and structured codes (`AUTH_MISSING` / `AUTH_EXPIRED` / `AUTH_REVOKED` / …); `user_sessions` is device audit keyed by `token_hash` (raw JWT no longer the session primary key)
+- Docs: `docs/AUTH_ARCHITECTURE.md`, `backend/docs/AUTHENTICATION.md`
+
 ### Added
 
 - Organisation `default_currency` (reporting currency) with country→currency mapping; dashboard payroll KPIs convert into that currency via Frankfurter ECB rates (fallback open.er-api)

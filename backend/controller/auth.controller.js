@@ -42,6 +42,10 @@ export async function login(req, res, next) {
         let sessionCreationResponse = await Auth.createSession(
           authAttemptResponse.user.id,
           token,
+          {
+            platform: platform || null,
+            user_agent: req.headers["user-agent"] || null,
+          },
         );
         if (sessionCreationResponse.success) {
           await redisUtils.delCache(`user:${authAttemptResponse.user.id}`);
@@ -249,7 +253,10 @@ export async function signup(req, res, next) {
         mailErr?.message || mailErr,
       );
     }
-    let sessionCreationResponse = await Auth.createSession(authUserId, token);
+    let sessionCreationResponse = await Auth.createSession(authUserId, token, {
+      platform: platform || null,
+      user_agent: req.headers["user-agent"] || null,
+    });
 
     if (sessionCreationResponse.success) {
       await Auth.storeUpdateUserTimezone(authUserId, timezone);
@@ -413,12 +420,9 @@ export async function verifyOrganisationInvitationToken(req, res, next) {
     const token = authHeader && authHeader.split(" ")[1];
 
     if (token) {
-      const response = await Auth.verifyToken(token);
-      if (response && response.success) {
-        const userResponse = await Auth.getUserByToken(token);
-        if (userResponse && userResponse.success) {
-          await onboardInvitation(userResponse.user, invitation_token);
-        }
+      const response = await Auth.verifyIdTokenAndResolveUser(token);
+      if (response && response.success && response.user) {
+        await onboardInvitation(response.user, invitation_token);
       }
     }
 

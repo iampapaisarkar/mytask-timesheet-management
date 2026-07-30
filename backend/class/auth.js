@@ -1,3 +1,5 @@
+import { createHash } from "crypto";
+import admin from "firebase-admin";
 import models from "../models/index.js";
 const {
   Users,
@@ -12,8 +14,35 @@ const {
 } = models;
 import { fn, col, literal, Op } from "sequelize";
 import moment from "moment";
-import axios from "axios";
 import redisUtils from "../utils/redis.utils.js";
+
+const AUTH_CACHE_PREFIX = "auth:claims:";
+const AUTH_CACHE_MAX_SEC = 300;
+
+function hashToken(token) {
+  return createHash("sha256").update(String(token)).digest("hex");
+}
+
+function mapFirebaseAuthError(err) {
+  const code = err?.code || "";
+  if (code === "auth/id-token-expired") {
+    return { code: "AUTH_EXPIRED", message: "Firebase ID token expired" };
+  }
+  if (code === "auth/id-token-revoked") {
+    return { code: "AUTH_REVOKED", message: "Firebase ID token revoked" };
+  }
+  if (code === "auth/user-disabled") {
+    return { code: "AUTH_DISABLED", message: "Firebase user is disabled" };
+  }
+  if (
+    code === "auth/argument-error" ||
+    code === "auth/invalid-id-token" ||
+    code === "auth/project-not-found"
+  ) {
+    return { code: "AUTH_INVALID", message: "Invalid Firebase ID token" };
+  }
+  return { code: "AUTH_INVALID", message: "Invalid or expired session" };
+}
 
 class Auth {
   static _req = null;
@@ -55,148 +84,212 @@ class Auth {
     }
   }
 
+  /**
+   * Cryptographic ID token verification (Firebase Admin).
+   * Prefer this for login/signup and request auth.
+   */
   static async verifyFirebaseToken(token) {
     try {
-      const response = await axios.post(
-        `${process.env.FIREBASE_API_URL}/accounts:lookup?key=${process.env.FIREBASE_API_KEY}`,
-        { idToken: token },
-        { timeout: 5000 }, // ⛑ prevents Cloud Run 503
-      );
-
+      if (!token) {
+        return { success: false, code: "AUTH_MISSING", message: "Token missing" };
+      }
+      const decoded = await admin.auth().verifyIdToken(token, true);
       return {
         success: true,
-        data: response.data,
+        data: { users: [{ localId: decoded.uid, email: decoded.email }] },
+        decoded,
       };
     } catch (error) {
-      return {
-        success: false,
-        message: "Firebase token has been expired!",
-      };
+      const mapped = mapFirebaseAuthError(error);
+      return { success: false, ...mapped };
     }
   }
 
-  static async verifyToken(token) {
+  static async resolveUserIdFromUid(uid) {
+    if (!uid) return null;
+    const byProvider = await FirebaseProviders.findOne({
+      attributes: ["user_id"],
+      where: { uid },
+      raw: true,
+    });
+    if (byProvider?.user_id) return Number(byProvider.user_id);
+
+    const byUser = await Users.findOne({
+      attributes: ["id"],
+      where: { firebase_user_id: uid },
+      raw: true,
+    });
+    return byUser?.id ? Number(byUser.id) : null;
+  }
+
+  /**
+   * Verify Firebase ID token + resolve local user.
+   * Uses Redis claims cache keyed by token hash (never skips crypto without prior verify).
+   */
+  static async verifyIdTokenAndResolveUser(token, options = {}) {
+    if (!token) {
+      return {
+        success: false,
+        code: "AUTH_MISSING",
+        message: "Token missing",
+      };
+    }
+
+    const tokenHash = hashToken(token);
+    const cacheKey = `${AUTH_CACHE_PREFIX}${tokenHash}`;
+
     try {
-      if (!token) {
-        return {
-          success: false,
-          message: "Token missing",
-        };
-      }
-
-      // 1️⃣ Get latest session from DB
-      const userSession = await UserSessions.findOne({
-        attributes: ["user_id", "token", "expire_at"],
-        where: { token },
-        order: [["created_at", "DESC"]],
-        raw: true,
-      });
-
-      const now = moment.utc();
-
-      // 2️⃣ If session exists and NOT expired → allow
-      if (
-        userSession &&
-        userSession.expire_at &&
-        now.isBefore(moment.utc(userSession.expire_at))
-      ) {
-        console.log("Token exists and is valid");
-        return { success: true };
-      }
-
-      // 3️⃣ Otherwise, verify token with Firebase
-      console.log("Checking token with Firebase");
-
-      const firebaseResponse = await axios.post(
-        `${process.env.FIREBASE_API_URL}/accounts:lookup?key=${process.env.FIREBASE_API_KEY}`,
-        { idToken: token },
-        { timeout: 5000 }, // ⛑ prevents Cloud Run 503
-      );
-
-      // 4️⃣ Validate Firebase response
-      if (
-        !firebaseResponse.data ||
-        !firebaseResponse.data.users ||
-        firebaseResponse.data.users.length === 0
-      ) {
-        return {
-          success: false,
-          message: "Invalid Firebase token",
-        };
-      }
-
-      const providerUserInfo =
-        firebaseResponse.data.users[0].providerUserInfo || [];
-
-      let matchedUser = null;
-
-      // 5️⃣ Match Firebase UID with local DB
-      for (const provider of providerUserInfo) {
-        const uid = provider.rawId || provider.federatedId;
-
-        if (!uid) continue;
-
-        const firebaseProvider = await FirebaseProviders.findOne({
-          attributes: ["user_id"],
-          where: { uid },
-          raw: true,
-        });
-
-        if (firebaseProvider) {
-          matchedUser = firebaseProvider;
-          break;
+      const cached = await redisUtils.getCache(cacheKey).catch(() => null);
+      if (cached?.userId && cached?.uid) {
+        if (cached.revoked) {
+          return {
+            success: false,
+            code: "AUTH_REVOKED",
+            message: "Session revoked",
+          };
         }
+        const userResponse = await this.getUser(cached.userId);
+        if (!userResponse.success) {
+          return {
+            success: false,
+            code: "AUTH_USER_NOT_FOUND",
+            message: userResponse.message || "User not found",
+          };
+        }
+        if (options.touchSession !== false) {
+          void this.touchSession(cached.userId, tokenHash, options.meta);
+        }
+        return {
+          success: true,
+          user: userResponse.user,
+          uid: cached.uid,
+          tokenHash,
+          fromCache: true,
+        };
       }
 
-      // 6️⃣ No matched user → deny
-      if (!matchedUser) {
+      let decoded;
+      try {
+        decoded = await admin.auth().verifyIdToken(token, true);
+      } catch (err) {
+        const mapped = mapFirebaseAuthError(err);
+        return { success: false, ...mapped };
+      }
+
+      const uid = decoded.uid;
+      const userId = await this.resolveUserIdFromUid(uid);
+      if (!userId) {
         return {
           success: false,
+          code: "AUTH_USER_NOT_FOUND",
           message: "User not found",
         };
       }
 
-      // 7️⃣ Create or refresh session
-      await this.createSession(matchedUser.user_id, token);
+      const revoked = await UserSessions.findOne({
+        where: {
+          user_id: userId,
+          token_hash: tokenHash,
+          revoked_at: { [Op.ne]: null },
+        },
+        attributes: ["id"],
+        raw: true,
+      }).catch(() => null);
+      if (revoked) {
+        return {
+          success: false,
+          code: "AUTH_REVOKED",
+          message: "Session revoked",
+        };
+      }
 
-      console.log("Session created/refreshed");
+      const exp = Number(decoded.exp) || 0;
+      const now = Math.floor(Date.now() / 1000);
+      const ttl = Math.max(
+        1,
+        Math.min(AUTH_CACHE_MAX_SEC, exp > now ? exp - now : AUTH_CACHE_MAX_SEC),
+      );
+      await redisUtils
+        .setCacheEx(cacheKey, { uid, userId, exp }, ttl)
+        .catch(() => null);
+
+      const userResponse = await this.getUser(userId);
+      if (!userResponse.success) {
+        return {
+          success: false,
+          code: "AUTH_USER_NOT_FOUND",
+          message: userResponse.message || "User not found",
+        };
+      }
+
+      if (options.touchSession !== false) {
+        void this.touchSession(userId, tokenHash, options.meta);
+      }
 
       return {
         success: true,
-        data: firebaseResponse.data,
+        user: userResponse.user,
+        uid,
+        tokenHash,
+        decoded,
+        fromCache: false,
       };
     } catch (error) {
-      console.error("verifyToken error:", error);
-
+      console.error("verifyIdTokenAndResolveUser error:", error);
       return {
         success: false,
+        code: "AUTH_INVALID",
         message: "Session is invalid or expired",
       };
     }
   }
 
-  static async createSession(userId, token) {
+  /** @deprecated Prefer verifyIdTokenAndResolveUser — kept for call-site compatibility */
+  static async verifyToken(token) {
+    const result = await this.verifyIdTokenAndResolveUser(token, {
+      touchSession: true,
+    });
+    if (!result.success) {
+      return { success: false, message: result.message, code: result.code };
+    }
+    return { success: true, user: result.user, tokenHash: result.tokenHash };
+  }
+
+  static async createSession(userId, token, meta = {}) {
     try {
       const currentUTCTime = moment().utc().format();
+      const tokenHash = hashToken(token);
+      const expireAt = moment().utc().add(2, "hours").format();
 
-      const expireAtUTCTime = moment().utc();
-
-      // Add 60 minutes to the expireAt UTC time
-      const updatedExpireAtUTCTime = expireAtUTCTime.add(60, "minutes");
-
-      // Format the updated time
-      const formattedExpireAtUTCTime = updatedExpireAtUTCTime.format();
-
-      await UserSessions.create({
-        user_id: userId,
-        token: token,
-        expire_at: formattedExpireAtUTCTime,
-        created_at: currentUTCTime,
+      const existing = await UserSessions.findOne({
+        where: { user_id: userId, token_hash: tokenHash },
       });
-      return {
-        success: true,
-      };
+
+      if (existing) {
+        await existing.update({
+          revoked_at: null,
+          last_activity_at: currentUTCTime,
+          expire_at: expireAt,
+          platform: meta.platform || existing.platform,
+          user_agent: meta.user_agent || existing.user_agent,
+          token: null,
+        });
+      } else {
+        await UserSessions.create({
+          user_id: userId,
+          token: null,
+          token_hash: tokenHash,
+          expire_at: expireAt,
+          created_at: currentUTCTime,
+          last_activity_at: currentUTCTime,
+          revoked_at: null,
+          platform: meta.platform || null,
+          user_agent: meta.user_agent || null,
+        });
+      }
+      return { success: true, tokenHash };
     } catch (error) {
+      console.error("Auth.createSession error:", error);
       return {
         success: false,
         message: "Something went wrong in session creation!",
@@ -204,23 +297,53 @@ class Auth {
     }
   }
 
+  static async touchSession(userId, tokenHash, meta = {}) {
+    try {
+      const now = moment().utc();
+      const row = await UserSessions.findOne({
+        where: { user_id: userId, token_hash: tokenHash },
+      });
+      if (!row || row.revoked_at) return;
+      const last = row.last_activity_at
+        ? moment.utc(row.last_activity_at)
+        : null;
+      if (last && now.diff(last, "minutes") < 5) return;
+      await row.update({
+        last_activity_at: now.format(),
+        expire_at: now.clone().add(2, "hours").format(),
+        ...(meta.platform ? { platform: meta.platform } : {}),
+        ...(meta.user_agent ? { user_agent: meta.user_agent } : {}),
+      });
+    } catch {
+      /* non-fatal */
+    }
+  }
+
   static async destroySession(token) {
     try {
-      if (!token) return null;
+      if (!token) return { success: false };
+      const tokenHash = hashToken(token);
+      const now = moment().utc().format();
 
-      const sessionResponse = await UserSessions.destroy({
-        where: { token: token },
-      });
+      const [count] = await UserSessions.update(
+        { revoked_at: now },
+        {
+          where: {
+            token_hash: tokenHash,
+            revoked_at: null,
+          },
+        },
+      );
 
-      if (sessionResponse) {
-        return {
-          success: true,
-        };
-      } else {
-        return {
-          success: false,
-        };
-      }
+      // Legacy rows that still store raw token
+      await UserSessions.update(
+        { revoked_at: now },
+        { where: { token, revoked_at: null } },
+      );
+
+      await redisUtils.delCache(`${AUTH_CACHE_PREFIX}${tokenHash}`).catch(() => null);
+
+      return { success: true, count };
     } catch (error) {
       console.error("Auth.destroySession error:", error);
       return {
@@ -230,34 +353,15 @@ class Auth {
     }
   }
 
+  /** @deprecated Use verifyIdTokenAndResolveUser — resolves user after verify */
   static async getUserByToken(token) {
-    try {
-      const session = await UserSessions.findOne({
-        where: { token },
-        raw: true,
-      });
-
-      if (!session) return null;
-
-      const response = await this.getUser(session.user_id);
-      if (response.success) {
-        return {
-          success: true,
-          user: response.user,
-        };
-      } else {
-        return {
-          success: false,
-          message: response.message,
-        };
-      }
-    } catch (error) {
-      console.error("Auth.getUserByToken error:", error);
-      return {
-        success: false,
-        message: "Something went wrong to fetching user!",
-      };
+    const result = await this.verifyIdTokenAndResolveUser(token, {
+      touchSession: false,
+    });
+    if (!result.success) {
+      return { success: false, message: result.message, code: result.code };
     }
+    return { success: true, user: result.user };
   }
 
   static async getUser(userId) {
@@ -314,14 +418,14 @@ class Auth {
               {
                 model: UserOrganisationRoles,
                 as: "user_organisations_role",
-                required: true, // ✅ only include current user’s role
+                required: true,
                 where: { user_id: userId },
                 attributes: ["id", "user_id", "organisation_id", "role_id"],
                 include: [
                   {
                     model: OrganisationRoles,
                     as: "role",
-                    required: false, // ⚠️ make this optional
+                    required: false,
                     attributes: ["id", "name", "code"],
                   },
                 ],
@@ -394,7 +498,7 @@ class Auth {
       include: [
         {
           model: UserOrganisationRoles,
-          as: "user_organisations_role", // optional alias if you defined one
+          as: "user_organisations_role",
           where: { user_id: userId },
           attributes: ["id", "user_id", "role_id"],
           include: [
@@ -402,7 +506,7 @@ class Auth {
               model: OrganisationRoles,
               as: "role",
               attributes: ["id", "name", "code"],
-              where: { code: "owner" }, // only include where role code === 'admin'
+              where: { code: "owner" },
             },
           ],
         },
@@ -422,7 +526,6 @@ class Auth {
 
   static async storeUpdateUserTimezone(userId, timezone) {
     try {
-      // delete old timezone
       await UserTimezones.destroy({
         where: { user_id: userId },
       });
@@ -439,3 +542,4 @@ class Auth {
 }
 
 export default Auth;
+export { hashToken };

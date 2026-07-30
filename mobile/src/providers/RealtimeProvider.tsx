@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { sharedAuthTokenManager } from "@mytask/auth";
 import {
   bootstrapRealtime,
   connectRealtime,
@@ -63,7 +64,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 
       bootstrapRealtime({
         url: socketBaseUrl(),
-        getToken: () => useAuthStore.getState().token,
+        getToken: () => sharedAuthTokenManager.getValidIdToken(),
         getUserId: () => useAuthStore.getState().user?.id ?? null,
         getOrganisationId: () =>
           useOrganisationStore.getState().organisation?.id ?? null,
@@ -92,11 +93,13 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const onChange = (state: AppStateStatus) => {
-      if (state === "active" && useAuthStore.getState().token) {
-        connectRealtime();
-        void sharedOfflineQueue.flush();
-      } else if (state === "background") {
-        // Keep connection for push sync; reconnect on resume if dropped
+      if (state === "active" && useAuthStore.getState().user?.id) {
+        void sharedAuthTokenManager.getValidIdToken().then((t) => {
+          if (t) {
+            connectRealtime();
+            void sharedOfflineQueue.flush();
+          }
+        });
       }
     };
     const sub = AppState.addEventListener("change", onChange);

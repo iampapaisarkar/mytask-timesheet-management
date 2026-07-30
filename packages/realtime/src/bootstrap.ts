@@ -10,7 +10,11 @@ import {
 
 export type RealtimeBootstrapOptions = {
   url: string;
-  getToken: () => string | null | undefined;
+  getToken: () =>
+    | string
+    | null
+    | undefined
+    | Promise<string | null | undefined>;
   getUserId: () => number | string | null | undefined;
   getOrganisationId: () => number | string | null | undefined;
   queryClient: QueryClient;

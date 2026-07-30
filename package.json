@@ -14,7 +14,7 @@
     "mobile": "npm run start -w mobile",
     "mobile:ios": "npm run ios -w mobile",
     "mobile:android": "npm run android -w mobile",
-    "typecheck": "npm run typecheck -w @mytask/types -w @mytask/api -w @mytask/validation -w @mytask/services -w @mytask/realtime -w web --if-present"
+    "typecheck": "npm run typecheck -w @mytask/types -w @mytask/api -w @mytask/auth -w @mytask/validation -w @mytask/services -w @mytask/realtime -w web --if-present"
   },
   "engines": {
     "node": ">=20.0.0"

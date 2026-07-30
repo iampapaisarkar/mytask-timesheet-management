@@ -29,6 +29,7 @@
 | Realtime Socket.IO architecture | ✅ Done | 2026-07-30 | Shared `@mytask/realtime`; JWT gateway; org/user rooms; domain stores; logout wipe |
 | Org logout + Back to myTask + web FCM + legal | ✅ Done | 2026-07-30 | Shared logout; notification routing; SW push; Help/Terms/Privacy |
 | Enterprise payouts + role dashboard | ✅ Done | 2026-07-31 | Workflow statuses, audit, snapshots, filters/export, live payroll KPIs |
+| Enterprise auth hardening | ✅ Done | 2026-07-31 | `@mytask/auth` TokenManager; Admin verifyIdToken; sessions by token_hash; socket auth rotation |
 
 ## Vue ↔ Web ↔ Mobile gap matrix
 

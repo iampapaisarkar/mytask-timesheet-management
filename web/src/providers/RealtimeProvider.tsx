@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@mytask/constants";
+import { sharedAuthTokenManager } from "@mytask/auth";
 import {
   bootstrapRealtime,
   connectRealtime,
@@ -12,6 +13,7 @@ import {
 import { useAuthStore } from "@/store/authStore";
 import { useOrganisationStore } from "@/store/organisationStore";
 import { resetAllStores } from "@/store/resetAllStores";
+
 
 function socketBaseUrl(): string {
   const api =
@@ -33,7 +35,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     bootstrapRealtime({
       url: socketBaseUrl(),
-      getToken: () => useAuthStore.getState().token,
+      getToken: () => sharedAuthTokenManager.getValidIdToken(),
       getUserId: () => useAuthStore.getState().user?.id ?? null,
       getOrganisationId: () =>
         useOrganisationStore.getState().organisation?.id ?? null,
@@ -62,9 +64,13 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const onOnline = () => {
-      if (useAuthStore.getState().token) {
-        connectRealtime();
-        void sharedOfflineQueue.flush();
+      if (useAuthStore.getState().user?.id) {
+        void sharedAuthTokenManager.getValidIdToken().then((t) => {
+          if (t) {
+            connectRealtime();
+            void sharedOfflineQueue.flush();
+          }
+        });
       }
     };
     window.addEventListener("online", onOnline);

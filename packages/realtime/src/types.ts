@@ -76,7 +76,7 @@ export type ConnectionStatus =
 export interface SocketManagerOptions {
   url: string;
   path?: string;
-  getToken: () => string | null | undefined;
+  getToken: () => string | null | undefined | Promise<string | null | undefined>;
   getUserId?: () => number | string | null | undefined;
   getOrganisationId?: () => number | string | null | undefined;
   /** Called when auth.logout is received for this session */

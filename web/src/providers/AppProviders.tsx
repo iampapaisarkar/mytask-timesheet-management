@@ -1,13 +1,16 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createApiClient } from "@mytask/api";
+import { sharedAuthTokenManager } from "@mytask/auth";
 import { createAppQueryClient } from "@mytask/hooks";
 import { useAuthStore } from "@/store/authStore";
 import { useOrganisationStore } from "@/store/organisationStore";
 import { useThemeStore } from "@/store/themeStore";
 import { useSidebarStore } from "@/store/sidebarStore";
 import { resetAllStores } from "@/store/resetAllStores";
-import { initFirebase, isFirebaseConfigured } from "@/lib/firebase";
+import { initFirebase, isFirebaseConfigured, firebaseLogout } from "@/lib/firebase";
+import { createWebFirebaseAuthAdapter } from "@/lib/firebaseAuthAdapter";
+import { AuthSessionProvider } from "@/providers/AuthSessionProvider";
 import { ToastViewport } from "@/components/ui/ToastViewport";
 
 export const queryClient = createAppQueryClient();
@@ -17,32 +20,64 @@ export function AppProviders({ children }: { children: ReactNode }) {
   const [bootError, setBootError] = useState<string | null>(null);
 
   useEffect(() => {
-    try {
-      useThemeStore.getState().hydrate();
-      useSidebarStore.getState().hydrate();
-      if (!isFirebaseConfigured()) {
-        setBootError(
-          "Firebase is not configured. Copy web/.env.example to web/.env, fill VITE_FIREBASE_* values, then restart npm run web.",
-        );
-        return;
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        useThemeStore.getState().hydrate();
+        useSidebarStore.getState().hydrate();
+        if (!isFirebaseConfigured()) {
+          setBootError(
+            "Firebase is not configured. Copy web/.env.example to web/.env, fill VITE_FIREBASE_* values, then restart npm run web.",
+          );
+          return;
+        }
+        initFirebase();
+        const adapter = createWebFirebaseAuthAdapter();
+        sharedAuthTokenManager.configure(adapter);
+        createApiClient({
+          baseURL:
+            import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api",
+          getToken: sharedAuthTokenManager.createGetToken(),
+          refreshToken: sharedAuthTokenManager.createRefreshToken(),
+          getOrganisation: () => useOrganisationStore.getState().organisation,
+          onUnauthorized: () => {
+            void firebaseLogout().catch(() => undefined);
+            void resetAllStores(queryClient);
+          },
+        });
+
+        useAuthStore.getState().hydrate();
+        useOrganisationStore.getState().hydrate();
+
+        // Wait for Firebase persistence before any authenticated UI/API.
+        await sharedAuthTokenManager.waitUntilReady();
+        if (cancelled) return;
+
+        const fbUser = adapter.getCurrentUser();
+        if (!fbUser) {
+          // Storage alone is not a session — avoid fake logged-in state.
+          if (useAuthStore.getState().user || useAuthStore.getState().token) {
+            useAuthStore.getState().clearSession();
+          }
+        } else {
+          const token = await sharedAuthTokenManager.getValidIdToken();
+          if (token) useAuthStore.getState().setTokenMirror(token);
+        }
+
+        if (!cancelled) setReady(true);
+      } catch (err) {
+        if (!cancelled) {
+          setBootError(
+            err instanceof Error ? err.message : "Failed to initialise the app.",
+          );
+        }
       }
-      initFirebase();
-      createApiClient({
-        baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api",
-        getToken: () => useAuthStore.getState().token,
-        getOrganisation: () => useOrganisationStore.getState().organisation,
-        onUnauthorized: () => {
-          void resetAllStores(queryClient);
-        },
-      });
-      useAuthStore.getState().hydrate();
-      useOrganisationStore.getState().hydrate();
-      setReady(true);
-    } catch (err) {
-      setBootError(
-        err instanceof Error ? err.message : "Failed to initialise the app.",
-      );
-    }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (bootError) {
@@ -68,8 +103,10 @@ export function AppProviders({ children }: { children: ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {children}
-      <ToastViewport />
+      <AuthSessionProvider>
+        {children}
+        <ToastViewport />
+      </AuthSessionProvider>
     </QueryClientProvider>
   );
 }

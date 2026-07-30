@@ -7,6 +7,8 @@ interface AuthState {
   user: UserProfile | null;
   hydrated: boolean;
   setSession: (token: string, user: UserProfile) => void;
+  /** Mirror of last Firebase ID token (API auth uses TokenManager, not this alone). */
+  setTokenMirror: (token: string | null) => void;
   setUser: (user: UserProfile) => void;
   clearSession: () => void;
   hydrate: () => void;
@@ -20,6 +22,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.setItem(STORAGE_KEYS.authToken, token);
     localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(user));
     set({ token, user });
+  },
+  setTokenMirror: (token) => {
+    if (token) localStorage.setItem(STORAGE_KEYS.authToken, token);
+    else localStorage.removeItem(STORAGE_KEYS.authToken);
+    set({ token });
   },
   setUser: (user) => {
     localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(user));

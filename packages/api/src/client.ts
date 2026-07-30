@@ -14,6 +14,11 @@ export type UnauthorizedHandler = () => void;
 export interface CreateApiClientOptions {
   baseURL: string;
   getToken: TokenGetter;
+  /**
+   * Force-refresh path for 401 retry. Should call Firebase getIdToken(true).
+   * If omitted, 401 clears session without retry.
+   */
+  refreshToken?: () => Promise<string | null>;
   getOrganisation?: OrganisationGetter;
   onUnauthorized?: UnauthorizedHandler;
   /** Default request timeout in ms (default 60s) */
@@ -162,6 +167,11 @@ function shouldRetryAxiosError(error: AxiosError, config?: InternalAxiosRequestC
   return status === 502 || status === 503 || status === 504;
 }
 
+type RetriableConfig = InternalAxiosRequestConfig & {
+  __mtRetryCount?: number;
+  __mtAuthRetry?: boolean;
+};
+
 export type RequestOptions = Pick<
   AxiosRequestConfig,
   "signal" | "timeout" | "headers" | "params"
@@ -169,6 +179,19 @@ export type RequestOptions = Pick<
 
 let client: AxiosInstance | null = null;
 let optionsRef: CreateApiClientOptions | null = null;
+let authRefreshPromise: Promise<string | null> | null = null;
+
+async function forceRefreshShared(): Promise<string | null> {
+  if (!optionsRef?.refreshToken) return null;
+  if (authRefreshPromise) return authRefreshPromise;
+  authRefreshPromise = optionsRef
+    .refreshToken()
+    .catch(() => null)
+    .finally(() => {
+      authRefreshPromise = null;
+    });
+  return authRefreshPromise;
+}
 
 export function createApiClient(options: CreateApiClientOptions): AxiosInstance {
   optionsRef = options;
@@ -182,11 +205,11 @@ export function createApiClient(options: CreateApiClientOptions): AxiosInstance 
   });
 
   client.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
-    const token = await options.getToken();
+    const token = await optionsRef!.getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    const org = options.getOrganisation?.() ?? null;
+    const org = optionsRef!.getOrganisation?.() ?? null;
     if (org) {
       config.headers[ORG_HEADERS.id] = String(org.id);
       config.headers[ORG_HEADERS.code] = org.code;
@@ -200,9 +223,7 @@ export function createApiClient(options: CreateApiClientOptions): AxiosInstance 
   client.interceptors.response.use(
     (response) => response,
     async (error: AxiosError) => {
-      const config = error.config as
-        | (InternalAxiosRequestConfig & { __mtRetryCount?: number })
-        | undefined;
+      const config = error.config as RetriableConfig | undefined;
 
       if (config && shouldRetryAxiosError(error, config)) {
         const attempt = config.__mtRetryCount ?? 0;
@@ -213,8 +234,17 @@ export function createApiClient(options: CreateApiClientOptions): AxiosInstance 
         }
       }
 
-      if (error.response?.status === 401) {
-        options.onUnauthorized?.();
+      if (error.response?.status === 401 && config && !config.__mtAuthRetry) {
+        config.__mtAuthRetry = true;
+        const fresh = await forceRefreshShared();
+        if (fresh) {
+          config.headers = config.headers ?? {};
+          config.headers.Authorization = `Bearer ${fresh}`;
+          return client!.request(config);
+        }
+        optionsRef?.onUnauthorized?.();
+      } else if (error.response?.status === 401) {
+        optionsRef?.onUnauthorized?.();
       }
 
       return Promise.reject(normalizeAxiosError(error));

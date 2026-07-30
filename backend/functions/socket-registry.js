@@ -28,7 +28,7 @@ async function userBelongsToOrganisation(userId, organisationId) {
 
 /**
  * Initialize Socket.IO on the HTTP server.
- * Auth: same session token as REST (Auth.verifyToken + getUserByToken).
+ * Auth: Firebase Admin ID token (same as REST TokenValidate).
  * Rooms: user:{id} always; org:{id} only after membership validation.
  */
 export const setIO = (server) => {
@@ -75,20 +75,18 @@ export const setIO = (server) => {
         return next();
       }
 
-      const verified = await Auth.verifyToken(token);
-      if (!verified?.success) {
-        return next(new Error("Unauthorized"));
-      }
-
-      const userResponse = await Auth.getUserByToken(token);
-      if (!userResponse?.success || !userResponse.user?.id) {
-        return next(new Error("Unauthorized"));
+      const verified = await Auth.verifyIdTokenAndResolveUser(token, {
+        touchSession: true,
+        meta: { platform: "socket" },
+      });
+      if (!verified?.success || !verified.user?.id) {
+        return next(new Error(verified?.code || "Unauthorized"));
       }
 
       // Never trust client-provided user_id — always use DB-resolved user
       socket.user = {
-        id: Number(userResponse.user.id),
-        email: userResponse.user.email || null,
+        id: Number(verified.user.id),
+        email: verified.user.email || null,
       };
       socket.token = token;
       next();
