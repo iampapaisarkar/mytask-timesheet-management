@@ -170,7 +170,15 @@ Org headers (org-scoped): `ms-organisation-code`, `ms-organisation-id`, `ms-orga
 
 | Method | Path |
 |--------|------|
-| GET | `/rate-by-per-timesheet-day` |
+| GET | `/rate-by-per-timesheet-day` (live day/period rates; not a saved report) |
+| GET | `/employees` |
+| GET | `/timesheets` (approved only; requires `employee_id`) |
+| POST | `/requests` (body: `employee_id`, `timesheet_id`) |
+| GET | `/requests` |
+| GET | `/requests/:id` |
+| GET | `/requests/:id/result` |
+| GET | `/requests/:id/pdf` |
+| POST | `/requests/:id/email` (email report summary + PDF) |
 
 ## Test utilities (not for production UI)
 

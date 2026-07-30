@@ -182,3 +182,46 @@ export function normalizeCurrency(
   const upper = code.toUpperCase();
   return isSupportedCurrency(upper) ? upper : fallback;
 }
+
+/** Display prefix: ₹INR, $USD, $AUD, £GBP, €EUR, … */
+export const CURRENCY_DISPLAY_PREFIX: Record<SupportedCurrencyCode, string> = {
+  USD: "$USD",
+  AUD: "$AUD",
+  INR: "₹INR",
+  GBP: "£GBP",
+  EUR: "€EUR",
+  NZD: "$NZD",
+  CAD: "$CAD",
+  SGD: "$SGD",
+};
+
+export function currencyDisplayPrefix(
+  code: string | null | undefined,
+): string {
+  const normalized = normalizeCurrency(code);
+  return CURRENCY_DISPLAY_PREFIX[normalized] || `$${normalized}`;
+}
+
+/** e.g. `$AUD 120.50`, `₹INR 999.00` */
+export function formatMoney(
+  amount: number | string | null | undefined,
+  currency?: string | null,
+): string {
+  if (amount == null || amount === "") return "—";
+  const num = Number(amount);
+  if (Number.isNaN(num)) return "—";
+  return `${currencyDisplayPrefix(currency)} ${num.toFixed(2)}`;
+}
+
+/** e.g. `7.5h`, `0.75h`, `8h` */
+export function formatHours(
+  hours: number | string | null | undefined,
+): string {
+  if (hours == null || hours === "") return "—";
+  const num = Number(hours);
+  if (Number.isNaN(num)) return "—";
+  const text = Number.isInteger(num)
+    ? String(num)
+    : String(Number(num.toFixed(2)));
+  return `${text}h`;
+}

@@ -110,6 +110,7 @@ export const LOOKUP_TABLES = [
 
 export const APP_TABLES = [
   "payouts",
+  "report_requests",
   "geofence_events",
   "timesheet_task_activity_pairs",
   "timesheet_activity_logs",

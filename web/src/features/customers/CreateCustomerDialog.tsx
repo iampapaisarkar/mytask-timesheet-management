@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   DEFAULT_CURRENCY,
   SUPPORTED_CURRENCIES,
+  currencyDisplayPrefix,
   normalizeCurrency,
   type SupportedCurrencyCode,
 } from "@mytask/constants";
@@ -204,7 +205,7 @@ export function CustomerFormDialog({
         />
         <div className="grid gap-3 sm:grid-cols-2">
           <TextInput
-            label="Hourly rate"
+            label={`Hourly rate (${currencyDisplayPrefix(currency)})`}
             type="number"
             step="0.01"
             value={hourlyRate}

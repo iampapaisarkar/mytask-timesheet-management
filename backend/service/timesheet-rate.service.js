@@ -22,7 +22,7 @@ class AppError extends Error {
 }
 
 async function fetchEmployee(organisation, employee_id) {
-  const employeeData = await Employees.scope("defaultScope").findOne({
+  const employeeData = await Employees.unscoped().findOne({
     where: { organisation_id: organisation.id, id: employee_id },
     include: [
       {
@@ -30,13 +30,23 @@ async function fetchEmployee(organisation, employee_id) {
         as: "user",
         include: [{ model: UserTimezones, as: "timezone" }],
       },
-      {
-        model: EmployeeWages,
-        as: "wage",
-      },
     ],
   });
-  return employeeData?.toJSON() || null;
+  if (!employeeData) return null;
+
+  const wage = await EmployeeWages.findOne({
+    where: {
+      organisation_id: organisation.id,
+      employee_id,
+    },
+  });
+
+  const plain = employeeData.get({ plain: true });
+  return {
+    details: plain,
+    wage: wage ? wage.get({ plain: true }) : null,
+    user: plain.user || null,
+  };
 }
 
 async function fetchTimesheetDays({
@@ -192,11 +202,16 @@ async function calculate(params) {
       total_travel_hours: timeUtils.toHM(totalTravelHours),
       total_break_hours: timeUtils.toHM(totalBreakHours),
       total_working_hours_in_decimal: Number(totalWorkingHours.toFixed(2)),
+      total_travel_hours_in_decimal: Number(totalTravelHours.toFixed(2)),
+      total_break_hours_in_decimal: Number(totalBreakHours.toFixed(2)),
       total_original_payout_amount: payable,
       total_payble_amount: payable,
       earning_rate_id: null,
       earning_rate_percent: 0,
       pay_type: String(wage?.pay_type || "HOURLY").toUpperCase(),
+      currency: String(wage?.currency || "AUD").toUpperCase(),
+      hourly_rate: parseFloat(wage?.hourly_rate_exc_super) || 0,
+      fixed_rate: parseFloat(wage?.fixed_rate_exc_super) || 0,
     });
   }
 

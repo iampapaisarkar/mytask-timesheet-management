@@ -43,6 +43,7 @@ import EmailSendLogs from "./emailSendLogs.js";
 import ExternalApiCallLogs from "./externalApiCallLogs.js";
 import OrganisationAddress from "./organisationAddress.js";
 import Payouts from "./payouts.js";
+import ReportRequests from "./reportRequests.js";
 
 const models = {
   Users,
@@ -89,6 +90,7 @@ const models = {
   ExternalApiCallLogs,
   OrganisationAddress,
   Payouts,
+  ReportRequests,
 };
 
 Object.values(models).forEach((model) => {

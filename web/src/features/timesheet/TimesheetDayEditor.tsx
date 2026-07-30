@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useTimesheetDayEditorScreen } from "@mytask/hooks";
-import { timesheetsApi, timesheetManagementApi } from "@mytask/api";
+import { reportsApi, timesheetsApi, timesheetManagementApi } from "@mytask/api";
+import { formatHours, formatMoney } from "@mytask/constants";
 import { getErrorMessage } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
 import { FullScreenModal } from "@/components/ui/FullScreenModal";
@@ -13,6 +15,7 @@ import {
   type MapJob,
 } from "@/components/maps/TrackingMapView";
 import { useToastStore } from "@/store/toastStore";
+import { useOrganisationStore } from "@/store/organisationStore";
 import {
   TrackedTimeline,
   formatMinutesAsHm,
@@ -53,6 +56,27 @@ type DayPayload = {
   status?: { code?: string; name?: string };
   timesheet_job?: { id?: number; name?: string } | null;
   timesheet_jobs?: Array<{ id?: number; name?: string }> | null;
+};
+
+type DayRateRow = {
+  date?: string;
+  day_name?: string;
+  total_working_hours?: string;
+  total_travel_hours?: string;
+  total_break_hours?: string;
+  total_working_hours_in_decimal?: number;
+  total_travel_hours_in_decimal?: number;
+  total_break_hours_in_decimal?: number;
+  total_original_payout_amount?: number;
+  total_payble_amount?: number;
+  pay_type?: string;
+  currency?: string;
+  hourly_rate?: number;
+  fixed_rate?: number;
+  is_public_holiday?: boolean;
+  working_periods?: unknown[];
+  travel_periods?: unknown[];
+  break_periods?: unknown[];
 };
 
 type JobRow = {
@@ -207,11 +231,16 @@ export function TimesheetDayEditor({
   onSaved?: () => void;
 }) {
   const toast = useToastStore();
+  const orgEmployeeId = useOrganisationStore(
+    (s) => s.organisation?.employee?.id,
+  );
+  const resolvedEmployeeId = employeeId ?? orgEmployeeId;
   const [tasks, setTasks] = useState<TaskDraft[]>([]);
   const [isPublicHoliday, setIsPublicHoliday] = useState(false);
   const [saving, setSaving] = useState(false);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [viewTab, setViewTab] = useState<"grid" | "map">("grid");
+  const [ratesOpen, setRatesOpen] = useState(false);
 
   const dayQuery = useTimesheetDayEditorScreen(
     { mode, dayId, employeeId },
@@ -314,6 +343,33 @@ export function TimesheetDayEditor({
     [timelineTasks],
   );
 
+  const dayRateQuery = useQuery({
+    queryKey: [
+      "day-rate",
+      timesheetId,
+      dayId,
+      resolvedEmployeeId,
+      day?.date,
+    ] as const,
+    queryFn: async () => {
+      const res = await reportsApi.rateByPerTimesheetDay({
+        timesheet_id: timesheetId,
+        timesheet_day_id: dayId,
+        employee_id: resolvedEmployeeId,
+        ...(day?.date
+          ? {
+              from: String(day.date).slice(0, 10),
+              to: String(day.date).slice(0, 10),
+            }
+          : {}),
+      });
+      return (res.data as { data: DayRateRow[] }).data;
+    },
+    enabled:
+      ratesOpen &&
+      Boolean(timesheetId && dayId && resolvedEmployeeId),
+  });
+
   const selectedTask = tasks.find((t) => t.key === expandedKey) || null;
   const { title, subtitle } = formatDisplayDate(day?.date, day?.day_name);
 
@@ -365,6 +421,7 @@ export function TimesheetDayEditor({
   }
 
   return (
+    <>
     <FullScreenModal
       open={open && dayId != null}
       onClose={onClose}
@@ -395,12 +452,16 @@ export function TimesheetDayEditor({
             <button
               type="button"
               className="mt-focus inline-flex items-center gap-2 rounded-xl border border-border bg-[var(--mt-bg)] px-3 py-2 text-sm font-medium text-[var(--mt-text)] transition hover:border-primary"
-              onClick={() =>
-                toast.info(
-                  "Rates",
-                  "Open Reports from the organisation menu to calculate timesheet rates.",
-                )
-              }
+              onClick={() => {
+                if (!resolvedEmployeeId) {
+                  toast.warning(
+                    "Rates",
+                    "Unable to resolve employee for this timesheet day.",
+                  );
+                  return;
+                }
+                setRatesOpen(true);
+              }}
             >
               <span aria-hidden>$</span>
               Rate
@@ -712,6 +773,127 @@ export function TimesheetDayEditor({
         </div>
       )}
     </FullScreenModal>
+
+    {ratesOpen ? (
+      <FullScreenModal
+        open={ratesOpen}
+        onClose={() => setRatesOpen(false)}
+        title={`Day rate · ${title}${subtitle ? ` · ${subtitle}` : ""}`}
+      >
+        {dayRateQuery.isLoading ? (
+          <LoadingState label="Calculating day rate…" />
+        ) : dayRateQuery.isError ? (
+          <ErrorState
+            message={getErrorMessage(dayRateQuery.error)}
+            onRetry={() => void dayRateQuery.refetch()}
+          />
+        ) : (
+          <DayRateBreakdown rows={dayRateQuery.data || []} />
+        )}
+      </FullScreenModal>
+    ) : null}
+    </>
+  );
+}
+
+function DayRateBreakdown({ rows }: { rows: DayRateRow[] }) {
+  if (!rows.length) {
+    return (
+      <p className="text-sm text-muted">
+        No rate data for this day yet. Add working time and wage rates first.
+      </p>
+    );
+  }
+
+  const currency = rows[0]?.currency || "AUD";
+  const totalAmount = rows.reduce(
+    (acc, r) => acc + (Number(r.total_payble_amount) || 0),
+    0,
+  );
+  const totalWork = rows.reduce(
+    (acc, r) => acc + (Number(r.total_working_hours_in_decimal) || 0),
+    0,
+  );
+
+  return (
+    <div className="flex flex-col gap-4 p-1">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-xl border border-border px-3 py-2">
+          <p className="text-xs uppercase tracking-wide text-muted">Working</p>
+          <p className="mt-1 text-lg font-semibold">
+            {formatHours(
+              rows[0]?.total_working_hours_in_decimal ?? totalWork,
+            )}
+          </p>
+        </div>
+        <div className="rounded-xl border border-border px-3 py-2">
+          <p className="text-xs uppercase tracking-wide text-muted">Break</p>
+          <p className="mt-1 text-lg font-semibold">
+            {formatHours(rows[0]?.total_break_hours_in_decimal ?? 0)}
+          </p>
+        </div>
+        <div className="rounded-xl border border-border px-3 py-2">
+          <p className="text-xs uppercase tracking-wide text-muted">Travel</p>
+          <p className="mt-1 text-lg font-semibold">
+            {formatHours(rows[0]?.total_travel_hours_in_decimal ?? 0)}
+          </p>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-border px-3 py-3">
+        <p className="text-xs uppercase tracking-wide text-muted">
+          Payable for this day
+        </p>
+        <p className="mt-1 text-2xl font-semibold text-primary">
+          {formatMoney(totalAmount, currency)}
+        </p>
+        <p className="mt-1 text-sm text-muted">
+          {rows[0]?.pay_type === "FIXED"
+            ? `Fixed wage · ${formatMoney(rows[0]?.fixed_rate, currency)} period rate`
+            : `Hourly · ${formatMoney(rows[0]?.hourly_rate, currency)} / hour`}
+        </p>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-left text-sm">
+          <thead className="border-b border-border text-muted">
+            <tr>
+              <th className="px-2 py-1.5 font-medium">Day</th>
+              <th className="px-2 py-1.5 font-medium">Work</th>
+              <th className="px-2 py-1.5 font-medium">Break</th>
+              <th className="px-2 py-1.5 font-medium">Travel</th>
+              <th className="px-2 py-1.5 font-medium">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr
+                key={String(row.date)}
+                className="border-b border-border last:border-0"
+              >
+                <td className="px-2 py-1.5">
+                  {row.date}
+                  {row.day_name ? ` · ${row.day_name}` : ""}
+                  {row.is_public_holiday ? " · PH" : ""}
+                </td>
+                <td className="px-2 py-1.5">
+                  {formatHours(row.total_working_hours_in_decimal)}
+                </td>
+                <td className="px-2 py-1.5">
+                  {formatHours(row.total_break_hours_in_decimal)}
+                </td>
+                <td className="px-2 py-1.5">
+                  {formatHours(row.total_travel_hours_in_decimal)}
+                </td>
+                <td className="px-2 py-1.5">
+                  {formatMoney(row.total_payble_amount, row.currency || currency)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 

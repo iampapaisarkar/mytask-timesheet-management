@@ -9,6 +9,7 @@ import {
 import {
   DEFAULT_CURRENCY,
   SUPPORTED_CURRENCIES,
+  currencyDisplayPrefix,
   isSupportedCurrency,
   type SupportedCurrencyCode,
 } from "@mytask/constants";
@@ -885,7 +886,7 @@ export function CreateEmployeeDialog({
               </label>
               {form.wage.pay_type === "HOURLY" ? (
                 <TextInput
-                  label="Hourly rate"
+                  label={`Hourly rate (${currencyDisplayPrefix(form.wage.currency)})`}
                   type="number"
                   step="0.01"
                   min="0"
@@ -896,7 +897,7 @@ export function CreateEmployeeDialog({
                 />
               ) : (
                 <TextInput
-                  label="Fixed rate"
+                  label={`Fixed rate (${currencyDisplayPrefix(form.wage.currency)})`}
                   type="number"
                   step="0.01"
                   min="0"

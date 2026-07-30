@@ -247,6 +247,50 @@ export const reportsApi = {
       req(options, params),
     );
   },
+  listEmployees(options?: RequestOptions) {
+    return getApiClient().get("/reports/employees", req(options));
+  },
+  listTimesheets(
+    params: Record<string, unknown> = {},
+    options?: RequestOptions,
+  ) {
+    return getApiClient().get("/reports/timesheets", req(options, params));
+  },
+  createRequest(
+    payload: Record<string, unknown>,
+    options?: RequestOptions,
+  ) {
+    return getApiClient().post("/reports/requests", payload, req(options));
+  },
+  listRequests(
+    params: Record<string, unknown> = {},
+    options?: RequestOptions,
+  ) {
+    return getApiClient().get("/reports/requests", req(options, params));
+  },
+  getRequest(id: string | number, options?: RequestOptions) {
+    return getApiClient().get(`/reports/requests/${id}`, req(options));
+  },
+  getResult(id: string | number, options?: RequestOptions) {
+    return getApiClient().get(`/reports/requests/${id}/result`, req(options));
+  },
+  downloadPdf(id: string | number, options?: RequestOptions) {
+    return getApiClient().get(`/reports/requests/${id}/pdf`, {
+      ...req(options),
+      responseType: "blob",
+    });
+  },
+  emailPdf(
+    id: string | number,
+    payload: { email?: string } = {},
+    options?: RequestOptions,
+  ) {
+    return getApiClient().post(
+      `/reports/requests/${id}/email`,
+      payload,
+      req(options),
+    );
+  },
 };
 
 export const payoutsApi = {

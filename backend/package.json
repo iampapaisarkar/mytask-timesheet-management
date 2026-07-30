@@ -59,6 +59,7 @@
     "mysql2": "^3.14.1",
     "node-cron": "^4.1.0",
     "nodemailer": "^7.0.10",
+    "pdfkit": "^0.19.1",
     "pm2": "^6.0.8",
     "promisify": "^0.0.3",
     "puppeteer-core": "21.4.0",

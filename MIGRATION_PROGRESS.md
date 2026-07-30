@@ -24,6 +24,8 @@
 | Global address system | ✅ Done | 2026-07-30 | Shared model + Places autofill + map geolocation/reverse-geocode |
 | Timesheet requires Job | ✅ Done | 2026-07-30 | Many-to-many `timesheet_jobs`; create = Employee → Period → Jobs |
 | Demo env reset + seed + QA | ✅ Done | 2026-07-30 | `npm run demo:reset-seed`; org `SILDEMO1`; see `DEMO_QA_REPORT.md` |
+| Reports Phase 1 (async) | ✅ Done | 2026-07-30 | Queue-backed hours report + role ladder + redesigned UI |
+| Reports pay PDF | ✅ Done | 2026-07-30 | Single employee + approved timesheet; day amounts; PDF download/email; `(You)` labels |
 
 ## Vue ↔ Web ↔ Mobile gap matrix
 
@@ -38,7 +40,7 @@
 | ClockInOut tracking | Notice (correct) | ✅ | BGL + fallback |
 | `timesheet` list/detail/day | ✅ | ✅ | Day editor + map |
 | `timesheet-management` | ✅ | ✅ list | Web has full detail |
-| `reports` | ✅ | — | rate-by-day |
+| `reports` | ✅ | — | Approved timesheet pay report + PDF |
 | `payouts` | ✅ | — | MVP eligible + mark paid |
 | `settings` + CRUD | ✅ | ✅ hub | Mobile hub placeholders |
 | `employees` wizard | ✅ | ✅ list | |

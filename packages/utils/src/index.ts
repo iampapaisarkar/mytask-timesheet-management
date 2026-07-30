@@ -81,6 +81,17 @@ export function displayName(user: {
   return parts.length ? parts.join(" ") : user.email || "User";
 }
 
+/** Append " (You)" when the listed person is the current org employee. */
+export function withYouLabel(
+  name: string | null | undefined,
+  isYou: boolean,
+): string {
+  const base = (name || "").trim() || "Employee";
+  if (!isYou) return base;
+  if (/\(You\)\s*$/i.test(base)) return base;
+  return `${base} (You)`;
+}
+
 export function getTimezone(): string {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";

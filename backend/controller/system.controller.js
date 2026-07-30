@@ -418,12 +418,16 @@ export async function managerEmployees(req, res, next) {
         order: [[sortBy, sortDirection]],
       });
 
+    const selfEmployeeId = organisation?.employee?.id ?? null;
     const finalData = employees.map((e) => {
       const plain = e.get({ plain: true });
-
+      const isYou =
+        selfEmployeeId != null && Number(plain.id) === Number(selfEmployeeId);
+      const baseName = plain.user?.full_name || plain.preferred_name || "";
       return {
         ...plain,
-        full_name: `${plain.user?.full_name} ${plain.user.user_organisations_role.role.code === "owner" ? "(You)" : ""}`,
+        is_you: isYou,
+        full_name: isYou ? `${baseName} (You)`.trim() : baseName,
       };
     });
     const total_pages = Math.ceil(finalData.length / rowsPerPage);
@@ -535,12 +539,16 @@ export async function managerStaffEmployees(req, res, next) {
         order: [[sortBy, sortDirection]],
       });
 
+    const selfEmployeeId = organisation?.employee?.id ?? null;
     const finalData = employees.map((e) => {
       const plain = e.get({ plain: true });
-
+      const isYou =
+        selfEmployeeId != null && Number(plain.id) === Number(selfEmployeeId);
+      const baseName = plain.user?.full_name || plain.preferred_name || "";
       return {
         ...plain,
-        full_name: plain.user?.full_name,
+        is_you: isYou,
+        full_name: isYou ? `${baseName} (You)`.trim() : baseName,
       };
     });
 
@@ -749,12 +757,16 @@ export async function employees(req, res, next) {
         order: [[sortBy, sortDirection]],
       });
 
+    const selfEmployeeId = organisation?.employee?.id ?? null;
     const finalData = employees.map((e) => {
       const plain = e.get({ plain: true });
-
+      const isYou =
+        selfEmployeeId != null && Number(plain.id) === Number(selfEmployeeId);
+      const baseName = plain.user?.full_name || plain.preferred_name || "";
       return {
         ...plain,
-        full_name: `${plain.user?.full_name} ${plain.user.user_organisations_role.role.code === "owner" ? "(You)" : ""}`,
+        is_you: isYou,
+        full_name: isYou ? `${baseName} (You)`.trim() : baseName,
       };
     });
     const total_pages = Math.ceil(finalData.length / rowsPerPage);

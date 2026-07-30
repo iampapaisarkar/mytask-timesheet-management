@@ -4,6 +4,7 @@ import {
   useMarkPayoutPaid,
   usePayouts,
 } from "@mytask/hooks";
+import { formatMoney } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { getErrorMessage } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
@@ -15,6 +16,7 @@ type EmployeeLike = {
   id?: number;
   details?: { full_name?: string };
   user?: { full_name?: string };
+  wage?: { currency?: string };
 };
 
 type TimesheetLike = {
@@ -54,11 +56,11 @@ function periodLabel(timesheet?: TimesheetLike): string {
   return timesheet?.code || "—";
 }
 
-function formatAmount(value: number | string | undefined): string {
-  if (value == null || value === "") return "—";
-  const num = Number(value);
-  if (Number.isNaN(num)) return String(value);
-  return num.toFixed(2);
+function formatAmount(
+  value: number | string | undefined,
+  currency?: string | null,
+): string {
+  return formatMoney(value, currency);
 }
 
 export function PayoutsPage() {
@@ -194,7 +196,12 @@ export function PayoutsPage() {
                     <td className="px-2 py-2.5">
                       {periodLabel(row.timesheet)}
                     </td>
-                    <td className="px-2 py-2.5">{formatAmount(row.amount)}</td>
+                    <td className="px-2 py-2.5">
+                      {formatAmount(
+                        row.amount,
+                        row.employee?.wage?.currency,
+                      )}
+                    </td>
                     <td className="px-2 py-2.5">
                       {row.payment_method || "—"}
                     </td>

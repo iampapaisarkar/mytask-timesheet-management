@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useCustomers } from "@mytask/hooks";
+import { formatMoney } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { formatPhoneDisplay } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
@@ -55,6 +56,17 @@ export function CustomersPage() {
                 row.contact_phone_number as string | undefined,
                 row.contact_phone_country_iso as string | undefined,
               ) || "—",
+          },
+          {
+            key: "hourly_rate",
+            label: "Hourly rate",
+            accessor: (row) =>
+              row.hourly_rate != null
+                ? formatMoney(
+                    row.hourly_rate as number | string,
+                    (row.currency as string | undefined) || "AUD",
+                  )
+                : "—",
           },
           {
             key: "currency",

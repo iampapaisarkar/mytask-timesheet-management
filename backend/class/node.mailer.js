@@ -67,6 +67,12 @@ export const NodeMailer = {
         contentType: "image/png",
       });
     }
+    if (Array.isArray(message.attachments)) {
+      for (const file of message.attachments) {
+        if (!file) continue;
+        attachments.push(file);
+      }
+    }
 
     const info = await transporter.sendMail({
       from: `"${BRAND.appName()}" <${fromAddress}>`,

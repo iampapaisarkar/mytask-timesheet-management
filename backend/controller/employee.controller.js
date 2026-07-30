@@ -147,9 +147,26 @@ export async function list(req, res, next) {
 
     const totalRows = Array.isArray(count) ? count.length : count;
     const total_pages = Math.ceil(totalRows / rowsPerPage) || 0;
+    const selfEmployeeId = organisation?.employee?.id ?? null;
+
+    const data = employees.map((employee) => {
+      const json = employee.toJSON();
+      const id = json?.details?.id ?? employee.id;
+      const isYou =
+        selfEmployeeId != null && Number(id) === Number(selfEmployeeId);
+      if (isYou && json?.details) {
+        const base = json.details.full_name || json.details.email || "";
+        json.details = {
+          ...json.details,
+          is_you: true,
+          full_name: base ? `${base} (You)` : "(You)",
+        };
+      }
+      return json;
+    });
 
     return res.status(200).json({
-      data: employees,
+      data,
       pagination: {
         total_rows: totalRows,
         rows_per_page: rowsPerPage,

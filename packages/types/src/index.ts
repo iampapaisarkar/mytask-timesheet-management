@@ -97,6 +97,9 @@ export interface OrganisationContext {
   name: string;
   role?: OrganisationRoleCode | string;
   role_code?: OrganisationRoleCode | string;
+  employee?: { id?: number | string; user_id?: number | string } | null;
+  owner?: { id?: number | string } | null;
+  [key: string]: unknown;
 }
 
 export type TimesheetStatus = "draft" | "submitted" | "approved" | "rejected" | string;

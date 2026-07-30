@@ -7,7 +7,7 @@ const EXPECTED = {
     employee: { list: true, create: true, edit: true, delete: false },
     customer: { list: true, create: true, delete: true },
     timesheetManagement: { list: true, create: true, edit: true },
-    report: { list: true, view: true },
+    report: { list: true, view: true, create: true },
     payout: { list: true, create: true, edit: true },
   },
   moderator: {
@@ -15,12 +15,14 @@ const EXPECTED = {
     customer: { list: true, create: true, delete: false },
     organisationSetting: { edit: false },
     timesheetManagement: { list: true, edit: true },
+    report: { list: true, view: true, create: true },
   },
   manager: {
     employee: { list: true, create: true },
     customer: { list: false, create: false },
     timesheetManagement: { list: true, create: true, edit: true },
     job: { list: false },
+    report: { list: true, view: true, create: true },
   },
   staff: {
     employee: { list: false, create: false },
@@ -28,6 +30,7 @@ const EXPECTED = {
     timesheetManagement: { list: false, create: false },
     customer: { list: false },
     payout: { list: false },
+    report: { list: true, view: true, create: true },
   },
 };
 

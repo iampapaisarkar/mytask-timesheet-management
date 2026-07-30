@@ -2,6 +2,12 @@
 
 ## 2026-07-30
 
+### Changed
+
+- Reports: no auto-email on generate; **Email Report** sends summary + PDF attachment; currency prefixes (`$AUD`, `₹INR`, …) and `h` hour suffixes on amounts/hours; day sheet **Rate** button shows live day payable breakdown without generating a report
+- Reports currency now always comes from the employee wage (e.g. Pritth → `₹INR`); older saved reports are corrected on load when the stored currency was wrong
+- Reports UX: single employee + mandatory approved timesheet only (removed multi-select, date presets, status filter, and Rate analysis tab); result shows day/work/amount, pay-cycle total, and paid/not paid; PDF download + email endpoints; employee lists mark the current user as `(You)`
+
 ### Fixed
 
 - Duplicate employees in list/dropdowns/reports: root cause was duplicate `user_organisation_roles` rows for the same `(user_id, organisation_id)`, multiplied by an unscoped `hasOne` join on `user_id` in the Employees defaultScope
@@ -13,6 +19,7 @@
 
 - Organisation create now seeds a starter holiday calendar and creates the owner employee with wage + payroll linked to the default payroll calendar (setup-complete for operational workflows)
 - Added `npm run demo:reset-seed` to wipe app data (keeping lookup seeders) and rebuild a full Siliguri demo org; `npm test` runs node:test suites for signup + ACL
+- Reports Phase 1: async Hours & Activity reports via BullMQ (`report_requests` + worker), role-ladder employee scope, in-app + email notify on complete; Rate analysis kept as secondary tab; `report.create` ACL for all org roles
 
 ### Added
 

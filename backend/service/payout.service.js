@@ -7,6 +7,7 @@ const {
   Users,
   Employees,
   EmployeePayrolls,
+  EmployeeWages,
   Timesheets,
   TimesheetStatus,
   Payouts,
@@ -36,6 +37,12 @@ const employeeInclude = {
         "last_name",
         "full_name",
       ],
+    },
+    {
+      model: EmployeeWages,
+      as: "wage",
+      attributes: ["currency", "pay_type", "hourly_rate_exc_super", "fixed_rate_exc_super"],
+      required: false,
     },
   ],
 };
