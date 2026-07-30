@@ -1,17 +1,14 @@
 import { DataTypes } from "sequelize";
 import { db } from "../database.js";
 import Users from "./users.js";
-import NokRelations from "./nokRelations.js";
 import UserOrganisationRoles from "./userOrganisationRoles.js";
 import OrganisationRoles from "./organisationRoles.js";
 import EmployeeInvitations from "./employeeInvitations.js";
 import InvitationStatus from "./invitationStatus.js";
 import EmployeeWages from "./employeeWages.js";
-import EmploymentStatus from "./employmentStatus.js";
 import EmploymentTypes from "./employmentTypes.js";
 import PayrollCalendars from "./payrollCalendars.js";
 import PayCycles from "./payCycles.js";
-import AwardRates from "./awardRates.js";
 import EmployeePayrolls from "./employeePayrolls.js";
 import UserTimezones from "./userTimezones.js";
 import States from "./states.js";
@@ -29,26 +26,6 @@ const Employees = db.define(
       type: DataTypes.INTEGER,
     },
     organisation_id: {
-      type: DataTypes.INTEGER,
-    },
-    nok: {
-      type: DataTypes.STRING,
-    },
-    nok_relation_id: {
-      type: DataTypes.INTEGER,
-    },
-    nok_phone_number: {
-      type: DataTypes.STRING,
-    },
-    nok_phone_country_code: {
-      type: DataTypes.STRING(16),
-      allowNull: true,
-    },
-    nok_phone_country_iso: {
-      type: DataTypes.STRING(2),
-      allowNull: true,
-    },
-    award_id: {
       type: DataTypes.INTEGER,
     },
     preferred_name: {
@@ -86,10 +63,8 @@ const Employees = db.define(
   },
 );
 
-// Override toJSON
 Employees.prototype.toJSON = function () {
   const full = this.get({ plain: true });
-
   const { wage, payroll, ...rest } = full;
 
   return {
@@ -108,15 +83,7 @@ Employees.prototype.toJSON = function () {
   };
 };
 
-// ----------------------------------------------------------------------
-// Associations
-// ----------------------------------------------------------------------
 Employees.associate = function (models) {
-  models.Employees.belongsTo(models.NokRelations, {
-    as: "nok_relationship",
-    foreignKey: "nok_relation_id",
-  });
-
   models.Employees.belongsTo(models.Users, {
     as: "user",
     foreignKey: "user_id",
@@ -153,9 +120,6 @@ Employees.associate = function (models) {
   }
 };
 
-// ----------------------------------------------------------------------
-// Default Scope: only includes associations, root-level attributes go inside details
-// ----------------------------------------------------------------------
 Employees.addScope(
   "defaultScope",
   {
@@ -163,23 +127,12 @@ Employees.addScope(
       "id",
       "user_id",
       "organisation_id",
-      "nok",
-      "nok_relation_id",
-      "nok_phone_number",
-      "nok_phone_country_code",
-      "nok_phone_country_iso",
-      "award_id",
       "preferred_name",
       "phone_number",
       "phone_country_code",
       "phone_country_iso",
       "created_at",
       "created_by",
-      // [mysheet.col("user.name"), "name"],
-      // [
-      //   mysheet.literal("COALESCE(`user`.`email`, `invitation`.`email`)"),
-      //   "email",
-      // ],
     ],
     include: [
       {
@@ -191,11 +144,6 @@ Employees.addScope(
             as: "state",
           },
         ],
-      },
-      {
-        model: NokRelations,
-        as: "nok_relationship",
-        attributes: ["id", "name"],
       },
       {
         model: Users,
@@ -251,16 +199,8 @@ Employees.addScope(
             ],
           },
           {
-            model: EmploymentStatus,
-            as: "employment_status",
-          },
-          {
             model: EmploymentTypes,
             as: "employment_type",
-          },
-          {
-            model: AwardRates,
-            as: "award_rate",
           },
         ],
       },

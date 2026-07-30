@@ -61,8 +61,6 @@ export const employeesApi = {
 export const customersApi = resourceApi("/customers");
 export const jobsApi = resourceApi("/jobs");
 export const holidayCalendarsApi = resourceApi("/holiday-calendars");
-export const earningRatesApi = resourceApi("/earning-rates");
-export const awardRatesApi = resourceApi("/award-rates");
 
 export const payrollCalendarsApi = {
   list(params: ListParams = {}, options?: RequestOptions) {
@@ -247,6 +245,34 @@ export const reportsApi = {
     return getApiClient().get(
       "/reports/rate-by-per-timesheet-day",
       req(options, params),
+    );
+  },
+};
+
+export const payoutsApi = {
+  list(params: ListParams = {}, options?: RequestOptions) {
+    return getApiClient().get<ApiResponse<unknown[]>>("/payouts/list", {
+      ...req(options, buildListQuery(params)),
+    });
+  },
+  eligible(options?: RequestOptions) {
+    return getApiClient().get<ApiResponse<unknown[]>>(
+      "/payouts/eligible",
+      req(options),
+    );
+  },
+  create(payload: Record<string, unknown>, options?: RequestOptions) {
+    return getApiClient().post<ApiResponse<unknown>>(
+      "/payouts/create",
+      payload,
+      req(options),
+    );
+  },
+  markPaid(id: string | number, options?: RequestOptions) {
+    return getApiClient().post<ApiResponse<unknown>>(
+      `/payouts/${id}/mark-paid`,
+      {},
+      req(options),
     );
   },
 };

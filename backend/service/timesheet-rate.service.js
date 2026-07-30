@@ -2,7 +2,6 @@ import { Op } from "sequelize";
 import models from "../models/index.js";
 import timeUtils from "../utils/time.utils.js";
 import taskUtils from "../utils/task.utils.js";
-import ruleUtils from "../utils/rule.utils.js";
 
 const {
   Users,
@@ -12,17 +11,6 @@ const {
   TimesheetDays,
   TimesheetDayTasks,
   UserTimezones,
-  AwardRates,
-  AwardRateSettings,
-  RoundingIntervals,
-  AwardRateRules,
-  AwardRateRuleIfs,
-  AwardRateRuleThen,
-  AwardRateRuleDays,
-  AwardRateRuleFields,
-  AwardRateRuleComparators,
-  AwardRateRuleFieldTypes,
-  EarningRates,
 } = models;
 
 class AppError extends Error {
@@ -45,65 +33,6 @@ async function fetchEmployee(organisation, employee_id) {
       {
         model: EmployeeWages,
         as: "wage",
-        include: [
-          {
-            model: AwardRates,
-            as: "award_rate",
-            include: [
-              {
-                model: AwardRateSettings,
-                as: "settings",
-                include: [
-                  {
-                    model: RoundingIntervals,
-                    as: "rounding_interval",
-                  },
-                ],
-              },
-              {
-                model: AwardRateRules,
-                as: "rules",
-                include: [
-                  {
-                    model: AwardRateRuleDays,
-                    as: "days",
-                    through: { attributes: [] },
-                  },
-                  {
-                    model: AwardRateRuleIfs,
-                    as: "if",
-                    include: [
-                      {
-                        model: AwardRateRuleFields,
-                        as: "field",
-                        include: [
-                          {
-                            model: AwardRateRuleFieldTypes,
-                            as: "field_type",
-                          },
-                        ],
-                      },
-                      {
-                        model: AwardRateRuleComparators,
-                        as: "comparison",
-                      },
-                      {
-                        model: AwardRateRuleThen,
-                        as: "then",
-                        include: [
-                          {
-                            model: EarningRates,
-                            as: "rate",
-                          },
-                        ],
-                      },
-                    ],
-                  },
-                ],
-              },
-            ],
-          },
-        ],
       },
     ],
   });
@@ -132,8 +61,6 @@ async function fetchTimesheetDays({
     return [tsDay];
   }
 
-  // Vue reports send period_start_date / period_end_date as from / to.
-  // If omitted, resolve the period from the timesheet itself.
   let rangeFrom = from;
   let rangeTo = to;
   if ((!rangeFrom || !rangeTo) && timesheet_id) {
@@ -181,6 +108,23 @@ function toFixedTruncWithZeros(num, decimals = 2) {
   return truncated.toFixed(decimals);
 }
 
+function resolveDayPayableAmount({ wage, totalWorkingHours, dayCount }) {
+  const payType = String(wage?.pay_type || "HOURLY").toUpperCase();
+  const hourly = parseFloat(wage?.hourly_rate_exc_super) || 0;
+  const fixed = parseFloat(wage?.fixed_rate_exc_super) || 0;
+
+  if (payType === "FIXED") {
+    // Spread fixed period rate evenly across days in the calculated set.
+    const share = dayCount > 0 ? fixed / dayCount : 0;
+    return Number(toFixedTruncWithZeros(share));
+  }
+
+  return Number(toFixedTruncWithZeros(totalWorkingHours * hourly));
+}
+
+/**
+ * MVP rate calculation: hourly XOR fixed wage — no award/earning rule engine.
+ */
 async function calculate(params) {
   const {
     organisation,
@@ -195,9 +139,7 @@ async function calculate(params) {
   if (!employee) throw new AppError("Employee not found", 400);
 
   const employeeTimezone = employee?.details?.user?.timezone?.timezone || "UTC";
-  const employeeHourlyRate =
-    parseFloat(employee?.wage?.hourly_rate_exc_super) || 0;
-  const awardRateRules = employee?.wage?.award_rate?.rules;
+  const wage = employee?.wage || {};
 
   const timesheetDays = await fetchTimesheetDays({
     organisation,
@@ -207,6 +149,7 @@ async function calculate(params) {
     to,
   });
 
+  const dayCount = timesheetDays.length || 1;
   const results = [];
 
   for (const tsDay of timesheetDays) {
@@ -229,111 +172,31 @@ async function calculate(params) {
       employeeTimezone,
     );
 
-    const workingPeriods = timeUtils.formatTaskTimes(
-      workingTasks,
-      employeeTimezone,
-    );
-    const travelPeriods = timeUtils.formatTaskTimes(
-      travelTasks,
-      employeeTimezone,
-    );
-    const breakPeriods = timeUtils.formatTaskTimes(
-      breakTasks,
-      employeeTimezone,
-    );
-
-    const originalRate = toFixedTruncWithZeros(
-      totalWorkingHours * employeeHourlyRate,
-    );
-
-    // select day rule
-    const dayName = ruleUtils.getDayNameFromNumber(tsDay.day_of_week);
-    let rule = awardRateRules.find((r) =>
-      r.days?.some((d) => d.code === dayName),
-    );
-
-    if (tsDay.is_public_holiday) {
-      const holidayRule = awardRateRules.find(
-        r.days?.some((d) => d.code === "public-holiday"),
-      );
-      if (holidayRule) rule = holidayRule;
-    }
-
-    const awardRates = [];
-    const comparisons = [];
-
-    if (rule && Array.isArray(rule.if)) {
-      for (const ifx of rule.if) {
-        const taskType = ifx.field.category;
-        const tasksForRule = taskUtils.filterByType(tasks, taskType);
-
-        if (tasksForRule?.length > 0) {
-          const compareResult = ruleUtils.evaluateIf(
-            ifx,
-            tasksForRule,
-            employeeTimezone,
-          );
-          comparisons.push(compareResult);
-        }
-
-        // group award rates by id
-        let existing = awardRates.find((a) => a.rate_id === ifx.then?.rate?.id);
-        const label = ruleUtils.getRuleLabel(ifx, taskType);
-        if (existing) existing.rules.push({ label });
-        else
-          awardRates.push({
-            label: ifx.then?.rate?.name,
-            rate_id: ifx.then?.rate?.id,
-            rules: [{ label }],
-          });
-      }
-    }
-
-    // get only matched comparisons
-    const matchedComparisons = comparisons.filter(
-      (c) => c?.condition_matched === true,
-    );
-
-    let maxRatePercent = 0;
-    let maxRateId = null;
-
-    if (matchedComparisons.length > 0) {
-      const maxComparison = matchedComparisons.reduce((max, current) => {
-        const currentRate = parseFloat(current.rate_percent) || 0;
-        const maxRate = parseFloat(max.rate_percent) || 0;
-        return currentRate > maxRate ? current : max;
-      });
-
-      maxRatePercent = parseFloat(maxComparison.rate_percent) || 0;
-      maxRateId = maxComparison.rate_id;
-    }
+    const payable = resolveDayPayableAmount({
+      wage,
+      totalWorkingHours,
+      dayCount,
+    });
 
     results.push({
       date: tsDay.date,
       day_name: tsDay.day_name,
       is_public_holiday: tsDay.is_public_holiday,
       is_weekend: tsDay.is_weekend,
-      award_rates: awardRates,
-      comparisons,
-      working_periods: workingPeriods,
-      travel_periods: travelPeriods,
-      break_periods: breakPeriods,
+      award_rates: [],
+      comparisons: [],
+      working_periods: timeUtils.formatTaskTimes(workingTasks, employeeTimezone),
+      travel_periods: timeUtils.formatTaskTimes(travelTasks, employeeTimezone),
+      break_periods: timeUtils.formatTaskTimes(breakTasks, employeeTimezone),
       total_working_hours: timeUtils.toHM(totalWorkingHours),
       total_travel_hours: timeUtils.toHM(totalTravelHours),
       total_break_hours: timeUtils.toHM(totalBreakHours),
       total_working_hours_in_decimal: Number(totalWorkingHours.toFixed(2)),
-      total_original_payout_amount: Number(originalRate),
-      total_payble_amount: maxRatePercent
-        ? Number(
-            (
-              totalWorkingHours *
-              employeeHourlyRate *
-              (maxRatePercent / 100)
-            ).toFixed(2),
-          )
-        : Number(originalRate),
-      earning_rate_id: maxRateId,
-      earning_rate_percent: maxRatePercent,
+      total_original_payout_amount: payable,
+      total_payble_amount: payable,
+      earning_rate_id: null,
+      earning_rate_percent: 0,
+      pay_type: String(wage?.pay_type || "HOURLY").toUpperCase(),
     });
   }
 

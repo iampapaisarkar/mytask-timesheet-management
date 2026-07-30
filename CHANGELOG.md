@@ -2,6 +2,11 @@
 
 ## 2026-07-30
 
+### Added
+
+- MVP Payouts API under `/api/payouts` (`list`, `eligible`, `create`, `/:id/mark-paid`) with org ACL (`payout.list` / `create` / `edit`)
+- Web Payouts page for eligible approved timesheets and marking payouts paid
+
 ### Changed
 
 - Mobile app is React Native CLI (bare `ios/` + `android/`) only
@@ -13,6 +18,10 @@
 - Removed geographic lookup (regions) API/UI and related employee/holiday calendar links so org settings stay role-and-calendar based only
 - Added defensive schema retirement migration to drop leftover group/lookup/external-sync tables and columns from existing databases
 - Removed archived Vue reference frontend and historical create/drop migrations for retired modules to keep the monorepo free of those product surfaces
+- Removed earning rates and award-rate rule engine; timesheet pay uses hourly XOR fixed employee wage rates
+- Redesigned employee wage/payroll (employment type, pay type, Cash/Direct Debit/Bank Transfer); removed next-of-kin
+- Aligned organisation ACL (manager employee CRUD, owner customer delete, gated org settings edit, payout permissions)
+- Required holiday + payroll calendars before operational creates; blocked moderator/manager self-approve/reject
 
 ## 2026-07-29
 

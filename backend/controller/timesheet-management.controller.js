@@ -330,8 +330,24 @@ export async function create(req, res, next) {
       message: "Access denied: You are not authorized to access this action.",
     });
   }
+  if (!employee?.id) {
+    return res.status(400).json({
+      message: "Employee is required!",
+    });
+  }
+  if (!period?.start_date || !period?.end_date) {
+    return res.status(400).json({
+      message: "Payroll period is required!",
+    });
+  }
+
   const transaction = await db.transaction();
   try {
+    const { assertOrganisationSetupComplete } = await import(
+      "../utils/org-setup.utils.js"
+    );
+    await assertOrganisationSetupComplete(organisation.id);
+
     const employeeJson = await Employees.scope("defaultScope").findOne(
       {
         where: {
@@ -656,6 +672,20 @@ export async function approve(req, res, next) {
       });
     }
 
+    // Moderators and managers cannot approve their own timesheet.
+    const roleCode = organisation?.role?.code;
+    if (roleCode === "moderator" || roleCode === "manager") {
+      const selfEmployeeId = organisation?.employee?.id;
+      if (
+        selfEmployeeId &&
+        Number(selfEmployeeId) === Number(employee_id)
+      ) {
+        return res.status(403).json({
+          message: "You cannot approve your own timesheet.",
+        });
+      }
+    }
+
     const timesheetApprovedStatus = await TimesheetStatus.findOne({
       where: {
         code: "approved",
@@ -727,6 +757,19 @@ export async function reject(req, res, next) {
       return res.status(403).json({
         message: "Access denied: You are not authorized to access this action.",
       });
+    }
+
+    const roleCode = organisation?.role?.code;
+    if (roleCode === "moderator" || roleCode === "manager") {
+      const selfEmployeeId = organisation?.employee?.id;
+      if (
+        selfEmployeeId &&
+        Number(selfEmployeeId) === Number(employee_id)
+      ) {
+        return res.status(403).json({
+          message: "You cannot reject your own timesheet.",
+        });
+      }
     }
 
     const timesheetRejectedStatus = await TimesheetStatus.findOne({

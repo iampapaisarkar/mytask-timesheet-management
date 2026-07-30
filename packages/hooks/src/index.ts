@@ -9,6 +9,7 @@ import {
   jobsApi,
   systemApi,
   screensApi,
+  payoutsApi,
 } from "@mytask/api";
 import type {
   DashboardOverviewView,
@@ -40,8 +41,8 @@ export const queryKeys = {
   notificationsList: ["notifications", "list"] as const,
   holidayCalendars: ["holiday-calendars"] as const,
   payrollCalendars: ["payroll-calendars"] as const,
-  earningRates: ["earning-rates"] as const,
-  awardRates: ["award-rates"] as const,
+  payouts: (params?: ListParams) => ["payouts", params] as const,
+  payoutsEligible: ["payouts", "eligible"] as const,
   screens: {
     orgBootstrap: (orgCode: string) =>
       ["screens", "org-bootstrap", orgCode] as const,
@@ -572,6 +573,57 @@ export function useJobs(params: ListParams = {}, enabled = true) {
       return res.data.data;
     },
     enabled,
+  });
+}
+
+export function usePayouts(params: ListParams = {}, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.payouts(params),
+    queryFn: async ({ signal }) => {
+      const res = await payoutsApi.list(params, { signal });
+      return res.data.data;
+    },
+    enabled,
+  });
+}
+
+export function useEligiblePayouts(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.payoutsEligible,
+    queryFn: async ({ signal }) => {
+      const res = await payoutsApi.eligible({ signal });
+      return res.data.data;
+    },
+    enabled,
+  });
+}
+
+export function useCreatePayout() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: {
+      timesheet_id: string | number;
+      notes?: string;
+    }) => {
+      const res = await payoutsApi.create(payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["payouts"] });
+    },
+  });
+}
+
+export function useMarkPayoutPaid() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string | number) => {
+      const res = await payoutsApi.markPaid(id);
+      return res.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["payouts"] });
+    },
   });
 }
 

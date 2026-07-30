@@ -32,6 +32,7 @@ export const ROUTES = {
   timesheetManagementDetails: (orgCode: string, id: string | number) =>
     `/org/${orgCode}/timesheet-management/${id}/details`,
   reports: (orgCode: string) => `/org/${orgCode}/reports`,
+  payouts: (orgCode: string) => `/org/${orgCode}/payouts`,
   settings: (orgCode: string) => `/org/${orgCode}/settings`,
   organisationDetails: (orgCode: string) =>
     `/org/${orgCode}/settings/organisation-details`,
@@ -39,10 +40,6 @@ export const ROUTES = {
     `/org/${orgCode}/settings/holiday-calendars`,
   payrollCalendars: (orgCode: string) =>
     `/org/${orgCode}/settings/payroll-calendars`,
-  earningRates: (orgCode: string) =>
-    `/org/${orgCode}/settings/earning-rates`,
-  earningRateRules: (orgCode: string) =>
-    `/org/${orgCode}/settings/earning-rate-rules`,
   employees: (orgCode: string) => `/org/${orgCode}/employees`,
   customers: (orgCode: string) => `/org/${orgCode}/customers`,
   jobs: (orgCode: string) => `/org/${orgCode}/jobs`,
@@ -67,6 +64,12 @@ export const ORG_NAV = [
     label: "Reports",
     path: "reports",
     acl: { action: "report", permission: "view" },
+  },
+  {
+    key: "payouts",
+    label: "Payouts",
+    path: "payouts",
+    acl: { action: "payout", permission: "list" },
   },
   {
     key: "employees",
@@ -113,6 +116,7 @@ export const ORG_ROUTE_ACL = [
     acl: { action: "timesheetManagement", permission: "view" },
   },
   { path: "reports", acl: { action: "report", permission: "view" } },
+  { path: "payouts", acl: { action: "payout", permission: "list" } },
   { path: "settings", acl: { action: "setting", permission: "list" } },
   {
     path: "settings/organisation-details",
@@ -125,14 +129,6 @@ export const ORG_ROUTE_ACL = [
   {
     path: "settings/payroll-calendars",
     acl: { action: "payrollCalendar", permission: "list" },
-  },
-  {
-    path: "settings/earning-rates",
-    acl: { action: "earningRate", permission: "list" },
-  },
-  {
-    path: "settings/earning-rate-rules",
-    acl: { action: "awardRate", permission: "list" },
   },
   { path: "employees", acl: { action: "employee", permission: "list" } },
   { path: "customers", acl: { action: "customer", permission: "list" } },

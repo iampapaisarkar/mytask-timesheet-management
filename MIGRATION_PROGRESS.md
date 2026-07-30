@@ -20,6 +20,7 @@
 | Mobile BGL + ClockInOut | ✅ Done | 2026-07-30 | Transistorsoft + geolocation fallback |
 | Mobile org shell + maps | ✅ Done | 2026-07-30 | Detail/day/TM/employees/settings + TrackingMap |
 | Parity QA | ✅ Done | 2026-07-30 | Web `tsc` clean; key surfaces verified |
+| MVP Payouts | ✅ Done | 2026-07-30 | API + web list/eligible/create/mark-paid |
 
 ## Vue ↔ Web ↔ Mobile gap matrix
 
@@ -35,6 +36,7 @@
 | `timesheet` list/detail/day | ✅ | ✅ | Day editor + map |
 | `timesheet-management` | ✅ | ✅ list | Web has full detail |
 | `reports` | ✅ | — | rate-by-day |
+| `payouts` | ✅ | — | MVP eligible + mark paid |
 | `settings` + CRUD | ✅ | ✅ hub | Mobile hub placeholders |
 | `employees` wizard | ✅ | ✅ list | |
 | `customers` / `jobs` / MG | ✅ | — | GoogleAddress + radius |

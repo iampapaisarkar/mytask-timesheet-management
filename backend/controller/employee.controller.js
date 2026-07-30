@@ -7,10 +7,6 @@ const {
   Employees,
   EmployeeInvitations,
   InvitationStatus,
-  States,
-  EmploymentStatus,
-  EmploymentTypes,
-  PayrollCalendars,
 } = models;
 import { db } from "../database.js";
 import employeeService from "../service/employee.service.js";
@@ -73,8 +69,6 @@ export async function list(req, res, next) {
           { phone_number: { [Op.like]: `%${search}%` } },
           { phone_country_iso: { [Op.like]: `%${search}%` } },
           { phone_country_code: { [Op.like]: `%${search}%` } },
-          { nok: { [Op.like]: `%${search}%` } },
-          { nok_phone_number: { [Op.like]: `%${search}%` } },
 
           { "$user.name$": { [Op.like]: `%${search}%` } },
           { "$user.email$": { [Op.like]: `%${search}%` } },
@@ -190,6 +184,11 @@ export async function create(req, res, next) {
   }
   const transaction = await db.transaction();
   try {
+    const { assertOrganisationSetupComplete } = await import(
+      "../utils/org-setup.utils.js"
+    );
+    await assertOrganisationSetupComplete(organisation.id);
+
     const employee = await employeeService.createOrUpdateEmployeeDetails(
       user,
       organisation,
@@ -326,6 +325,11 @@ export async function update(req, res, next) {
 export async function invite(req, res, next) {
   const { user, orgName, organisation } = req.body;
   const id = req?.params?.id;
+  if (!organisation.acl.employee.create && !organisation.acl.employee.edit) {
+    return res.status(403).json({
+      message: "Access denied: You are not authorized to access this action.",
+    });
+  }
   const transaction = await db.transaction();
   try {
     const employeeResponse = await Employees.scope("defaultScope").findOne({
@@ -443,27 +447,22 @@ export async function searchUserByEmail(req, res, next) {
             dob: systemEmployee?.dob,
             phone_number: null,
             role: null,
-            nok: null,
-            nok_relationship: null,
-            nok_phone_number: null,
           },
           wage: {
             start_date: null,
-            employment_status: null,
             payroll_calendar: null,
             employment_type: null,
+            pay_type: "HOURLY",
             hourly_rate_exc_super: null,
-            timesheet_submission_frequency: null,
-            award_rate: null,
+            fixed_rate_exc_super: null,
           },
           payroll: {
-            tax_file_number: null,
-            superannuation_fund: null,
-            superannuation_member_number: null,
-            bank_bsb: null,
+            payment_method: "CASH",
+            account_holder_name: null,
+            bank_name: null,
             bank_account_number: null,
-            bank_account_name: null,
-            bank_statement_text: null,
+            ifsc_code: null,
+            swift_code: null,
           },
           action: {
             edit: true,
@@ -491,27 +490,22 @@ export async function searchUserByEmail(req, res, next) {
             dob: null,
             phone_number: null,
             role: null,
-            nok: null,
-            nok_relationship: null,
-            nok_phone_number: null,
           },
           wage: {
             start_date: null,
-            employment_status: null,
             payroll_calendar: null,
             employment_type: null,
+            pay_type: "HOURLY",
             hourly_rate_exc_super: null,
-            timesheet_submission_frequency: null,
-            award_rate: null,
+            fixed_rate_exc_super: null,
           },
           payroll: {
-            tax_file_number: null,
-            superannuation_fund: null,
-            superannuation_member_number: null,
-            bank_bsb: null,
+            payment_method: "CASH",
+            account_holder_name: null,
+            bank_name: null,
             bank_account_number: null,
-            bank_account_name: null,
-            bank_statement_text: null,
+            ifsc_code: null,
+            swift_code: null,
           },
           action: {
             edit: false,

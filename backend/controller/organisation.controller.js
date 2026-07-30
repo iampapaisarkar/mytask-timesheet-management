@@ -280,6 +280,12 @@ export async function update(req, res, next) {
   } = req.body;
 
   try {
+    if (!organisation.acl.organisationSetting.edit) {
+      return res.status(403).json({
+        message: "Access denied: You are not authorized to access this action.",
+      });
+    }
+
     if (!name) {
       return res.status(501).json({
         message: "Name is required!",
@@ -381,6 +387,12 @@ export async function update(req, res, next) {
 export async function updateSettings(req, res, next) {
   const { user, organisation, timesheet_submission_frequency, leaves } = req.body;
   try {
+    if (!organisation.acl.organisationSetting.edit) {
+      return res.status(403).json({
+        message: "Access denied: You are not authorized to access this action.",
+      });
+    }
+
     const currentUTCTime = moment().utc().format();
 
     // if (!timesheet_submission_frequency) {

@@ -1,31 +1,23 @@
-import { fn, col, literal, Op } from "sequelize";
+import { Op } from "sequelize";
 import models from "../models/index.js";
 const {
   Users,
   OrganisationRoles,
-  NokRelations,
   Customers,
-  EarningRateTypes,
   LeaveCategories,
   TimesheetSubmissionFrequencies,
   PayCycles,
-  AwardRateRuleFields,
-  AwardRateRuleFieldTypes,
-  AwardRateRuleDays,
   RoundingIntervals,
   Employees,
   UserOrganisationRoles,
   EmploymentStatus,
   EmploymentTypes,
   PayrollCalendars,
-  AwardRates,
-  EarningRates,
   Jobs,
   Timesheets,
   States,
 } = models;
-import Auth from "#auth";
-import moment from "moment";
+import { getOrganisationSetupStatus } from "../utils/org-setup.utils.js";
 
 export async function organisationRoles(req, res, next) {
   const { user, organisation } = req.body;
@@ -81,56 +73,6 @@ export async function organisationRoles(req, res, next) {
     console.error("Error featching organisation roles:", err);
     return res.status(500).json({
       message: "Unable to fetch organisation roles",
-      details: err.message,
-    });
-  }
-}
-
-export async function nokRelations(req, res, next) {
-  const { user } = req.body;
-  let { rows_per_page, page_number, sort_by, sort_direction, search } =
-    req.query;
-  try {
-    const rowsPerPage = parseInt(rows_per_page) || 10;
-    const pageNumber = parseInt(page_number) || 1;
-    const offset = (pageNumber - 1) * rowsPerPage;
-    const sortBy = sort_by || "id";
-    const sortDirection = sort_direction || "asc";
-
-    let whereCondition = {};
-
-    if (search && search.trim() !== "") {
-      whereCondition = {
-        ...whereCondition,
-        [Op.or]: [{ name: { [Op.like]: `%${search}%` } }],
-      };
-    }
-
-    const { count, rows: nokRelations } = await NokRelations.findAndCountAll({
-      where: whereCondition,
-      offset,
-      limit: rowsPerPage,
-      order: [[sortBy, sortDirection]],
-      raw: true,
-    });
-
-    const total_pages = Math.ceil(nokRelations.length / rowsPerPage);
-
-    return res.status(200).json({
-      data: nokRelations,
-      pagination: {
-        total_rows: nokRelations.length,
-        rows_per_page: rowsPerPage,
-        page_number: pageNumber,
-        total_pages,
-        sort_by: sortBy,
-        sort_direction: sortDirection,
-      },
-    });
-  } catch (err) {
-    console.error("Error featching nok relations:", err);
-    return res.status(500).json({
-      message: "Unable to fetch nok relations",
       details: err.message,
     });
   }
@@ -192,65 +134,6 @@ export async function allCustomers(req, res, next) {
     console.error("Error fetching customers:", err);
     return res.status(500).json({
       message: "Unable to fetch customers",
-      details: err.message,
-    });
-  }
-}
-
-export async function earningRateTypes(req, res, next) {
-  const { user } = req.body;
-  let { rows_per_page, page_number, sort_by, sort_direction, search } =
-    req.query;
-
-  try {
-    const rowsPerPage = parseInt(rows_per_page) || 10;
-    const pageNumber = parseInt(page_number) || 1;
-    const offset = (pageNumber - 1) * rowsPerPage;
-    const sortBy = sort_by || "id";
-    const sortDirection = sort_direction || "asc";
-
-    let whereCondition = {
-      code: "OVERTIMEEARNINGS", // Default for now
-    };
-
-    if (search && search.trim() !== "") {
-      whereCondition = {
-        ...whereCondition,
-        [Op.or]: [
-          { name: { [Op.like]: `%${search}%` } },
-          { code: { [Op.like]: `%${search}%` } },
-          { rate_type: { [Op.like]: `%${search}%` } },
-        ],
-      };
-    }
-
-    const { count, rows: earningRateTypes } =
-      await EarningRateTypes.findAndCountAll({
-        where: whereCondition,
-        offset,
-        limit: rowsPerPage,
-        order: [[sortBy, sortDirection]],
-        raw: false,
-        nest: true,
-      });
-
-    const total_pages = Math.ceil(earningRateTypes.length / rowsPerPage);
-
-    return res.status(200).json({
-      data: earningRateTypes,
-      pagination: {
-        total_rows: earningRateTypes.length,
-        rows_per_page: rowsPerPage,
-        page_number: pageNumber,
-        total_pages,
-        sort_by: sortBy,
-        sort_direction: sortDirection,
-      },
-    });
-  } catch (err) {
-    console.error("Error fetching earning rate types:", err);
-    return res.status(500).json({
-      message: "Unable to fetch earning rate types",
       details: err.message,
     });
   }
@@ -417,55 +300,6 @@ export async function payCycles(req, res, next) {
     console.error("Error fetching pay cycles:", err);
     return res.status(500).json({
       message: "Unable to fetch pay cycles",
-      details: err.message,
-    });
-  }
-}
-
-export async function awardRateRuleFields(req, res, next) {
-  const { user } = req.body;
-  try {
-    const fields = await AwardRateRuleFields.findAll({
-      where: {
-        is_active: true,
-      },
-      include: [
-        {
-          model: AwardRateRuleFieldTypes,
-          as: "field_type",
-          attributes: ["id", "name", "code"],
-        },
-      ],
-      raw: false,
-      nest: true,
-    });
-
-    return res.status(200).json({
-      data: fields,
-    });
-  } catch (err) {
-    console.error("Error fetching award rate rule fields:", err);
-    return res.status(500).json({
-      message: "Unable to fetch award rate rule fields",
-      details: err.message,
-    });
-  }
-}
-
-export async function awardRateRuleDays(req, res, next) {
-  const { user } = req.body;
-  try {
-    const days = await AwardRateRuleDays.findAll({
-      raw: false,
-      nest: true,
-    });
-    return res.status(200).json({
-      data: days,
-    });
-  } catch (err) {
-    console.error("Error fetching award rate rule days:", err);
-    return res.status(500).json({
-      message: "Unable to fetch award rate rule days",
       details: err.message,
     });
   }
@@ -750,6 +584,9 @@ export async function employmentTypes(req, res, next) {
   const { user } = req.body;
   try {
     const types = await EmploymentTypes.findAll({
+      where: {
+        code: { [Op.notIn]: ["CONTRACT", "contract"] },
+      },
       raw: false,
       nest: true,
     });
@@ -820,136 +657,6 @@ export async function payrollCalendars(req, res, next) {
     console.error("Error fetching payroll calendars:", err);
     return res.status(500).json({
       message: "Unable to fetch payroll calendars",
-      details: err.message,
-    });
-  }
-}
-
-export async function awardRates(req, res, next) {
-  const { user, organisation } = req.body;
-  let { rows_per_page, page_number, sort_by, sort_direction, search } =
-    req.query;
-
-  try {
-    const rowsPerPage = parseInt(rows_per_page) || 10;
-    const pageNumber = parseInt(page_number) || 1;
-    const offset = (pageNumber - 1) * rowsPerPage;
-    const sortBy = sort_by || "id";
-    const sortDirection = sort_direction || "asc";
-
-    let whereCondition = {
-      organisation_id: organisation.id,
-    };
-
-    if (search && search.trim() !== "") {
-      whereCondition = {
-        ...whereCondition,
-        [Op.or]: [{ name: { [Op.like]: `%${search}%` } }],
-      };
-    }
-
-    const { count, rows: rates } = await AwardRates.findAndCountAll({
-      where: whereCondition,
-      raw: false,
-      nest: true,
-      offset,
-      limit: rowsPerPage,
-      order: [[sortBy, sortDirection]],
-    });
-
-    const total_pages = Math.ceil(rates.length / rowsPerPage);
-
-    return res.status(200).json({
-      data: rates,
-      pagination: {
-        total_rows: rates.length,
-        rows_per_page: rowsPerPage,
-        page_number: pageNumber,
-        total_pages,
-        sort_by: sortBy,
-        sort_direction: sortDirection,
-      },
-    });
-  } catch (err) {
-    console.error("Error fetching award rates:", err);
-    return res.status(500).json({
-      message: "Unable to fetch award rates",
-      details: err.message,
-    });
-  }
-}
-
-export async function earningRates(req, res, next) {
-  const { user, organisation } = req.body;
-  let {
-    rows_per_page,
-    page_number,
-    sort_by,
-    sort_direction,
-    search,
-    paginate,
-  } = req.query;
-
-  try {
-    paginate = paginate == "true" ? true : false;
-    if (paginate) {
-      const rowsPerPage = parseInt(rows_per_page) || 10;
-      const pageNumber = parseInt(page_number) || 1;
-      const offset = (pageNumber - 1) * rowsPerPage;
-      const sortBy = sort_by || "id";
-      const sortDirection = sort_direction || "asc";
-
-      let whereCondition = {
-        organisation_id: organisation.id,
-      };
-
-      if (search && search.trim() !== "") {
-        whereCondition = {
-          ...whereCondition,
-          [Op.or]: [{ name: { [Op.like]: `%${search}%` } }],
-        };
-      }
-
-      const { count, rows: rates } = await EarningRates.findAndCountAll({
-        where: whereCondition,
-        raw: false,
-        nest: true,
-        offset,
-        limit: rowsPerPage,
-        order: [[sortBy, sortDirection]],
-      });
-
-      const total_pages = Math.ceil(rates.length / rowsPerPage);
-
-      return res.status(200).json({
-        data: rates,
-        pagination: {
-          total_rows: rates.length,
-          rows_per_page: rowsPerPage,
-          page_number: pageNumber,
-          total_pages,
-          sort_by: sortBy,
-          sort_direction: sortDirection,
-        },
-      });
-    } else {
-      let whereCondition = {
-        organisation_id: organisation.id,
-      };
-
-      const rates = await EarningRates.findAll({
-        where: whereCondition,
-        raw: false,
-      });
-
-      return res.status(200).json({
-        data: rates,
-      });
-    }
-  } catch (err) {
-    console.error("Error fetching earning rates:", err);
-    return res.status(500).json({
-      message: "Unable to fetch earning rates",
       details: err.message,
     });
   }
@@ -1234,5 +941,15 @@ export async function states(req, res, next) {
       message: "Unable to fetch states",
       details: err.message,
     });
+  }
+}
+
+export async function organisationSetupStatus(req, res) {
+  const { organisation } = req.body;
+  try {
+    const data = await getOrganisationSetupStatus(organisation.id);
+    return res.status(200).json({ data });
+  } catch (err) {
+    return res.status(500).json({ message: "Unable to fetch organisation setup status" });
   }
 }

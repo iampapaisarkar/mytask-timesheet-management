@@ -15,26 +15,31 @@ const EmployeePayrolls = db.define(
     employee_id: {
       type: DataTypes.INTEGER,
     },
-    tax_file_number: {
+    /** CASH | DIRECT_DEBIT | BANK_TRANSFER */
+    payment_method: {
       type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "CASH",
     },
-    superannuation_fund: {
+    account_holder_name: {
       type: DataTypes.STRING,
+      allowNull: true,
     },
-    superannuation_member_number: {
+    bank_name: {
       type: DataTypes.STRING,
-    },
-    bank_bsb: {
-      type: DataTypes.STRING,
+      allowNull: true,
     },
     bank_account_number: {
       type: DataTypes.STRING,
+      allowNull: true,
     },
-    bank_account_name: {
+    ifsc_code: {
       type: DataTypes.STRING,
+      allowNull: true,
     },
-    bank_statement_text: {
-      type: DataTypes.TEXT,
+    swift_code: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     created_at: {
       type: DataTypes.DATE,
@@ -52,7 +57,7 @@ const EmployeePayrolls = db.define(
     },
   },
   {
-    tableName: "employee_payrolls", // Table name should be in lowercase and plural
+    tableName: "employee_payrolls",
     timestamps: false,
   },
 );

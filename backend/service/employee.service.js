@@ -6,7 +6,6 @@ const {
   Employees,
   EmployeeInvitations,
   InvitationStatus,
-  NokRelations,
   EmployeeWages,
   EmployeePayrolls,
   EmployeeAddress,
@@ -56,7 +55,6 @@ async function createOrUpdateEmployeeDetails(
       );
     }
     let phoneFields;
-    let nokPhoneFields;
     try {
       phoneFields = resolvePhoneFields({
         phone_number: details.phone_number,
@@ -64,18 +62,17 @@ async function createOrUpdateEmployeeDetails(
         phone_country_iso: details.phone_country_iso,
         required: true,
       });
-      nokPhoneFields = resolvePhoneFields({
-        phone_number: details.nok_phone_number,
-        phone_country_code: details.nok_phone_country_code,
-        phone_country_iso: details.nok_phone_country_iso,
-        required: false,
-        label: "Next of kin phone",
-      });
     } catch (err) {
       throw new AppError(err.message, err.status || 400);
     }
     if (!details.role) {
       throw new AppError("Role is required!", 400);
+    }
+    if (details.role?.code === "owner") {
+      throw new AppError(
+        "Organisation Owner cannot be assigned during employee creation.",
+        400,
+      );
     }
     const currentUTCTime = moment().utc().format();
 
@@ -91,12 +88,6 @@ async function createOrUpdateEmployeeDetails(
     if (id) {
       const employee = await Employees.update(
         {
-          nok: details?.nok || null,
-          nok_relation_id: details?.nok_relationship?.id || null,
-          nok_phone_number: nokPhoneFields.phone_number,
-          nok_phone_country_code: nokPhoneFields.phone_country_code,
-          nok_phone_country_iso: nokPhoneFields.phone_country_iso,
-          award_id: null,
           preferred_name: details.preferred_name,
           phone_number: phoneFields.phone_number,
           phone_country_code: phoneFields.phone_country_code,
@@ -165,12 +156,6 @@ async function createOrUpdateEmployeeDetails(
         {
           user_id: userId,
           organisation_id: organisation.id,
-          nok: details?.nok || null,
-          nok_relation_id: details?.nok_relationship?.id || null,
-          nok_phone_number: nokPhoneFields.phone_number,
-          nok_phone_country_code: nokPhoneFields.phone_country_code,
-          nok_phone_country_iso: nokPhoneFields.phone_country_iso,
-          award_id: null,
           preferred_name: details?.preferred_name,
           phone_number: phoneFields.phone_number,
           phone_country_code: phoneFields.phone_country_code,
@@ -230,20 +215,60 @@ async function createOrUpdateEmployeeWage(
     if (!wage.start_date) {
       throw new AppError("Start date is required!", 400);
     }
-    if (!wage.employment_status) {
-      throw new AppError("Employment status is required!", 400);
-    }
     if (!wage.payroll_calendar) {
       throw new AppError("Payroll calendar is required!", 400);
     }
     if (!wage.employment_type) {
       throw new AppError("Employment type is required!", 400);
     }
-    if (!wage.hourly_rate_exc_super) {
-      throw new AppError("Hourly rate exc super is required!", 400);
+    if (
+      wage.employment_type?.code &&
+      String(wage.employment_type.code).toUpperCase() === "CONTRACT"
+    ) {
+      throw new AppError("Contract employment type is not allowed.", 400);
     }
-    if (!wage.timesheet_submission_frequency) {
-      throw new AppError("Timesheet submission frequency is required!", 400);
+
+    const payType = String(wage.pay_type || "").toUpperCase();
+    if (payType !== "HOURLY" && payType !== "FIXED") {
+      throw new AppError("Pay type must be HOURLY or FIXED.", 400);
+    }
+
+    const hourly =
+      wage.hourly_rate_exc_super === null ||
+      wage.hourly_rate_exc_super === undefined ||
+      wage.hourly_rate_exc_super === ""
+        ? null
+        : Number(wage.hourly_rate_exc_super);
+    const fixed =
+      wage.fixed_rate_exc_super === null ||
+      wage.fixed_rate_exc_super === undefined ||
+      wage.fixed_rate_exc_super === ""
+        ? null
+        : Number(wage.fixed_rate_exc_super);
+
+    if (payType === "HOURLY") {
+      if (hourly === null || Number.isNaN(hourly) || hourly <= 0) {
+        throw new AppError("Hourly rate is required for HOURLY pay type.", 400);
+      }
+      if (fixed !== null) {
+        throw new AppError(
+          "Fixed rate must be empty when pay type is HOURLY.",
+          400,
+        );
+      }
+    } else {
+      if (fixed === null || Number.isNaN(fixed) || fixed <= 0) {
+        throw new AppError(
+          "Fixed price rate is required for FIXED pay type.",
+          400,
+        );
+      }
+      if (hourly !== null) {
+        throw new AppError(
+          "Hourly rate must be empty when pay type is FIXED.",
+          400,
+        );
+      }
     }
 
     if (id) {
@@ -263,12 +288,11 @@ async function createOrUpdateEmployeeWage(
         organisation_id: organisation.id,
         employee_id: employee.id,
         start_date: moment(wage.start_date, "YYYY-MM-DD"),
-        employment_status_id: wage.employment_status?.id,
         payroll_calendar_id: wage.payroll_calendar?.id,
         employment_type_id: wage.employment_type?.id,
-        hourly_rate_exc_super: wage.hourly_rate_exc_super,
-        timesheet_submission_frequency: wage.timesheet_submission_frequency,
-        award_rate_id: wage.award_rate?.id,
+        pay_type: payType,
+        hourly_rate_exc_super: payType === "HOURLY" ? hourly : null,
+        fixed_rate_exc_super: payType === "FIXED" ? fixed : null,
         created_at: currentUTCTime,
         created_by: user.id,
         updated_at: currentUTCTime,
@@ -295,26 +319,43 @@ async function createOrUpdateEmployeePayroll(
   transaction,
 ) {
   try {
-    if (!payroll.tax_file_number) {
-      throw new AppError("Tax file number is required!", 400);
+    const method = String(payroll.payment_method || "").toUpperCase();
+    const allowed = ["CASH", "DIRECT_DEBIT", "BANK_TRANSFER"];
+    if (!allowed.includes(method)) {
+      throw new AppError(
+        "Payment method must be Cash, Direct Debit, or Bank Transfer.",
+        400,
+      );
     }
-    if (!payroll.superannuation_fund) {
-      throw new AppError("Superannuation fund is required!", 400);
-    }
-    if (!payroll.superannuation_member_number) {
-      throw new AppError("Superannuation member number is required!", 400);
-    }
-    if (!payroll.bank_bsb) {
-      throw new AppError("Bank BSB is required!", 400);
-    }
-    if (!payroll.bank_account_number) {
-      throw new AppError("Bank account number is required!", 400);
-    }
-    if (!payroll.bank_account_name) {
-      throw new AppError("Bank account name is required!", 400);
-    }
-    if (!payroll.bank_statement_text) {
-      throw new AppError("Bank statement text is required!", 400);
+
+    let accountHolderName = null;
+    let bankName = null;
+    let bankAccountNumber = null;
+    let ifscCode = null;
+    let swiftCode = null;
+
+    if (method === "BANK_TRANSFER") {
+      accountHolderName = String(payroll.account_holder_name || "").trim();
+      bankName = String(payroll.bank_name || "").trim();
+      bankAccountNumber = String(payroll.bank_account_number || "").trim();
+      ifscCode = String(payroll.ifsc_code || "").trim();
+      swiftCode = String(payroll.swift_code || "").trim();
+
+      if (!accountHolderName) {
+        throw new AppError("Account holder name is required.", 400);
+      }
+      if (!bankName) {
+        throw new AppError("Bank name is required.", 400);
+      }
+      if (!bankAccountNumber) {
+        throw new AppError("Account number is required.", 400);
+      }
+      if (!ifscCode) {
+        throw new AppError("IFSC code is required.", 400);
+      }
+      if (!swiftCode) {
+        throw new AppError("SWIFT code is required.", 400);
+      }
     }
 
     const currentUTCTime = moment().utc().format();
@@ -333,13 +374,12 @@ async function createOrUpdateEmployeePayroll(
       {
         organisation_id: organisation.id,
         employee_id: employee.id,
-        tax_file_number: payroll.tax_file_number,
-        superannuation_fund: payroll.superannuation_fund,
-        superannuation_member_number: payroll.superannuation_member_number,
-        bank_bsb: payroll.bank_bsb,
-        bank_account_number: payroll.bank_account_number,
-        bank_account_name: payroll.bank_account_name,
-        bank_statement_text: payroll.bank_statement_text,
+        payment_method: method,
+        account_holder_name: accountHolderName,
+        bank_name: bankName,
+        bank_account_number: bankAccountNumber,
+        ifsc_code: ifscCode,
+        swift_code: swiftCode,
         created_at: currentUTCTime,
         created_by: user.id,
         updated_at: currentUTCTime,

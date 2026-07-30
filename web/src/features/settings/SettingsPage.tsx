@@ -6,8 +6,6 @@ const SETTINGS_LINKS = [
   { label: "Organisation details", path: "organisation-details" as const },
   { label: "Holiday Calendar", path: "holiday-calendars" as const },
   { label: "Payroll Calendar", path: "payroll-calendars" as const },
-  { label: "Earning Rates", path: "earning-rates" as const },
-  { label: "Earning Rate Rules", path: "earning-rate-rules" as const },
 ];
 
 export function SettingsPage() {

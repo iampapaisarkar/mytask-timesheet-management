@@ -21,11 +21,10 @@ import { SettingsPage } from "@/features/settings/SettingsPage";
 import { OrganisationDetailsPage } from "@/features/settings/OrganisationDetailsPage";
 import { HolidayCalendarsPage } from "@/features/settings/HolidayCalendarsPage";
 import { PayrollCalendarsPage } from "@/features/settings/PayrollCalendarsPage";
-import { EarningRatesPage } from "@/features/settings/EarningRatesPage";
-import { EarningRateRulesPage } from "@/features/settings/EarningRateRulesPage";
 import { ProfilePage } from "@/features/profile/ProfilePage";
 import { CreateOrganisationPage } from "@/features/organisation/CreateOrganisationPage";
 import { ReportsPage } from "@/features/reports/ReportsPage";
+import { PayoutsPage } from "@/features/payouts/PayoutsPage";
 
 export function AppRouter() {
   return (
@@ -111,6 +110,14 @@ export function AppRouter() {
 
             <Route
               element={
+                <OrgAclRoute acl={{ action: "payout", permission: "list" }} />
+              }
+            >
+              <Route path="payouts" element={<PayoutsPage />} />
+            </Route>
+
+            <Route
+              element={
                 <OrgAclRoute acl={{ action: "setting", permission: "list" }} />
               }
             >
@@ -150,30 +157,6 @@ export function AppRouter() {
               <Route
                 path="settings/payroll-calendars"
                 element={<PayrollCalendarsPage />}
-              />
-            </Route>
-            <Route
-              element={
-                <OrgAclRoute
-                  acl={{ action: "earningRate", permission: "list" }}
-                />
-              }
-            >
-              <Route
-                path="settings/earning-rates"
-                element={<EarningRatesPage />}
-              />
-            </Route>
-            <Route
-              element={
-                <OrgAclRoute
-                  acl={{ action: "awardRate", permission: "list" }}
-                />
-              }
-            >
-              <Route
-                path="settings/earning-rate-rules"
-                element={<EarningRateRulesPage />}
               />
             </Route>
 

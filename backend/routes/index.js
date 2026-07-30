@@ -11,13 +11,12 @@ import customer from "./customer/index.js";
 import job from "./job/index.js";
 import holidayCalendar from "./holiday-calendar/index.js";
 import payrollCalendar from "./payroll-calendar/index.js";
-import earningRates from "./earning-rate/index.js";
-import awardRates from "./award-rate/index.js";
 import system from "./system/index.js";
 import Notification from "./notifications/index.js";
 import TimesheetActivity from "./timesheet-activity/index.js";
 import Report from "./report/index.js";
 import screens from "./screens/index.js";
+import payout from "./payout/index.js";
 import { SocketIO } from "#socketio";
 import { NodeMailer } from "#nodemailer";
 import { FirebaseMessaging } from "#firebasemessaging";
@@ -51,8 +50,7 @@ router.use(
   OrganisationValidate,
   payrollCalendar,
 );
-router.use("/earning-rates", TokenValidate, OrganisationValidate, earningRates);
-router.use("/award-rates", TokenValidate, OrganisationValidate, awardRates);
+router.use("/payouts", TokenValidate, OrganisationValidate, payout);
 router.use("/system", TokenValidate, system);
 router.use("/notifications", TokenValidate, Notification);
 router.use("/timesheet-activity", TimesheetActivity);

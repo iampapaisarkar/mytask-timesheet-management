@@ -86,6 +86,12 @@ Timesheets.associate = (models) => {
     foreignKey: "timesheet_id",
     as: "days",
   });
+  if (models.Payouts) {
+    models.Timesheets.hasOne(models.Payouts, {
+      foreignKey: "timesheet_id",
+      as: "payout",
+    });
+  }
 };
 
 export default Timesheets;

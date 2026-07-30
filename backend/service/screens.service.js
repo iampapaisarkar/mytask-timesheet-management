@@ -22,12 +22,8 @@ const {
   Users,
   Notifications,
   NotificationStatus,
-  NokRelations,
-  EmploymentStatus,
   EmploymentTypes,
-  TimesheetSubmissionFrequencies,
   PayrollCalendars,
-  AwardRates,
   Jobs,
   Timesheets,
   TimesheetStatus,
@@ -196,48 +192,22 @@ export async function getEmployeeFormLookups(organisation) {
     roleWhere.code[Op.notIn].push("moderator");
   }
 
-  const [
-    roles,
-    nok_relations,
-    employment_status,
-    employment_types,
-    timesheet_submission_frequencies,
-    payroll_calendars,
-    award_rates,
-  ] = await Promise.all([
+  const [roles, employment_types, payroll_calendars] = await Promise.all([
     OrganisationRoles.findAll({
       where: roleWhere,
       attributes: ["id", "name", "code"],
       order: [["name", "asc"]],
       raw: true,
     }),
-    NokRelations.findAll({
-      attributes: ["id", "name", "code"],
-      order: [["name", "asc"]],
-      raw: true,
-    }),
-    EmploymentStatus.findAll({
-      attributes: ["id", "name", "code"],
-      order: [["name", "asc"]],
-      raw: true,
-    }),
     EmploymentTypes.findAll({
-      attributes: ["id", "name", "code"],
-      order: [["name", "asc"]],
-      raw: true,
-    }),
-    TimesheetSubmissionFrequencies.findAll({
+      where: {
+        code: { [Op.notIn]: ["CONTRACT", "contract"] },
+      },
       attributes: ["id", "name", "code"],
       order: [["name", "asc"]],
       raw: true,
     }),
     PayrollCalendars.findAll({
-      where: { organisation_id: organisation.id },
-      attributes: ["id", "name"],
-      order: [["name", "asc"]],
-      raw: true,
-    }),
-    AwardRates.findAll({
       where: { organisation_id: organisation.id },
       attributes: ["id", "name"],
       order: [["name", "asc"]],
@@ -249,14 +219,9 @@ export async function getEmployeeFormLookups(organisation) {
     success: true,
     data: {
       roles: mapNamedIdList(roles),
-      nok_relations: mapNamedIdList(nok_relations),
-      employment_status: mapNamedIdList(employment_status),
+      organisation_roles: mapNamedIdList(roles),
       employment_types: mapNamedIdList(employment_types),
-      timesheet_submission_frequencies: mapNamedIdList(
-        timesheet_submission_frequencies,
-      ),
       payroll_calendars: mapNamedIdList(payroll_calendars),
-      award_rates: mapNamedIdList(award_rates),
     },
   };
 }

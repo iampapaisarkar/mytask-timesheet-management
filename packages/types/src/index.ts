@@ -53,9 +53,8 @@ export type OrganisationAcl = {
   job: CrudPermission;
   holidayCalendar: CrudPermission;
   payrollCalendar: CrudPermission;
-  earningRate: CrudPermission;
-  awardRate: CrudPermission;
   setting: CrudPermission;
+  payout: CrudPermission;
 };
 
 /** International phone fields (E.164 + metadata). */
@@ -187,13 +186,15 @@ export interface HomeBootstrapView {
 }
 
 export interface EmployeeFormLookupsView {
+  /** Preferred key when present; falls back to `roles`. */
+  organisation_roles?: NamedLookup[];
   roles: NamedLookup[];
-  nok_relations: NamedLookup[];
-  employment_status: NamedLookup[];
   employment_types: NamedLookup[];
-  timesheet_submission_frequencies: NamedLookup[];
   payroll_calendars: NamedLookup[];
-  award_rates: NamedLookup[];
+  /** @deprecated MVP — no longer used by employee form UI */
+  nok_relations?: NamedLookup[];
+  employment_status?: NamedLookup[];
+  timesheet_submission_frequencies?: NamedLookup[];
 }
 
 export interface JobOptionView {

@@ -98,6 +98,11 @@ export async function create(req, res, next) {
     });
   }
   try {
+    const { assertOrganisationSetupComplete } = await import(
+      "../utils/org-setup.utils.js"
+    );
+    await assertOrganisationSetupComplete(organisation.id);
+
     if (!name) {
       return res.status(501).json({
         message: "Name is required!",

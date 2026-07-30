@@ -23,6 +23,9 @@ const selectClass =
 
 const STEPS = ["Email", "Details", "Wage", "Payroll"] as const;
 
+type PayType = "HOURLY" | "FIXED";
+type PaymentMethod = "CASH" | "DIRECT_DEBIT" | "BANK_TRANSFER";
+
 type NamedId = { id: number; name?: string; code?: string };
 
 export type EmployeeListRow = {
@@ -65,31 +68,30 @@ type EmployeeForm = {
       longitude?: string | number | null;
     };
     role: NamedId | null;
-    nok: string;
-    nok_relationship: NamedId | null;
-    nok_phone_number: string;
-    nok_phone_country_code: string | null;
-    nok_phone_country_iso: string | null;
   };
   wage: {
     start_date: string;
-    employment_status: NamedId | null;
-    payroll_calendar: NamedId | null;
     employment_type: NamedId | null;
+    payroll_calendar: NamedId | null;
+    pay_type: PayType;
     hourly_rate_exc_super: string;
-    timesheet_submission_frequency: string;
-    award_rate: NamedId | null;
+    fixed_rate_exc_super: string;
   };
   payroll: {
-    tax_file_number: string;
-    superannuation_fund: string;
-    superannuation_member_number: string;
-    bank_bsb: string;
+    payment_method: PaymentMethod;
+    account_holder_name: string;
+    bank_name: string;
     bank_account_number: string;
-    bank_account_name: string;
-    bank_statement_text: string;
+    ifsc_code: string;
+    swift_code: string;
   };
 };
+
+const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
+  { value: "CASH", label: "Cash" },
+  { value: "DIRECT_DEBIT", label: "Direct Debit" },
+  { value: "BANK_TRANSFER", label: "Bank Transfer" },
+];
 
 function emptyForm(email = ""): EmployeeForm {
   return {
@@ -121,29 +123,22 @@ function emptyForm(email = ""): EmployeeForm {
         longitude: "",
       },
       role: null,
-      nok: "",
-      nok_relationship: null,
-      nok_phone_number: "",
-      nok_phone_country_code: null,
-      nok_phone_country_iso: null,
     },
     wage: {
       start_date: "",
-      employment_status: null,
-      payroll_calendar: null,
       employment_type: null,
+      payroll_calendar: null,
+      pay_type: "HOURLY",
       hourly_rate_exc_super: "",
-      timesheet_submission_frequency: "organisation-default",
-      award_rate: null,
+      fixed_rate_exc_super: "",
     },
     payroll: {
-      tax_file_number: "",
-      superannuation_fund: "",
-      superannuation_member_number: "",
-      bank_bsb: "",
+      payment_method: "CASH",
+      account_holder_name: "",
+      bank_name: "",
       bank_account_number: "",
-      bank_account_name: "",
-      bank_statement_text: "",
+      ifsc_code: "",
+      swift_code: "",
     },
   };
 }
@@ -156,6 +151,73 @@ function asNamed(raw: unknown): NamedId | null {
     id: Number(obj.id),
     name: typeof obj.name === "string" ? obj.name : undefined,
     code: typeof obj.code === "string" ? obj.code : undefined,
+  };
+}
+
+function asPayType(raw: unknown): PayType {
+  const value = String(raw || "").toUpperCase();
+  return value === "FIXED" ? "FIXED" : "HOURLY";
+}
+
+function asPaymentMethod(raw: unknown): PaymentMethod {
+  const value = String(raw || "").toUpperCase();
+  if (value === "DIRECT_DEBIT" || value === "BANK_TRANSFER") return value;
+  return "CASH";
+}
+
+function mapWageFromRaw(wage: Record<string, unknown>): EmployeeForm["wage"] {
+  const payType = asPayType(wage.pay_type);
+  return {
+    start_date: String(wage.start_date || ""),
+    employment_type: asNamed(wage.employment_type),
+    payroll_calendar: asNamed(wage.payroll_calendar),
+    pay_type: payType,
+    hourly_rate_exc_super:
+      payType === "HOURLY" ? String(wage.hourly_rate_exc_super ?? "") : "",
+    fixed_rate_exc_super:
+      payType === "FIXED" ? String(wage.fixed_rate_exc_super ?? "") : "",
+  };
+}
+
+function mapPayrollFromRaw(
+  payroll: Record<string, unknown>,
+): EmployeeForm["payroll"] {
+  const paymentMethod = asPaymentMethod(payroll.payment_method);
+  const isBank = paymentMethod === "BANK_TRANSFER";
+  return {
+    payment_method: paymentMethod,
+    account_holder_name: isBank
+      ? String(payroll.account_holder_name || "")
+      : "",
+    bank_name: isBank ? String(payroll.bank_name || "") : "",
+    bank_account_number: isBank
+      ? String(payroll.bank_account_number || "")
+      : "",
+    ifsc_code: isBank ? String(payroll.ifsc_code || "") : "",
+    swift_code: isBank ? String(payroll.swift_code || "") : "",
+  };
+}
+
+function mapDetailsAddress(addressRaw: Record<string, unknown>) {
+  return {
+    address_1: String(addressRaw.address_1 || ""),
+    address_2: String(addressRaw.address_2 || ""),
+    city: String(addressRaw.city || ""),
+    state: asNamed(addressRaw.state),
+    postcode: String(addressRaw.postcode || ""),
+    formatted_address: String(addressRaw.formatted_address || ""),
+    street_address: String(addressRaw.address_1 || ""),
+    administrative_area: String(
+      addressRaw.administrative_area ||
+        (addressRaw.state as { name?: string } | undefined)?.name ||
+        "",
+    ),
+    postal_code: String(addressRaw.postcode || ""),
+    country: String(addressRaw.country || ""),
+    country_code: String(addressRaw.country_code || ""),
+    place_id: String(addressRaw.place_id || ""),
+    latitude: (addressRaw.latitude as string | number | null) ?? "",
+    longitude: (addressRaw.longitude as string | number | null) ?? "",
   };
 }
 
@@ -178,58 +240,46 @@ function formFromEmployeeRow(row: EmployeeListRow): EmployeeForm {
       preferred_name: String(details.preferred_name || ""),
       dob: String(details.dob || ""),
       phone_number: String(details.phone_number || ""),
-      phone_country_code: (details.phone_country_code as string) || phoneValueFromE164(String(details.phone_number || "")).phone_country_code,
-      phone_country_iso: (details.phone_country_iso as string) || phoneValueFromE164(String(details.phone_number || "")).phone_country_iso,
-      address: {
-        address_1: String(addressRaw.address_1 || ""),
-        address_2: String(addressRaw.address_2 || ""),
-        city: String(addressRaw.city || ""),
-        state: asNamed(addressRaw.state),
-        postcode: String(addressRaw.postcode || ""),
-        formatted_address: String(addressRaw.formatted_address || ""),
-        street_address: String(addressRaw.address_1 || ""),
-        administrative_area: String(
-          addressRaw.administrative_area ||
-            (addressRaw.state as { name?: string } | undefined)?.name ||
-            "",
-        ),
-        postal_code: String(addressRaw.postcode || ""),
-        country: String(addressRaw.country || ""),
-        country_code: String(addressRaw.country_code || ""),
-        place_id: String(addressRaw.place_id || ""),
-        latitude: (addressRaw.latitude as string | number | null) ?? "",
-        longitude: (addressRaw.longitude as string | number | null) ?? "",
-      },
+      phone_country_code:
+        (details.phone_country_code as string) ||
+        phoneValueFromE164(String(details.phone_number || "")).phone_country_code,
+      phone_country_iso:
+        (details.phone_country_iso as string) ||
+        phoneValueFromE164(String(details.phone_number || "")).phone_country_iso,
+      address: mapDetailsAddress(addressRaw),
       role: asNamed(details.role),
-      nok: String(details.nok || ""),
-      nok_relationship: asNamed(details.nok_relationship),
-      nok_phone_number: String(details.nok_phone_number || ""),
-      nok_phone_country_code: (details.nok_phone_country_code as string) || phoneValueFromE164(String(details.nok_phone_number || "")).phone_country_code,
-      nok_phone_country_iso: (details.nok_phone_country_iso as string) || phoneValueFromE164(String(details.nok_phone_number || "")).phone_country_iso,
     },
-    wage: {
-      start_date: String(wage.start_date || ""),
-      employment_status: asNamed(wage.employment_status),
-      payroll_calendar: asNamed(wage.payroll_calendar),
-      employment_type: asNamed(wage.employment_type),
-      hourly_rate_exc_super: String(wage.hourly_rate_exc_super || ""),
-      timesheet_submission_frequency: String(
-        wage.timesheet_submission_frequency || "organisation-default",
-      ),
-      award_rate: asNamed(wage.award_rate),
-    },
-    payroll: {
-      tax_file_number: String(payroll.tax_file_number || ""),
-      superannuation_fund: String(payroll.superannuation_fund || ""),
-      superannuation_member_number: String(
-        payroll.superannuation_member_number || "",
-      ),
-      bank_bsb: String(payroll.bank_bsb || ""),
-      bank_account_number: String(payroll.bank_account_number || ""),
-      bank_account_name: String(payroll.bank_account_name || ""),
-      bank_statement_text: String(payroll.bank_statement_text || ""),
-    },
+    wage: mapWageFromRaw(wage),
+    payroll: mapPayrollFromRaw(payroll),
   };
+}
+
+function RadioOption<T extends string>({
+  name,
+  value,
+  checked,
+  label,
+  onChange,
+}: {
+  name: string;
+  value: T;
+  checked: boolean;
+  label: string;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-[var(--mt-surface)] px-3.5 py-2.5 text-sm text-[var(--mt-text)] has-[:checked]:border-primary has-[:checked]:bg-primary-muted">
+      <input
+        type="radio"
+        name={name}
+        value={value}
+        checked={checked}
+        onChange={() => onChange(value)}
+        className="accent-[var(--mt-primary,#04B6B1)]"
+      />
+      <span className="font-medium">{label}</span>
+    </label>
+  );
 }
 
 export function CreateEmployeeDialog({
@@ -255,14 +305,19 @@ export function CreateEmployeeDialog({
   const formLookupsQuery = useEmployeeFormLookups(enabled);
   const lookups = formLookupsQuery.data;
 
-  const roles = (lookups?.roles || []) as NamedId[];
-  const nokRelations = (lookups?.nok_relations || []) as NamedId[];
-  const employmentStatuses = (lookups?.employment_status || []) as NamedId[];
-  const employmentTypes = (lookups?.employment_types || []) as NamedId[];
-  const frequencies = (lookups?.timesheet_submission_frequencies ||
-    []) as NamedId[];
+  const roles = useMemo(() => {
+    const raw = (lookups?.organisation_roles || lookups?.roles || []) as NamedId[];
+    return raw.filter((r) => String(r.code || "").toLowerCase() !== "owner");
+  }, [lookups]);
+
+  const employmentTypes = useMemo(() => {
+    const raw = (lookups?.employment_types || []) as NamedId[];
+    return raw.filter(
+      (t) => String(t.code || "").toUpperCase() !== "CONTRACT",
+    );
+  }, [lookups]);
+
   const calendars = (lookups?.payroll_calendars || []) as NamedId[];
-  const awardRates = (lookups?.award_rates || []) as NamedId[];
 
   useEffect(() => {
     if (!open) {
@@ -317,6 +372,36 @@ export function CreateEmployeeDialog({
     }));
   }
 
+  function setPayType(payType: PayType) {
+    setForm((prev) => ({
+      ...prev,
+      wage: {
+        ...prev.wage,
+        pay_type: payType,
+        hourly_rate_exc_super:
+          payType === "HOURLY" ? prev.wage.hourly_rate_exc_super : "",
+        fixed_rate_exc_super:
+          payType === "FIXED" ? prev.wage.fixed_rate_exc_super : "",
+      },
+    }));
+  }
+
+  function setPaymentMethod(method: PaymentMethod) {
+    setForm((prev) => ({
+      ...prev,
+      payroll: {
+        payment_method: method,
+        account_holder_name:
+          method === "BANK_TRANSFER" ? prev.payroll.account_holder_name : "",
+        bank_name: method === "BANK_TRANSFER" ? prev.payroll.bank_name : "",
+        bank_account_number:
+          method === "BANK_TRANSFER" ? prev.payroll.bank_account_number : "",
+        ifsc_code: method === "BANK_TRANSFER" ? prev.payroll.ifsc_code : "",
+        swift_code: method === "BANK_TRANSFER" ? prev.payroll.swift_code : "",
+      },
+    }));
+  }
+
   async function handleSearch() {
     if (!email.trim() || !email.includes("@")) {
       toast.warning("Enter a valid email");
@@ -359,61 +444,11 @@ export function CreateEmployeeDialog({
             (details.phone_country_iso as string) ||
             phoneValueFromE164(String(details.phone_number || ""))
               .phone_country_iso,
-          address: {
-            address_1: String(addressRaw.address_1 || ""),
-            address_2: String(addressRaw.address_2 || ""),
-            city: String(addressRaw.city || ""),
-            state: asNamed(addressRaw.state),
-            postcode: String(addressRaw.postcode || ""),
-            formatted_address: String(addressRaw.formatted_address || ""),
-            street_address: String(addressRaw.address_1 || ""),
-            administrative_area: String(
-              addressRaw.administrative_area ||
-                (addressRaw.state as { name?: string } | undefined)?.name ||
-                "",
-            ),
-            postal_code: String(addressRaw.postcode || ""),
-            country: String(addressRaw.country || ""),
-            country_code: String(addressRaw.country_code || ""),
-            place_id: String(addressRaw.place_id || ""),
-            latitude: (addressRaw.latitude as string | number | null) ?? "",
-            longitude: (addressRaw.longitude as string | number | null) ?? "",
-          },
+          address: mapDetailsAddress(addressRaw as Record<string, unknown>),
           role: asNamed(details.role),
-          nok: String(details.nok || ""),
-          nok_relationship: asNamed(details.nok_relationship),
-          nok_phone_number: String(details.nok_phone_number || ""),
-          nok_phone_country_code:
-            (details.nok_phone_country_code as string) ||
-            phoneValueFromE164(String(details.nok_phone_number || ""))
-              .phone_country_code,
-          nok_phone_country_iso:
-            (details.nok_phone_country_iso as string) ||
-            phoneValueFromE164(String(details.nok_phone_number || ""))
-              .phone_country_iso,
         },
-        wage: {
-          start_date: String(wage.start_date || ""),
-          employment_status: asNamed(wage.employment_status),
-          payroll_calendar: asNamed(wage.payroll_calendar),
-          employment_type: asNamed(wage.employment_type),
-          hourly_rate_exc_super: String(wage.hourly_rate_exc_super || ""),
-          timesheet_submission_frequency: String(
-            wage.timesheet_submission_frequency || "organisation-default",
-          ),
-          award_rate: asNamed(wage.award_rate),
-        },
-        payroll: {
-          tax_file_number: String(payroll.tax_file_number || ""),
-          superannuation_fund: String(payroll.superannuation_fund || ""),
-          superannuation_member_number: String(
-            payroll.superannuation_member_number || "",
-          ),
-          bank_bsb: String(payroll.bank_bsb || ""),
-          bank_account_number: String(payroll.bank_account_number || ""),
-          bank_account_name: String(payroll.bank_account_name || ""),
-          bank_statement_text: String(payroll.bank_statement_text || ""),
-        },
+        wage: mapWageFromRaw(wage),
+        payroll: mapPayrollFromRaw(payroll),
       });
       setStep(1);
       if (action?.message) {
@@ -439,39 +474,51 @@ export function CreateEmployeeDialog({
     if (!isValidInternationalPhone(d.phone_number)) {
       return "Enter a valid international phone number";
     }
-    if (
-      d.nok_phone_number.trim() &&
-      !isValidInternationalPhone(d.nok_phone_number)
-    ) {
-      return "Enter a valid next-of-kin phone number";
-    }
     if (!d.role?.id) return "Role is required";
+    if (String(d.role.code || "").toLowerCase() === "owner") {
+      return "Organisation Owner cannot be assigned";
+    }
     return null;
   }
 
   function validateWage(): string | null {
     const w = form.wage;
     if (!w.start_date) return "Start date is required";
-    if (!w.employment_status?.id) return "Employment status is required";
-    if (!w.payroll_calendar?.id) return "Payroll calendar is required";
     if (!w.employment_type?.id) return "Employment type is required";
-    if (!w.hourly_rate_exc_super.trim())
-      return "Hourly rate (exc super) is required";
-    if (!w.timesheet_submission_frequency)
-      return "Timesheet submission frequency is required";
+    if (String(w.employment_type.code || "").toUpperCase() === "CONTRACT") {
+      return "Contract employment type is not allowed";
+    }
+    if (!w.payroll_calendar?.id) return "Payroll calendar is required";
+    if (w.pay_type === "HOURLY") {
+      if (!w.hourly_rate_exc_super.trim()) {
+        return "Hourly rate (exc super) is required";
+      }
+      if (Number(w.hourly_rate_exc_super) <= 0) {
+        return "Hourly rate must be greater than 0";
+      }
+    } else {
+      if (!w.fixed_rate_exc_super.trim()) {
+        return "Fixed rate (exc super) is required";
+      }
+      if (Number(w.fixed_rate_exc_super) <= 0) {
+        return "Fixed rate must be greater than 0";
+      }
+    }
     return null;
   }
 
   function validatePayroll(): string | null {
     const p = form.payroll;
-    if (!p.tax_file_number.trim()) return "Tax file number is required";
-    if (!p.superannuation_fund.trim()) return "Superannuation fund is required";
-    if (!p.superannuation_member_number.trim())
-      return "Superannuation member number is required";
-    if (!p.bank_bsb.trim()) return "Bank BSB is required";
-    if (!p.bank_account_number.trim()) return "Bank account number is required";
-    if (!p.bank_account_name.trim()) return "Bank account name is required";
-    if (!p.bank_statement_text.trim()) return "Bank statement text is required";
+    if (!p.payment_method) return "Payment method is required";
+    if (p.payment_method === "BANK_TRANSFER") {
+      if (!p.account_holder_name.trim())
+        return "Account holder name is required";
+      if (!p.bank_name.trim()) return "Bank name is required";
+      if (!p.bank_account_number.trim())
+        return "Bank account number is required";
+      if (!p.ifsc_code.trim()) return "IFSC code is required";
+      if (!p.swift_code.trim()) return "SWIFT code is required";
+    }
     return null;
   }
 
@@ -513,6 +560,10 @@ export function CreateEmployeeDialog({
     }
 
     const d = form.details;
+    const w = form.wage;
+    const p = form.payroll;
+    const isBank = p.payment_method === "BANK_TRANSFER";
+
     const payload = {
       action: {
         create_user: Boolean(form.action?.create_user),
@@ -544,27 +595,33 @@ export function CreateEmployeeDialog({
           longitude: d.address.longitude ?? null,
         },
         role: d.role,
-        nok: d.nok.trim() || null,
-        nok_relationship: d.nok_relationship,
-        nok_phone_number: d.nok_phone_number.trim() || null,
-        nok_phone_country_code: d.nok_phone_number.trim()
-          ? d.nok_phone_country_code
-          : null,
-        nok_phone_country_iso: d.nok_phone_number.trim()
-          ? d.nok_phone_country_iso
-          : null,
       },
       wage: {
-        start_date: form.wage.start_date,
-        employment_status: form.wage.employment_status,
-        payroll_calendar: form.wage.payroll_calendar,
-        employment_type: form.wage.employment_type,
-        hourly_rate_exc_super: form.wage.hourly_rate_exc_super,
-        timesheet_submission_frequency:
-          form.wage.timesheet_submission_frequency,
-        award_rate: form.wage.award_rate,
+        start_date: w.start_date,
+        employment_type: w.employment_type
+          ? { id: w.employment_type.id, code: w.employment_type.code }
+          : null,
+        payroll_calendar: w.payroll_calendar
+          ? { id: w.payroll_calendar.id }
+          : null,
+        pay_type: w.pay_type,
+        hourly_rate_exc_super:
+          w.pay_type === "HOURLY" ? w.hourly_rate_exc_super || null : null,
+        fixed_rate_exc_super:
+          w.pay_type === "FIXED" ? w.fixed_rate_exc_super || null : null,
       },
-      payroll: { ...form.payroll },
+      payroll: {
+        payment_method: p.payment_method,
+        ...(isBank
+          ? {
+              account_holder_name: p.account_holder_name.trim(),
+              bank_name: p.bank_name.trim(),
+              bank_account_number: p.bank_account_number.trim(),
+              ifsc_code: p.ifsc_code.trim(),
+              swift_code: p.swift_code.trim(),
+            }
+          : {}),
+      },
     };
 
     try {
@@ -801,69 +858,25 @@ export function CreateEmployeeDialog({
                 }
                 requireCoordinates={false}
               />
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="flex w-full flex-col gap-1.5 text-sm">
-                  <span className="font-medium">Role</span>
-                  <select
-                    className={selectClass}
-                    value={form.details.role?.id ?? ""}
-                    onChange={(e) => {
-                      const id = Number(e.target.value);
-                      const matched = roles.find((r) => r.id === id) || null;
-                      patchDetails({ role: matched });
-                    }}
-                  >
-                    <option value="">Select role</option>
-                    {roles.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <TextInput
-                  label="Next of kin"
-                  value={form.details.nok}
-                  onChange={(e) => patchDetails({ nok: e.target.value })}
-                />
-                <label className="flex w-full flex-col gap-1.5 text-sm">
-                  <span className="font-medium">NOK relationship</span>
-                  <select
-                    className={selectClass}
-                    value={form.details.nok_relationship?.id ?? ""}
-                    onChange={(e) => {
-                      const id = Number(e.target.value);
-                      const matched =
-                        nokRelations.find((r) => r.id === id) || null;
-                      patchDetails({ nok_relationship: matched });
-                    }}
-                  >
-                    <option value="">Optional</option>
-                    {nokRelations.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <GlobalPhoneInput
-                  label="NOK phone"
-                  value={{
-                    phone_number: form.details.nok_phone_number || null,
-                    phone_country_code: form.details.nok_phone_country_code,
-                    phone_country_iso: form.details.nok_phone_country_iso,
+              <label className="flex w-full flex-col gap-1.5 text-sm">
+                <span className="font-medium">Role</span>
+                <select
+                  className={selectClass}
+                  value={form.details.role?.id ?? ""}
+                  onChange={(e) => {
+                    const id = Number(e.target.value);
+                    const matched = roles.find((r) => r.id === id) || null;
+                    patchDetails({ role: matched });
                   }}
-                  onChange={(phone: PhoneValue) =>
-                    patchDetails({
-                      nok_phone_number: phone.phone_number || "",
-                      nok_phone_country_code: phone.phone_country_code,
-                      nok_phone_country_iso: phone.phone_country_iso,
-                    })
-                  }
-                />
-              </div>
+                >
+                  <option value="">Select role</option>
+                  {roles.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
           ) : null}
 
@@ -875,27 +888,6 @@ export function CreateEmployeeDialog({
                 value={form.wage.start_date}
                 onChange={(e) => patchWage({ start_date: e.target.value })}
               />
-              <label className="flex w-full flex-col gap-1.5 text-sm">
-                <span className="font-medium">Employment status</span>
-                <select
-                  className={selectClass}
-                  value={form.wage.employment_status?.id ?? ""}
-                  onChange={(e) => {
-                    const id = Number(e.target.value);
-                    patchWage({
-                      employment_status:
-                        employmentStatuses.find((x) => x.id === id) || null,
-                    });
-                  }}
-                >
-                  <option value="">Select</option>
-                  {employmentStatuses.map((x) => (
-                    <option key={x.id} value={x.id}>
-                      {x.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
               <label className="flex w-full flex-col gap-1.5 text-sm">
                 <span className="font-medium">Employment type</span>
                 <select
@@ -938,112 +930,109 @@ export function CreateEmployeeDialog({
                   ))}
                 </select>
               </label>
-              <TextInput
-                label="Hourly rate (exc super)"
-                type="number"
-                step="0.01"
-                value={form.wage.hourly_rate_exc_super}
-                onChange={(e) =>
-                  patchWage({ hourly_rate_exc_super: e.target.value })
-                }
-              />
-              <label className="flex w-full flex-col gap-1.5 text-sm">
-                <span className="font-medium">
-                  Timesheet submission frequency
-                </span>
-                <select
-                  className={selectClass}
-                  value={form.wage.timesheet_submission_frequency}
+              <fieldset className="flex flex-col gap-2">
+                <legend className="text-sm font-medium">Pay type</legend>
+                <div className="flex flex-wrap gap-2">
+                  <RadioOption
+                    name="pay_type"
+                    value="HOURLY"
+                    checked={form.wage.pay_type === "HOURLY"}
+                    label="Hourly"
+                    onChange={setPayType}
+                  />
+                  <RadioOption
+                    name="pay_type"
+                    value="FIXED"
+                    checked={form.wage.pay_type === "FIXED"}
+                    label="Fixed"
+                    onChange={setPayType}
+                  />
+                </div>
+              </fieldset>
+              {form.wage.pay_type === "HOURLY" ? (
+                <TextInput
+                  label="Hourly rate (exc super)"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={form.wage.hourly_rate_exc_super}
                   onChange={(e) =>
-                    patchWage({
-                      timesheet_submission_frequency: e.target.value,
-                    })
+                    patchWage({ hourly_rate_exc_super: e.target.value })
                   }
-                >
-                  <option value="organisation-default">
-                    Organisation default
-                  </option>
-                  {frequencies.map((f) => (
-                    <option key={f.id} value={f.code || String(f.id)}>
-                      {f.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex w-full flex-col gap-1.5 text-sm">
-                <span className="font-medium">Award rate (optional)</span>
-                <select
-                  className={selectClass}
-                  value={form.wage.award_rate?.id ?? ""}
-                  onChange={(e) => {
-                    const id = Number(e.target.value);
-                    patchWage({
-                      award_rate: awardRates.find((x) => x.id === id) || null,
-                    });
-                  }}
-                >
-                  <option value="">None</option>
-                  {awardRates.map((x) => (
-                    <option key={x.id} value={x.id}>
-                      {x.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                />
+              ) : (
+                <TextInput
+                  label="Fixed rate (exc super)"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={form.wage.fixed_rate_exc_super}
+                  onChange={(e) =>
+                    patchWage({ fixed_rate_exc_super: e.target.value })
+                  }
+                />
+              )}
             </div>
           ) : null}
 
           {step === 3 ? (
             <div className="flex flex-col gap-3">
-              <TextInput
-                label="Tax file number"
-                value={form.payroll.tax_file_number}
-                onChange={(e) =>
-                  patchPayroll({ tax_file_number: e.target.value })
-                }
-              />
-              <TextInput
-                label="Superannuation fund"
-                value={form.payroll.superannuation_fund}
-                onChange={(e) =>
-                  patchPayroll({ superannuation_fund: e.target.value })
-                }
-              />
-              <TextInput
-                label="Superannuation member number"
-                value={form.payroll.superannuation_member_number}
-                onChange={(e) =>
-                  patchPayroll({
-                    superannuation_member_number: e.target.value,
-                  })
-                }
-              />
-              <TextInput
-                label="Bank BSB"
-                value={form.payroll.bank_bsb}
-                onChange={(e) => patchPayroll({ bank_bsb: e.target.value })}
-              />
-              <TextInput
-                label="Bank account number"
-                value={form.payroll.bank_account_number}
-                onChange={(e) =>
-                  patchPayroll({ bank_account_number: e.target.value })
-                }
-              />
-              <TextInput
-                label="Bank account name"
-                value={form.payroll.bank_account_name}
-                onChange={(e) =>
-                  patchPayroll({ bank_account_name: e.target.value })
-                }
-              />
-              <TextInput
-                label="Bank statement text"
-                value={form.payroll.bank_statement_text}
-                onChange={(e) =>
-                  patchPayroll({ bank_statement_text: e.target.value })
-                }
-              />
+              <fieldset className="flex flex-col gap-2">
+                <legend className="text-sm font-medium">Payment method</legend>
+                <div className="flex flex-wrap gap-2">
+                  {PAYMENT_METHOD_OPTIONS.map((opt) => (
+                    <RadioOption
+                      key={opt.value}
+                      name="payment_method"
+                      value={opt.value}
+                      checked={form.payroll.payment_method === opt.value}
+                      label={opt.label}
+                      onChange={setPaymentMethod}
+                    />
+                  ))}
+                </div>
+              </fieldset>
+              {form.payroll.payment_method === "BANK_TRANSFER" ? (
+                <div className="flex flex-col gap-3">
+                  <TextInput
+                    label="Account holder name"
+                    value={form.payroll.account_holder_name}
+                    onChange={(e) =>
+                      patchPayroll({ account_holder_name: e.target.value })
+                    }
+                  />
+                  <TextInput
+                    label="Bank name"
+                    value={form.payroll.bank_name}
+                    onChange={(e) =>
+                      patchPayroll({ bank_name: e.target.value })
+                    }
+                  />
+                  <TextInput
+                    label="Bank account number"
+                    value={form.payroll.bank_account_number}
+                    onChange={(e) =>
+                      patchPayroll({ bank_account_number: e.target.value })
+                    }
+                  />
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <TextInput
+                      label="IFSC code"
+                      value={form.payroll.ifsc_code}
+                      onChange={(e) =>
+                        patchPayroll({ ifsc_code: e.target.value })
+                      }
+                    />
+                    <TextInput
+                      label="SWIFT code"
+                      value={form.payroll.swift_code}
+                      onChange={(e) =>
+                        patchPayroll({ swift_code: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>

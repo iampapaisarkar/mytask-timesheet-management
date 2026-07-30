@@ -23,14 +23,13 @@ export {
   customersApi,
   jobsApi,
   holidayCalendarsApi,
-  earningRatesApi,
-  awardRatesApi,
   payrollCalendarsApi,
   timesheetsApi,
   timesheetManagementApi,
   systemApi,
   notificationsApi,
   reportsApi,
+  payoutsApi,
   timesheetActivityApi,
 } from "./resources.api";
 export { screensApi } from "./screens.api";
