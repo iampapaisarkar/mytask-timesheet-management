@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTimesheetDayEditorScreen } from "@mytask/hooks";
 import { reportsApi, timesheetsApi, timesheetManagementApi } from "@mytask/api";
 import { formatHours, formatMoney } from "@mytask/constants";
-import { getErrorMessage } from "@mytask/utils";
+import { formatDisplayTime, getErrorMessage } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
 import { FullScreenModal } from "@/components/ui/FullScreenModal";
 import { TextInput } from "@/components/ui/TextInput";
@@ -655,28 +655,38 @@ export function TimesheetDayEditor({
                               )
                             ) : null}
                             <div className="grid grid-cols-2 gap-2">
-                              <TextInput
-                                label="Start"
-                                type="time"
-                                value={task.start_time}
-                                disabled={!canSave}
-                                onChange={(e) =>
-                                  updateTask(task.key, {
-                                    start_time: e.target.value,
-                                  })
-                                }
-                              />
-                              <TextInput
-                                label="End"
-                                type="time"
-                                value={task.end_time}
-                                disabled={!canSave}
-                                onChange={(e) =>
-                                  updateTask(task.key, {
-                                    end_time: e.target.value,
-                                  })
-                                }
-                              />
+                              <div>
+                                <TextInput
+                                  label="Start"
+                                  type="time"
+                                  value={task.start_time}
+                                  disabled={!canSave}
+                                  onChange={(e) =>
+                                    updateTask(task.key, {
+                                      start_time: e.target.value,
+                                    })
+                                  }
+                                />
+                                <p className="mt-1 text-xs text-white/80">
+                                  {formatDisplayTime(task.start_time)}
+                                </p>
+                              </div>
+                              <div>
+                                <TextInput
+                                  label="End"
+                                  type="time"
+                                  value={task.end_time}
+                                  disabled={!canSave}
+                                  onChange={(e) =>
+                                    updateTask(task.key, {
+                                      end_time: e.target.value,
+                                    })
+                                  }
+                                />
+                                <p className="mt-1 text-xs text-white/80">
+                                  {formatDisplayTime(task.end_time)}
+                                </p>
+                              </div>
                             </div>
                             <TextInput
                               label="Remarks"

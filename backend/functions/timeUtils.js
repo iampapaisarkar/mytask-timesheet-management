@@ -23,7 +23,7 @@ function formatTaskTimes(tasks, tz = "UTC") {
       const start = moment.tz(start_time, "HH:mm:ss", "UTC").tz(tz);
       const end = moment.tz(end_time, "HH:mm:ss", "UTC").tz(tz);
       const sum = calcHours(start_time, end_time, tz);
-      return `${start.format("HH:mm")} – ${end.format("HH:mm")} (${toHM(sum)})`;
+      return `${start.format("h:mm A")} – ${end.format("h:mm A")} (${toHM(sum)})`;
     })
     .filter(Boolean);
 }

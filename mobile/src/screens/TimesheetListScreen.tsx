@@ -9,6 +9,7 @@ import {
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useTimesheets } from "@mytask/hooks";
 import { spacing } from "@mytask/theme";
+import { formatTimesheetLabel } from "@mytask/utils";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { useThemeStore } from "../store/themeStore";
 
@@ -78,8 +79,7 @@ export function TimesheetListScreen({ navigation, route }: Props) {
           }}
         >
           <Text style={[styles.id, { color: c.text }]}>
-            #{String(item.id ?? "")}
-            {item.code ? ` · ${item.code}` : ""}
+            {formatTimesheetLabel({ code: item.code, id: item.id })}
           </Text>
           <Text style={{ color: c.muted }}>
             {item.period_range || "—"}

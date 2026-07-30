@@ -20,7 +20,7 @@ function getTaskTimes(tasks = [], tz = "UTC") {
     const s = task.start_time; // keep raw strings; formatting is usually in timeUtils
     const e = task.end_time;
     acc.push({
-      task_time: `${start.format("HH:mm")} - ${end.format("HH:mm")}`,
+      task_time: `${start.format("h:mm A")} - ${end.format("h:mm A")}`,
     });
     return acc;
   }, []);

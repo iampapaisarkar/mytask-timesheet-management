@@ -47,7 +47,7 @@ export async function writeReportPdf({ report, outputPath, title }) {
     doc.fontSize(10).fillColor("#333");
     doc.text(`Employee: ${emp.name || "—"}`);
     doc.text(
-      `Timesheet: #${ts.timesheet_id || "—"}${ts.code ? ` (${ts.code})` : ""}`,
+      `Timesheet: ${ts.code || (ts.timesheet_id != null ? String(ts.timesheet_id) : "—")}`,
     );
     doc.text(
       `Pay period: ${ts.period_start_date || "—"} → ${ts.period_end_date || "—"}`,

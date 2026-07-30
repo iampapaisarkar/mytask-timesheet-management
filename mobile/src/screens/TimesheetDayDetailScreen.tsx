@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { timesheetsApi } from "@mytask/api";
 import { spacing } from "@mytask/theme";
+import { formatDisplayTimeRange } from "@mytask/utils";
 import {
   TrackingMap,
   type TrackingLogs,
@@ -236,7 +237,10 @@ export function TimesheetDayDetailScreen({ route, navigation }: Props) {
                     {expanded ? (
                       <View style={styles.sheetExpand}>
                         <Text style={styles.sheetMeta}>
-                          {task.start_time || "—"} → {task.end_time || "—"}
+                          {formatDisplayTimeRange(
+                            task.start_time,
+                            task.end_time,
+                          )}
                         </Text>
                         {task.remarks ? (
                           <Text style={styles.sheetMeta}>{task.remarks}</Text>

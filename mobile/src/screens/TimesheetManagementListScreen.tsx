@@ -16,7 +16,7 @@ import {
   useJobs,
   useTimesheetManagement,
 } from "@mytask/hooks";
-import { getErrorMessage } from "@mytask/utils";
+import { formatTimesheetLabel, getErrorMessage } from "@mytask/utils";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing } from "@mytask/theme";
 import { useOrganisationStore } from "../store/organisationStore";
@@ -213,13 +213,13 @@ export function TimesheetManagementListScreen() {
             ]}
           >
             <Text style={[styles.id, { color: c.text }]}>
-              #{String(item.id ?? "")}
+              {formatTimesheetLabel({ code: item.code, id: item.id })}
               {item.employee?.user?.full_name
                 ? ` · ${item.employee.user.full_name}`
                 : ""}
             </Text>
             <Text style={{ color: c.muted }}>
-              {item.period_range || item.code || "—"}
+              {item.period_range || "—"}
             </Text>
             <Text style={{ color: c.text, marginTop: 4, fontWeight: "600" }}>
               {jobNames(item)}

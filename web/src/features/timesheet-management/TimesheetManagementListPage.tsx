@@ -106,7 +106,7 @@ export function TimesheetManagementListPage() {
         createLabel="Create"
         onCreate={() => setCreateOpen(true)}
         columns={[
-          { key: "id", label: "ID" },
+          { key: "code", label: "Code" },
           {
             key: "employee",
             label: "Employee",

@@ -6,6 +6,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { formatMinutesAsDisplayTime } from "@mytask/utils";
 import { useThemeStore } from "../store/themeStore";
 
 export type TimelineTaskType = "working" | "break" | "travel";
@@ -84,9 +85,7 @@ export function TrackedTimeline({
   }, [tasks]);
 
   function labelFor(mins: number) {
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    return formatMinutesAsDisplayTime(mins);
   }
 
   return (

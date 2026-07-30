@@ -8,7 +8,7 @@ import {
   useTimesheetManagementItem,
 } from "@mytask/hooks";
 import { ROUTES } from "@mytask/constants";
-import { getErrorMessage } from "@mytask/utils";
+import { formatTimesheetLabel, getErrorMessage } from "@mytask/utils";
 import { Card, PageHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { TextInput } from "@/components/ui/TextInput";
@@ -150,8 +150,11 @@ export function TimesheetManagementDetailPage() {
   return (
     <div className="mt-fade-in flex flex-col gap-4">
       <PageHeader
-        title={`Timesheet #${data?.id ?? id}`}
-        description={`${employeeName} · ${data?.period_range || data?.code || ""}${
+        title={formatTimesheetLabel(
+          { code: data?.code, id: data?.id ?? id },
+          { prefix: true },
+        )}
+        description={`${employeeName} · ${data?.period_range || ""}${
           jobNames.length ? ` · ${jobNames.join(", ")}` : ""
         }`}
         actions={

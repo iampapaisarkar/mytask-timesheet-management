@@ -4,7 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { reportsApi } from "@mytask/api";
 import { formatHours, formatMoney } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
-import { getErrorMessage } from "@mytask/utils";
+import { formatDisplayTime, formatTimesheetLabel, getErrorMessage } from "@mytask/utils";
 import { useOrganisationStore } from "@/store/organisationStore";
 import { useToastStore } from "@/store/toastStore";
 import { Card, PageHeader } from "@/components/ui/Card";
@@ -345,7 +345,7 @@ export function ReportsPage() {
               <option value="">Select timesheet</option>
               {approvedTimesheets.map((ts) => (
                 <option key={ts.id} value={ts.id}>
-                  #{ts.id}
+                  {formatTimesheetLabel({ code: ts.code, id: ts.id })}
                   {ts.period_range ? ` · ${ts.period_range}` : ""}
                   {ts.jobs?.length
                     ? ` · ${ts.jobs.map((j) => j.name).filter(Boolean).join(", ")}`
@@ -411,7 +411,13 @@ export function ReportsPage() {
                       {result.employee?.name || "Employee"}
                     </p>
                     <p className="text-sm text-muted">
-                      Timesheet #{result.timesheet?.timesheet_id}
+                      {formatTimesheetLabel(
+                        {
+                          code: result.timesheet?.code,
+                          id: result.timesheet?.timesheet_id,
+                        },
+                        { prefix: true },
+                      )}
                       {result.timesheet?.period_start_date
                         ? ` · ${result.timesheet.period_start_date} → ${result.timesheet.period_end_date}`
                         : ""}
@@ -521,8 +527,12 @@ export function ReportsPage() {
                             {d.day_name ? ` · ${d.day_name}` : ""}
                             {d.is_public_holiday ? " · PH" : ""}
                           </td>
-                          <td className="px-2 py-1.5">{d.clock_in || "—"}</td>
-                          <td className="px-2 py-1.5">{d.clock_out || "—"}</td>
+                          <td className="px-2 py-1.5">
+                            {formatDisplayTime(d.clock_in)}
+                          </td>
+                          <td className="px-2 py-1.5">
+                            {formatDisplayTime(d.clock_out)}
+                          </td>
                           <td className="px-2 py-1.5">
                             {formatHours(d.working_hours ?? 0)}
                           </td>

@@ -1,3 +1,5 @@
+import { formatMinutesAsDisplayTime } from "@mytask/utils";
+
 export type TimelineTaskType = "working" | "break" | "travel";
 
 export type TimelineTask = {
@@ -103,9 +105,7 @@ export function TrackedTimeline({
   for (let t = rangeStart; t <= rangeEnd; t += 30) ticks.push(t);
 
   function labelFor(mins: number) {
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    return formatMinutesAsDisplayTime(mins);
   }
 
   return (

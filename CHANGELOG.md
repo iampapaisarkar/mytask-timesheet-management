@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Display clock times in 12-hour AM/PM across web/mobile timelines, reports, and rate period strings; show timesheet `code` (not `#id`) in lists, details, reports, payouts, and PDFs
 - Reports: no auto-email on generate; **Email Report** sends summary + PDF attachment; currency prefixes (`$AUD`, `₹INR`, …) and `h` hour suffixes on amounts/hours; day sheet **Rate** button shows live day payable breakdown without generating a report
 - Reports currency now always comes from the employee wage (e.g. Pritth → `₹INR`); older saved reports are corrected on load when the stored currency was wrong
 - Reports UX: single employee + mandatory approved timesheet only (removed multi-select, date presets, status filter, and Rate analysis tab); result shows day/work/amount, pay-cycle total, and paid/not paid; PDF download + email endpoints; employee lists mark the current user as `(You)`

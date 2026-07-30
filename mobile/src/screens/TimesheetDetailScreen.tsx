@@ -9,7 +9,7 @@ import {
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useSubmitTimesheet, useTimesheet } from "@mytask/hooks";
 import { spacing } from "@mytask/theme";
-import { getErrorMessage } from "@mytask/utils";
+import { formatTimesheetLabel, getErrorMessage } from "@mytask/utils";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
@@ -81,14 +81,16 @@ export function TimesheetDetailScreen({ navigation, route }: Props) {
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <View style={styles.header}>
         <Text style={[styles.title, { color: c.text }]}>
-          Timesheet #{data?.id ?? id}
+          {formatTimesheetLabel(
+            { code: data?.code, id: data?.id ?? id },
+            { prefix: true },
+          )}
         </Text>
         <Text style={[styles.meta, { color: c.muted }]}>
           {data?.period_range ||
             [data?.period_start_date, data?.period_end_date]
               .filter(Boolean)
               .join(" → ") ||
-            data?.code ||
             "—"}
           {Array.isArray(data?.jobs) && data.jobs.length
             ? ` · ${data.jobs.map((j) => j.name).filter(Boolean).join(", ")}`

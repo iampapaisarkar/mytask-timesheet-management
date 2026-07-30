@@ -68,7 +68,6 @@ export function TimesheetListPage() {
         title="My Sheets"
         query={query}
         columns={[
-          { key: "id", label: "ID" },
           { key: "code", label: "Code" },
           { key: "period_range", label: "Period" },
           {

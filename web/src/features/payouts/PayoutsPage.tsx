@@ -109,10 +109,9 @@ export function PayoutsPage() {
             <table className="w-full min-w-[640px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-border text-muted">
-                  <th className="px-2 py-2 font-medium">ID</th>
+                  <th className="px-2 py-2 font-medium">Code</th>
                   <th className="px-2 py-2 font-medium">Employee</th>
                   <th className="px-2 py-2 font-medium">Period</th>
-                  <th className="px-2 py-2 font-medium">Code</th>
                   <th className="px-2 py-2 font-medium">Status</th>
                   <th className="px-2 py-2 font-medium" />
                 </tr>
@@ -123,12 +122,11 @@ export function PayoutsPage() {
                     key={row.id}
                     className="border-b border-border/70 text-[var(--mt-text)]"
                   >
-                    <td className="px-2 py-2.5">{row.id}</td>
+                    <td className="px-2 py-2.5">{row.code || "—"}</td>
                     <td className="px-2 py-2.5">
                       {employeeName(row.employee)}
                     </td>
                     <td className="px-2 py-2.5">{periodLabel(row)}</td>
-                    <td className="px-2 py-2.5">{row.code || "—"}</td>
                     <td className="px-2 py-2.5">
                       {row.status?.name || row.status?.code || "Approved"}
                     </td>
@@ -174,7 +172,7 @@ export function PayoutsPage() {
             <table className="w-full min-w-[720px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-border text-muted">
-                  <th className="px-2 py-2 font-medium">ID</th>
+                  <th className="px-2 py-2 font-medium">Timesheet</th>
                   <th className="px-2 py-2 font-medium">Employee</th>
                   <th className="px-2 py-2 font-medium">Period</th>
                   <th className="px-2 py-2 font-medium">Amount</th>
@@ -189,7 +187,9 @@ export function PayoutsPage() {
                     key={row.id}
                     className="border-b border-border/70 text-[var(--mt-text)]"
                   >
-                    <td className="px-2 py-2.5">{row.id}</td>
+                    <td className="px-2 py-2.5">
+                      {row.timesheet?.code || "—"}
+                    </td>
                     <td className="px-2 py-2.5">
                       {employeeName(row.employee)}
                     </td>

@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { timesheetsApi } from "@mytask/api";
 import { useSubmitTimesheet } from "@mytask/hooks";
 import { ROUTES } from "@mytask/constants";
-import { getErrorMessage } from "@mytask/utils";
+import { formatTimesheetLabel, getErrorMessage } from "@mytask/utils";
 import { Card, PageHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ErrorState, LoadingState } from "@/components/ui/States";
@@ -113,10 +113,13 @@ export function TimesheetDetailPage() {
   return (
     <div className="mt-fade-in flex flex-col gap-4">
       <PageHeader
-        title={`Timesheet #${data.id ?? id}`}
+        title={formatTimesheetLabel(
+          { code: data.code, id: data.id ?? id },
+          { prefix: true },
+        )}
         description={
           [
-            data.period_range || data.code,
+            data.period_range,
             Array.isArray(data.jobs) && data.jobs.length
               ? data.jobs.map((j) => j.name).filter(Boolean).join(", ")
               : data.job?.name,
