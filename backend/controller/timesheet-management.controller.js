@@ -7,6 +7,8 @@ const {
   TimesheetDays,
   TimesheetStatus,
   UserTimezones,
+  Jobs,
+  TimesheetJobs,
 } = models;
 import moment from "moment-timezone";
 import { TimesheetConfig } from "../class/timesheet.config.js";
@@ -17,8 +19,19 @@ import { db } from "../database.js";
 
 export async function list(req, res, next) {
   const { user, organisation } = req.body;
-  let { rows_per_page, page_number, sort_by, sort_direction, search } =
-    req.query;
+  let {
+    rows_per_page,
+    page_number,
+    sort_by,
+    sort_direction,
+    search,
+    employee_id,
+    job_id,
+    status_id,
+    status_code,
+    period_start_date,
+    period_end_date,
+  } = req.query;
   if (!organisation.acl.timesheetManagement.list) {
     return res.status(403).json({
       message: "Access denied: You are not authorized to access this action.",
@@ -42,12 +55,45 @@ export async function list(req, res, next) {
       };
     }
 
-    // if (organisation?.employee?.id) {
-    //   whereCondition = {
-    //     ...whereCondition,
-    //     employee_id: { [Op.ne]: organisation?.employee?.id },
-    //   };
-    // }
+    if (employee_id) {
+      whereCondition.employee_id = employee_id;
+    }
+    if (job_id) {
+      whereCondition = {
+        ...whereCondition,
+        [Op.and]: [
+          ...(whereCondition[Op.and] || []),
+          {
+            id: {
+              [Op.in]: literal(
+                `(SELECT timesheet_id FROM timesheet_jobs WHERE job_id = ${Number(
+                  job_id,
+                )} AND organisation_id = ${Number(organisation.id)})`,
+              ),
+            },
+          },
+        ],
+      };
+    }
+    if (status_id) {
+      whereCondition.status_id = status_id;
+    }
+    if (period_start_date) {
+      whereCondition.period_start_date = period_start_date;
+    }
+    if (period_end_date) {
+      whereCondition.period_end_date = period_end_date;
+    }
+
+    if (status_code && String(status_code).trim() !== "") {
+      const statusRow = await TimesheetStatus.findOne({
+        where: { code: String(status_code).trim() },
+        raw: true,
+      });
+      if (statusRow?.id) {
+        whereCondition.status_id = statusRow.id;
+      }
+    }
 
     if (search && search.trim() !== "") {
       whereCondition = {
@@ -63,6 +109,19 @@ export async function list(req, res, next) {
             model: TimesheetStatus,
             as: "status",
             attributes: ["id", "name", "code"],
+          },
+          {
+            model: Jobs,
+            as: "jobs",
+            attributes: ["id", "name"],
+            through: { attributes: [] },
+            required: false,
+          },
+          {
+            model: Jobs,
+            as: "job",
+            attributes: ["id", "name"],
+            required: false,
           },
           {
             model: Employees.unscoped(),
@@ -94,14 +153,15 @@ export async function list(req, res, next) {
         order: [[sortBy, sortDirection]],
         raw: false,
         nest: true,
+        distinct: true,
       });
 
-    const total_pages = Math.ceil(timesheets.length / rowsPerPage);
+    const total_pages = Math.ceil(count / rowsPerPage) || 0;
 
     return res.status(200).json({
       data: timesheets,
       pagination: {
-        total_rows: timesheets.length,
+        total_rows: count,
         rows_per_page: rowsPerPage,
         page_number: pageNumber,
         total_pages,
@@ -162,6 +222,12 @@ export async function get(req, res, next) {
         id: id,
       },
       include: [
+        {
+          model: Jobs,
+          as: "job",
+          attributes: ["id", "name"],
+          required: false,
+        },
         {
           model: Employees.unscoped(),
           as: "employee",
@@ -324,7 +390,22 @@ export async function getDay(req, res, next) {
 }
 
 export async function create(req, res, next) {
-  const { user, employee, period, organisation } = req.body;
+  const { user, employee, period, job, jobs, organisation } = req.body;
+  const jobIds = [
+    ...new Set(
+      [
+        ...(Array.isArray(jobs)
+          ? jobs.map((j) => (typeof j === "object" ? j?.id : j))
+          : []),
+        ...(Array.isArray(req.body.job_ids) ? req.body.job_ids : []),
+        job?.id,
+        req.body.job_id,
+      ]
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id) && id > 0),
+    ),
+  ];
+
   if (!organisation.acl.timesheetManagement.create) {
     return res.status(403).json({
       message: "Access denied: You are not authorized to access this action.",
@@ -340,6 +421,11 @@ export async function create(req, res, next) {
       message: "Payroll period is required!",
     });
   }
+  if (!jobIds.length) {
+    return res.status(400).json({
+      message: "At least one job is required!",
+    });
+  }
 
   const transaction = await db.transaction();
   try {
@@ -348,45 +434,54 @@ export async function create(req, res, next) {
     );
     await assertOrganisationSetupComplete(organisation.id);
 
-    const employeeJson = await Employees.scope("defaultScope").findOne(
-      {
-        where: {
-          organisation_id: organisation.id,
-          id: employee.id,
-        },
+    const employeeJson = await Employees.scope("defaultScope").findOne({
+      where: {
+        organisation_id: organisation.id,
+        id: employee.id,
       },
-      { transaction },
-    );
+      transaction,
+    });
     const employeeData = employeeJson?.toJSON() ?? null;
 
-    const existingTimesheetPeriod = await Timesheets.findOne(
-      {
-        where: {
-          organisation_id: organisation.id,
-          employee_id: employee.id,
-          payroll_calendar_id: employeeData?.wage?.payroll_calendar?.id,
-          period_start_date: period?.start_date,
-          period_end_date: period?.end_date,
-        },
-        raw: true,
+    if (!employeeData) {
+      await transaction.rollback();
+      return res.status(400).json({
+        message: "Employee not found in this organisation.",
+      });
+    }
+
+    const jobRows = await Jobs.findAll({
+      where: {
+        organisation_id: organisation.id,
+        id: { [Op.in]: jobIds },
       },
-      { transaction },
-    );
+      attributes: ["id", "name"],
+      raw: true,
+      transaction,
+    });
+    if (jobRows.length !== jobIds.length) {
+      await transaction.rollback();
+      return res.status(400).json({
+        message: "One or more jobs were not found in this organisation.",
+      });
+    }
+
+    const existingTimesheetPeriod = await Timesheets.findOne({
+      where: {
+        organisation_id: organisation.id,
+        employee_id: employee.id,
+        period_start_date: period?.start_date,
+        period_end_date: period?.end_date,
+      },
+      raw: true,
+      transaction,
+    });
 
     if (existingTimesheetPeriod) {
-      return res.status(501).json({
-        message: "Selected period timesheet already created for that user!",
-      });
-    }
-
-    if (!employee) {
-      return res.status(501).json({
-        message: "Employee is required!",
-      });
-    }
-    if (!period) {
-      return res.status(501).json({
-        message: "Period is required!",
+      await transaction.rollback();
+      return res.status(400).json({
+        message:
+          "A timesheet already exists for this employee and pay period. Edit it to add more jobs.",
       });
     }
 
@@ -397,20 +492,20 @@ export async function create(req, res, next) {
 
     const currentUTCTime = moment().utc().format();
 
-    const timesheetDraftStatus = await TimesheetStatus.findOne(
-      {
-        where: {
-          code: "draft",
-        },
-        raw: true,
+    const timesheetDraftStatus = await TimesheetStatus.findOne({
+      where: {
+        code: "draft",
       },
-      { transaction },
-    );
+      raw: true,
+      transaction,
+    });
 
+    const primaryJobId = jobIds[0];
     const timesheet = await Timesheets.create(
       {
         organisation_id: organisation.id,
         employee_id: employee.id,
+        job_id: primaryJobId,
         code: timesheetCode,
         payroll_calendar_id: employeeData?.wage?.payroll_calendar?.id,
         period_start_date: period?.start_date,
@@ -421,6 +516,17 @@ export async function create(req, res, next) {
       },
       { transaction },
     );
+
+    for (const jid of jobIds) {
+      await TimesheetJobs.create(
+        {
+          organisation_id: organisation.id,
+          timesheet_id: timesheet.id,
+          job_id: jid,
+        },
+        { transaction },
+      );
+    }
 
     const timesheetDays = generatePeriodDaysRange(
       period?.start_date,
@@ -465,6 +571,7 @@ export async function create(req, res, next) {
 
     return res.status(200).json({
       message: "Timesheet created",
+      data: { id: timesheet.id, job_ids: jobIds },
     });
   } catch (err) {
     console.log("error::", err);

@@ -31,6 +31,8 @@ type TimesheetDetail = {
   period_start_date?: string;
   period_end_date?: string;
   status?: { name?: string; code?: string };
+  job?: { id?: number; name?: string } | null;
+  jobs?: Array<{ id?: number; name?: string }> | null;
   days?: TimesheetDay[];
   permissions?: {
     can_submit?: boolean;
@@ -138,11 +140,20 @@ export function TimesheetManagementDetailPage() {
     reject.isPending ||
     revert.isPending;
 
+  const jobNames =
+    (Array.isArray(data?.jobs) && data.jobs.length
+      ? data.jobs.map((j) => j.name).filter(Boolean)
+      : data?.job?.name
+        ? [data.job.name]
+        : []) as string[];
+
   return (
     <div className="mt-fade-in flex flex-col gap-4">
       <PageHeader
         title={`Timesheet #${data?.id ?? id}`}
-        description={`${employeeName} · ${data?.period_range || data?.code || ""}`}
+        description={`${employeeName} · ${data?.period_range || data?.code || ""}${
+          jobNames.length ? ` · ${jobNames.join(", ")}` : ""
+        }`}
         actions={
           <Link to={ROUTES.timesheetManagement(orgCode)}>
             <Button variant="secondary">Back</Button>
@@ -150,7 +161,7 @@ export function TimesheetManagementDetailPage() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <p className="text-xs font-medium uppercase text-muted">Status</p>
           <p className="mt-1 text-lg font-semibold">
@@ -165,6 +176,12 @@ export function TimesheetManagementDetailPage() {
           <p className="text-xs font-medium uppercase text-muted">Period</p>
           <p className="mt-1 text-lg font-semibold">
             {data?.period_range || "—"}
+          </p>
+        </Card>
+        <Card>
+          <p className="text-xs font-medium uppercase text-muted">Jobs</p>
+          <p className="mt-1 text-lg font-semibold">
+            {jobNames.length ? jobNames.join(", ") : "—"}
           </p>
         </Card>
       </div>

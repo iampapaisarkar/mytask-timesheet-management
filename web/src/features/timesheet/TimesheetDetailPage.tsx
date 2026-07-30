@@ -28,6 +28,8 @@ type TimesheetDetail = {
   period_start_date?: string;
   period_end_date?: string;
   status?: { name?: string; code?: string };
+  job?: { id?: number; name?: string } | null;
+  jobs?: Array<{ id?: number; name?: string }> | null;
   days?: TimesheetDay[];
   permissions?: {
     can_submit?: boolean;
@@ -132,7 +134,16 @@ export function TimesheetDetailPage() {
     <div className="mt-fade-in flex flex-col gap-4">
       <PageHeader
         title={`Timesheet #${data.id ?? id}`}
-        description={data.period_range || data.code || "Timesheet details"}
+        description={
+          [
+            data.period_range || data.code,
+            Array.isArray(data.jobs) && data.jobs.length
+              ? data.jobs.map((j) => j.name).filter(Boolean).join(", ")
+              : data.job?.name,
+          ]
+            .filter(Boolean)
+            .join(" · ") || "Timesheet details"
+        }
         actions={
           <div className="flex flex-wrap gap-2">
             <Link to={ROUTES.timesheet(orgCode)}>
@@ -173,7 +184,7 @@ export function TimesheetDetailPage() {
         })}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <p className="text-xs font-medium uppercase text-muted">Status</p>
           <p className="mt-1 text-lg font-semibold text-[var(--mt-text)]">
@@ -188,6 +199,14 @@ export function TimesheetDetailPage() {
                 .filter(Boolean)
                 .join(" → ") ||
               "—"}
+          </p>
+        </Card>
+        <Card>
+          <p className="text-xs font-medium uppercase text-muted">Jobs</p>
+          <p className="mt-1 text-lg font-semibold text-[var(--mt-text)]">
+            {Array.isArray(data.jobs) && data.jobs.length
+              ? data.jobs.map((j) => j.name).filter(Boolean).join(", ")
+              : data.job?.name || "—"}
           </p>
         </Card>
         <Card>

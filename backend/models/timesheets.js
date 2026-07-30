@@ -23,6 +23,10 @@ const Timesheets = db.define(
     payroll_calendar_id: {
       type: DataTypes.INTEGER,
     },
+    job_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
     period_start_date: {
       type: DataTypes.DATEONLY,
     },
@@ -81,6 +85,21 @@ Timesheets.associate = (models) => {
   models.Timesheets.belongsTo(models.PayrollCalendars, {
     foreignKey: "payroll_calendar_id",
     as: "payroll_calendar",
+  });
+  // Legacy single job column (kept for backfill/BC reads)
+  models.Timesheets.belongsTo(models.Jobs, {
+    foreignKey: "job_id",
+    as: "job",
+  });
+  models.Timesheets.belongsToMany(models.Jobs, {
+    through: models.TimesheetJobs,
+    foreignKey: "timesheet_id",
+    otherKey: "job_id",
+    as: "jobs",
+  });
+  models.Timesheets.hasMany(models.TimesheetJobs, {
+    foreignKey: "timesheet_id",
+    as: "timesheet_jobs",
   });
   models.Timesheets.hasMany(models.TimesheetDays, {
     foreignKey: "timesheet_id",

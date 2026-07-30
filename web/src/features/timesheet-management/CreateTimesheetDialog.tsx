@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   useCreateTimesheetManagement,
   useEmployeePayrollCycles,
   useEmployees,
+  useJobs,
 } from "@mytask/hooks";
 import { getErrorMessage } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
@@ -20,6 +21,23 @@ type Period = {
   label: string;
 };
 
+type JobRow = {
+  id?: number;
+  name?: string;
+  details?: { id?: number; name?: string };
+};
+
+const selectClass =
+  "mt-focus rounded-xl border border-border bg-[var(--mt-surface)] px-3.5 py-3 text-[var(--mt-text)] outline-none focus:border-primary disabled:opacity-50";
+
+function jobKey(job: JobRow) {
+  return String(job.details?.id ?? job.id ?? "");
+}
+
+function jobLabel(job: JobRow) {
+  return job.details?.name || job.name || `Job #${jobKey(job)}`;
+}
+
 export function CreateTimesheetDialog({
   open,
   onClose,
@@ -28,10 +46,12 @@ export function CreateTimesheetDialog({
   onClose: () => void;
 }) {
   const toast = useToastStore();
-  const employeesQuery = useEmployees({ rows_per_page: 100 }, open);
+  const employeesQuery = useEmployees({ rows_per_page: 200 }, open);
+  const jobsQuery = useJobs({ rows_per_page: 200 }, open);
   const createMutation = useCreateTimesheetManagement();
-  const [employeeId, setEmployeeId] = useState<string>("");
+  const [employeeId, setEmployeeId] = useState("");
   const [periodKey, setPeriodKey] = useState("");
+  const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
   const cyclesQuery = useEmployeePayrollCycles(
     employeeId ? Number(employeeId) : undefined,
   );
@@ -42,22 +62,64 @@ export function CreateTimesheetDialog({
   const periods = (Array.isArray(cyclesQuery.data)
     ? cyclesQuery.data
     : []) as Period[];
+  const jobs = (Array.isArray(jobsQuery.data)
+    ? jobsQuery.data
+    : []) as JobRow[];
+
+  const canCreate = Boolean(
+    employeeId && periodKey && selectedJobIds.length > 0,
+  );
+
+  const selectedSummary = useMemo(() => {
+    const emp = employees.find(
+      (e) => String(e.details?.id ?? e.id) === employeeId,
+    );
+    const period = periods.find(
+      (p) => `${p.start_date}|${p.end_date}` === periodKey,
+    );
+    const selectedJobs = jobs.filter((j) =>
+      selectedJobIds.includes(jobKey(j)),
+    );
+    return {
+      employee:
+        emp?.details?.full_name ||
+        emp?.details?.email ||
+        (employeeId ? `Employee #${employeeId}` : ""),
+      period: period?.label || "",
+      jobs: selectedJobs.map(jobLabel),
+    };
+  }, [employees, periods, jobs, employeeId, periodKey, selectedJobIds]);
 
   useEffect(() => {
     if (!open) {
       setEmployeeId("");
       setPeriodKey("");
+      setSelectedJobIds([]);
     }
   }, [open]);
 
   if (!open) return null;
 
+  function toggleJob(id: string) {
+    setSelectedJobIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
+
   async function handleCreate() {
     const period = periods.find(
       (p) => `${p.start_date}|${p.end_date}` === periodKey,
     );
-    if (!employeeId || !period) {
-      toast.warning("Missing fields", "Select an employee and period");
+    if (!employeeId) {
+      toast.warning("Employee required", "Select an employee");
+      return;
+    }
+    if (!period) {
+      toast.warning("Period required", "Select a pay period");
+      return;
+    }
+    if (!selectedJobIds.length) {
+      toast.warning("Jobs required", "Select at least one job");
       return;
     }
     try {
@@ -67,6 +129,7 @@ export function CreateTimesheetDialog({
           start_date: period.start_date,
           end_date: period.end_date,
         },
+        jobs: selectedJobIds.map((id) => ({ id: Number(id) })),
       });
       toast.success("Timesheet created");
       onClose();
@@ -88,27 +151,29 @@ export function CreateTimesheetDialog({
           </Button>
           <Button
             loading={createMutation.isPending}
+            disabled={!canCreate || createMutation.isPending}
             onClick={() => void handleCreate()}
           >
-            Create
+            Create Timesheet
           </Button>
         </>
       }
     >
       <p className="mb-4 text-sm text-muted">
-        Choose an employee and payroll period. The employee must have a payroll
-        calendar configured on their wage settings.
+        Select employee, pay period, then one or more jobs. The same job can be
+        used by multiple employees.
       </p>
 
       <div className="flex flex-col gap-3">
         <label className="flex flex-col gap-1.5 text-sm">
-          <span className="font-medium">Employee</span>
+          <span className="font-medium">1. Employee</span>
           <select
-            className="mt-focus rounded-xl border border-border bg-[var(--mt-surface)] px-3.5 py-3"
+            className={selectClass}
             value={employeeId}
             onChange={(e) => {
               setEmployeeId(e.target.value);
               setPeriodKey("");
+              setSelectedJobIds([]);
             }}
           >
             <option value="">Select employee</option>
@@ -128,11 +193,14 @@ export function CreateTimesheetDialog({
         </label>
 
         <label className="flex flex-col gap-1.5 text-sm">
-          <span className="font-medium">Period</span>
+          <span className="font-medium">2. Pay period</span>
           <select
-            className="mt-focus rounded-xl border border-border bg-[var(--mt-surface)] px-3.5 py-3"
+            className={selectClass}
             value={periodKey}
-            onChange={(e) => setPeriodKey(e.target.value)}
+            onChange={(e) => {
+              setPeriodKey(e.target.value);
+              setSelectedJobIds([]);
+            }}
             disabled={!employeeId || cyclesQuery.isLoading}
           >
             <option value="">
@@ -159,16 +227,65 @@ export function CreateTimesheetDialog({
               )}
             </span>
           ) : null}
-          {employeeId &&
-          !cyclesQuery.isLoading &&
-          !cyclesQuery.isError &&
-          periods.length === 0 ? (
+        </label>
+
+        <div className="flex flex-col gap-1.5 text-sm">
+          <span className="font-medium">3. Jobs (select one or more)</span>
+          <div
+            className={`max-h-56 space-y-2 overflow-y-auto rounded-xl border border-border p-3 ${
+              !periodKey ? "opacity-50" : ""
+            }`}
+          >
+            {!periodKey ? (
+              <p className="text-xs text-muted">Select a period first</p>
+            ) : jobsQuery.isLoading ? (
+              <p className="text-xs text-muted">Loading jobs…</p>
+            ) : jobs.length === 0 ? (
+              <p className="text-xs text-muted">
+                No jobs available. Create a job first.
+              </p>
+            ) : (
+              jobs.map((job) => {
+                const id = jobKey(job);
+                const checked = selectedJobIds.includes(id);
+                return (
+                  <label
+                    key={id}
+                    className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-primary-muted/40"
+                  >
+                    <input
+                      type="checkbox"
+                      className="accent-[var(--mt-primary,#04B6B1)]"
+                      checked={checked}
+                      onChange={() => toggleJob(id)}
+                    />
+                    <span>{jobLabel(job)}</span>
+                  </label>
+                );
+              })
+            )}
+          </div>
+          {!canCreate ? (
             <span className="text-xs text-muted">
-              No periods available. Assign a payroll calendar on the employee
-              wage settings, then try again.
+              Employee, period, and at least one job are required.
             </span>
           ) : null}
-        </label>
+        </div>
+
+        {canCreate ? (
+          <div className="rounded-xl border border-border bg-[var(--mt-surface)]/60 p-3 text-sm">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted">
+              Summary
+            </p>
+            <p className="mt-1 text-[var(--mt-text)]">
+              {selectedSummary.employee}
+            </p>
+            <p className="text-muted">{selectedSummary.period}</p>
+            <p className="font-medium text-[var(--mt-text)]">
+              {selectedSummary.jobs.join(", ")}
+            </p>
+          </div>
+        ) : null}
       </div>
     </FullScreenModal>
   );

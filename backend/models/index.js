@@ -26,6 +26,7 @@ import EmploymentStatus from "./employmentStatus.js";
 import EmploymentTypes from "./employmentTypes.js";
 import EmployeeAddress from "./employeeAddress.js";
 import Timesheets from "./timesheets.js";
+import TimesheetJobs from "./timesheetJobs.js";
 import TimesheetStatus from "./timesheetStatus.js";
 import TimesheetDays from "./timesheetDays.js";
 import TimesheetDayTasks from "./timesheetDayTasks.js";
@@ -71,6 +72,7 @@ const models = {
   EmploymentTypes,
   EmployeeAddress,
   Timesheets,
+  TimesheetJobs,
   TimesheetStatus,
   TimesheetDays,
   TimesheetDayTasks,

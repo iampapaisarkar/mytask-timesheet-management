@@ -19,6 +19,8 @@ type TimesheetRow = {
   code?: string;
   period_range?: string;
   status?: { name?: string; code?: string } | string;
+  job?: { id?: number; name?: string } | null;
+  jobs?: Array<{ id?: number; name?: string }> | null;
 };
 
 function statusLabel(status: TimesheetRow["status"]) {
@@ -80,7 +82,13 @@ export function TimesheetListScreen({ navigation, route }: Props) {
             {item.code ? ` · ${item.code}` : ""}
           </Text>
           <Text style={{ color: c.muted }}>
-            {item.period_range || "—"} · {statusLabel(item.status)}
+            {item.period_range || "—"}
+            {Array.isArray(item.jobs) && item.jobs.length
+              ? ` · ${item.jobs.map((j) => j.name).filter(Boolean).join(", ")}`
+              : item.job?.name
+                ? ` · ${item.job.name}`
+                : ""}{" "}
+            · {statusLabel(item.status)}
           </Text>
         </TouchableOpacity>
       )}

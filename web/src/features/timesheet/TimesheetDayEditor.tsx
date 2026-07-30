@@ -51,6 +51,8 @@ type DayPayload = {
   tracking_logs?: TrackingLogs;
   permissions?: { can_save?: boolean };
   status?: { code?: string; name?: string };
+  timesheet_job?: { id?: number; name?: string } | null;
+  timesheet_jobs?: Array<{ id?: number; name?: string }> | null;
 };
 
 type JobRow = {
@@ -95,40 +97,51 @@ function taskTypeFromFlags(task: DayTask): TaskType {
   return "working";
 }
 
-function draftFromTask(task: DayTask, index: number): TaskDraft {
+function draftFromTask(
+  task: DayTask,
+  index: number,
+  defaultJobId = "",
+): TaskDraft {
+  const type = taskTypeFromFlags(task);
   return {
     key: `task-${task.id ?? index}-${Math.random().toString(36).slice(2, 7)}`,
-    type: taskTypeFromFlags(task),
-    job_id: task.job?.id != null ? String(task.job.id) : "",
+    type,
+    job_id:
+      type === "working"
+        ? task.job?.id != null
+          ? String(task.job.id)
+          : defaultJobId
+        : "",
     start_time: normalizeTime(task.start_time),
     end_time: normalizeTime(task.end_time),
     remarks: task.remarks || "",
   };
 }
 
-function emptyTask(): TaskDraft {
+function emptyTask(defaultJobId = ""): TaskDraft {
   return {
     key: `new-${Math.random().toString(36).slice(2, 9)}`,
     type: "working",
-    job_id: "",
+    job_id: defaultJobId,
     start_time: "09:00",
     end_time: "17:00",
     remarks: "",
   };
 }
 
-function buildSaveTasks(tasks: TaskDraft[]) {
-  return tasks.map((task) => ({
-    is_break: task.type === "break",
-    is_travel: task.type === "travel",
-    job:
-      task.type === "working" && task.job_id
-        ? { id: Number(task.job_id) }
-        : null,
-    start_time: toHhMmSs(task.start_time),
-    end_time: toHhMmSs(task.end_time),
-    remarks: task.remarks || null,
-  }));
+function buildSaveTasks(tasks: TaskDraft[], defaultJobId = "") {
+  return tasks.map((task) => {
+    const jobId =
+      task.type === "working" ? task.job_id || defaultJobId : "";
+    return {
+      is_break: task.type === "break",
+      is_travel: task.type === "travel",
+      job: jobId ? { id: Number(jobId) } : null,
+      start_time: toHhMmSs(task.start_time),
+      end_time: toHhMmSs(task.end_time),
+      remarks: task.remarks || null,
+    };
+  });
 }
 
 function formatDisplayDate(date?: string, dayName?: string) {
@@ -158,10 +171,12 @@ function taskLabel(task: TaskDraft) {
 function taskSubtitle(
   task: TaskDraft,
   jobOptions: Array<{ id?: number; name: string }>,
+  timesheetJobName = "",
 ) {
   if (task.type !== "working") return null;
   const job = jobOptions.find((j) => String(j.id) === task.job_id);
-  return job ? `Job: ${job.name}` : null;
+  const name = job?.name || timesheetJobName;
+  return name ? `Job: ${name}` : null;
 }
 
 function durationLabel(start: string, end: string) {
@@ -203,19 +218,10 @@ export function TimesheetDayEditor({
     open && dayId != null && dayId !== "",
   );
 
-  const day = dayQuery.data as (DayPayload & { available_jobs?: JobRow[] }) | undefined;
+  const day = dayQuery.data as
+    | (DayPayload & { available_jobs?: JobRow[] })
+    | undefined;
   const canSave = Boolean(day?.permissions?.can_save);
-
-  useEffect(() => {
-    if (!day) return;
-    setIsPublicHoliday(Boolean(day.is_public_holiday));
-    const drafts =
-      Array.isArray(day.tasks) && day.tasks.length
-        ? day.tasks.map(draftFromTask)
-        : [];
-    setTasks(drafts);
-    setExpandedKey(drafts[0]?.key ?? null);
-  }, [day]);
 
   const jobOptions = useMemo(() => {
     const rows = (Array.isArray(day?.available_jobs)
@@ -228,18 +234,68 @@ export function TimesheetDayEditor({
     });
   }, [day?.available_jobs]);
 
+  const timesheetJobs = useMemo(() => {
+    const fromTs = Array.isArray(day?.timesheet_jobs)
+      ? day.timesheet_jobs
+      : day?.timesheet_job
+        ? [day.timesheet_job]
+        : [];
+    if (fromTs.length) {
+      return fromTs.map((j) => ({
+        id: j.id,
+        name: j.name || `Job #${j.id}`,
+        row: j as JobRow,
+      }));
+    }
+    return jobOptions;
+  }, [day?.timesheet_jobs, day?.timesheet_job, jobOptions]);
+
+  const timesheetJobId =
+    timesheetJobs.length === 1 && timesheetJobs[0]?.id != null
+      ? String(timesheetJobs[0].id)
+      : day?.timesheet_job?.id != null
+        ? String(day.timesheet_job.id)
+        : "";
+  const timesheetJobName =
+    timesheetJobs.length === 1
+      ? timesheetJobs[0]?.name || ""
+      : day?.timesheet_job?.name || "";
+  const multiJob = timesheetJobs.length > 1;
+
+  useEffect(() => {
+    if (!day) return;
+    setIsPublicHoliday(Boolean(day.is_public_holiday));
+    const fromTs = Array.isArray(day.timesheet_jobs)
+      ? day.timesheet_jobs
+      : day.timesheet_job
+        ? [day.timesheet_job]
+        : [];
+    const defaultJob =
+      fromTs.length === 1 && fromTs[0]?.id != null
+        ? String(fromTs[0].id)
+        : day.timesheet_job?.id != null
+          ? String(day.timesheet_job.id)
+          : "";
+    const drafts =
+      Array.isArray(day.tasks) && day.tasks.length
+        ? day.tasks.map((t, i) => draftFromTask(t, i, defaultJob))
+        : [];
+    setTasks(drafts);
+    setExpandedKey(drafts[0]?.key ?? null);
+  }, [day]);
+
   const mapJobs: MapJob[] = useMemo(() => {
     const fromTasks = (day?.tasks || [])
       .map((t) => t.job)
       .filter(Boolean) as MapJob[];
-    const fromList = jobOptions.map(({ row, id, name }) => ({
+    const fromList = timesheetJobs.map(({ row, id, name }) => ({
       id,
       name,
-      radius: row.details?.radius ?? row.radius,
-      address: row.details?.address ?? row.address,
+      radius: (row as JobRow).details?.radius ?? (row as JobRow).radius,
+      address: (row as JobRow).details?.address ?? (row as JobRow).address,
     }));
     return [...fromTasks, ...fromList];
-  }, [day?.tasks, jobOptions]);
+  }, [day?.tasks, timesheetJobs]);
 
   const timelineTasks: TimelineTask[] = useMemo(
     () =>
@@ -267,8 +323,11 @@ export function TimesheetDayEditor({
         toast.warning("Missing times", "Each task needs start and end time");
         return;
       }
-      if (task.type === "working" && !task.job_id) {
-        toast.warning("Job required", "Working tasks need a job");
+      if (task.type === "working" && !(task.job_id || timesheetJobId)) {
+        toast.warning(
+          "Job required",
+          "This timesheet has no job assigned; working tasks need a job",
+        );
         return;
       }
     }
@@ -278,7 +337,7 @@ export function TimesheetDayEditor({
       const payload = {
         id: Number(dayId),
         is_public_holiday: isPublicHoliday,
-        tasks: buildSaveTasks(tasks),
+        tasks: buildSaveTasks(tasks, timesheetJobId),
       };
       if (mode === "management") {
         await timesheetManagementApi.save(timesheetId, payload);
@@ -420,7 +479,7 @@ export function TimesheetDayEditor({
                   type="button"
                   className="px-2.5 py-1 text-xs"
                   onClick={() => {
-                    const t = emptyTask();
+                    const t = emptyTask(timesheetJobId);
                     setTasks((prev) => [...prev, t]);
                     setExpandedKey(t.key);
                   }}
@@ -436,7 +495,11 @@ export function TimesheetDayEditor({
                 tasks.map((task) => {
                   const expanded = expandedKey === task.key;
                   const color = SHEET_COLORS[task.type];
-                  const sub = taskSubtitle(task, jobOptions);
+                  const sub = taskSubtitle(
+                    task,
+                    timesheetJobs,
+                    timesheetJobName,
+                  );
                   return (
                     <div
                       key={task.key}
@@ -482,7 +545,7 @@ export function TimesheetDayEditor({
                                     type: e.target.value as TaskType,
                                     job_id:
                                       e.target.value === "working"
-                                        ? task.job_id
+                                        ? task.job_id || timesheetJobId
                                         : "",
                                   })
                                 }
@@ -492,29 +555,44 @@ export function TimesheetDayEditor({
                                 <option value="travel">Travel</option>
                               </select>
                             </label>
-                            <label className="flex flex-col gap-1 text-xs font-medium text-white">
-                              Job
-                              <select
-                                className={selectClass}
-                                value={task.job_id}
-                                disabled={!canSave || task.type !== "working"}
-                                onChange={(e) =>
-                                  updateTask(task.key, {
-                                    job_id: e.target.value,
-                                  })
-                                }
-                              >
-                                <option value="">Select job</option>
-                                {jobOptions.map((job) => (
-                                  <option
-                                    key={String(job.id)}
-                                    value={String(job.id)}
+                            {task.type === "working" ? (
+                              multiJob ? (
+                                <label className="flex flex-col gap-1 text-xs font-medium text-white">
+                                  Job
+                                  <select
+                                    className={selectClass}
+                                    value={task.job_id}
+                                    disabled={!canSave}
+                                    onChange={(e) =>
+                                      updateTask(task.key, {
+                                        job_id: e.target.value,
+                                      })
+                                    }
                                   >
-                                    {job.name}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
+                                    <option value="">Select job</option>
+                                    {timesheetJobs.map((job) => (
+                                      <option
+                                        key={String(job.id)}
+                                        value={String(job.id)}
+                                      >
+                                        {job.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                              ) : (
+                                <div className="rounded-xl border border-white/20 bg-black/10 px-3 py-2 text-xs text-white">
+                                  <p className="font-medium opacity-80">Job</p>
+                                  <p className="mt-0.5 text-sm font-semibold">
+                                    {timesheetJobName ||
+                                      timesheetJobs.find(
+                                        (j) => String(j.id) === task.job_id,
+                                      )?.name ||
+                                      "Timesheet job"}
+                                  </p>
+                                </div>
+                              )
+                            ) : null}
                             <div className="grid grid-cols-2 gap-2">
                               <TextInput
                                 label="Start"

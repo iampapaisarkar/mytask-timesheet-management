@@ -204,6 +204,8 @@ export interface JobOptionView {
 
 export interface TimesheetDayEditorView {
   available_jobs: JobOptionView[];
+  timesheet_job?: JobOptionView | null;
+  timesheet_jobs?: JobOptionView[];
   permissions?: { can_save?: boolean; [key: string]: unknown };
   tasks?: unknown[];
   is_public_holiday?: boolean;

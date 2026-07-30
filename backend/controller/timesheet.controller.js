@@ -8,6 +8,7 @@ const {
   Timesheets,
   TimesheetDays,
   TimesheetStatus,
+  Jobs,
 } = models;
 import { TimesheetConfig } from "../class/timesheet.config.js";
 import timsheetService from "../service/timsheet.service.js";
@@ -15,8 +16,18 @@ import redisUtils from "../utils/redis.utils.js";
 
 export async function list(req, res, next) {
   const { user, organisation } = req.body;
-  let { rows_per_page, page_number, sort_by, sort_direction, search } =
-    req.query;
+  let {
+    rows_per_page,
+    page_number,
+    sort_by,
+    sort_direction,
+    search,
+    job_id,
+    status_id,
+    status_code,
+    period_start_date,
+    period_end_date,
+  } = req.query;
   if (!organisation.acl.timesheet.list) {
     return res.status(403).json({
       message: "Access denied: You are not authorized to access this action.",
@@ -41,6 +52,34 @@ export async function list(req, res, next) {
       employee_id: organisation.employee.id,
     };
 
+    if (job_id) {
+      whereCondition.id = {
+        [Op.in]: literal(
+          `(SELECT timesheet_id FROM timesheet_jobs WHERE job_id = ${Number(
+            job_id,
+          )} AND organisation_id = ${Number(organisation.id)})`,
+        ),
+      };
+    }
+    if (status_id) {
+      whereCondition.status_id = status_id;
+    }
+    if (period_start_date) {
+      whereCondition.period_start_date = period_start_date;
+    }
+    if (period_end_date) {
+      whereCondition.period_end_date = period_end_date;
+    }
+    if (status_code && String(status_code).trim() !== "") {
+      const statusRow = await TimesheetStatus.findOne({
+        where: { code: String(status_code).trim() },
+        raw: true,
+      });
+      if (statusRow?.id) {
+        whereCondition.status_id = statusRow.id;
+      }
+    }
+
     if (search && search.trim() !== "") {
       whereCondition = {
         ...whereCondition,
@@ -56,6 +95,19 @@ export async function list(req, res, next) {
             model: TimesheetStatus,
             as: "status",
             attributes: ["id", "name", "code"],
+          },
+          {
+            model: Jobs,
+            as: "jobs",
+            attributes: ["id", "name"],
+            through: { attributes: [] },
+            required: false,
+          },
+          {
+            model: Jobs,
+            as: "job",
+            attributes: ["id", "name"],
+            required: false,
           },
           {
             model: Employees.unscoped(),
@@ -89,12 +141,12 @@ export async function list(req, res, next) {
         nest: true,
       });
 
-    const total_pages = Math.ceil(timesheets.length / rowsPerPage);
+    const total_pages = Math.ceil(count / rowsPerPage) || 0;
 
     return res.status(200).json({
       data: timesheets,
       pagination: {
-        total_rows: timesheets.length,
+        total_rows: count,
         rows_per_page: rowsPerPage,
         page_number: pageNumber,
         total_pages,

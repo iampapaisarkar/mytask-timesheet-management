@@ -331,8 +331,43 @@ export async function getTimesheetDayEditor(
     day.status?.code,
   );
 
-  let available_jobs = [];
-  if (organisation.acl?.job?.list) {
+  let timesheet_jobs = [];
+  let timesheet_job = null;
+  if (day?.timesheet_id) {
+    const ts = await Timesheets.findOne({
+      where: {
+        id: day.timesheet_id,
+        organisation_id: organisation.id,
+      },
+      attributes: ["id", "job_id"],
+      include: [
+        {
+          model: Jobs,
+          as: "jobs",
+          attributes: ["id", "name"],
+          through: { attributes: [] },
+          required: false,
+        },
+        {
+          model: Jobs,
+          as: "job",
+          attributes: ["id", "name"],
+          required: false,
+        },
+      ],
+    });
+    const plain = ts?.toJSON?.() ?? ts;
+    timesheet_jobs = Array.isArray(plain?.jobs)
+      ? plain.jobs.map((j) => ({ id: j.id, name: j.name }))
+      : [];
+    if (!timesheet_jobs.length && plain?.job) {
+      timesheet_jobs = [{ id: plain.job.id, name: plain.job.name }];
+    }
+    timesheet_job = timesheet_jobs[0] || null;
+  }
+
+  let available_jobs = timesheet_jobs;
+  if (!available_jobs.length && organisation.acl?.job?.list) {
     available_jobs = await listAvailableJobs(organisation);
   }
 
@@ -340,6 +375,8 @@ export async function getTimesheetDayEditor(
     success: true,
     data: {
       ...day,
+      timesheet_job,
+      timesheet_jobs,
       available_jobs,
     },
   };

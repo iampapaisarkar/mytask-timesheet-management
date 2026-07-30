@@ -76,6 +76,25 @@ Jobs.associate = (models) => {
     foreignKey: "job_id",
     as: "address",
   });
+
+  if (models.Timesheets) {
+    Jobs.hasMany(models.Timesheets, {
+      foreignKey: "job_id",
+      as: "legacy_timesheets",
+    });
+    Jobs.belongsToMany(models.Timesheets, {
+      through: models.TimesheetJobs,
+      foreignKey: "job_id",
+      otherKey: "timesheet_id",
+      as: "timesheets",
+    });
+  }
+  if (models.TimesheetJobs) {
+    Jobs.hasMany(models.TimesheetJobs, {
+      foreignKey: "job_id",
+      as: "timesheet_jobs",
+    });
+  }
 };
 
 /**

@@ -38,6 +38,37 @@ async function saveUpdateTimesheetAndTask(
   try {
     const currentUTCTime = moment().utc().format();
 
+    const timesheetHeader = await Timesheets.findOne({
+      where: {
+        id: timesheetId,
+        organisation_id: organisationId,
+      },
+      attributes: ["id", "job_id"],
+      include: [
+        {
+          model: Jobs,
+          as: "jobs",
+          attributes: ["id"],
+          through: { attributes: [] },
+          required: false,
+        },
+      ],
+      transaction,
+    });
+    const timesheetPlain = timesheetHeader?.toJSON?.() ?? timesheetHeader;
+    const allowedJobIds = new Set(
+      [
+        ...(Array.isArray(timesheetPlain?.jobs)
+          ? timesheetPlain.jobs.map((j) => Number(j.id))
+          : []),
+        timesheetPlain?.job_id,
+      ].filter((id) => Number.isFinite(id) && id > 0),
+    );
+    const timesheetJobId =
+      allowedJobIds.size === 1
+        ? [...allowedJobIds][0]
+        : timesheetPlain?.job_id || null;
+
     const employeeJson = await Employees.unscoped().findOne(
       {
         attributes: ["id", "user_id"],
@@ -127,7 +158,24 @@ async function saveUpdateTimesheetAndTask(
             employee_id: employeeId,
             timesheet_id: timesheetId,
             timesheet_day_id: dayId,
-            job_id: task?.is_break || task?.is_travel ? null : task?.job?.id,
+            job_id: (() => {
+              if (task?.is_break || task?.is_travel) return null;
+              const requested = Number(task?.job?.id);
+              if (Number.isFinite(requested) && allowedJobIds.has(requested)) {
+                return requested;
+              }
+              if (
+                Number.isFinite(requested) &&
+                allowedJobIds.size === 0
+              ) {
+                // Legacy timesheets with no junction rows yet
+                return requested;
+              }
+              if (timesheetJobId && allowedJobIds.has(Number(timesheetJobId))) {
+                return timesheetJobId;
+              }
+              return [...allowedJobIds][0] || null;
+            })(),
             start_time: moment
               .tz(task?.start_time, "HH:mm:ss", employeeTimezone)
               .utc()
@@ -192,6 +240,7 @@ async function getTimesheetDays(
       attributes: [
         "code",
         "employee_id",
+        "job_id",
         "id",
         "organisation_id",
         "payroll_calendar_id",
@@ -205,6 +254,19 @@ async function getTimesheetDays(
         {
           model: TimesheetStatus,
           as: "status",
+        },
+        {
+          model: Jobs,
+          as: "jobs",
+          attributes: ["id", "name"],
+          through: { attributes: [] },
+          required: false,
+        },
+        {
+          model: Jobs,
+          as: "job",
+          attributes: ["id", "name"],
+          required: false,
         },
         {
           model: Employees.unscoped(),
@@ -246,6 +308,7 @@ async function getTimesheetDays(
                 "id",
                 "timesheet_id",
                 "timesheet_day_id",
+                "job_id",
                 "total_hours",
                 "is_break",
                 "is_travel",

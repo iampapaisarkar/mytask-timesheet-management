@@ -4,6 +4,10 @@
 
 ### Added
 
+- Timesheet ↔ jobs many-to-many (`timesheet_jobs`): one timesheet can include multiple jobs; the same job can be used by many employees
+- Timesheet create flow is Employee → Pay Period → Jobs (multi-select)
+- Timesheet list filters by employee / job / status (management) and job / status (self-service)
+- Shared address model, map geolocation reverse-geocode, and related DB migration (earlier today)
 - Canonical global address model (`address_line_1`, `address_line_2`, `street`, `city`, `state_region_province`, `postal_code`, `country`) with shared parsers in `@mytask/utils`
 - Safe DB migration to add/backfill normalized address columns on organisation/employee/job address tables and customers
 - Map picker geolocation on open, debounced reverse-geocode of all address fields on pin move
@@ -15,6 +19,8 @@
 
 ### Changed
 
+- Timesheet uniqueness is per employee + pay period; jobs are attached via `timesheet_jobs` (many-to-many)
+- Day editor working entries pick from the timesheet’s selected jobs (auto when only one job)
 - Address forms always keep auto-filled fields editable; jobs embed map via reusable `GoogleAddressAutocomplete` (`showMap`)
 - Address persistence writes canonical + legacy columns; coordinates stored for jobs only (org/employee/customer coords cleared on write)
 - Mobile app is React Native CLI (bare `ios/` + `android/`) only

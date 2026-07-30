@@ -32,6 +32,8 @@ type TimesheetDetail = {
   period_start_date?: string;
   period_end_date?: string;
   status?: { name?: string; code?: string };
+  job?: { id?: number; name?: string } | null;
+  jobs?: Array<{ id?: number; name?: string }> | null;
   days?: TimesheetDay[];
   permissions?: { can_submit?: boolean };
 };
@@ -88,6 +90,11 @@ export function TimesheetDetailScreen({ navigation, route }: Props) {
               .join(" → ") ||
             data?.code ||
             "—"}
+          {Array.isArray(data?.jobs) && data.jobs.length
+            ? ` · ${data.jobs.map((j) => j.name).filter(Boolean).join(", ")}`
+            : data?.job?.name
+              ? ` · ${data.job.name}`
+              : ""}
         </Text>
         <Text style={[styles.status, { color: c.primary }]}>
           {data?.status?.name || data?.status?.code || "—"}
