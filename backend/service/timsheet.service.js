@@ -15,7 +15,6 @@ const {
   TimesheetActivityLogs,
   TimesheetActivityTypes,
   GeofenceEvents,
-  ManagementGroupEmployees,
   UserOrganisationRoles,
   OrganisationRoles,
 } = models;
@@ -672,38 +671,33 @@ async function sendEmailAndNotification(user, organisation, timesheet, type) {
       timesheetURLEmail = `${process.env.CLIENT_URL}/org/${organisation.code}/timesheet-management/${timesheet.id}/details?tab=submitted`;
       timesheetURLAppNotification = `/org/${organisation.code}/timesheet-management/${timesheet.id}/details?tab=submitted`;
 
-      const managementGroups = new Set();
-
-      employee?.management_group?.manager_of_groups?.forEach((mg) =>
-        managementGroups.add(mg.id),
-      );
-
-      if (employee?.management_group?.staff_of_group?.id) {
-        managementGroups.add(employee.management_group.staff_of_group.id);
-      }
-
-      const managementGroupIds = [...managementGroups];
-
-      const managerEmployees = await ManagementGroupEmployees.findAll({
-        attributes: ["employee_id"],
+      const managerRoles = await UserOrganisationRoles.findAll({
         where: {
-          group_id: { [Op.in]: managementGroupIds },
-          is_manager: true,
+          organisation_id: organisation.id,
+          user_id: { [Op.ne]: user.id },
         },
         include: [
           {
-            model: Employees,
-            as: "employee",
+            model: Users,
+            as: "user",
+          },
+          {
+            model: OrganisationRoles,
+            as: "role",
+            attributes: ["id", "name", "code"],
+            where: { code: { [Op.in]: ["owner", "moderator", "manager"] } },
           },
         ],
         raw: true,
         nest: true,
       });
 
-      sendToEmails = managerEmployees.map((e) => e?.employee?.user?.email);
-      sendToNotificationUserIds = managerEmployees.map(
-        (e) => e?.employee?.user?.id,
-      );
+      sendToEmails = managerRoles
+        .map((r) => r?.user?.email)
+        .filter(Boolean);
+      sendToNotificationUserIds = managerRoles
+        .map((r) => r?.user?.id)
+        .filter(Boolean);
     } else if (type === "approve") {
       subject = `Timesheet Approved (${timesheet.code}) - ${organisation.name}`;
       bodyMessage = `Timesheet ${timesheet.code} has been approved.`;

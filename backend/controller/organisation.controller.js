@@ -11,7 +11,6 @@ const {
   OrganisationSettings,
   TimesheetSubmissionFrequencies,
   OrganisationAddress,
-  ManagementGroups,
   PayrollCalendars,
   PayCycles,
 } = models;
@@ -239,21 +238,10 @@ export async function create(req, res, next) {
       { transaction },
     );
 
-    // create general management group default
-    const managementGroup = await ManagementGroups.create(
-      {
-        organisation_id: response.id,
-        name: "General",
-        default: true,
-      },
-      { transaction },
-    );
-
     // create org admin as first employee
     await organisationService.createOrgAdminEmployee(
       response.id,
       user,
-      managementGroup.id,
       transaction,
     );
 

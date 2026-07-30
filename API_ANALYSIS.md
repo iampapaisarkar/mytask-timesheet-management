@@ -65,14 +65,6 @@ Org headers (org-scoped): `ms-organisation-code`, `ms-organisation-id`, `ms-orga
 | POST | `/:id/invite` |
 | POST | `/search-user-by-email` |
 
-## Management groups — `/api/management-groups`
-
-| Method | Path |
-|--------|------|
-| GET | `/list` |
-| POST | `/create` |
-| POST | `/:id/update` |
-
 ## Region — `/api/region`
 
 | Method | Path |
@@ -146,7 +138,6 @@ Org headers (org-scoped): `ms-organisation-code`, `ms-organisation-id`, `ms-orga
 | GET | `/rounding-intervals` |
 | GET | `/manager-employees` |
 | GET | `/manager-staff-employees` |
-| GET | `/management-groups` |
 | GET | `/employment-status` |
 | GET | `/employment-types` |
 | GET | `/payroll-calendars` |

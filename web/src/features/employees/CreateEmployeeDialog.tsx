@@ -21,7 +21,7 @@ import { useToastStore } from "@/store/toastStore";
 const selectClass =
   "mt-focus rounded-xl border border-border bg-[var(--mt-surface)] px-3.5 py-3 text-[var(--mt-text)] outline-none focus:border-primary";
 
-const STEPS = ["Email", "Details", "Management group", "Wage", "Payroll"] as const;
+const STEPS = ["Email", "Details", "Wage", "Payroll"] as const;
 
 type NamedId = { id: number; name?: string; code?: string };
 
@@ -33,7 +33,6 @@ export type EmployeeListRow = {
   };
   wage?: Record<string, unknown> | null;
   payroll?: Record<string, unknown> | null;
-  management_group?: Record<string, unknown> | null;
   invitation?: { status?: { code?: string } };
 };
 
@@ -72,10 +71,6 @@ type EmployeeForm = {
     nok_phone_number: string;
     nok_phone_country_code: string | null;
     nok_phone_country_iso: string | null;
-  };
-  management_group: {
-    manager_of_groups: NamedId[];
-    staff_of_group: NamedId | null;
   };
   wage: {
     start_date: string;
@@ -135,10 +130,6 @@ function emptyForm(email = ""): EmployeeForm {
       nok_phone_country_code: null,
       nok_phone_country_iso: null,
     },
-    management_group: {
-      manager_of_groups: [],
-      staff_of_group: null,
-    },
     wage: {
       start_date: "",
       employment_status: null,
@@ -178,7 +169,6 @@ function formFromEmployeeRow(row: EmployeeListRow): EmployeeForm {
     details.address && typeof details.address === "object"
       ? (details.address as Record<string, unknown>)
       : {};
-  const mg = (row.management_group || {}) as Record<string, unknown>;
   const wage = (row.wage || {}) as Record<string, unknown>;
   const payroll = (row.payroll || {}) as Record<string, unknown>;
 
@@ -221,14 +211,6 @@ function formFromEmployeeRow(row: EmployeeListRow): EmployeeForm {
       nok_phone_number: String(details.nok_phone_number || ""),
       nok_phone_country_code: (details.nok_phone_country_code as string) || phoneValueFromE164(String(details.nok_phone_number || "")).phone_country_code,
       nok_phone_country_iso: (details.nok_phone_country_iso as string) || phoneValueFromE164(String(details.nok_phone_number || "")).phone_country_iso,
-    },
-    management_group: {
-      manager_of_groups: Array.isArray(mg.manager_of_groups)
-        ? (mg.manager_of_groups as unknown[])
-            .map(asNamed)
-            .filter((x): x is NamedId => x != null)
-        : [],
-      staff_of_group: asNamed(mg.staff_of_group),
     },
     wage: {
       start_date: String(wage.start_date || ""),
@@ -288,9 +270,6 @@ export function CreateEmployeeDialog({
     []) as NamedId[];
   const calendars = (lookups?.payroll_calendars || []) as NamedId[];
   const awardRates = (lookups?.award_rates || []) as NamedId[];
-  const groups = (lookups?.management_groups || []) as NamedId[];
-
-  const roleCode = form.details.role?.code;
 
   useEffect(() => {
     if (!open) {
@@ -363,7 +342,6 @@ export function CreateEmployeeDialog({
               state: details.state,
               postcode: details.postcode,
             };
-      const mg = (data.management_group || {}) as Record<string, unknown>;
       const wage = (data.wage || {}) as Record<string, unknown>;
       const payroll = (data.payroll || {}) as Record<string, unknown>;
       const action = (data.action || {
@@ -421,14 +399,6 @@ export function CreateEmployeeDialog({
             (details.nok_phone_country_iso as string) ||
             phoneValueFromE164(String(details.nok_phone_number || ""))
               .phone_country_iso,
-        },
-        management_group: {
-          manager_of_groups: Array.isArray(mg.manager_of_groups)
-            ? (mg.manager_of_groups as unknown[])
-                .map(asNamed)
-                .filter((x): x is NamedId => x != null)
-            : [],
-          staff_of_group: asNamed(mg.staff_of_group),
         },
         wage: {
           start_date: String(wage.start_date || ""),
@@ -523,7 +493,7 @@ export function CreateEmployeeDialog({
         return;
       }
     }
-    if (step === 3) {
+    if (step === 2) {
       const err = validateWage();
       if (err) {
         toast.warning(err);
@@ -543,7 +513,7 @@ export function CreateEmployeeDialog({
     const wageErr = validateWage();
     if (wageErr) {
       toast.warning(wageErr);
-      setStep(3);
+      setStep(2);
       return;
     }
     const payrollErr = validatePayroll();
@@ -594,11 +564,6 @@ export function CreateEmployeeDialog({
         nok_phone_country_iso: d.nok_phone_number.trim()
           ? d.nok_phone_country_iso
           : null,
-      },
-      management_group: {
-        manager_of_groups:
-          roleCode === "staff" ? [] : form.management_group.manager_of_groups,
-        staff_of_group: form.management_group.staff_of_group,
       },
       wage: {
         start_date: form.wage.start_date,
@@ -936,80 +901,6 @@ export function CreateEmployeeDialog({
           ) : null}
 
           {step === 2 ? (
-            <div className="flex flex-col gap-4">
-              {roleCode !== "staff" ? (
-                <fieldset className="flex flex-col gap-2">
-                  <legend className="text-sm font-medium">
-                    Manager of groups
-                  </legend>
-                  <div className="max-h-40 space-y-2 overflow-y-auto rounded-xl border border-border p-3">
-                    {groups.map((g) => {
-                      const selected =
-                        form.management_group.manager_of_groups.some(
-                          (x) => x.id === g.id,
-                        );
-                      return (
-                        <label
-                          key={g.id}
-                          className="flex items-center gap-2 text-sm"
-                        >
-                          <input
-                            type="checkbox"
-                            className="size-4 accent-primary"
-                            checked={selected}
-                            onChange={() => {
-                              setForm((prev) => {
-                                const list =
-                                  prev.management_group.manager_of_groups;
-                                const next = selected
-                                  ? list.filter((x) => x.id !== g.id)
-                                  : [...list, g];
-                                return {
-                                  ...prev,
-                                  management_group: {
-                                    ...prev.management_group,
-                                    manager_of_groups: next,
-                                  },
-                                };
-                              });
-                            }}
-                          />
-                          <span>{g.name || `Group #${g.id}`}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </fieldset>
-              ) : null}
-              <label className="flex w-full flex-col gap-1.5 text-sm">
-                <span className="font-medium">Staff of group</span>
-                <select
-                  className={selectClass}
-                  value={form.management_group.staff_of_group?.id ?? ""}
-                  onChange={(e) => {
-                    const id = Number(e.target.value);
-                    const matched = groups.find((g) => g.id === id) || null;
-                    setForm((prev) => ({
-                      ...prev,
-                      management_group: {
-                        ...prev.management_group,
-                        staff_of_group: matched,
-                      },
-                    }));
-                  }}
-                >
-                  <option value="">Select group</option>
-                  {groups.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          ) : null}
-
-          {step === 3 ? (
             <div className="flex flex-col gap-3">
               <TextInput
                 label="Start date"
@@ -1135,7 +1026,7 @@ export function CreateEmployeeDialog({
             </div>
           ) : null}
 
-          {step === 4 ? (
+          {step === 3 ? (
             <div className="flex flex-col gap-3">
               <TextInput
                 label="Tax file number"

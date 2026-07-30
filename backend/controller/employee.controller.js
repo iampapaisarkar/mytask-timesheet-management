@@ -184,7 +184,6 @@ export async function create(req, res, next) {
     user,
     action,
     details,
-    management_group,
     wage,
     payroll,
     orgCode,
@@ -224,16 +223,6 @@ export async function create(req, res, next) {
       user,
       organisation,
       action,
-      details,
-      null,
-      transaction,
-    );
-    await employeeService.createOrUpdateEmployeeManagementGroup(
-      user,
-      organisation,
-      action,
-      management_group,
-      employee,
       details,
       null,
       transaction,
@@ -301,7 +290,6 @@ export async function update(req, res, next) {
     user,
     action,
     details,
-    management_group,
     wage,
     payroll,
     orgCode,
@@ -353,16 +341,6 @@ export async function update(req, res, next) {
       },
       raw: true,
     });
-    await employeeService.createOrUpdateEmployeeManagementGroup(
-      user,
-      organisation,
-      action,
-      management_group,
-      employee,
-      details,
-      id,
-      transaction,
-    );
     await employeeService.createOrUpdateEmployeeWage(
       user,
       organisation,
@@ -569,10 +547,6 @@ export async function searchUserByEmail(req, res, next) {
           nok_phone_number: null,
           xero_employee_id: xeroEmployee?.employeeID,
         },
-        management_group: {
-          manager_of_groups: null,
-          staff_of_group: null,
-        },
         wage: {
           start_date: moment(xeroEmployee?.startDate).format("YYYY-MM-DD"),
           employment_status: employmentStatus,
@@ -639,10 +613,6 @@ export async function searchUserByEmail(req, res, next) {
             nok_phone_number: null,
             xero_employee_id: null,
           },
-          management_group: {
-            manager_of_groups: null,
-            staff_of_group: null,
-          },
           wage: {
             start_date: null,
             employment_status: null,
@@ -693,10 +663,6 @@ export async function searchUserByEmail(req, res, next) {
             nok_relationship: null,
             nok_phone_number: null,
             xero_employee_id: null,
-          },
-          management_group: {
-            manager_of_groups: null,
-            staff_of_group: null,
           },
           wage: {
             start_date: null,

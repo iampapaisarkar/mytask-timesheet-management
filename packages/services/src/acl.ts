@@ -20,20 +20,18 @@ const perms = (
   del = false,
 ): CrudPermission => ({ list, view, create, edit, delete: del });
 
-/** Mirrors backend/class/acl.js organisationAcl */
+/** Mirrors backend/class/acl.js organisationAcl — organisation roles only. */
 export function getOrganisationAcl(
   role: OrganisationRoleCode | string | undefined | null,
 ): OrganisationAcl {
   const rolePermissions: Record<string, OrganisationAcl> = {
     owner: {
       organisationSetting: perms(false, true, false, true, false),
-      // Owner is also an employee (created with the organisation) — My Sheets is their own timesheets
       timesheet: perms(true, true, false, true, false),
       timesheetManagement: perms(true, true, true, true, false),
       report: perms(true, true, false, false, false),
       employee: perms(true, false, true, true, false),
       customer: perms(true, false, true, true, false),
-      managementGroup: perms(true, false, true, true, false),
       job: perms(true, false, true, true, false),
       region: perms(true, false, true, true, false),
       holidayCalendar: perms(true, false, true, true, false),
@@ -50,7 +48,6 @@ export function getOrganisationAcl(
       report: perms(true, true, false, false, false),
       employee: perms(true, false, true, true, false),
       customer: perms(true, false, true, true, false),
-      managementGroup: perms(true, false, true, true, false),
       job: perms(true, false, true, true, false),
       region: perms(true, false, true, true, false),
       holidayCalendar: perms(true, false, true, true, false),
@@ -67,7 +64,6 @@ export function getOrganisationAcl(
       report: perms(true, true, false, false, false),
       employee: none(),
       customer: none(),
-      managementGroup: perms(true, false, false, false, false),
       job: perms(true, false, true, true, false),
       region: none(),
       holidayCalendar: none(),
@@ -84,7 +80,6 @@ export function getOrganisationAcl(
       report: perms(true, true, false, false, false),
       employee: none(),
       customer: none(),
-      managementGroup: perms(true, false, false, false, false),
       job: perms(true, false, false, false, false),
       region: none(),
       holidayCalendar: none(),
@@ -104,7 +99,6 @@ export function getOrganisationAcl(
       report: none(),
       employee: none(),
       customer: none(),
-      managementGroup: none(),
       job: none(),
       region: none(),
       holidayCalendar: none(),

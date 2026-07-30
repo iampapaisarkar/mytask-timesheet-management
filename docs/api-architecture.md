@@ -111,8 +111,7 @@ Token + OrgValidate. ACL: employee create or edit.
 ```ts
 EmployeeFormLookupsView {
   roles, regions, nok_relations, employment_status, employment_types,
-  timesheet_submission_frequencies, payroll_calendars, award_rates,
-  management_groups: NamedLookup[]
+  timesheet_submission_frequencies, payroll_calendars, award_rates
 }
 ```
 

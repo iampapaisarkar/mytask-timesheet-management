@@ -25,7 +25,6 @@ import {
   Menu,
   Settings,
   Users,
-  UsersRound,
   X,
 } from "lucide-react";
 import { clsx } from "clsx";
@@ -37,7 +36,6 @@ const ICONS: Record<string, typeof Home> = {
   reports: FileBarChart2,
   employees: Users,
   customers: Building2,
-  managementGroup: UsersRound,
   jobs: Briefcase,
   settings: Settings,
 };

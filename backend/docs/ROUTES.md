@@ -5,7 +5,7 @@ Router mount: `app.use('/api', Routes)` from `routes/index.js`.
 Domain routers:
 
 - `auth`, `organisation`, `timesheet`, `timesheet-management`, `employee`
-- `management-group`, `region`, `customer`, `job`
+- `region`, `customer`, `job`
 - `holiday-calendar`, `payroll-calendar`, `earning-rate`, `award-rate`
 - `system`, `notifications`, `timesheet-activity`, `report`, `xero`
 

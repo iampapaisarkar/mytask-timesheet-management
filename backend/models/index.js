@@ -34,14 +34,11 @@ import AwardRateRules from "./awardRateRules.js";
 import AwardRateRuleDayRelations from "./awardRateRuleDayRelations.js";
 import AwardRateRuleIfs from "./awardRateRuleIfs.js";
 import AwardRateRuleThen from "./awardRateRuleThen.js";
-import ManagementGroups from "./managementGroups.js";
-import ManagementGroupEmployees from "./managementGroupEmployees.js";
 import EmployeeWages from "./employeeWages.js";
 import EmployeePayrolls from "./employeePayrolls.js";
 import EmploymentStatus from "./employmentStatus.js";
 import EmploymentTypes from "./employmentTypes.js";
 import EmployeeAddress from "./employeeAddress.js";
-import ManagementGroupJobs from "./managementGroupJobs.js";
 import Timesheets from "./timesheets.js";
 import TimesheetStatus from "./timesheetStatus.js";
 import TimesheetDays from "./timesheetDays.js";
@@ -96,14 +93,11 @@ const models = {
   AwardRateRuleDayRelations,
   AwardRateRuleIfs,
   AwardRateRuleThen,
-  ManagementGroups,
-  ManagementGroupEmployees,
   EmployeeWages,
   EmployeePayrolls,
   EmploymentStatus,
   EmploymentTypes,
   EmployeeAddress,
-  ManagementGroupJobs,
   Timesheets,
   TimesheetStatus,
   TimesheetDays,

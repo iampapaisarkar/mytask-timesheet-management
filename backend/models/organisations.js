@@ -139,7 +139,6 @@ Organisations.addScope("withUser", (userId) => ({
 Organisations.prototype.toJSON = function () {
   const full = this.get({ plain: true });
 
-  // Extract management_group, wage, payroll and details
   const { user_organisations_role, ...rest } = full;
 
   return {

@@ -60,7 +60,6 @@ export const employeesApi = {
 
 export const customersApi = resourceApi("/customers");
 export const jobsApi = resourceApi("/jobs");
-export const managementGroupsApi = resourceApi("/management-groups");
 export const regionsApi = resourceApi("/region");
 export const holidayCalendarsApi = resourceApi("/holiday-calendars");
 export const earningRatesApi = resourceApi("/earning-rates");

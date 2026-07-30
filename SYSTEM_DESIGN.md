@@ -40,17 +40,18 @@ Permissions per resource: `list`, `view`, `create`, `edit`, `delete`.
 | Resource | Owner | Moderator | Manager | Staff |
 |----------|-------|-----------|---------|-------|
 | timesheet | none | full edit | full edit | full edit |
-| timesheetManagement | full | full | full | none |
+| timesheetManagement | full | full | full (org-wide) | none |
 | report | list+view | list+view | list+view | list+view |
 | employee | CRUD-ish | CRUD-ish | none | none |
 | customer | CRUD-ish | CRUD-ish | none | none |
-| managementGroup | CRUD-ish | CRUD-ish | list | list |
 | job | CRUD-ish | CRUD-ish | CRUD-ish | list |
 | region / holiday / earning / award | yes | yes | no | no |
 | payrollCalendar | list+create | list+create | no | no |
 | setting | list | list | no | no |
 | xero | full | none | none | none |
 | organisationSetting | view+edit | view | none | none |
+
+Jobs and timesheet-management staff lists are organisation-scoped (no management groups). Managers see all org employees for timesheet management; staff see only their own timesheets.
 
 Frontend routes gate via `meta.acl: { action, permission }`.
 

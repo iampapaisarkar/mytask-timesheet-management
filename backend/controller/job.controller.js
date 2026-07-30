@@ -3,7 +3,6 @@ import models from "../models/index.js";
 const {
   Jobs,
   JobAddress,
-  ManagementGroupJobs,
   UserOrganisationRoles,
   OrganisationRoles,
   Users,
@@ -103,7 +102,6 @@ export async function create(req, res, next) {
     site_contact_phone_number,
     site_contact_phone_country_code,
     site_contact_phone_country_iso,
-    management_groups,
     is_active,
     organisation,
   } = req.body;
@@ -158,11 +156,6 @@ export async function create(req, res, next) {
     //     message: "Site contact phone number is required!",
     //   });
     // }
-    if (management_groups.length <= 0) {
-      return res.status(501).json({
-        message: "Management groups are required!",
-      });
-    }
 
     let sitePhone;
     try {
@@ -213,15 +206,7 @@ export async function create(req, res, next) {
       await JobAddress.create(row);
     }
 
-    for (const group of management_groups) {
-      await ManagementGroupJobs.create({
-        organisation_id: organisation.id,
-        group_id: group.id,
-        job_id: job.id,
-      });
-    }
-
-    await sendEmailAndNotification(user, organisation, management_groups, job);
+    await sendEmailAndNotification(user, organisation, job);
 
     return res.status(200).json({
       message: "Job created",
@@ -249,7 +234,6 @@ export async function update(req, res, next) {
     site_contact_phone_number,
     site_contact_phone_country_code,
     site_contact_phone_country_iso,
-    management_groups,
     is_active,
     organisation,
   } = req.body;
@@ -305,11 +289,6 @@ export async function update(req, res, next) {
     //     message: "Site contact phone number is required!",
     //   });
     // }
-    if (management_groups.length <= 0) {
-      return res.status(501).json({
-        message: "Management groups are required!",
-      });
-    }
 
     let sitePhone;
     try {
@@ -373,27 +352,8 @@ export async function update(req, res, next) {
       await JobAddress.create(row);
     }
 
-    const groupIds = management_groups.map((group) => group.id);
-
-    await ManagementGroupJobs.destroy({
-      where: {
-        organisation_id: organisation.id,
-        job_id: id,
-        group_id: { [Op.in]: groupIds },
-      },
-    });
-
-    for (const group of management_groups) {
-      await ManagementGroupJobs.create({
-        organisation_id: organisation.id,
-        group_id: group.id,
-        job_id: id,
-      });
-    }
-
     return res.status(200).json({
       message: "Job updated",
-      management_groups,
     });
   } catch (err) {
     console.log("error::", err);
@@ -404,21 +364,16 @@ export async function update(req, res, next) {
   }
 }
 
-async function sendEmailAndNotification(
-  user,
-  organisation,
-  managementGroups,
-  job,
-) {
+async function sendEmailAndNotification(user, organisation, job) {
   try {
     /* ----------------------------------
-     * Get organisation owner
+     * Notify org owners, moderators, managers
      * ---------------------------------- */
-    const organisationOwner = await UserOrganisationRoles.findOne({
+    const orgManagers = await UserOrganisationRoles.findAll({
       where: {
         organisation_id: organisation.id,
         user_id: {
-          [Op.ne]: user.id, // ❌ exclude current user
+          [Op.ne]: user.id,
         },
       },
       include: [
@@ -430,48 +385,30 @@ async function sendEmailAndNotification(
           model: OrganisationRoles,
           as: "role",
           attributes: ["id", "name", "code"],
-          where: { code: "owner" },
+          where: { code: { [Op.in]: ["owner", "moderator", "manager"] } },
         },
       ],
       raw: true,
       nest: true,
     });
-    const organisationOwnerUser = organisationOwner?.user || null;
 
-    /* ----------------------------------
-     * NORMAL USERS (staff / managers)
-     * ---------------------------------- */
-    const subject = `A job assgined to a Management Group (${job.name}) - ${organisation.name}`;
-    const bodyMessage = `${user.full_name} has assigned a job to management group - ${job.name}.`;
-    // let URL = `${process.env.CLIENT_URL}/${organisation.code}/management-group`;
+    const subject = `New Job Created (${job.name}) - ${organisation.name}`;
+    const bodyMessage = `${user.full_name} created a new job - ${job.name}.`;
 
     const uniqueUsersMap = new Map();
-
-    managementGroups?.forEach((group) => {
-      group.employees?.forEach((groupEmployee) => {
-        const gUser = groupEmployee?.employee?.user;
-
-        if (gUser?.id && gUser?.id != user.id) {
-          // Map ensures no duplicate user.id
-          uniqueUsersMap.set(gUser.id, {
-            user_id: gUser.id,
-            email: gUser.email,
-          });
-        }
-      });
+    orgManagers?.forEach((row) => {
+      const gUser = row?.user;
+      if (gUser?.id && gUser?.id != user.id) {
+        uniqueUsersMap.set(gUser.id, {
+          user_id: gUser.id,
+          email: gUser.email,
+        });
+      }
     });
 
     const uniqueUsers = Array.from(uniqueUsersMap.values());
     const sendToEmails = uniqueUsers.map((u) => u.email);
     const sendToNotificationUserIds = uniqueUsers.map((u) => u.user_id);
-
-    /* ----------------------------------
-     * OWNER MESSAGE (DIFFERENT CONTENT)
-     * ---------------------------------- */
-    const ownerMessage = {
-      subject: `New Job Created (${job.name}) - ${organisation.name}`,
-      body: `${user.full_name} created a new job.`,
-    };
 
     /* ----------------------------------
      * SEND EMAILS
@@ -494,22 +431,6 @@ async function sendEmailAndNotification(
       });
     }
 
-    if (organisationOwnerUser?.email && ownerMessage) {
-      await enqueueSendEmail({
-        user,
-        organisation,
-        userEmails: [organisationOwnerUser.email],
-        message: {
-          subject: ownerMessage.subject,
-          template: "create-job.html",
-          variables: {
-            title: ownerMessage.subject,
-            message: ownerMessage.body,
-          },
-        },
-      });
-    }
-
     /* ----------------------------------
      * SEND PUSH NOTIFICATIONS
      * ---------------------------------- */
@@ -520,17 +441,6 @@ async function sendEmailAndNotification(
         message: {
           title: subject,
           body: bodyMessage,
-        },
-      });
-    }
-
-    if (organisationOwnerUser?.id && ownerMessage) {
-      await enqueueSendNotification({
-        user: user,
-        sentToUserIds: [organisationOwnerUser.id],
-        message: {
-          title: ownerMessage.subject,
-          body: ownerMessage.body,
         },
       });
     }

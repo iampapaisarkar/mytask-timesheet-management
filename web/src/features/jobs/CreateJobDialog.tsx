@@ -1,9 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  useCreateJob,
-  useCustomers,
-  useManagementGroups,
-} from "@mytask/hooks";
+import { useCreateJob, useCustomers } from "@mytask/hooks";
 import { getErrorMessage, emptyPhoneValue, type PhoneValue } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
 import { FullScreenModal } from "@/components/ui/FullScreenModal";
@@ -29,7 +25,6 @@ export function CreateJobDialog({
   const toast = useToastStore();
   const createMutation = useCreateJob();
   const customersQuery = useCustomers({ rows_per_page: 200 }, open);
-  const groupsQuery = useManagementGroups({ rows_per_page: 200 }, open);
 
   const [name, setName] = useState("");
   const [customerId, setCustomerId] = useState("");
@@ -39,14 +34,10 @@ export function CreateJobDialog({
   const [siteContactEmail, setSiteContactEmail] = useState("");
   const [siteContactPhone, setSiteContactPhone] =
     useState<PhoneValue>(emptyPhoneValue);
-  const [groupIds, setGroupIds] = useState<number[]>([]);
   const [isActive, setIsActive] = useState(true);
 
   const customers = (Array.isArray(customersQuery.data)
     ? customersQuery.data
-    : []) as Array<{ id?: number; name?: string }>;
-  const groups = (Array.isArray(groupsQuery.data)
-    ? groupsQuery.data
     : []) as Array<{ id?: number; name?: string }>;
 
   useEffect(() => {
@@ -58,18 +49,11 @@ export function CreateJobDialog({
       setSiteContactName("");
       setSiteContactEmail("");
       setSiteContactPhone(emptyPhoneValue());
-      setGroupIds([]);
       setIsActive(true);
     }
   }, [open]);
 
   if (!open) return null;
-
-  function toggleGroup(id: number) {
-    setGroupIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-  }
 
   async function handleCreate() {
     if (!name.trim()) {
@@ -94,10 +78,6 @@ export function CreateJobDialog({
     }
     if (!radius.trim()) {
       toast.warning("Radius is required");
-      return;
-    }
-    if (groupIds.length <= 0) {
-      toast.warning("Select at least one management group");
       return;
     }
 
@@ -127,7 +107,6 @@ export function CreateJobDialog({
         site_contact_phone_number: siteContactPhone.phone_number,
         site_contact_phone_country_code: siteContactPhone.phone_country_code,
         site_contact_phone_country_iso: siteContactPhone.phone_country_iso,
-        management_groups: groupIds.map((id) => ({ id })),
         is_active: isActive,
       });
       toast.success("Job created");
@@ -215,35 +194,6 @@ export function CreateJobDialog({
           value={siteContactPhone}
           onChange={setSiteContactPhone}
         />
-
-        <fieldset className="flex flex-col gap-2">
-          <legend className="text-sm font-medium text-[var(--mt-text)]">
-            Management groups
-          </legend>
-          <div className="max-h-48 space-y-2 overflow-y-auto rounded-xl border border-border p-3">
-            {!groups.length ? (
-              <p className="text-sm text-muted">No management groups found</p>
-            ) : (
-              groups.map((g) => {
-                const id = Number(g.id);
-                return (
-                  <label
-                    key={String(g.id)}
-                    className="flex items-center gap-2 text-sm"
-                  >
-                    <input
-                      type="checkbox"
-                      className="size-4 accent-primary"
-                      checked={groupIds.includes(id)}
-                      onChange={() => toggleGroup(id)}
-                    />
-                    <span>{g.name || `Group #${g.id}`}</span>
-                  </label>
-                );
-              })
-            )}
-          </div>
-        </fieldset>
 
         <label className="flex items-center gap-2 text-sm">
           <input

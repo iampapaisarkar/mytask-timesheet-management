@@ -14,8 +14,6 @@ import PayrollCalendars from "./payrollCalendars.js";
 import PayCycles from "./payCycles.js";
 import AwardRates from "./awardRates.js";
 import EmployeePayrolls from "./employeePayrolls.js";
-import ManagementGroupEmployees from "./managementGroupEmployees.js";
-import ManagementGroups from "./managementGroups.js";
 import UserTimezones from "./userTimezones.js";
 import HolidayCalendars from "./holidayCalendars.js";
 import States from "./states.js";
@@ -101,23 +99,7 @@ const Employees = db.define(
 Employees.prototype.toJSON = function () {
   const full = this.get({ plain: true });
 
-  // Extract management_group, wage, payroll and details
-  const { management_group_employees, wage, payroll, ...rest } = full;
-
-  let management_group = {
-    manager_of_groups: [],
-    staff_of_group: null,
-  };
-
-  const mgEmployees = management_group_employees || [];
-
-  for (const employeeGroup of mgEmployees) {
-    if (employeeGroup.is_manager) {
-      management_group.manager_of_groups.push(employeeGroup.group);
-    } else {
-      management_group.staff_of_group = employeeGroup.group;
-    }
-  }
+  const { wage, payroll, ...rest } = full;
 
   return {
     details: {
@@ -132,7 +114,6 @@ Employees.prototype.toJSON = function () {
     },
     wage: wage || null,
     payroll: payroll || null,
-    management_group: management_group || null,
     push_to_xero: true,
   };
 };
@@ -165,11 +146,6 @@ Employees.associate = function (models) {
   models.Employees.belongsTo(models.Users, {
     as: "creator",
     foreignKey: "created_by",
-  });
-
-  models.Employees.hasMany(models.ManagementGroupEmployees, {
-    as: "management_group_employees",
-    foreignKey: "employee_id",
   });
 
   models.Employees.belongsTo(models.Regions, {
@@ -290,16 +266,6 @@ Employees.addScope(
             model: OrganisationRoles,
             as: "role",
             attributes: ["id", "name", "code"],
-          },
-        ],
-      },
-      {
-        model: ManagementGroupEmployees,
-        as: "management_group_employees",
-        include: [
-          {
-            model: ManagementGroups,
-            as: "group",
           },
         ],
       },

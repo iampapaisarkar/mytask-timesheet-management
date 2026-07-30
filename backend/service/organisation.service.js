@@ -4,7 +4,6 @@ const {
   Organisations,
   OrganisationSettings,
   Employees,
-  ManagementGroupEmployees,
   Users,
   OrganisationRoles,
   UserOrganisationRoles,
@@ -104,7 +103,6 @@ function safeParse(value) {
 async function createOrgAdminEmployee(
   organisationId,
   user,
-  managementGroupId,
   transaction,
 ) {
   try {
@@ -122,17 +120,7 @@ async function createOrgAdminEmployee(
       { transaction },
     );
 
-    await ManagementGroupEmployees.create(
-      {
-        organisation_id: organisationId,
-        group_id: managementGroupId,
-        employee_id: employee.id,
-        is_manager: true,
-      },
-      { transaction },
-    );
-
-    return true;
+    return employee;
   } catch (err) {
     console.log("createOrgAdminEmployeeError::", err);
     if (err instanceof AppError) {

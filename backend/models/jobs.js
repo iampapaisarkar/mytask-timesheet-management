@@ -1,16 +1,11 @@
 import { DataTypes } from "sequelize";
 import { db } from "../database.js";
 import Customers from "./customers.js";
-import ManagementGroups from "./managementGroups.js";
-import ManagementGroupJobs from "./managementGroupJobs.js";
-import ManagementGroupEmployees from "./managementGroupEmployees.js";
-import Employees from "./employees.js";
-import Users from "./users.js";
 import JobAddress from "./jobAddress.js";
 import States from "./states.js";
 
 const Jobs = db.define(
-  "withEmployee",
+  "Jobs",
   {
     id: {
       type: DataTypes.INTEGER,
@@ -65,45 +60,19 @@ const Jobs = db.define(
     },
   },
   {
-    tableName: "jobs", // Table name should be in lowercase and plural
+    tableName: "jobs",
     timestamps: false,
   },
 );
 
-// Override toJSON
 Jobs.prototype.toJSON = function () {
-  const full = this.get({ plain: true });
-
-  const { management_group_jobs, ...rest } = full;
-
-  let management_groups = [];
-
-  let mgroups = management_group_jobs || [];
-
-  for (const mgroup of mgroups) {
-    if (mgroup?.management_group) {
-      management_groups.push(mgroup?.management_group);
-    }
-  }
-
-  return {
-    ...rest,
-    management_groups: management_groups,
-  };
+  return this.get({ plain: true });
 };
 
-// -----------------------------
-//   ASSOCIATIONS
-// -----------------------------
 Jobs.associate = (models) => {
   Jobs.belongsTo(models.Customers, {
     foreignKey: "customer_id",
     as: "customer",
-  });
-
-  Jobs.hasMany(models.ManagementGroupJobs, {
-    foreignKey: "job_id",
-    as: "management_group_jobs",
   });
 
   Jobs.hasOne(models.JobAddress, {
@@ -112,21 +81,21 @@ Jobs.associate = (models) => {
   });
 };
 
-// ----------------------------------------------------------------------
-// Default Scope: only includes associations, root-level attributes go inside details
-// ----------------------------------------------------------------------
-Jobs.addScope("withEmployee", (employeeCondition) => ({
+/**
+ * Org-scoped job list with address + customer.
+ * Previously filtered via management groups; now organisation-wide.
+ * `employeeCondition` is ignored (kept for call-site compatibility).
+ */
+Jobs.addScope("withEmployee", (_employeeCondition) => ({
   subQuery: false,
   include: [
     {
       model: JobAddress,
       as: "address",
-      // attributes: ["id", "name"],
       include: [
         {
           model: States,
           as: "state",
-          // attributes: ["id", "name"],
         },
       ],
     },
@@ -134,39 +103,6 @@ Jobs.addScope("withEmployee", (employeeCondition) => ({
       model: Customers,
       as: "customer",
       attributes: ["id", "name"],
-    },
-    {
-      model: ManagementGroupJobs,
-      as: "management_group_jobs",
-      // attributes: ["job_id", "group_id"],
-      required: true,
-      include: [
-        {
-          model: ManagementGroups,
-          as: "management_group",
-          required: true,
-          include: [
-            {
-              model: ManagementGroupEmployees,
-              as: "employees",
-              where: employeeCondition,
-              required: true,
-              include: [
-                {
-                  model: Employees.unscoped(),
-                  as: "employee",
-                  include: [
-                    {
-                      model: Users,
-                      as: "user",
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-      ],
     },
   ],
 }));

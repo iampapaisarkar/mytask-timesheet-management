@@ -29,8 +29,6 @@ const {
   TimesheetSubmissionFrequencies,
   PayrollCalendars,
   AwardRates,
-  ManagementGroups,
-  ManagementGroupEmployees,
   Jobs,
   Timesheets,
   TimesheetStatus,
@@ -199,19 +197,6 @@ export async function getEmployeeFormLookups(organisation) {
     roleWhere.code[Op.notIn].push("moderator");
   }
 
-  let groupWhere = { organisation_id: organisation.id };
-  if (roleCode === "manager" || roleCode === "staff") {
-    const employeeGroups = await ManagementGroupEmployees.findAll({
-      where: { employee_id: organisation?.employee?.id },
-      raw: true,
-    });
-    const groupIds = employeeGroups.map((g) => g.group_id);
-    groupWhere = {
-      ...groupWhere,
-      [Op.or]: [{ id: { [Op.in]: groupIds } }, { default: true }],
-    };
-  }
-
   const [
     roles,
     regions,
@@ -221,7 +206,6 @@ export async function getEmployeeFormLookups(organisation) {
     timesheet_submission_frequencies,
     payroll_calendars,
     award_rates,
-    management_groups,
   ] = await Promise.all([
     OrganisationRoles.findAll({
       where: roleWhere,
@@ -267,12 +251,6 @@ export async function getEmployeeFormLookups(organisation) {
       order: [["name", "asc"]],
       raw: true,
     }),
-    ManagementGroups.findAll({
-      where: groupWhere,
-      attributes: ["id", "name"],
-      order: [["name", "asc"]],
-      raw: true,
-    }),
   ]);
 
   return {
@@ -288,23 +266,15 @@ export async function getEmployeeFormLookups(organisation) {
       ),
       payroll_calendars: mapNamedIdList(payroll_calendars),
       award_rates: mapNamedIdList(award_rates),
-      management_groups: mapNamedIdList(management_groups),
     },
   };
 }
 
 async function listAvailableJobs(organisation) {
   const whereCondition = { organisation_id: organisation.id };
-  let employeeCondition = {};
-  if (
-    organisation?.role?.code === "manager" ||
-    organisation?.role?.code === "staff"
-  ) {
-    employeeCondition = { employee_id: organisation?.employee?.id };
-  }
 
   const jobs = await Jobs.scope({
-    method: ["withEmployee", employeeCondition],
+    method: ["withEmployee", {}],
   }).findAll({
     where: whereCondition,
     order: [["name", "asc"]],
@@ -316,26 +286,20 @@ async function listAvailableJobs(organisation) {
   return jobs.map(mapJobOption);
 }
 
+/** Managers see all employees in the organisation (org-wide scoping). */
 async function resolveManagementStaffIds(organisation) {
   if (organisation?.role?.code !== "manager") return null;
-  const managerGroups = await ManagementGroupEmployees.findAll({
+  const employees = await Employees.unscoped().findAll({
     where: {
-      employee_id: organisation?.employee?.id,
-      is_manager: true,
+      organisation_id: organisation.id,
+      ...(organisation?.employee?.id
+        ? { id: { [Op.ne]: organisation.employee.id } }
+        : {}),
     },
+    attributes: ["id"],
     raw: true,
   });
-  const managerGroupIds = managerGroups.map((g) => g.group_id);
-  const staffGroups = await ManagementGroupEmployees.findAll({
-    where: {
-      group_id: { [Op.in]: managerGroupIds },
-      is_manager: false,
-    },
-    raw: true,
-  });
-  return Array.from(
-    new Set(staffGroups.map((g) => g.employee_id).filter(Boolean)),
-  );
+  return employees.map((e) => e.id);
 }
 
 /**

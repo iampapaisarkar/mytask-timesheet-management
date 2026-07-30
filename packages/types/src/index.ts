@@ -50,7 +50,6 @@ export type OrganisationAcl = {
   report: CrudPermission;
   employee: CrudPermission;
   customer: CrudPermission;
-  managementGroup: CrudPermission;
   job: CrudPermission;
   region: CrudPermission;
   holidayCalendar: CrudPermission;
@@ -198,7 +197,6 @@ export interface EmployeeFormLookupsView {
   timesheet_submission_frequencies: NamedLookup[];
   payroll_calendars: NamedLookup[];
   award_rates: NamedLookup[];
-  management_groups: NamedLookup[];
 }
 
 export interface JobOptionView {

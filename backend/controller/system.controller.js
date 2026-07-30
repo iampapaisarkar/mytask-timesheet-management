@@ -16,13 +16,11 @@ const {
   RoundingIntervals,
   Employees,
   UserOrganisationRoles,
-  ManagementGroups,
   EmploymentStatus,
   EmploymentTypes,
   PayrollCalendars,
   AwardRates,
   EarningRates,
-  ManagementGroupEmployees,
   Jobs,
   Timesheets,
   States,
@@ -785,101 +783,6 @@ export async function managerStaffEmployees(req, res, next) {
   }
 }
 
-export async function managementGroups(req, res, next) {
-  const { user, organisation } = req.body;
-  let {
-    rows_per_page,
-    page_number,
-    sort_by,
-    sort_direction,
-    search,
-    exclude_ids,
-  } = req.query;
-
-  try {
-    const rowsPerPage = parseInt(rows_per_page) || 10;
-    const pageNumber = parseInt(page_number) || 1;
-    const offset = (pageNumber - 1) * rowsPerPage;
-    const sortBy = sort_by || "id";
-    const sortDirection = sort_direction || "asc";
-    let excludeIds = [];
-    if (exclude_ids) {
-      excludeIds = JSON.parse(exclude_ids);
-    }
-
-    let whereCondition = {
-      organisation_id: organisation.id,
-    };
-
-    if (search && search.trim() !== "") {
-      whereCondition = {
-        ...whereCondition,
-        [Op.or]: [{ name: { [Op.like]: `%${search}%` } }],
-      };
-    }
-
-    // Exclude specific employee IDs
-    if (excludeIds && excludeIds.length > 0) {
-      whereCondition = {
-        ...whereCondition,
-        id: { [Op.notIn]: excludeIds },
-      };
-    }
-
-    if (
-      organisation?.role?.code === "manager" ||
-      organisation?.role?.code === "staff"
-    ) {
-      const employeeGroups = await ManagementGroupEmployees.findAll({
-        where: {
-          employee_id: organisation?.employee?.id,
-        },
-        raw: true,
-      });
-      const groupIds = employeeGroups.map((group) => group.group_id);
-      // whereCondition = {
-      //   ...whereCondition,
-      //   id: { [Op.in]: groupIds },
-      // };
-      whereCondition = {
-        ...whereCondition,
-        [Op.or]: [{ id: { [Op.in]: groupIds } }, { default: true }],
-      };
-    }
-
-    const { count, rows: groups } = await ManagementGroups.scope({
-      method: ["withEmployee", whereCondition],
-    }).findAndCountAll({
-      where: whereCondition,
-      raw: false,
-      nest: true,
-      offset,
-      limit: rowsPerPage,
-      order: [[sortBy, sortDirection]],
-    });
-
-    const total_pages = Math.ceil(groups.length / rowsPerPage);
-
-    return res.status(200).json({
-      data: groups,
-      pagination: {
-        total_rows: groups.length,
-        rows_per_page: rowsPerPage,
-        page_number: pageNumber,
-        total_pages,
-        sort_by: sortBy,
-        sort_direction: sortDirection,
-      },
-    });
-  } catch (err) {
-    console.error("Error fetching management groups:", err);
-    return res.status(500).json({
-      message: "Unable to fetch management groups",
-      details: err.message,
-    });
-  }
-}
-
 export async function employmentStatus(req, res, next) {
   const { user } = req.body;
   try {
@@ -1145,37 +1048,6 @@ export async function employees(req, res, next) {
     }
 
     let employeeCondition = {};
-    if (organisation?.role?.code === "manager") {
-      const managerGroups = await ManagementGroupEmployees.findAll({
-        where: {
-          employee_id: organisation?.employee?.id,
-          is_manager: true,
-        },
-        raw: true,
-      });
-      const managerGroupIds = managerGroups.map((group) => group.group_id);
-
-      const staffGroups = await ManagementGroupEmployees.findAll({
-        where: {
-          group_id: { [Op.in]: managerGroupIds },
-          is_manager: false,
-        },
-        raw: true,
-      });
-      let staffIds = new Set();
-      // const staffIds = staffGroups.map((group) => group.employee_id);
-      if (staffGroups && staffGroups.length > 0) {
-        staffGroups.forEach((group) => {
-          if (group?.employee_id) {
-            staffIds.add(group.employee_id);
-          }
-        });
-      }
-      const uniqueStaffIds = Array.from(staffIds);
-      employeeCondition = {
-        id: { [Op.in]: uniqueStaffIds },
-      };
-    }
 
     const { count, rows: employees } =
       await Employees.unscoped().findAndCountAll({

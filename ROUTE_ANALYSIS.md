@@ -41,7 +41,6 @@ Requires `requiresAuth` + `requiresOrganisation`.
 | `settings/earning-rate-rules` | Award Rate | `awardRate.list` |
 | `employees` | Employees | `employee.list` |
 | `customers` | Customers | `customer.list` |
-| `management-group` | Management Group | `managementGroup.list` |
 | `jobs` | Jobs | `job.list` |
 
 ## Catch-all

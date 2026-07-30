@@ -3,13 +3,11 @@ export const Acl = {
     const rolePermissions = {
       owner: {
         organisationSetting: createPermissions(false, true, false, true, false),
-        // Owner is also created as an employee on org create — they use My Sheets for own timesheets
         timesheet: createPermissions(true, true, false, true, false),
         timesheetManagement: createPermissions(true, true, true, true, false),
         report: createPermissions(true, true, false, false, false),
         employee: createPermissions(true, false, true, true, false),
         customer: createPermissions(true, false, true, true, false),
-        managementGroup: createPermissions(true, false, true, true, false),
         job: createPermissions(true, false, true, true, false),
         region: createPermissions(true, false, true, true, false),
         holidayCalendar: createPermissions(true, false, true, true, false),
@@ -25,14 +23,13 @@ export const Acl = {
           true,
           false,
           false,
-          false
+          false,
         ),
         timesheet: createPermissions(true, true, false, true, false),
         timesheetManagement: createPermissions(true, true, true, true, false),
         report: createPermissions(true, true, false, false, false),
         employee: createPermissions(true, false, true, true, false),
         customer: createPermissions(true, false, true, true, false),
-        managementGroup: createPermissions(true, false, true, true, false),
         job: createPermissions(true, false, true, true, false),
         region: createPermissions(true, false, true, true, false),
         holidayCalendar: createPermissions(true, false, true, true, false),
@@ -48,14 +45,13 @@ export const Acl = {
           false,
           false,
           false,
-          false
+          false,
         ),
         timesheet: createPermissions(true, true, false, true, false),
         timesheetManagement: createPermissions(true, true, true, true, false),
         report: createPermissions(true, true, false, false, false),
         employee: createPermissions(false, false, false, false, false),
         customer: createPermissions(false, false, false, false, false),
-        managementGroup: createPermissions(true, false, false, false, false),
         job: createPermissions(true, false, true, true, false),
         region: createPermissions(false, false, false, false, false),
         holidayCalendar: createPermissions(false, false, false, false, false),
@@ -71,7 +67,7 @@ export const Acl = {
           false,
           false,
           false,
-          false
+          false,
         ),
         timesheet: createPermissions(true, true, false, true, false),
         timesheetManagement: createPermissions(
@@ -79,12 +75,11 @@ export const Acl = {
           false,
           false,
           false,
-          false
+          false,
         ),
         report: createPermissions(true, true, false, false, false),
         employee: createPermissions(false, false, false, false, false),
         customer: createPermissions(false, false, false, false, false),
-        managementGroup: createPermissions(true, false, false, false, false),
         job: createPermissions(true, false, false, false, false),
         region: createPermissions(false, false, false, false, false),
         holidayCalendar: createPermissions(false, false, false, false, false),
@@ -101,28 +96,36 @@ export const Acl = {
         organisationSetting: createPermissions(),
         timesheet: createPermissions(),
         timesheetManagement: createPermissions(),
+        report: createPermissions(),
         employee: createPermissions(),
         customer: createPermissions(),
-        managementGroup: createPermissions(),
         job: createPermissions(),
-        setting: {
-          view: false,
-          region: createPermissions(),
-          holidayCalendar: createPermissions(),
-          payrollCalendar: createPermissions(),
-          earningRate: createPermissions(),
-          awardRate: createPermissions(),
-        },
+        region: createPermissions(),
+        holidayCalendar: createPermissions(),
+        payrollCalendar: createPermissions(),
+        earningRate: createPermissions(),
+        awardRate: createPermissions(),
+        setting: createPermissions(),
         xero: createPermissions(),
       }
     );
   },
 };
 
-const createPermissions = (
+function createPermissions(
   list = false,
   view = false,
   create = false,
   edit = false,
-  del = false
-) => ({ list, view, create, edit, delete: del });
+  del = false,
+) {
+  return {
+    list: list,
+    view: view,
+    create: create,
+    edit: edit,
+    delete: del,
+  };
+}
+
+export default Acl;

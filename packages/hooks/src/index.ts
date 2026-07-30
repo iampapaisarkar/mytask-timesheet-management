@@ -7,7 +7,6 @@ import {
   employeesApi,
   customersApi,
   jobsApi,
-  managementGroupsApi,
   systemApi,
   screensApi,
 } from "@mytask/api";
@@ -36,8 +35,6 @@ export const queryKeys = {
   employees: (params?: ListParams) => ["employees", params] as const,
   customers: (params?: ListParams) => ["customers", params] as const,
   jobs: (params?: ListParams) => ["jobs", params] as const,
-  managementGroups: (params?: ListParams) =>
-    ["management-groups", params] as const,
   system: (path: string) => ["system", path] as const,
   notifications: ["notifications"] as const,
   notificationsList: ["notifications", "list"] as const,
@@ -546,38 +543,6 @@ export function useSearchEmployeeByEmail() {
   });
 }
 
-export function useCreateManagementGroup() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (payload: Record<string, unknown>) => {
-      const res = await managementGroupsApi.create(payload);
-      return res.data;
-    },
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["management-groups"] });
-    },
-  });
-}
-
-export function useUpdateManagementGroup() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      id,
-      payload,
-    }: {
-      id: string | number;
-      payload: Record<string, unknown>;
-    }) => {
-      const res = await managementGroupsApi.update(id, payload);
-      return res.data;
-    },
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["management-groups"] });
-    },
-  });
-}
-
 export function useEmployees(params: ListParams = {}, enabled = true) {
   return useQuery({
     queryKey: queryKeys.employees(params),
@@ -605,17 +570,6 @@ export function useJobs(params: ListParams = {}, enabled = true) {
     queryKey: queryKeys.jobs(params),
     queryFn: async ({ signal }) => {
       const res = await jobsApi.list(params, { signal });
-      return res.data.data;
-    },
-    enabled,
-  });
-}
-
-export function useManagementGroups(params: ListParams = {}, enabled = true) {
-  return useQuery({
-    queryKey: queryKeys.managementGroups(params),
-    queryFn: async ({ signal }) => {
-      const res = await managementGroupsApi.list(params, { signal });
       return res.data.data;
     },
     enabled,

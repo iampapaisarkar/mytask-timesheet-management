@@ -10,7 +10,6 @@ const {
   InvitationStatus,
   Regions,
   NokRelations,
-  ManagementGroupEmployees,
   EmployeeWages,
   EmployeePayrolls,
   PayrollCalendars,
@@ -227,65 +226,6 @@ async function createOrUpdateEmployeeDetails(
       throw err;
     }
     throw new AppError("Unable to create or update employee details!", 500);
-  }
-}
-
-async function createOrUpdateEmployeeManagementGroup(
-  user,
-  organisation,
-  action,
-  management_group,
-  employee,
-  details,
-  id = null,
-  transaction,
-) {
-  try {
-    const currentUTCTime = moment().utc().format();
-
-    if (id) {
-      const groupIds = [
-        ...management_group?.manager_of_groups.map((item) => item.id),
-        management_group?.staff_of_group?.id,
-      ];
-      await ManagementGroupEmployees.destroy({
-        where: {
-          employee_id: id,
-          organisation_id: organisation.id,
-          group_id: { [Op.in]: groupIds },
-        },
-        transaction,
-      });
-    }
-    if (
-      management_group?.manager_of_groups?.length > 0 &&
-      details.role.code !== "staff"
-    ) {
-      for (const group of management_group.manager_of_groups) {
-        await ManagementGroupEmployees.create(
-          {
-            organisation_id: organisation.id,
-            group_id: group.id,
-            employee_id: employee.id,
-            is_manager: true,
-          },
-          { transaction },
-        );
-      }
-    }
-    if (management_group.staff_of_group) {
-      await ManagementGroupEmployees.create(
-        {
-          organisation_id: organisation.id,
-          group_id: management_group.staff_of_group.id,
-          employee_id: employee.id,
-          is_manager: false,
-        },
-        { transaction },
-      );
-    }
-  } catch (err) {
-    console.log("createOrUpdateEmployeeManagementGroupError::", err);
   }
 }
 
@@ -633,7 +573,6 @@ function generateInvitationToken(invitationData) {
 
 export default {
   createOrUpdateEmployeeDetails,
-  createOrUpdateEmployeeManagementGroup,
   createOrUpdateEmployeeWage,
   createOrUpdateEmployeePayroll,
   inviteEmployee,

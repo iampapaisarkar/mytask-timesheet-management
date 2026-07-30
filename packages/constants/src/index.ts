@@ -46,7 +46,6 @@ export const ROUTES = {
     `/org/${orgCode}/settings/earning-rate-rules`,
   employees: (orgCode: string) => `/org/${orgCode}/employees`,
   customers: (orgCode: string) => `/org/${orgCode}/customers`,
-  managementGroup: (orgCode: string) => `/org/${orgCode}/management-group`,
   jobs: (orgCode: string) => `/org/${orgCode}/jobs`,
   xeroAuthenticate: "/xero/authenticate",
 } as const;
@@ -82,12 +81,6 @@ export const ORG_NAV = [
     label: "Customers",
     path: "customers",
     acl: { action: "customer", permission: "list" },
-  },
-  {
-    key: "managementGroup",
-    label: "Management Group",
-    path: "management-group",
-    acl: { action: "managementGroup", permission: "list" },
   },
   {
     key: "jobs",
@@ -146,10 +139,6 @@ export const ORG_ROUTE_ACL = [
   },
   { path: "employees", acl: { action: "employee", permission: "list" } },
   { path: "customers", acl: { action: "customer", permission: "list" } },
-  {
-    path: "management-group",
-    acl: { action: "managementGroup", permission: "list" },
-  },
   { path: "jobs", acl: { action: "job", permission: "list" } },
 ] as const;
 

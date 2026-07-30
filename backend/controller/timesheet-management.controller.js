@@ -6,7 +6,6 @@ const {
   Timesheets,
   TimesheetDays,
   TimesheetStatus,
-  ManagementGroupEmployees,
   UserTimezones,
 } = models;
 import moment from "moment-timezone";
@@ -50,38 +49,6 @@ export async function list(req, res, next) {
     //     employee_id: { [Op.ne]: organisation?.employee?.id },
     //   };
     // }
-
-    if (organisation?.role?.code === "manager") {
-      const managerGroups = await ManagementGroupEmployees.findAll({
-        where: {
-          employee_id: organisation?.employee?.id,
-          is_manager: true,
-        },
-        raw: true,
-      });
-      const managerGroupIds = managerGroups.map((group) => group.group_id);
-
-      const staffGroups = await ManagementGroupEmployees.findAll({
-        where: {
-          group_id: { [Op.in]: managerGroupIds },
-          is_manager: false,
-        },
-        raw: true,
-      });
-      let staffIds = new Set();
-      if (staffGroups && staffGroups.length > 0) {
-        staffGroups.forEach((group) => {
-          if (group?.employee_id) {
-            staffIds.add(group.employee_id);
-          }
-        });
-      }
-      const uniqueStaffIds = Array.from(staffIds);
-      whereCondition = {
-        ...whereCondition,
-        employee_id: { [Op.in]: uniqueStaffIds },
-      };
-    }
 
     if (search && search.trim() !== "") {
       whereCondition = {
@@ -226,28 +193,6 @@ export async function get(req, res, next) {
     });
 
     let employeeCondition = {};
-    if (organisation?.role?.code === "manager") {
-      const managerGroups = await ManagementGroupEmployees.findAll({
-        where: {
-          employee_id: organisation?.employee?.id,
-          is_manager: true,
-        },
-        raw: true,
-      });
-      const managerGroupIds = managerGroups.map((group) => group.group_id);
-
-      const staffGroup = await ManagementGroupEmployees.findOne({
-        where: {
-          group_id: { [Op.in]: managerGroupIds },
-          employee_id: employeeTimesheet?.employee_id,
-          is_manager: false,
-        },
-        raw: true,
-      });
-      employeeCondition = {
-        employee_id: staffGroup?.employee_id,
-      };
-    }
 
     const employeeTimezone =
       employeeTimesheet?.employee?.user?.timezone?.timezone || null;

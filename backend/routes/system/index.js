@@ -14,7 +14,6 @@ import {
   roundingIntervals,
   managerEmployees,
   managerStaffEmployees,
-  managementGroups,
   employmentStatus,
   employmentTypes,
   payrollCalendars,
@@ -44,7 +43,6 @@ router.get(
   OrganisationValidate,
   managerStaffEmployees
 );
-router.get("/management-groups", OrganisationValidate, managementGroups);
 router.get("/employment-status", employmentStatus);
 router.get("/employment-types", employmentTypes);
 router.get("/payroll-calendars", OrganisationValidate, payrollCalendars);

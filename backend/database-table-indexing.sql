@@ -25,12 +25,6 @@ ON employee_invitations(status_id, employee_id);
 CREATE INDEX idx_emp_inv_token ON employee_invitations(invitation_token(100));
 
 -- =========================
--- MANAGEMENT GROUPS
--- =========================
-CREATE INDEX idx_mge_employee_group 
-ON management_group_employees(employee_id, group_id);
-
--- =========================
 -- LOOKUP TABLES (UNIQUE only, no extra index needed)
 -- =========================
 CREATE UNIQUE INDEX uq_employment_status_code ON employment_status(code);

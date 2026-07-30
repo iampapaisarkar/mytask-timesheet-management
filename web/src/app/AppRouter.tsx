@@ -17,7 +17,6 @@ import { TimesheetManagementDetailPage } from "@/features/timesheet-management/T
 import { EmployeesPage } from "@/features/employees/EmployeesPage";
 import { CustomersPage } from "@/features/customers/CustomersPage";
 import { JobsPage } from "@/features/jobs/JobsPage";
-import { ManagementGroupsPage } from "@/features/management-groups/ManagementGroupsPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
 import { OrganisationDetailsPage } from "@/features/settings/OrganisationDetailsPage";
 import { RegionsPage } from "@/features/settings/RegionsPage";
@@ -201,18 +200,6 @@ export function AppRouter() {
               }
             >
               <Route path="customers" element={<CustomersPage />} />
-            </Route>
-            <Route
-              element={
-                <OrgAclRoute
-                  acl={{ action: "managementGroup", permission: "list" }}
-                />
-              }
-            >
-              <Route
-                path="management-group"
-                element={<ManagementGroupsPage />}
-              />
             </Route>
             <Route
               element={
