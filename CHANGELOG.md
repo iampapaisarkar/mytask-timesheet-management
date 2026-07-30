@@ -2,6 +2,11 @@
 
 ## 2026-07-30
 
+### Added
+
+- Production Socket.IO realtime architecture: shared `@mytask/realtime` contracts, JWT handshake gateway, `org:{id}` / `user:{id}` rooms, domain events (`employee.*`, `timesheet.*`, `payout.*`, `report.*`, `notification.created`, `auth.logout`), web + mobile singleton clients, Zustand domain stores, TanStack Query sync, offline queue scaffold, and atomic `resetAllStores()` logout wipe
+- Docs: `docs/REALTIME_ARCHITECTURE.md` event matrix and security notes
+
 ### Changed
 
 - Display clock times in 12-hour AM/PM across web/mobile timelines, reports, and rate period strings; show timesheet `code` (not `#id`) in lists, details, reports, payouts, and PDFs

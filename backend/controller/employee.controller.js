@@ -11,6 +11,12 @@ const {
 import { db } from "../database.js";
 import employeeService from "../service/employee.service.js";
 import moment from "moment";
+import {
+  emitEmployeeCreated,
+  emitEmployeeUpdated,
+  emitDashboardUpdated,
+  emitPayrollUpdated,
+} from "../service/realtime.service.js";
 
 export async function list(req, res, next) {
   const { user, orgCode, organisation } = req.body;
@@ -252,6 +258,24 @@ export async function create(req, res, next) {
 
     await transaction.commit();
 
+    emitEmployeeCreated(
+      organisation.id,
+      {
+        id: employee.id,
+        user_id: employee.user_id,
+        organisation_id: organisation.id,
+      },
+      user?.id,
+    );
+    if (payroll) {
+      emitPayrollUpdated(
+        organisation.id,
+        { id: employee.id, employee_id: employee.id, organisation_id: organisation.id },
+        user?.id,
+      );
+    }
+    emitDashboardUpdated(organisation.id);
+
     return res.status(200).json({
       message: "Employee created & invitation sent",
     });
@@ -327,6 +351,28 @@ export async function update(req, res, next) {
     );
 
     await transaction.commit();
+
+    emitEmployeeUpdated(
+      organisation.id,
+      {
+        id: Number(id),
+        user_id: employee?.user_id,
+        organisation_id: organisation.id,
+      },
+      user?.id,
+    );
+    if (payroll) {
+      emitPayrollUpdated(
+        organisation.id,
+        {
+          id: Number(id),
+          employee_id: Number(id),
+          organisation_id: organisation.id,
+        },
+        user?.id,
+      );
+    }
+    emitDashboardUpdated(organisation.id);
 
     return res.status(200).json({
       message: "Employee updated",

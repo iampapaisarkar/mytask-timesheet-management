@@ -59,8 +59,7 @@ export const FirebaseMessaging = {
   },
 
   /**
-   * 🔔 SEND NOTIFICATION (push + socket + DB)
-   * SAFE for thousands of users
+   * 🔔 SEND NOTIFICATION (DB + socket for ALL users; FCM when tokens exist)
    */
   sendNotification: async (userIds = [], message = {}, url = null) => {
     try {
@@ -68,15 +67,18 @@ export const FirebaseMessaging = {
         return { success: false };
       }
 
-      // 1️⃣ Fetch all tokens once
+      const uniqueUserIds = [
+        ...new Set(userIds.map((id) => Number(id)).filter((id) => id > 0)),
+      ];
+      if (uniqueUserIds.length === 0) return { success: false };
+
       const userFcms = await FcmConnections.findAll({
         where: {
-          user_id: { [Op.in]: userIds },
+          user_id: { [Op.in]: uniqueUserIds },
         },
         raw: true,
       });
 
-      // 2️⃣ Group tokens by user
       const tokensByUser = userFcms.reduce((acc, { user_id, token }) => {
         if (!acc[user_id]) acc[user_id] = [];
         acc[user_id].push(token);
@@ -89,9 +91,8 @@ export const FirebaseMessaging = {
         raw: true,
       });
 
-      // 3️⃣ Process per user (NOT per token)
-      for (const userId of Object.keys(tokensByUser)) {
-        // Save notification ONCE
+      // Persist + socket for every target user (including users without FCM tokens)
+      for (const userId of uniqueUserIds) {
         let notification = await Notifications.create({
           user_id: userId,
           title: message.title,
@@ -105,11 +106,9 @@ export const FirebaseMessaging = {
         notification = notification.dataValues;
         notification.status = status;
 
-        // 4️⃣ Emit Socket.IO immediately (FAST)
         SocketIO.sendNotification([Number(userId)], notification);
 
-        // 5️⃣ Send FCM in background (BATCH)
-        const tokens = tokensByUser[userId];
+        const tokens = tokensByUser[userId] || [];
         if (tokens.length === 0) continue;
 
         const payload = {
@@ -136,7 +135,6 @@ export const FirebaseMessaging = {
             : undefined,
         };
 
-        // 🔥 DO NOT await
         admin
           .messaging()
           .sendEachForMulticast(payload)
@@ -168,7 +166,6 @@ export const FirebaseMessaging = {
 
       const currentUtcDatetime = moment.utc();
 
-      // Token already exists
       const exists = await FcmConnections.findOne({
         where: { user_id: userId, token: newToken },
         raw: true,
@@ -178,7 +175,6 @@ export const FirebaseMessaging = {
         return { success: true };
       }
 
-      // Update old token
       if (oldToken) {
         const old = await FcmConnections.findOne({
           where: { user_id: userId, token: oldToken },
@@ -192,7 +188,6 @@ export const FirebaseMessaging = {
         }
       }
 
-      // Create new token
       await FcmConnections.create({
         user_id: userId,
         token: newToken,

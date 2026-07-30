@@ -1,0 +1,27 @@
+{
+  "name": "@mytask/realtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test src/**/*.test.ts"
+  },
+  "dependencies": {
+    "@mytask/hooks": "*",
+    "@mytask/types": "*",
+    "socket.io-client": "^4.7.5",
+    "zustand": "^5.0.3"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2"
+  }
+}

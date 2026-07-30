@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { notificationsApi } from "@mytask/api";
 import { getErrorMessage } from "@mytask/utils";
+import { useSocketStore } from "@mytask/realtime";
 import type { AppNotification } from "@mytask/types";
 import { useToastStore } from "@/store/toastStore";
 import { Bell } from "lucide-react";
@@ -37,6 +38,8 @@ export function NotificationsBell() {
   const rootRef = useRef<HTMLDivElement>(null);
   const qc = useQueryClient();
   const toast = useToastStore();
+  const socketStatus = useSocketStore((s) => s.status);
+  const socketLive = socketStatus === "connected";
 
   useEffect(() => {
     function onVisibility() {
@@ -58,9 +61,15 @@ export function NotificationsBell() {
       );
       return res.data as NotificationsListResponse;
     },
-    // Seeded by org-bootstrap; poll for freshness while visible
+    // Realtime via Socket.IO when connected; light poll as fallback
     staleTime: 30_000,
-    refetchInterval: pageVisible ? (open ? 30_000 : 60_000) : false,
+    refetchInterval: socketLive
+      ? false
+      : pageVisible
+        ? open
+          ? 30_000
+          : 60_000
+        : false,
     refetchIntervalInBackground: false,
   });
 

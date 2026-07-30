@@ -358,7 +358,7 @@ export async function forgotPassword(req, res, next) {
 }
 
 export async function logout(req, res, next) {
-  const {} = req.body;
+  const { user } = req.body;
   try {
     const authHeader = req.headers["authorization"];
     const token = authHeader?.replace("Bearer ", "");
@@ -366,6 +366,16 @@ export async function logout(req, res, next) {
     const response = await Auth.destroySession(token);
 
     if (response.success) {
+      if (user?.id) {
+        try {
+          const { emitAuthLogout } = await import(
+            "../service/realtime.service.js"
+          );
+          emitAuthLogout(user.id, "manual");
+        } catch (emitErr) {
+          console.error("auth.logout emit failed", emitErr?.message || emitErr);
+        }
+      }
       return res.status(200).json({
         message: "Successfully logged out",
       });

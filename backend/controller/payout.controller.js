@@ -1,4 +1,9 @@
 import payoutService from "../service/payout.service.js";
+import {
+  emitPayoutCreated,
+  emitPayoutUpdated,
+  emitDashboardUpdated,
+} from "../service/realtime.service.js";
 
 function deny(res) {
   return res.status(403).json({
@@ -50,6 +55,8 @@ export async function create(req, res) {
       timesheet_id,
       notes,
     });
+    emitPayoutCreated(organisation.id, payout, user?.id);
+    emitDashboardUpdated(organisation.id);
     return res.status(200).json({
       data: payout,
       message: "Payout created",
@@ -70,6 +77,8 @@ export async function markPaid(req, res) {
       user,
       id,
     });
+    emitPayoutUpdated(organisation.id, payout, user?.id);
+    emitDashboardUpdated(organisation.id);
     return res.status(200).json({
       data: payout,
       message: "Payout marked as paid",

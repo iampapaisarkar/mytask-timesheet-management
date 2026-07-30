@@ -13,6 +13,10 @@ const {
 import { TimesheetConfig } from "../class/timesheet.config.js";
 import timsheetService from "../service/timsheet.service.js";
 import redisUtils from "../utils/redis.utils.js";
+import {
+  emitTimesheetUpdated,
+  emitDashboardUpdated,
+} from "../service/realtime.service.js";
 
 export async function list(req, res, next) {
   const { user, organisation } = req.body;
@@ -349,6 +353,15 @@ export async function save(req, res, next) {
     await redisUtils.delCache(
       `timesheet_day:${organisation.id}:${organisation?.employee?.id}:${dayId}`
     );
+    emitTimesheetUpdated(
+      organisation.id,
+      {
+        id: Number(timesheetId),
+        organisation_id: organisation.id,
+        employee_id: organisation?.employee?.id,
+      },
+      user?.id,
+    );
     return res.status(200).json({
       message: "Timesheet saved",
     });
@@ -419,6 +432,18 @@ export async function submitForApproval(req, res, next) {
       timesheet,
       "submit-by-staff"
     );
+
+    emitTimesheetUpdated(
+      organisation.id,
+      {
+        id: Number(timesheetId),
+        organisation_id: organisation.id,
+        employee_id: organisation?.employee?.id,
+        status_code: "submitted",
+      },
+      user?.id,
+    );
+    emitDashboardUpdated(organisation.id);
 
     return res.status(200).json({
       message: "Timesheet submitted for approval",

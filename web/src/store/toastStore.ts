@@ -13,6 +13,7 @@ interface ToastState {
   items: ToastItem[];
   push: (toast: Omit<ToastItem, "id"> & { id?: string }) => void;
   dismiss: (id: string) => void;
+  clear: () => void;
   success: (title: string, description?: string) => void;
   error: (title: string, description?: string) => void;
   warning: (title: string, description?: string) => void;
@@ -27,6 +28,7 @@ export const useToastStore = create<ToastState>((set, get) => ({
     window.setTimeout(() => get().dismiss(id), 4200);
   },
   dismiss: (id) => set((s) => ({ items: s.items.filter((t) => t.id !== id) })),
+  clear: () => set({ items: [] }),
   success: (title, description) =>
     get().push({ title, description, tone: "success" }),
   error: (title, description) =>

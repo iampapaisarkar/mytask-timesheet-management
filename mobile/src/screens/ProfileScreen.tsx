@@ -1,19 +1,20 @@
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useQueryClient } from "@tanstack/react-query";
+import { authApi } from "@mytask/api";
 import { spacing } from "@mytask/theme";
 import { isTracking } from "../services/trackingSession";
 import { useAuthStore } from "../store/authStore";
-import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
+import { resetAllStores } from "../store/resetAllStores";
 
 export function ProfileScreen() {
   const user = useAuthStore((s) => s.user);
-  const clearSession = useAuthStore((s) => s.clearSession);
-  const clearOrg = useOrganisationStore((s) => s.clear);
   const c = useThemeStore((s) => s.colors);
   const mode = useThemeStore((s) => s.mode);
   const toggle = useThemeStore((s) => s.toggle);
   const toast = useToastStore();
+  const queryClient = useQueryClient();
 
   async function logout() {
     if (await isTracking()) {
@@ -24,8 +25,12 @@ export function ProfileScreen() {
       toast.warning("Stop tracking before logout");
       return;
     }
-    await clearSession();
-    await clearOrg();
+    try {
+      await authApi.logout();
+    } catch {
+      // still clear local session
+    }
+    await resetAllStores(queryClient);
     toast.info("Signed out");
   }
 

@@ -16,6 +16,11 @@ import timsheetService from "../service/timsheet.service.js";
 import timeUtils from "../utils/time.utils.js";
 import redisUtils from "../utils/redis.utils.js";
 import { db } from "../database.js";
+import {
+  emitTimesheetCreated,
+  emitTimesheetUpdated,
+  emitDashboardUpdated,
+} from "../service/realtime.service.js";
 
 export async function list(req, res, next) {
   const { user, organisation } = req.body;
@@ -569,6 +574,18 @@ export async function create(req, res, next) {
       );
     }
 
+    emitTimesheetCreated(
+      organisation.id,
+      {
+        id: timesheet.id,
+        organisation_id: organisation.id,
+        employee_id: employee.id,
+        code: timesheet.code,
+      },
+      user?.id,
+    );
+    emitDashboardUpdated(organisation.id);
+
     return res.status(200).json({
       message: "Timesheet created",
       data: { id: timesheet.id, job_ids: jobIds },
@@ -655,6 +672,16 @@ export async function save(req, res, next) {
       `timesheet_day:${organisation.id}:${timesheetDay?.employee_id}:${dayId}`,
     );
 
+    emitTimesheetUpdated(
+      organisation.id,
+      {
+        id: Number(timesheetId),
+        organisation_id: organisation.id,
+        employee_id: timesheetDay?.employee_id,
+      },
+      user?.id,
+    );
+
     return res.status(200).json({
       message: "Timesheet saved",
     });
@@ -725,6 +752,18 @@ export async function submitForApproval(req, res, next) {
       timesheet,
       "submit-by-manager",
     );
+
+    emitTimesheetUpdated(
+      organisation.id,
+      {
+        id: Number(timesheetId),
+        organisation_id: organisation.id,
+        employee_id: Number(employee_id),
+        status_code: "submitted",
+      },
+      user?.id,
+    );
+    emitDashboardUpdated(organisation.id);
 
     return res.status(200).json({
       message: "Timesheet submitted",
@@ -813,6 +852,18 @@ export async function approve(req, res, next) {
       "approve",
     );
 
+    emitTimesheetUpdated(
+      organisation.id,
+      {
+        id: Number(timesheetId),
+        organisation_id: organisation.id,
+        employee_id: Number(employee_id),
+        status_code: "approved",
+      },
+      user?.id,
+    );
+    emitDashboardUpdated(organisation.id);
+
     return res.status(200).json({
       message: "Timesheet approved",
     });
@@ -898,6 +949,18 @@ export async function reject(req, res, next) {
       timesheet,
       "reject",
     );
+
+    emitTimesheetUpdated(
+      organisation.id,
+      {
+        id: Number(timesheetId),
+        organisation_id: organisation.id,
+        employee_id: Number(employee_id),
+        status_code: "rejected",
+      },
+      user?.id,
+    );
+    emitDashboardUpdated(organisation.id);
 
     return res.status(200).json({
       message: "Timesheet rejected",

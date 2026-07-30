@@ -19,6 +19,7 @@
     "@mytask/types": "*",
     "@mytask/utils": "*",
     "@mytask/validation": "*",
+    "@mytask/realtime": "*",
     "@tanstack/react-query": "^5.69.0",
     "clsx": "^2.1.1",
     "firebase": "^11.6.0",

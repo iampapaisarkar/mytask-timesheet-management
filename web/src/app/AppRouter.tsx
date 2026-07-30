@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { GuestRoute, OrgAclRoute, ProtectedRoute } from "@/app/guards";
+import { RealtimeProvider } from "@/providers/RealtimeProvider";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { MainLayout } from "@/layouts/MainLayout";
 import { OrgLayout } from "@/layouts/OrgLayout";
@@ -29,6 +30,7 @@ import { PayoutsPage } from "@/features/payouts/PayoutsPage";
 export function AppRouter() {
   return (
     <BrowserRouter>
+      <RealtimeProvider>
       <Routes>
         {/* Auth action links must stay public even with an existing session */}
         <Route element={<AuthLayout />}>
@@ -186,6 +188,7 @@ export function AppRouter() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </RealtimeProvider>
     </BrowserRouter>
   );
 }

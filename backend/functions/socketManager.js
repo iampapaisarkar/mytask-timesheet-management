@@ -1,3 +1,7 @@
+/**
+ * @deprecated Legacy Socket.IO bootstrap. Not imported anywhere.
+ * Use `functions/socket-registry.js` (JWT auth, org rooms, Redis adapter).
+ */
 import { Server } from "socket.io";
 import models from "../models/index.js";
 const { Users } = models;

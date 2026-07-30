@@ -6,10 +6,11 @@ import { useAuthStore } from "@/store/authStore";
 import { useOrganisationStore } from "@/store/organisationStore";
 import { useThemeStore } from "@/store/themeStore";
 import { useSidebarStore } from "@/store/sidebarStore";
+import { resetAllStores } from "@/store/resetAllStores";
 import { initFirebase, isFirebaseConfigured } from "@/lib/firebase";
 import { ToastViewport } from "@/components/ui/ToastViewport";
 
-const queryClient = createAppQueryClient();
+export const queryClient = createAppQueryClient();
 
 export function AppProviders({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -31,8 +32,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
         getToken: () => useAuthStore.getState().token,
         getOrganisation: () => useOrganisationStore.getState().organisation,
         onUnauthorized: () => {
-          useAuthStore.getState().clearSession();
-          useOrganisationStore.getState().clear();
+          void resetAllStores(queryClient);
         },
       });
       useAuthStore.getState().hydrate();

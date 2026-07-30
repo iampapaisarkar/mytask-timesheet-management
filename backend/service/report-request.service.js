@@ -17,6 +17,10 @@ import {
 import { enqueueGenerateReport } from "../queue-jobs/generate-report.job.js";
 import { enqueueSendNotification } from "../queue-jobs/send-notification.job.js";
 import { enqueueSendEmail } from "../queue-jobs/send-email.job.js";
+import {
+  emitReportGenerated,
+  emitReportUpdated,
+} from "./realtime.service.js";
 
 const { ReportRequests, Organisations, Users, EmployeeWages } = models;
 
@@ -161,6 +165,18 @@ export async function createReportRequest({
     organisationCode: organisation.code,
     requestedBy: user.id,
   });
+
+  emitReportUpdated(
+    organisation.id,
+    {
+      id: request.id,
+      organisation_id: organisation.id,
+      status: "pending",
+      name: reportName,
+      requested_by: user.id,
+    },
+    user.id,
+  );
 
   return parseResult(request);
 }
@@ -321,6 +337,18 @@ export async function processReportRequest(reportRequestId) {
     });
 
     await notifyReportReady(request);
+
+    emitReportGenerated(
+      request.organisation_id,
+      {
+        id: request.id,
+        organisation_id: request.organisation_id,
+        status: "completed",
+        name: request.name,
+        requested_by: request.requested_by,
+      },
+      request.requested_by,
+    );
   } catch (err) {
     console.error("processReportRequest failed", err);
     await request.update({
@@ -329,6 +357,17 @@ export async function processReportRequest(reportRequestId) {
       completed_at: moment().utc().format(),
       updated_at: moment().utc().format(),
     });
+    emitReportUpdated(
+      request.organisation_id,
+      {
+        id: request.id,
+        organisation_id: request.organisation_id,
+        status: "failed",
+        name: request.name,
+        requested_by: request.requested_by,
+      },
+      request.requested_by,
+    );
     throw err;
   }
 }

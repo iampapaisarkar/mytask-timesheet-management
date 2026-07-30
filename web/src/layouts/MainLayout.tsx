@@ -1,22 +1,22 @@
 import { Link, Outlet, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { ROUTES } from "@mytask/constants";
 import { authApi } from "@mytask/api";
 import { displayName } from "@mytask/utils";
 import { LogOut, User } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
-import { useOrganisationStore } from "@/store/organisationStore";
 import { firebaseLogout } from "@/lib/firebase";
 import { Button } from "@/components/ui/Button";
 import { OrganisationSwitcher } from "@/components/OrganisationSwitcher";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useToastStore } from "@/store/toastStore";
+import { resetAllStores } from "@/store/resetAllStores";
 
 export function MainLayout() {
   const user = useAuthStore((s) => s.user);
-  const clearSession = useAuthStore((s) => s.clearSession);
-  const clearOrg = useOrganisationStore((s) => s.clear);
   const toast = useToastStore();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   async function handleLogout() {
     try {
@@ -29,8 +29,7 @@ export function MainLayout() {
     } catch {
       // ignore
     }
-    clearSession();
-    clearOrg();
+    await resetAllStores(queryClient);
     toast.info("Signed out", "See you next time");
     navigate(ROUTES.login);
   }

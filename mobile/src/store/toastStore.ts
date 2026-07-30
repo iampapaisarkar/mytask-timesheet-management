@@ -17,6 +17,7 @@ interface ToastState {
   warning: (title: string, description?: string) => void;
   info: (title: string, description?: string) => void;
   dismiss: (id: string) => void;
+  clear: () => void;
 }
 
 export const useToastStore = create<ToastState>((set, get) => ({
@@ -31,4 +32,5 @@ export const useToastStore = create<ToastState>((set, get) => ({
   warning: (title, description) => get().push("warning", title, description),
   info: (title, description) => get().push("info", title, description),
   dismiss: (id) => set({ items: get().items.filter((t) => t.id !== id) }),
+  clear: () => set({ items: [] }),
 }));

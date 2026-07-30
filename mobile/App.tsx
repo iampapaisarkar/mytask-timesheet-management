@@ -8,13 +8,15 @@ import { createApiClient } from '@mytask/api';
 import { createAppQueryClient } from '@mytask/hooks';
 import { colors } from '@mytask/theme';
 import { RootNavigator } from './src/navigation/RootNavigator';
+import { RealtimeProvider } from './src/providers/RealtimeProvider';
 import { useAuthStore } from './src/store/authStore';
 import { useOrganisationStore } from './src/store/organisationStore';
 import { useThemeStore } from './src/store/themeStore';
 import { ToastViewport } from './src/components/ToastViewport';
+import { resetAllStores } from './src/store/resetAllStores';
 import { ENV } from './src/config/env';
 
-const queryClient = createAppQueryClient();
+export const queryClient = createAppQueryClient();
 
 function App() {
   const [ready, setReady] = useState(false);
@@ -27,8 +29,7 @@ function App() {
       getToken: () => useAuthStore.getState().token,
       getOrganisation: () => useOrganisationStore.getState().organisation,
       onUnauthorized: () => {
-        void useAuthStore.getState().clearSession();
-        void useOrganisationStore.getState().clear();
+        void resetAllStores(queryClient);
       },
     });
     Promise.all([
@@ -62,13 +63,15 @@ function App() {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
-        <NavigationContainer theme={navTheme}>
-          <StatusBar
-            barStyle={mode === 'dark' ? 'light-content' : 'dark-content'}
-          />
-          <RootNavigator />
-          <ToastViewport />
-        </NavigationContainer>
+        <RealtimeProvider>
+          <NavigationContainer theme={navTheme}>
+            <StatusBar
+              barStyle={mode === 'dark' ? 'light-content' : 'dark-content'}
+            />
+            <RootNavigator />
+            <ToastViewport />
+          </NavigationContainer>
+        </RealtimeProvider>
       </QueryClientProvider>
     </SafeAreaProvider>
   );
