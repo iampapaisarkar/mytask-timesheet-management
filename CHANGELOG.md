@@ -43,7 +43,7 @@
 - Redesigned employee wage/payroll (employment type, pay type, Cash/Direct Debit/Bank Transfer); removed next-of-kin
 - Aligned organisation ACL (manager employee CRUD, owner customer delete, gated org settings edit, payout permissions)
 - Required holiday + payroll calendars before operational creates; blocked moderator/manager self-approve/reject
-- Payroll calendars are view-only in settings UI; further creates are blocked after the first calendar; new organisations auto-receive a default payroll calendar
+- Payroll calendars: multiple allowed per organisation; create enabled; existing calendars are view-only (updates rejected by API); new organisations still receive a default calendar
 - Removed Active status from customers and jobs
 - Holiday calendar list includes an explicit Edit action
 

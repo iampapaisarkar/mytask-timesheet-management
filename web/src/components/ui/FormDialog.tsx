@@ -10,6 +10,7 @@ export function FormDialog({
   loading,
   children,
   submitLabel = "Save",
+  readOnly = false,
 }: {
   open: boolean;
   title: string;
@@ -18,6 +19,8 @@ export function FormDialog({
   loading?: boolean;
   children: ReactNode;
   submitLabel?: string;
+  /** When true, only a Close action is shown (no submit). */
+  readOnly?: boolean;
 }) {
   return (
     <FullScreenModal
@@ -26,18 +29,24 @@ export function FormDialog({
       title={title}
       variant="form"
       footer={
-        <>
+        readOnly ? (
           <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
+            Close
           </Button>
-          <Button
-            type="button"
-            loading={loading}
-            onClick={() => void onSubmit()}
-          >
-            {submitLabel}
-          </Button>
-        </>
+        ) : (
+          <>
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              loading={loading}
+              onClick={() => void onSubmit()}
+            >
+              {submitLabel}
+            </Button>
+          </>
+        )
       }
     >
       <div className="flex flex-col gap-3">{children}</div>
