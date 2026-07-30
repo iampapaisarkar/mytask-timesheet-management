@@ -3,6 +3,7 @@ import models from "../models/index.js";
 const { Customers } = models;
 import moment from "moment";
 import { resolvePhoneFields } from "../utils/phone.js";
+import { resolveCustomerAddressFields } from "../utils/address.utils.js";
 
 export async function list(req, res, next) {
   const { user, organisation } = req.body;
@@ -125,24 +126,22 @@ export async function create(req, res, next) {
     }
 
     const currentUTCTime = moment().utc().format();
-    const formatted =
-      formatted_address ||
-      (typeof address === "string" ? address : address?.formatted_address) ||
-      null;
+    const addressFields = resolveCustomerAddressFields({
+      address,
+      formatted_address,
+      administrative_area,
+      city,
+      postal_code,
+      country,
+      country_code,
+      place_id,
+      ...req.body,
+    });
 
     const response = await Customers.create({
       organisation_id: organisation.id,
       abn: abn,
-      address: formatted,
-      formatted_address: formatted,
-      administrative_area: administrative_area || address?.administrative_area || null,
-      city: city || address?.city || null,
-      postal_code: postal_code || address?.postal_code || address?.postcode || null,
-      country: country || address?.country || null,
-      country_code: country_code || address?.country_code || null,
-      place_id: place_id || address?.place_id || null,
-      latitude: latitude ?? address?.latitude ?? null,
-      longitude: longitude ?? address?.longitude ?? null,
+      ...addressFields,
       contact_email: contact_email,
       contact_name: contact_name,
       contact_phone_number: contactPhone.phone_number,
@@ -224,24 +223,22 @@ export async function update(req, res, next) {
     }
 
     const currentUTCTime = moment().utc().format();
-    const formatted =
-      formatted_address ||
-      (typeof address === "string" ? address : address?.formatted_address) ||
-      null;
+    const addressFields = resolveCustomerAddressFields({
+      address,
+      formatted_address,
+      administrative_area,
+      city,
+      postal_code,
+      country,
+      country_code,
+      place_id,
+      ...req.body,
+    });
 
     const response = await Customers.update(
       {
         abn: abn,
-        address: formatted,
-        formatted_address: formatted,
-        administrative_area: administrative_area || address?.administrative_area || null,
-        city: city || address?.city || null,
-        postal_code: postal_code || address?.postal_code || address?.postcode || null,
-        country: country || address?.country || null,
-        country_code: country_code || address?.country_code || null,
-        place_id: place_id || address?.place_id || null,
-        latitude: latitude ?? address?.latitude ?? null,
-        longitude: longitude ?? address?.longitude ?? null,
+        ...addressFields,
         contact_email: contact_email,
         contact_name: contact_name,
         contact_phone_number: contactPhone.phone_number,

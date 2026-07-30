@@ -22,7 +22,23 @@ const Customers = db.define(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    address_line_1: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    address_line_2: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    street: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
     administrative_area: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+    state_region_province: {
       type: DataTypes.STRING(255),
       allowNull: true,
     },

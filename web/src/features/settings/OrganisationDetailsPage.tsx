@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { organisationsApi } from "@mytask/api";
 import { queryKeys } from "@mytask/hooks";
-import { getErrorMessage, phoneValueFromE164, type PhoneValue } from "@mytask/utils";
+import { getErrorMessage, phoneValueFromE164, fromAddressRecord, toAddressApiPayload, type PhoneValue } from "@mytask/utils";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { useOrganisationStore } from "@/store/organisationStore";
 import { Card, PageHeader } from "@/components/ui/Card";
@@ -56,11 +56,6 @@ export function OrganisationDetailsPage() {
     if (!query.data) return;
     const data = query.data;
     const addr = (data.address || {}) as Record<string, unknown>;
-    const state = (addr.state || {}) as {
-      id?: number;
-      name?: string;
-      code?: string;
-    };
     const settings = (data.settings || {}) as Record<string, unknown>;
     setName(String(data.name || ""));
     setEmail(String(data.email || ""));
@@ -71,29 +66,7 @@ export function OrganisationDetailsPage() {
       ),
     );
     setWebsite(String(data.website || ""));
-    setAddress({
-      ...emptyAddress(),
-      formatted_address: String(addr.formatted_address || addr.address_1 || ""),
-      street_address: String(addr.address_1 || ""),
-      address_1: String(addr.address_1 || ""),
-      address_2: String(addr.address_2 || ""),
-      city: String(addr.city || ""),
-      state: state.id
-        ? { id: state.id, name: state.name, code: state.code }
-        : addr.administrative_area
-          ? { name: String(addr.administrative_area) }
-          : null,
-      administrative_area: String(
-        addr.administrative_area || state.name || "",
-      ),
-      postcode: String(addr.postcode || ""),
-      postal_code: String(addr.postcode || ""),
-      country: String(addr.country || ""),
-      country_code: String(addr.country_code || ""),
-      place_id: String(addr.place_id || ""),
-      latitude: (addr.latitude as string | number | null) ?? "",
-      longitude: (addr.longitude as string | number | null) ?? "",
-    });
+    setAddress(fromAddressRecord(addr));
     setFrequency(
       String(settings.timesheet_submission_frequency || "weekly"),
     );
@@ -124,22 +97,7 @@ export function OrganisationDetailsPage() {
         phone_country_iso: phone.phone_country_iso,
         default_country: phone.phone_country_iso || address.country_code,
         website: website.trim() || null,
-        address: {
-          address_1: address.street_address || address.address_1,
-          street_address: address.street_address || address.address_1,
-          formatted_address: address.formatted_address,
-          address_2: address.address_2 || null,
-          city: address.city || null,
-          state: address.state,
-          administrative_area: address.administrative_area || null,
-          postcode: address.postal_code || address.postcode || null,
-          postal_code: address.postal_code || address.postcode || null,
-          country: address.country || null,
-          country_code: address.country_code || null,
-          place_id: address.place_id || null,
-          latitude: address.latitude === "" ? null : address.latitude,
-          longitude: address.longitude === "" ? null : address.longitude,
-        },
+        address: toAddressApiPayload(address, { includeCoordinates: false }),
       });
       await updateSettings.mutateAsync({
         timesheet_submission_frequency: frequency,
@@ -262,11 +220,14 @@ export function OrganisationDetailsPage() {
             {String(
               viewAddress.formatted_address ||
                 [
-                  viewAddress.address_1,
-                  viewAddress.address_2,
+                  viewAddress.address_line_1 || viewAddress.address_1,
+                  viewAddress.address_line_2 || viewAddress.address_2,
+                  viewAddress.street,
                   viewAddress.city,
-                  viewState.name || viewAddress.administrative_area,
-                  viewAddress.postcode,
+                  viewState.name ||
+                    viewAddress.state_region_province ||
+                    viewAddress.administrative_area,
+                  viewAddress.postal_code || viewAddress.postcode,
                   viewAddress.country,
                 ]
                   .filter(Boolean)

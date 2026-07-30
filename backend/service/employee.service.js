@@ -48,7 +48,13 @@ async function createOrUpdateEmployeeDetails(
       throw new AppError("Date of Birth is required!", 400);
     }
 
-    if (!details?.address?.address_1 && !details?.address?.formatted_address) {
+    if (
+      !details?.address?.address_1 &&
+      !details?.address?.address_line_1 &&
+      !details?.address?.formatted_address &&
+      !details?.address?.street &&
+      !details?.address?.street_address
+    ) {
       throw new AppError(
         "Please select an address from Google Places suggestions.",
         400,
@@ -114,14 +120,15 @@ async function createOrUpdateEmployeeDetails(
       if (details?.address) {
         const stateId = await resolveStateId(
           details.address.state ||
-            (details.address.administrative_area
-              ? { name: details.address.administrative_area }
+            (details.address.state_region_province || details.address.administrative_area
+              ? { name: details.address.state_region_province || details.address.administrative_area }
               : null),
           transaction,
         );
         const row = buildAddressRow(details.address, {
           organisationId: organisation.id,
           extra: { employee_id: id, state_id: stateId },
+          includeCoordinates: false,
         });
         await EmployeeAddress.create(row, { transaction });
       }
@@ -172,14 +179,15 @@ async function createOrUpdateEmployeeDetails(
       if (details?.address) {
         const stateId = await resolveStateId(
           details.address.state ||
-            (details.address.administrative_area
-              ? { name: details.address.administrative_area }
+            (details.address.state_region_province || details.address.administrative_area
+              ? { name: details.address.state_region_province || details.address.administrative_area }
               : null),
           transaction,
         );
         const row = buildAddressRow(details.address, {
           organisationId: organisation.id,
           extra: { employee_id: employee.id, state_id: stateId },
+          includeCoordinates: false,
         });
         await EmployeeAddress.create(row, { transaction });
       }

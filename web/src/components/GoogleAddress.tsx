@@ -1,80 +1,32 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { useSystemStates } from "@mytask/hooks";
+import {
+  emptyGlobalAddress,
+  hasAddressContent,
+  normalizeAddress,
+  parseGooglePlaceComponents,
+  type GlobalAddress,
+} from "@mytask/utils";
 import { TextInput } from "@/components/ui/TextInput";
 import {
   getGoogleMapsApiKey,
   hasGooglePlaces,
   loadGoogleMaps,
   type GoogleAutocomplete,
-  type GooglePlaceComponents,
 } from "@/lib/googleMaps";
 
-/**
- * Canonical worldwide address value from Google Places.
- * Missing components (no state, no postal code, etc.) are null/empty — never assumed.
- */
-export type AddressValue = {
-  /** Google-formatted full address */
-  formatted_address: string;
-  /** Street line (number + route) */
-  street_address: string;
-  /** @deprecated Prefer street_address — kept for API payload compatibility */
-  address_1: string;
-  address_2?: string;
-  city: string;
-  /** State / province / emirate — id optional; backend upserts by name */
-  state: { id?: number; name?: string; code?: string } | null;
-  administrative_area: string;
-  postcode: string;
-  postal_code: string;
-  country: string;
-  country_code: string;
-  place_id: string;
-  latitude: string | number | null;
-  longitude: string | number | null;
-};
+const MapLocationPicker = lazy(() =>
+  import("@/components/maps/MapLocationPicker").then((m) => ({
+    default: m.MapLocationPicker,
+  })),
+);
+/** @deprecated Prefer GlobalAddress — kept as web alias */
+export type AddressValue = GlobalAddress;
 
-export const emptyAddress = (): AddressValue => ({
-  formatted_address: "",
-  street_address: "",
-  address_1: "",
-  address_2: "",
-  city: "",
-  state: null,
-  administrative_area: "",
-  postcode: "",
-  postal_code: "",
-  country: "",
-  country_code: "",
-  place_id: "",
-  latitude: "",
-  longitude: "",
-});
+export const emptyAddress = (): AddressValue => emptyGlobalAddress();
 
 const inputClass =
   "mt-focus rounded-xl border border-border bg-[var(--mt-surface)] px-3.5 py-3 text-[var(--mt-text)] outline-none focus:border-primary";
-
-function component(
-  components: GooglePlaceComponents,
-  type: string,
-  short = false,
-): string {
-  const match = components.find((c) => c.types.includes(type));
-  if (!match) return "";
-  return short ? match.short_name : match.long_name;
-}
-
-function buildStreetLine(parts: GooglePlaceComponents): string {
-  const number = component(parts, "street_number");
-  const route = component(parts, "route");
-  const line = [number, route].filter(Boolean).join(" ").trim();
-  if (line) return line;
-  return (
-    component(parts, "premise") ||
-    component(parts, "subpremise") ||
-    ""
-  );
-}
 
 function matchKnownState(
   stateList: Array<{ id: number; name: string; code?: string }> | undefined,
@@ -86,50 +38,44 @@ function matchKnownState(
     (s) => s.name.toLowerCase() === name.toLowerCase(),
   );
   if (byName) return byName;
-  if (!code || !name) return null;
+  if (!code) return null;
   return (
     stateList.find(
-      (s) =>
-        (s.code || "").toLowerCase() === code.toLowerCase() &&
-        s.name.toLowerCase() === name.toLowerCase(),
+      (s) => (s.code || "").toLowerCase() === code.toLowerCase(),
     ) || null
-  );
-}
-
-function hasAddressContent(value?: Partial<AddressValue> | null): boolean {
-  if (!value) return false;
-  return Boolean(
-    value.formatted_address?.trim() ||
-      value.street_address?.trim() ||
-      value.address_1?.trim() ||
-      value.place_id?.trim(),
   );
 }
 
 export type GoogleAddressAutocompleteProps = {
   value?: Partial<AddressValue> | null;
   onChange: (next: AddressValue) => void;
-  /** Show lat/lng after selection (jobs). Default false. */
+  /** Show lat/lng fields + map coordinates. Default false. */
   requireCoordinates?: boolean;
-  /** Allow editing populated fields after selection. Default false (read-only details). */
+  /**
+   * Allow editing populated fields after selection.
+   * Always true by default — auto-filled fields are never locked.
+   */
   allowManualEdit?: boolean;
+  /** Embed interactive map (geolocation + pin drag). Jobs typically enable this. */
+  showMap?: boolean;
   placeholder?: string;
   label?: string;
   error?: string;
   className?: string;
-  /** Force showing detail fields even before selection (rare). */
+  /** Force showing detail fields even before selection. */
   alwaysShowDetails?: boolean;
 };
 
 /**
- * Worldwide Google Places address input.
- * Shows only the autocomplete until a place is selected, then fills structured fields.
+ * Worldwide Google Places address input + editable structured fields.
+ * Optionally embeds MapLocationPicker for geolocation / pin drag.
  */
 export function GoogleAddressAutocomplete({
   value,
   onChange,
   requireCoordinates = false,
-  allowManualEdit = false,
+  allowManualEdit = true,
+  showMap = false,
   placeholder = "Start typing an address…",
   label = "Address",
   error,
@@ -140,7 +86,7 @@ export function GoogleAddressAutocomplete({
   const hasMaps = Boolean(apiKey);
   const searchId = useId();
   const searchRef = useRef<HTMLInputElement>(null);
-  const form: AddressValue = { ...emptyAddress(), ...(value || {}) };
+  const form = normalizeAddress(value);
   const { data: states } = useSystemStates();
   const [mapsReady, setMapsReady] = useState(false);
   const [mapsError, setMapsError] = useState<string | null>(null);
@@ -148,23 +94,15 @@ export function GoogleAddressAutocomplete({
 
   useEffect(() => {
     if (hasAddressContent(value)) setSelected(true);
-  }, [value?.place_id, value?.formatted_address, value?.address_1]);
+  }, [
+    value?.place_id,
+    value?.formatted_address,
+    value?.address_line_1,
+    value?.address_1,
+  ]);
 
-  function patch(partial: Partial<AddressValue>) {
-    const next = { ...form, ...partial };
-    if (partial.postcode != null && partial.postal_code == null) {
-      next.postal_code = String(partial.postcode);
-    }
-    if (partial.postal_code != null && partial.postcode == null) {
-      next.postcode = String(partial.postal_code);
-    }
-    if (partial.street_address != null && partial.address_1 == null) {
-      next.address_1 = partial.street_address;
-    }
-    if (partial.address_1 != null && partial.street_address == null) {
-      next.street_address = partial.address_1;
-    }
-    onChange(next);
+  function emit(partial: Partial<AddressValue>) {
+    onChange(normalizeAddress({ ...form, ...partial }));
   }
 
   const onChangeRef = useRef(onChange);
@@ -188,7 +126,6 @@ export function GoogleAddressAutocomplete({
         const Places = window.google?.maps?.places;
         if (!Places) return;
 
-        // No componentRestrictions — all countries supported by Google Places.
         autocomplete = new Places.Autocomplete(searchRef.current, {
           fields: [
             "place_id",
@@ -206,59 +143,31 @@ export function GoogleAddressAutocomplete({
             return;
           }
           const parts = place.address_components || [];
-          const stateName = component(parts, "administrative_area_level_1");
-          const stateCode = component(
-            parts,
-            "administrative_area_level_1",
-            true,
-          );
+          const parsed = parseGooglePlaceComponents(parts, {
+            formatted_address: place.formatted_address,
+            place_id: place.place_id,
+            latitude: place.geometry?.location?.lat() ?? null,
+            longitude: place.geometry?.location?.lng() ?? null,
+          });
           const matchedState = matchKnownState(
             statesRef.current as
               | Array<{ id: number; name: string; code?: string }>
               | undefined,
-            stateName,
-            stateCode,
+            parsed.state_region_province,
+            parsed.country_code === "AU"
+              ? parsed.state?.code || ""
+              : parsed.state?.code || "",
           );
-          const street =
-            buildStreetLine(parts) || place.formatted_address || "";
-          const postal = component(parts, "postal_code");
-          const countryName = component(parts, "country");
-          const countryCode = component(parts, "country", true);
-          const city =
-            component(parts, "locality") ||
-            component(parts, "postal_town") ||
-            component(parts, "sublocality") ||
-            component(parts, "administrative_area_level_2") ||
-            "";
-
-          const next: AddressValue = {
-            formatted_address: place.formatted_address || street,
-            street_address: street,
-            address_1: street,
-            address_2: "",
-            city,
-            state:
-              stateName || stateCode
-                ? matchedState
-                  ? {
-                      id: matchedState.id,
-                      name: matchedState.name,
-                      code: matchedState.code,
-                    }
-                  : {
-                      name: stateName || stateCode,
-                      code: stateCode || undefined,
-                    }
-                : null,
-            administrative_area: stateName || stateCode || "",
-            postcode: postal,
-            postal_code: postal,
-            country: countryName,
-            country_code: countryCode,
-            place_id: place.place_id || "",
-            latitude: place.geometry?.location?.lat() ?? "",
-            longitude: place.geometry?.location?.lng() ?? "",
-          };
+          const next = normalizeAddress({
+            ...parsed,
+            state: matchedState
+              ? {
+                  id: matchedState.id,
+                  name: matchedState.name,
+                  code: matchedState.code,
+                }
+              : parsed.state,
+          });
           setSelected(true);
           onChangeRef.current(next);
           if (searchRef.current && place.formatted_address) {
@@ -283,7 +192,6 @@ export function GoogleAddressAutocomplete({
   }, [hasMaps, apiKey]);
 
   const showDetails = alwaysShowDetails || selected || hasAddressContent(form);
-  const readOnly = !allowManualEdit;
 
   function clearAddress() {
     setSelected(false);
@@ -304,7 +212,10 @@ export function GoogleAddressAutocomplete({
             className={inputClass}
             autoComplete="off"
             aria-invalid={Boolean(error)}
-            defaultValue={form.formatted_address || form.address_1 || ""}
+            defaultValue={
+              form.formatted_address || form.address_line_1 || form.address_1 || ""
+            }
+            key={form.place_id || "search"}
           />
           {mapsError ? (
             <span className="text-xs text-negative">{mapsError}</span>
@@ -313,7 +224,7 @@ export function GoogleAddressAutocomplete({
           ) : (
             <span className="text-xs text-muted">
               Select a suggestion to fill address details automatically
-              (worldwide).
+              (worldwide). All fields remain editable.
             </span>
           )}
           {error ? (
@@ -326,147 +237,140 @@ export function GoogleAddressAutocomplete({
         <p className="text-xs text-muted">
           Set{" "}
           <code className="text-[var(--mt-text)]">VITE_GOOGLE_MAPS_API_KEY</code>{" "}
-          for Google Places autocomplete.
+          for Google Places autocomplete. You can still enter address fields
+          manually below.
         </p>
       )}
 
-      {showDetails ? (
+      {showMap ? (
+        <Suspense
+          fallback={
+            <p className="text-xs text-muted">Loading map…</p>
+          }
+        >
+          <MapLocationPicker value={form} onChange={onChange} />
+        </Suspense>
+      ) : null}
+
+      {showDetails || !hasMaps ? (
         <div className="flex flex-col gap-3 rounded-xl border border-border bg-[var(--mt-surface)]/60 p-3">
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-medium uppercase tracking-wide text-muted">
               Address details
             </p>
-            <button
-              type="button"
-              className="text-xs font-medium text-primary"
-              onClick={clearAddress}
-            >
-              Change address
-            </button>
+            {hasMaps ? (
+              <button
+                type="button"
+                className="text-xs font-medium text-primary"
+                onClick={clearAddress}
+              >
+                Clear address
+              </button>
+            ) : null}
           </div>
 
-          {form.formatted_address ? (
-            <p className="text-sm text-[var(--mt-text)]">
-              {form.formatted_address}
-            </p>
-          ) : null}
+          <TextInput
+            label="Address Line 1"
+            value={form.address_line_1}
+            onChange={(e) =>
+              emit({
+                address_line_1: e.target.value,
+                address_1: e.target.value,
+              })
+            }
+            readOnly={!allowManualEdit}
+          />
+          <TextInput
+            label="Address Line 2 (optional)"
+            value={form.address_line_2}
+            onChange={(e) =>
+              emit({
+                address_line_2: e.target.value,
+                address_2: e.target.value,
+              })
+            }
+            readOnly={!allowManualEdit}
+          />
+          <TextInput
+            label="Street"
+            value={form.street}
+            onChange={(e) =>
+              emit({
+                street: e.target.value,
+                street_address: e.target.value,
+              })
+            }
+            readOnly={!allowManualEdit}
+          />
+          <TextInput
+            label="City"
+            value={form.city}
+            onChange={(e) => emit({ city: e.target.value })}
+            readOnly={!allowManualEdit}
+          />
+          <TextInput
+            label="State / Region / Province"
+            value={form.state_region_province}
+            onChange={(e) => {
+              const name = e.target.value;
+              emit({
+                state_region_province: name,
+                administrative_area: name,
+                state: name ? { name } : null,
+              });
+            }}
+            readOnly={!allowManualEdit}
+          />
+          <TextInput
+            label="Postal Code"
+            value={form.postal_code}
+            onChange={(e) =>
+              emit({
+                postal_code: e.target.value,
+                postcode: e.target.value,
+              })
+            }
+            readOnly={!allowManualEdit}
+          />
+          <TextInput
+            label="Country"
+            value={form.country}
+            onChange={(e) => emit({ country: e.target.value })}
+            readOnly={!allowManualEdit}
+          />
 
-          {allowManualEdit || !hasMaps ? (
-            <>
+          {requireCoordinates ? (
+            <div className="grid gap-3 sm:grid-cols-2">
               <TextInput
-                label="Street address"
-                value={form.street_address || form.address_1}
+                label="Latitude"
+                value={
+                  form.latitude === null || form.latitude === undefined
+                    ? ""
+                    : String(form.latitude)
+                }
                 onChange={(e) =>
-                  patch({
-                    street_address: e.target.value,
-                    address_1: e.target.value,
+                  emit({
+                    latitude: e.target.value === "" ? null : e.target.value,
                   })
                 }
-                readOnly={readOnly && hasMaps}
+                readOnly={!allowManualEdit}
               />
-              {form.city ? (
-                <TextInput
-                  label="City / locality"
-                  value={form.city}
-                  onChange={(e) => patch({ city: e.target.value })}
-                  readOnly={readOnly && hasMaps}
-                />
-              ) : null}
-              {form.administrative_area || form.state?.name ? (
-                <TextInput
-                  label="State / province / emirate"
-                  value={
-                    form.administrative_area ||
-                    form.state?.name ||
-                    form.state?.code ||
-                    ""
-                  }
-                  onChange={(e) => {
-                    const name = e.target.value;
-                    patch({
-                      administrative_area: name,
-                      state: name ? { name } : null,
-                    });
-                  }}
-                  readOnly={readOnly && hasMaps}
-                />
-              ) : null}
-              {form.postal_code || form.postcode ? (
-                <TextInput
-                  label="Postal code"
-                  value={form.postal_code || form.postcode}
-                  onChange={(e) =>
-                    patch({
-                      postal_code: e.target.value,
-                      postcode: e.target.value,
-                    })
-                  }
-                  readOnly={readOnly && hasMaps}
-                />
-              ) : null}
-              {form.country ? (
-                <TextInput
-                  label="Country"
-                  value={
-                    form.country_code
-                      ? `${form.country} (${form.country_code})`
-                      : form.country
-                  }
-                  readOnly
-                />
-              ) : null}
-            </>
-          ) : (
-            <dl className="grid gap-2 text-sm sm:grid-cols-2">
-              {(form.street_address || form.address_1) && (
-                <div>
-                  <dt className="text-xs text-muted">Street</dt>
-                  <dd>{form.street_address || form.address_1}</dd>
-                </div>
-              )}
-              {form.city ? (
-                <div>
-                  <dt className="text-xs text-muted">City</dt>
-                  <dd>{form.city}</dd>
-                </div>
-              ) : null}
-              {form.administrative_area || form.state?.name ? (
-                <div>
-                  <dt className="text-xs text-muted">Administrative area</dt>
-                  <dd>
-                    {form.administrative_area ||
-                      form.state?.name ||
-                      form.state?.code}
-                  </dd>
-                </div>
-              ) : null}
-              {form.postal_code || form.postcode ? (
-                <div>
-                  <dt className="text-xs text-muted">Postal code</dt>
-                  <dd>{form.postal_code || form.postcode}</dd>
-                </div>
-              ) : null}
-              {form.country ? (
-                <div>
-                  <dt className="text-xs text-muted">Country</dt>
-                  <dd>
-                    {form.country}
-                    {form.country_code ? ` (${form.country_code})` : ""}
-                  </dd>
-                </div>
-              ) : null}
-              {requireCoordinates &&
-              form.latitude !== "" &&
-              form.latitude != null ? (
-                <div className="sm:col-span-2">
-                  <dt className="text-xs text-muted">Coordinates</dt>
-                  <dd>
-                    {String(form.latitude)}, {String(form.longitude)}
-                  </dd>
-                </div>
-              ) : null}
-            </dl>
-          )}
+              <TextInput
+                label="Longitude"
+                value={
+                  form.longitude === null || form.longitude === undefined
+                    ? ""
+                    : String(form.longitude)
+                }
+                onChange={(e) =>
+                  emit({
+                    longitude: e.target.value === "" ? null : e.target.value,
+                  })
+                }
+                readOnly={!allowManualEdit}
+              />
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -475,3 +379,6 @@ export function GoogleAddressAutocomplete({
 
 /** @deprecated Prefer GoogleAddressAutocomplete */
 export const GoogleAddress = GoogleAddressAutocomplete;
+
+/** Unified address form alias */
+export const AddressForm = GoogleAddressAutocomplete;

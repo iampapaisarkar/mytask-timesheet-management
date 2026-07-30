@@ -18,6 +18,18 @@ const OrganisationAddress = db.define(
     address_2: {
       type: DataTypes.TEXT,
     },
+    address_line_1: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    address_line_2: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    street: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
     city: {
       type: DataTypes.STRING,
     },
@@ -26,6 +38,14 @@ const OrganisationAddress = db.define(
     },
     postcode: {
       type: DataTypes.STRING(32),
+    },
+    postal_code: {
+      type: DataTypes.STRING(32),
+      allowNull: true,
+    },
+    state_region_province: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
     },
     formatted_address: {
       type: DataTypes.TEXT,

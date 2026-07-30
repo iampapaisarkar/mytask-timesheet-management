@@ -4,6 +4,9 @@
 
 ### Added
 
+- Canonical global address model (`address_line_1`, `address_line_2`, `street`, `city`, `state_region_province`, `postal_code`, `country`) with shared parsers in `@mytask/utils`
+- Safe DB migration to add/backfill normalized address columns on organisation/employee/job address tables and customers
+- Map picker geolocation on open, debounced reverse-geocode of all address fields on pin move
 - MVP Payouts API under `/api/payouts` (`list`, `eligible`, `create`, `/:id/mark-paid`) with org ACL (`payout.list` / `create` / `edit`)
 - Web Payouts page for eligible approved timesheets and marking payouts paid
 - Currency support (USD/AUD/INR/GBP/EUR/NZD/CAD/SGD) on employee wages and customer pricing
@@ -12,6 +15,8 @@
 
 ### Changed
 
+- Address forms always keep auto-filled fields editable; jobs embed map via reusable `GoogleAddressAutocomplete` (`showMap`)
+- Address persistence writes canonical + legacy columns; coordinates stored for jobs only (org/employee/customer coords cleared on write)
 - Mobile app is React Native CLI (bare `ios/` + `android/`) only
 - Session persistence uses AsyncStorage
 - Mobile env configured via `src/config/env.ts`

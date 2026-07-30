@@ -21,6 +21,7 @@
 | Mobile org shell + maps | ✅ Done | 2026-07-30 | Detail/day/TM/employees/settings + TrackingMap |
 | Parity QA | ✅ Done | 2026-07-30 | Web `tsc` clean; key surfaces verified |
 | MVP Payouts | ✅ Done | 2026-07-30 | API + web list/eligible/create/mark-paid |
+| Global address system | ✅ Done | 2026-07-30 | Shared model + Places autofill + map geolocation/reverse-geocode |
 
 ## Vue ↔ Web ↔ Mobile gap matrix
 

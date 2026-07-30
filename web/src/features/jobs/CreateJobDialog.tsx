@@ -8,6 +8,9 @@ import {
   getErrorMessage,
   emptyPhoneValue,
   phoneValueFromE164,
+  fromAddressRecord,
+  toAddressApiPayload,
+  hasAddressContent,
   type PhoneValue,
 } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
@@ -19,7 +22,6 @@ import {
   emptyAddress,
   type AddressValue,
 } from "@/components/GoogleAddress";
-import { MapLocationPicker } from "@/components/maps/MapLocationPicker";
 import { useToastStore } from "@/store/toastStore";
 
 const selectClass =
@@ -30,22 +32,7 @@ export type JobRow = {
   name?: string;
   customer?: { id?: number | string; name?: string } | null;
   customer_id?: number | string | null;
-  address?: {
-    address_1?: string | null;
-    address_2?: string | null;
-    street_address?: string | null;
-    formatted_address?: string | null;
-    city?: string | null;
-    state?: { id?: number; name?: string; code?: string } | null;
-    administrative_area?: string | null;
-    postcode?: string | null;
-    postal_code?: string | null;
-    country?: string | null;
-    country_code?: string | null;
-    place_id?: string | null;
-    latitude?: number | string | null;
-    longitude?: number | string | null;
-  } | null;
+  address?: Record<string, unknown> | null;
   radius?: number | string | null;
   site_contact_name?: string | null;
   site_contact_email?: string | null;
@@ -55,40 +42,9 @@ export type JobRow = {
 };
 
 function addressFromJob(job?: JobRow | null): AddressValue {
-  const addr = job?.address;
-  if (!addr) return emptyAddress();
-  const street =
-    addr.street_address ||
-    addr.address_1 ||
-    addr.formatted_address ||
-    "";
-  const admin =
-    addr.administrative_area || addr.state?.name || "";
-  return {
-    ...emptyAddress(),
-    formatted_address: addr.formatted_address || street,
-    street_address: street,
-    address_1: street,
-    address_2: addr.address_2 || "",
-    city: addr.city || "",
-    administrative_area: admin,
-    postcode: addr.postcode || addr.postal_code || "",
-    postal_code: addr.postal_code || addr.postcode || "",
-    country: addr.country || "",
-    country_code: addr.country_code || "",
-    place_id: addr.place_id || "",
-    latitude: addr.latitude ?? "",
-    longitude: addr.longitude ?? "",
-    state: addr.state
-      ? {
-          id: addr.state.id,
-          name: addr.state.name,
-          code: addr.state.code,
-        }
-      : admin
-        ? { name: admin }
-        : null,
-  };
+  return fromAddressRecord(
+    (job?.address || null) as Record<string, unknown> | null,
+  );
 }
 
 export function JobFormDialog({
@@ -152,14 +108,8 @@ export function JobFormDialog({
       toast.warning("Customer required");
       return;
     }
-    if (
-      !(
-        address.street_address ||
-        address.address_1 ||
-        address.formatted_address
-      )?.trim()
-    ) {
-      toast.warning("Please select an address from Google Places");
+    if (!hasAddressContent(address)) {
+      toast.warning("Please select or enter an address");
       return;
     }
     if (address.latitude === "" || address.latitude == null) {
@@ -178,22 +128,7 @@ export function JobFormDialog({
     const payload = {
       name: name.trim(),
       customer: { id: Number(customerId) },
-      address: {
-        address_1: (address.street_address || address.address_1).trim(),
-        street_address: (address.street_address || address.address_1).trim(),
-        formatted_address: address.formatted_address || null,
-        address_2: address.address_2?.trim() || null,
-        city: address.city || null,
-        state: address.state,
-        administrative_area: address.administrative_area || null,
-        postcode: address.postal_code || address.postcode || null,
-        postal_code: address.postal_code || address.postcode || null,
-        country: address.country || null,
-        country_code: address.country_code || null,
-        place_id: address.place_id || null,
-        latitude: Number(address.latitude),
-        longitude: Number(address.longitude),
-      },
+      address: toAddressApiPayload(address, { includeCoordinates: true }),
       radius: Number(radius),
       site_contact_name: siteContactName.trim() || null,
       site_contact_email: siteContactEmail.trim() || null,
@@ -265,8 +200,8 @@ export function JobFormDialog({
           value={address}
           onChange={setAddress}
           requireCoordinates
+          showMap
         />
-        <MapLocationPicker value={address} onChange={setAddress} />
 
         <TextInput
           label="Geofence radius (meters)"

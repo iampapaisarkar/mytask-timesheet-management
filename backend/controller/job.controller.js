@@ -125,7 +125,7 @@ export async function create(req, res, next) {
         message: "Customer is required!",
       });
     }
-    if (!address?.address_1 && !address?.formatted_address && !address?.street_address) {
+    if (!address?.address_1 && !address?.address_line_1 && !address?.formatted_address && !address?.street_address && !address?.street) {
       return res.status(400).json({
         message: "Please select an address from Google Places suggestions.",
       });
@@ -198,13 +198,14 @@ export async function create(req, res, next) {
     if (address) {
       const stateId = await resolveStateId(
         address.state ||
-          (address.administrative_area
-            ? { name: address.administrative_area }
+          (address.state_region_province || address.administrative_area
+            ? { name: address.state_region_province || address.administrative_area }
             : null),
       );
       const row = buildAddressRow(address, {
         organisationId: organisation.id,
         extra: { job_id: job.id, state_id: stateId },
+        includeCoordinates: true,
       });
       await JobAddress.create(row);
     }
@@ -256,7 +257,7 @@ export async function update(req, res, next) {
         message: "Customer is required!",
       });
     }
-    if (!address?.address_1 && !address?.formatted_address && !address?.street_address) {
+    if (!address?.address_1 && !address?.address_line_1 && !address?.formatted_address && !address?.street_address && !address?.street) {
       return res.status(400).json({
         message: "Please select an address from Google Places suggestions.",
       });
@@ -339,13 +340,14 @@ export async function update(req, res, next) {
     if (address) {
       const stateId = await resolveStateId(
         address.state ||
-          (address.administrative_area
-            ? { name: address.administrative_area }
+          (address.state_region_province || address.administrative_area
+            ? { name: address.state_region_province || address.administrative_area }
             : null),
       );
       const row = buildAddressRow(address, {
         organisationId: organisation.id,
         extra: { job_id: id, state_id: stateId },
+        includeCoordinates: true,
       });
       await JobAddress.create(row);
     }

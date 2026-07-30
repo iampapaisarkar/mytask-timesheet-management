@@ -8,7 +8,7 @@ import {
 } from "@mytask/validation";
 import { useCreateOrganisation } from "@mytask/hooks";
 import { ROUTES } from "@mytask/constants";
-import { getErrorMessage, getOrganisationRoleCode } from "@mytask/utils";
+import { getErrorMessage, getOrganisationRoleCode, toAddressApiPayload } from "@mytask/utils";
 import type { OrganisationMembership, UserProfile } from "@mytask/types";
 import { TextInput } from "@/components/ui/TextInput";
 import { GlobalPhoneInput } from "@/components/ui/GlobalPhoneInput";
@@ -46,11 +46,16 @@ export function CreateOrganisationPage() {
       phone_country_iso: null,
       email: "",
       address_1: "",
+      address_line_1: "",
       address_2: "",
+      address_line_2: "",
+      street: "",
       city: "",
       state_id: undefined,
       state_name: "",
+      state_region_province: "",
       postcode: "",
+      postal_code: "",
     },
   });
 
@@ -60,27 +65,44 @@ export function CreateOrganisationPage() {
 
   function handleAddressChange(next: AddressValue) {
     setAddress(next);
-    setValue("address_1", next.street_address || next.address_1, {
+    setValue("address_1", next.address_line_1 || next.street_address || next.address_1, {
+      shouldValidate: true,
+    });
+    setValue("address_line_1", next.address_line_1 || "", {
       shouldValidate: true,
     });
     setValue("formatted_address", next.formatted_address || "", {
       shouldValidate: true,
     });
-    setValue("address_2", next.address_2 || "", { shouldValidate: true });
+    setValue("address_2", next.address_line_2 || next.address_2 || "", {
+      shouldValidate: true,
+    });
+    setValue("address_line_2", next.address_line_2 || "", {
+      shouldValidate: true,
+    });
+    setValue("street", next.street || "", { shouldValidate: true });
     setValue("city", next.city || "", { shouldValidate: true });
     setValue("state_id", next.state?.id, { shouldValidate: true });
     setValue(
       "state_name",
-      next.administrative_area || next.state?.name || next.state?.code || "",
+      next.state_region_province ||
+        next.administrative_area ||
+        next.state?.name ||
+        next.state?.code ||
+        "",
       { shouldValidate: true },
     );
+    setValue("state_region_province", next.state_region_province || "", {
+      shouldValidate: true,
+    });
     setValue("postcode", next.postal_code || next.postcode || "", {
       shouldValidate: true,
     });
+    setValue("postal_code", next.postal_code || "", { shouldValidate: true });
     setValue("country", next.country || null);
     setValue("country_code", next.country_code || null);
     setValue("place_id", next.place_id || null);
-    setValue("administrative_area", next.administrative_area || null);
+    setValue("administrative_area", next.state_region_province || null);
   }
 
   async function onSubmit(values: CreateOrganisationFormValues) {
@@ -95,22 +117,7 @@ export function CreateOrganisationPage() {
         default_country:
           values.country_code || values.phone_country_iso || null,
         email: values.email,
-        address: {
-          address_1: address.street_address || address.address_1,
-          street_address: address.street_address || address.address_1,
-          formatted_address: address.formatted_address,
-          address_2: address.address_2 || null,
-          city: address.city || null,
-          state: address.state,
-          administrative_area: address.administrative_area || null,
-          postcode: address.postal_code || address.postcode || null,
-          postal_code: address.postal_code || address.postcode || null,
-          country: address.country || null,
-          country_code: address.country_code || null,
-          place_id: address.place_id || null,
-          latitude: address.latitude === "" ? null : address.latitude,
-          longitude: address.longitude === "" ? null : address.longitude,
-        },
+        address: toAddressApiPayload(address, { includeCoordinates: false }),
       });
 
       const raw = response.data as unknown;

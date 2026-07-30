@@ -136,7 +136,7 @@ export async function create(req, res, next) {
       });
     }
 
-    if (!address?.address_1 && !address?.formatted_address && !address?.street_address) {
+    if (!address?.address_1 && !address?.address_line_1 && !address?.formatted_address && !address?.street_address && !address?.street) {
       return res.status(400).json({
         message: "Please select an address from Google Places suggestions.",
       });
@@ -192,14 +192,15 @@ export async function create(req, res, next) {
     if (address) {
       const stateId = await resolveStateId(
         address.state ||
-          (address.administrative_area
-            ? { name: address.administrative_area }
+          (address.state_region_province || address.administrative_area
+            ? { name: address.state_region_province || address.administrative_area }
             : null),
         transaction,
       );
       const row = buildAddressRow(address, {
         organisationId: response.id,
         extra: { state_id: stateId },
+        includeCoordinates: false,
       });
       await OrganisationAddress.create(row, { transaction });
     }
@@ -331,7 +332,7 @@ export async function update(req, res, next) {
       });
     }
 
-    if (!address?.address_1 && !address?.formatted_address && !address?.street_address) {
+    if (!address?.address_1 && !address?.address_line_1 && !address?.formatted_address && !address?.street_address && !address?.street) {
       return res.status(400).json({
         message: "Please select an address from Google Places suggestions.",
       });
@@ -390,13 +391,14 @@ export async function update(req, res, next) {
     if (address) {
       const stateId = await resolveStateId(
         address.state ||
-          (address.administrative_area
-            ? { name: address.administrative_area }
+          (address.state_region_province || address.administrative_area
+            ? { name: address.state_region_province || address.administrative_area }
             : null),
       );
       const row = buildAddressRow(address, {
         organisationId: organisation.id,
         extra: { state_id: stateId },
+        includeCoordinates: false,
       });
       await OrganisationAddress.create(row);
     }

@@ -125,12 +125,17 @@ export const createOrganisationSchema = z
     default_country: phoneCountryIsoSchema.optional().nullable(),
     email: z.string().email("Please enter a valid email"),
     address_1: z.string().optional().or(z.literal("")),
+    address_line_1: z.string().optional().or(z.literal("")),
     formatted_address: z.string().optional().or(z.literal("")),
     address_2: z.string().optional().or(z.literal("")),
+    address_line_2: z.string().optional().or(z.literal("")),
+    street: z.string().optional().or(z.literal("")),
     city: z.string().optional().or(z.literal("")),
     state_id: z.coerce.number().optional(),
     state_name: z.string().optional().or(z.literal("")),
+    state_region_province: z.string().optional().or(z.literal("")),
     postcode: z.string().optional().or(z.literal("")),
+    postal_code: z.string().optional().or(z.literal("")),
     country: z.string().optional().nullable(),
     country_code: z.string().optional().nullable(),
     place_id: z.string().optional().nullable(),
@@ -138,7 +143,12 @@ export const createOrganisationSchema = z
   })
   .refine(
     (data) =>
-      Boolean(data.address_1?.trim() || data.formatted_address?.trim()),
+      Boolean(
+        data.address_line_1?.trim() ||
+          data.address_1?.trim() ||
+          data.formatted_address?.trim() ||
+          data.street?.trim(),
+      ),
     {
       message: "Please select an address from Google Places",
       path: ["address_1"],

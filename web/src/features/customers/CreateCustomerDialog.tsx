@@ -9,7 +9,7 @@ import {
   useCreateCustomer,
   useUpdateCustomer,
 } from "@mytask/hooks";
-import { getErrorMessage, phoneValueFromE164, type PhoneValue } from "@mytask/utils";
+import { getErrorMessage, phoneValueFromE164, fromAddressRecord, toAddressApiPayload, type PhoneValue } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
 import { FullScreenModal } from "@/components/ui/FullScreenModal";
 import { TextInput } from "@/components/ui/TextInput";
@@ -30,7 +30,11 @@ export type CustomerRow = {
   abn?: string | null;
   address?: string | null;
   formatted_address?: string | null;
+  address_line_1?: string | null;
+  address_line_2?: string | null;
+  street?: string | null;
   administrative_area?: string | null;
+  state_region_province?: string | null;
   city?: string | null;
   postal_code?: string | null;
   country?: string | null;
@@ -79,26 +83,22 @@ export function CustomerFormDialog({
     if (!open) return;
     setName(customer?.name || "");
     setAbn(customer?.abn || "");
-    const formatted =
-      customer?.formatted_address || customer?.address || "";
-    setAddress({
-      ...emptyAddress(),
-      formatted_address: formatted,
-      street_address: formatted,
-      address_1: formatted,
-      city: customer?.city || "",
-      administrative_area: customer?.administrative_area || "",
-      postcode: customer?.postal_code || "",
-      postal_code: customer?.postal_code || "",
-      country: customer?.country || "",
-      country_code: customer?.country_code || "",
-      place_id: customer?.place_id || "",
-      latitude: customer?.latitude ?? "",
-      longitude: customer?.longitude ?? "",
-      state: customer?.administrative_area
-        ? { name: customer.administrative_area }
-        : null,
-    });
+    setAddress(
+      fromAddressRecord(
+        customer
+          ? {
+              ...customer,
+              address_line_1:
+                customer.address_line_1 ||
+                customer.formatted_address ||
+                customer.address ||
+                "",
+              formatted_address:
+                customer.formatted_address || customer.address || "",
+            }
+          : null,
+      ),
+    );
     setContactName(customer?.contact_name || "");
     setContactEmail(customer?.contact_email || "");
     setContactPhone(
@@ -120,24 +120,14 @@ export function CustomerFormDialog({
       toast.warning("Name required");
       return;
     }
-    const formatted =
-      address.formatted_address ||
-      address.street_address ||
-      address.address_1 ||
-      null;
+    const addressPayload = toAddressApiPayload(address, {
+      includeCoordinates: false,
+    });
     const payload = {
       name: name.trim(),
       abn: abn.trim() || null,
-      address: formatted,
-      formatted_address: formatted,
-      administrative_area: address.administrative_area || null,
-      city: address.city || null,
-      postal_code: address.postal_code || address.postcode || null,
-      country: address.country || null,
-      country_code: address.country_code || null,
-      place_id: address.place_id || null,
-      latitude: address.latitude === "" ? null : address.latitude,
-      longitude: address.longitude === "" ? null : address.longitude,
+      ...addressPayload,
+      address: address.formatted_address || address.address_line_1 || null,
       contact_name: contactName.trim() || null,
       contact_email: contactEmail.trim() || null,
       contact_phone_number: contactPhone.phone_number,
