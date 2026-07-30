@@ -7,6 +7,7 @@ export interface ToastItem {
   title: string;
   description?: string;
   tone: ToastTone;
+  onClick?: () => void;
 }
 
 interface ToastState {
@@ -25,7 +26,7 @@ export const useToastStore = create<ToastState>((set, get) => ({
   push: (toast) => {
     const id = toast.id || crypto.randomUUID();
     set((s) => ({ items: [...s.items, { ...toast, id }] }));
-    window.setTimeout(() => get().dismiss(id), 4200);
+    window.setTimeout(() => get().dismiss(id), toast.onClick ? 8000 : 4200);
   },
   dismiss: (id) => set((s) => ({ items: s.items.filter((t) => t.id !== id) })),
   clear: () => set({ items: [] }),

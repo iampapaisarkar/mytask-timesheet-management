@@ -1,9 +1,11 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { GuestRoute, OrgAclRoute, ProtectedRoute } from "@/app/guards";
 import { RealtimeProvider } from "@/providers/RealtimeProvider";
+import { WebPushProvider } from "@/providers/WebPushProvider";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { MainLayout } from "@/layouts/MainLayout";
 import { OrgLayout } from "@/layouts/OrgLayout";
+import { PublicContentLayout } from "@/layouts/PublicContentLayout";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { SignupPage } from "@/features/auth/SignupPage";
 import { ForgotPasswordPage } from "@/features/auth/ForgotPasswordPage";
@@ -26,16 +28,28 @@ import { ProfilePage } from "@/features/profile/ProfilePage";
 import { CreateOrganisationPage } from "@/features/organisation/CreateOrganisationPage";
 import { ReportsPage } from "@/features/reports/ReportsPage";
 import { PayoutsPage } from "@/features/payouts/PayoutsPage";
+import {
+  HelpFaqPage,
+  PrivacyPage,
+  TermsPage,
+} from "@/features/legal";
 
 export function AppRouter() {
   return (
     <BrowserRouter>
       <RealtimeProvider>
+      <WebPushProvider>
       <Routes>
         {/* Auth action links must stay public even with an existing session */}
         <Route element={<AuthLayout />}>
           <Route path="/auth-actions" element={<AuthActionsPage />} />
           <Route path="/org-invitation" element={<OrgInvitationPage />} />
+        </Route>
+
+        <Route element={<PublicContentLayout />}>
+          <Route path="/help" element={<HelpFaqPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
         </Route>
 
         <Route element={<GuestRoute />}>
@@ -161,6 +175,8 @@ export function AppRouter() {
                 element={<PayrollCalendarsPage />}
               />
             </Route>
+            <Route path="settings/help" element={<HelpFaqPage />} />
+            <Route path="settings/terms" element={<TermsPage />} />
 
             <Route
               element={
@@ -188,6 +204,7 @@ export function AppRouter() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </WebPushProvider>
       </RealtimeProvider>
     </BrowserRouter>
   );

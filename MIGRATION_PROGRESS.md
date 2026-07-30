@@ -27,6 +27,7 @@
 | Reports Phase 1 (async) | ✅ Done | 2026-07-30 | Queue-backed hours report + role ladder + redesigned UI |
 | Reports pay PDF | ✅ Done | 2026-07-30 | Single employee + approved timesheet; day amounts; PDF download/email; `(You)` labels |
 | Realtime Socket.IO architecture | ✅ Done | 2026-07-30 | Shared `@mytask/realtime`; JWT gateway; org/user rooms; domain stores; logout wipe |
+| Org logout + Back to myTask + web FCM + legal | ✅ Done | 2026-07-30 | Shared logout; notification routing; SW push; Help/Terms/Privacy |
 
 ## Vue ↔ Web ↔ Mobile gap matrix
 

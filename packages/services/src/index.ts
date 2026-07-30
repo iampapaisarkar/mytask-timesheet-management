@@ -4,3 +4,8 @@ export {
   allowedReportTargetRoles,
   filterEmployeesByReportLadder,
 } from "./reportAccess";
+export {
+  resolveNotificationPath,
+  type NotificationRouteInput,
+  type NotificationRouteResult,
+} from "./notificationRouting";

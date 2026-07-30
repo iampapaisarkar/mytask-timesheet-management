@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { notificationsApi } from "@mytask/api";
+import { resolveNotificationPath } from "@mytask/services";
 import { getErrorMessage } from "@mytask/utils";
 import { useSocketStore } from "@mytask/realtime";
 import type { AppNotification } from "@mytask/types";
+import { useOrganisationStore } from "@/store/organisationStore";
 import { useToastStore } from "@/store/toastStore";
 import { Bell } from "lucide-react";
 import { clsx } from "clsx";
@@ -38,6 +41,8 @@ export function NotificationsBell() {
   const rootRef = useRef<HTMLDivElement>(null);
   const qc = useQueryClient();
   const toast = useToastStore();
+  const navigate = useNavigate();
+  const orgCode = useOrganisationStore((s) => s.organisation?.code);
   const socketStatus = useSocketStore((s) => s.status);
   const socketLive = socketStatus === "connected";
 
@@ -117,9 +122,23 @@ export function NotificationsBell() {
     if (item.status?.code === "unread") {
       markAsMutation.mutate(item.id);
     }
-    if (item.url && typeof item.url === "string") {
-      window.location.assign(item.url);
+    setOpen(false);
+    const resolved = resolveNotificationPath(
+      {
+        url: item.url,
+        title: item.title,
+        body: item.body,
+      },
+      { defaultOrgCode: orgCode || null },
+    );
+    if (resolved.fallback && !item.url) {
+      toast.info(
+        "No link available",
+        "This notification does not include a destination.",
+      );
+      return;
     }
+    navigate(resolved.path);
   }
 
   return (

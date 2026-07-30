@@ -1,38 +1,16 @@
-import { Link, Outlet, useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { Link, Outlet } from "react-router-dom";
 import { ROUTES } from "@mytask/constants";
-import { authApi } from "@mytask/api";
 import { displayName } from "@mytask/utils";
 import { LogOut, User } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
-import { firebaseLogout } from "@/lib/firebase";
 import { Button } from "@/components/ui/Button";
 import { OrganisationSwitcher } from "@/components/OrganisationSwitcher";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { useToastStore } from "@/store/toastStore";
-import { resetAllStores } from "@/store/resetAllStores";
+import { useLogout } from "@/hooks/useLogout";
 
 export function MainLayout() {
   const user = useAuthStore((s) => s.user);
-  const toast = useToastStore();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-
-  async function handleLogout() {
-    try {
-      await authApi.logout();
-    } catch {
-      // still clear local session
-    }
-    try {
-      await firebaseLogout();
-    } catch {
-      // ignore
-    }
-    await resetAllStores(queryClient);
-    toast.info("Signed out", "See you next time");
-    navigate(ROUTES.login);
-  }
+  const handleLogout = useLogout();
 
   return (
     <div className="min-h-screen bg-page">
@@ -58,7 +36,11 @@ export function MainLayout() {
               <User size={16} className="text-primary" />
               {user ? displayName(user) : "Profile"}
             </Link>
-            <Button variant="ghost" onClick={handleLogout} aria-label="Logout">
+            <Button
+              variant="ghost"
+              onClick={() => void handleLogout()}
+              aria-label="Logout"
+            >
               <LogOut size={16} />
               <span className="hidden sm:inline">Logout</span>
             </Button>

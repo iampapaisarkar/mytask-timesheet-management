@@ -4,6 +4,16 @@
 
 ### Added
 
+- Org UI Logout (shared `useLogout` + full state wipe); organisation switcher **Back to myTask**; centralized `resolveNotificationPath`; web FCM (service worker, token registration, foreground toasts, background click navigation); Help & FAQ, Terms, and Privacy pages with auth/settings links
+- Docs: `docs/WEB_PUSH_NOTIFICATIONS.md`, `docs/QA_VERIFICATION_LOGOUT_NOTIFICATIONS_FCM.md`
+
+### Changed
+
+- Notification bell uses in-app navigation (no `window.location.assign`); invitation pushes include deep-link URL; FCM data always carries `url`
+- Removed showcase / Joel Couchman disclaimer from web and mobile auth surfaces
+
+### Added
+
 - Production Socket.IO realtime architecture: shared `@mytask/realtime` contracts, JWT handshake gateway, `org:{id}` / `user:{id}` rooms, domain events (`employee.*`, `timesheet.*`, `payout.*`, `report.*`, `notification.created`, `auth.logout`), web + mobile singleton clients, Zustand domain stores, TanStack Query sync, offline queue scaffold, and atomic `resetAllStores()` logout wipe
 - Docs: `docs/REALTIME_ARCHITECTURE.md` event matrix and security notes
 

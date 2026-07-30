@@ -9,6 +9,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@mytask/constants": "*",
     "@mytask/types": "*"
   },
   "devDependencies": {

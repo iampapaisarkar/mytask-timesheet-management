@@ -161,15 +161,6 @@ export function LoginScreen() {
             {loading ? "Please wait…" : "Login"}
           </Text>
         </TouchableOpacity>
-
-        <Text style={[styles.notice, { color: c.muted }]}>
-          <Text style={{ fontWeight: "700", color: c.text }}>
-            Project is for showcasing purposes only.{" "}
-          </Text>
-          This is a real project concept. All original concept ownership and
-          authorization belong to Joel Couchman. This version has been rebuilt
-          solely for demonstration purposes.
-        </Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -211,10 +202,4 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   buttonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  notice: {
-    marginTop: spacing.xl,
-    fontSize: 11,
-    lineHeight: 16,
-    textAlign: "center",
-  },
 });

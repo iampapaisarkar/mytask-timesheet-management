@@ -126,18 +126,35 @@ export const FirebaseMessaging = {
               aps: { sound: "default" },
             },
           },
-          data: url
-            ? {
-                url,
-                id: String(notification.id),
-                click_action: "CAPACITOR_NOTIFICATION_CLICK",
-              }
-            : undefined,
+          data: {
+            url: url ? String(url) : "/",
+            id: String(notification.id),
+            title: String(message.title || ""),
+            body: String(message.body || ""),
+            click_action: "FLUTTER_NOTIFICATION_CLICK",
+          },
         };
 
         admin
           .messaging()
           .sendEachForMulticast(payload)
+          .then((result) => {
+            if (result.failureCount > 0) {
+              for (const r of result.responses) {
+                if (r.error) {
+                  console.error(
+                    "FCM notification error:",
+                    r.error.code,
+                    r.error.message,
+                  );
+                }
+              }
+            } else {
+              console.log(
+                `FCM sent ok user=${userId} tokens=${tokens.length}`,
+              );
+            }
+          })
           .catch((err) => {
             console.error("FCM notification error:", err.message);
           });

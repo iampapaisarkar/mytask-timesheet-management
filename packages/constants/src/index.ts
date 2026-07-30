@@ -22,6 +22,9 @@ export const ROUTES = {
   home: "/",
   profile: "/profile",
   createOrganisation: "/organisations/create",
+  help: "/help",
+  terms: "/terms",
+  privacy: "/privacy",
   org: (orgCode: string) => `/org/${orgCode}`,
   orgHome: (orgCode: string) => `/org/${orgCode}`,
   timesheet: (orgCode: string) => `/org/${orgCode}/timesheet`,
@@ -40,6 +43,8 @@ export const ROUTES = {
     `/org/${orgCode}/settings/holiday-calendars`,
   payrollCalendars: (orgCode: string) =>
     `/org/${orgCode}/settings/payroll-calendars`,
+  settingsHelp: (orgCode: string) => `/org/${orgCode}/settings/help`,
+  settingsTerms: (orgCode: string) => `/org/${orgCode}/settings/terms`,
   employees: (orgCode: string) => `/org/${orgCode}/employees`,
   customers: (orgCode: string) => `/org/${orgCode}/customers`,
   jobs: (orgCode: string) => `/org/${orgCode}/jobs`,

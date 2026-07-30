@@ -525,9 +525,10 @@ async function inviteEmployee(
         message: `${user.full_name} invited you to join ${orgName} as ${
           role?.name || "Employee"
         }. Click the button below to accept.`,
-        button_url: `${
-          process.env.CLIENT_URL
-        }org-invitation?token=${encodeURIComponent(invitationToken)}`,
+        button_url: `${String(process.env.CLIENT_URL || "").replace(
+          /\/$/,
+          "",
+        )}/org-invitation?token=${encodeURIComponent(invitationToken)}`,
         button_label: "Accept invitation",
       },
     };
@@ -552,6 +553,7 @@ async function inviteEmployee(
           title: subject,
           body: message.variables.message,
         },
+        url: `/org-invitation?token=${encodeURIComponent(invitationToken)}`,
       });
     }
 

@@ -13,6 +13,8 @@ import { NotificationsBell } from "@/features/notifications";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useSidebarStore } from "@/store/sidebarStore";
 import { ErrorState, LoadingState } from "@/components/ui/States";
+import { Button } from "@/components/ui/Button";
+import { useLogout } from "@/hooks/useLogout";
 import {
   Briefcase,
   Building2,
@@ -22,9 +24,11 @@ import {
   ClipboardList,
   FileBarChart2,
   Home,
+  LogOut,
   Menu,
   Settings,
   Users,
+  Wallet,
   X,
 } from "lucide-react";
 import { clsx } from "clsx";
@@ -34,6 +38,7 @@ const ICONS: Record<string, typeof Home> = {
   timesheet: CalendarDays,
   timesheetManagement: ClipboardList,
   reports: FileBarChart2,
+  payouts: Wallet,
   employees: Users,
   customers: Building2,
   jobs: Briefcase,
@@ -51,6 +56,7 @@ export function OrgLayout() {
   const toggleSidebar = useSidebarStore((s) => s.toggle);
   const setMobileOpen = useSidebarStore((s) => s.setMobileOpen);
   const toggleMobile = useSidebarStore((s) => s.toggleMobile);
+  const handleLogout = useLogout();
 
   const needsSync = !organisation || organisation.code !== orgCode;
 
@@ -272,6 +278,23 @@ export function OrgLayout() {
             <NotificationsBell />
             <OrganisationSwitcher />
             <ThemeToggle />
+            <Button
+              variant="ghost"
+              onClick={() => void handleLogout()}
+              aria-label="Logout"
+              className="hidden sm:inline-flex"
+            >
+              <LogOut size={16} />
+              <span className="hidden lg:inline">Logout</span>
+            </Button>
+            <button
+              type="button"
+              onClick={() => void handleLogout()}
+              className="mt-focus inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-[var(--mt-surface)] text-[var(--mt-text)] hover:border-primary sm:hidden"
+              aria-label="Logout"
+            >
+              <LogOut size={16} />
+            </button>
           </div>
         </header>
         <main className="flex-1 p-4 sm:p-6">

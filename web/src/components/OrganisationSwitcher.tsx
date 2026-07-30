@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useHomeBootstrap, useOrgBootstrap } from "@mytask/hooks";
 import { ROUTES } from "@mytask/constants";
 import { getOrganisationRoleCode } from "@mytask/utils";
 import type { OrganisationMembership } from "@mytask/types";
 import { useOrganisationStore } from "@/store/organisationStore";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Home } from "lucide-react";
 import { clsx } from "clsx";
 
 function asOrgs(data: unknown): OrganisationMembership[] {
@@ -16,6 +17,7 @@ export function OrganisationSwitcher() {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { orgCode } = useParams();
   const inOrg = Boolean(orgCode);
 
@@ -31,6 +33,7 @@ export function OrganisationSwitcher() {
 
   const organisation = useOrganisationStore((s) => s.organisation);
   const setOrganisation = useOrganisationStore((s) => s.setOrganisation);
+  const clearOrganisation = useOrganisationStore((s) => s.clear);
 
   useEffect(() => {
     function onDocClick(event: MouseEvent) {
@@ -51,6 +54,15 @@ export function OrganisationSwitcher() {
     });
     setOpen(false);
     navigate(ROUTES.org(org.code));
+  }
+
+  function backToMyTask() {
+    clearOrganisation();
+    // Drop org-scoped caches so the personal workspace is fresh
+    void queryClient.removeQueries({ queryKey: ["screens", "org-bootstrap"] });
+    void queryClient.removeQueries({ queryKey: ["screens", "dashboard"] });
+    setOpen(false);
+    navigate(ROUTES.home);
   }
 
   const label = organisation?.name || "Organisations";
@@ -98,6 +110,16 @@ export function OrganisationSwitcher() {
             )}
           </div>
           <div className="border-t border-border p-2">
+            {inOrg ? (
+              <button
+                type="button"
+                onClick={backToMyTask}
+                className="mb-1 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-[var(--mt-text)] hover:bg-primary-muted"
+              >
+                <Home size={14} className="text-primary" />
+                Back to myTask
+              </button>
+            ) : null}
             <Link
               to={ROUTES.createOrganisation}
               onClick={() => setOpen(false)}

@@ -20,21 +20,3 @@ export function BrandLogo({
     </div>
   );
 }
-
-export function ShowcaseNotice({ className }: { className?: string }) {
-  return (
-    <p
-      className={clsx(
-        "mx-auto mt-6 max-w-md text-center text-[11px] leading-relaxed text-white/70",
-        className,
-      )}
-    >
-      <strong className="font-semibold text-white/85">
-        Project is for showcasing purposes only.
-      </strong>{" "}
-      This is a real project concept. All original concept ownership and
-      authorization belong to Joel Couchman. This version has been rebuilt solely
-      for demonstration purposes.
-    </p>
-  );
-}

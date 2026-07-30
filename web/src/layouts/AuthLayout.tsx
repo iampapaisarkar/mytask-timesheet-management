@@ -1,6 +1,6 @@
 import { Outlet, Link } from "react-router-dom";
 import { ROUTES } from "@mytask/constants";
-import { BrandLogo, ShowcaseNotice } from "@/components/Brand";
+import { BrandLogo } from "@/components/Brand";
 import { Moon, Sun } from "lucide-react";
 import { useThemeStore } from "@/store/themeStore";
 
@@ -31,7 +31,17 @@ export function AuthLayout() {
           </div>
           <Outlet />
         </div>
-        <ShowcaseNotice />
+        <nav className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-white/75">
+          <Link to={ROUTES.help} className="hover:text-white">
+            Help & FAQ
+          </Link>
+          <Link to={ROUTES.terms} className="hover:text-white">
+            Terms & Conditions
+          </Link>
+          <Link to={ROUTES.privacy} className="hover:text-white">
+            Privacy Policy
+          </Link>
+        </nav>
       </main>
     </div>
   );
