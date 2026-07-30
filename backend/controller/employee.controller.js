@@ -139,17 +139,19 @@ export async function list(req, res, next) {
       where: whereCondition,
       distinct: true,
       col: "Employees.id",
+      subQuery: false,
       offset,
       limit: rowsPerPage,
       order,
     });
 
-    const total_pages = Math.ceil(employees.length / rowsPerPage);
+    const totalRows = Array.isArray(count) ? count.length : count;
+    const total_pages = Math.ceil(totalRows / rowsPerPage) || 0;
 
     return res.status(200).json({
       data: employees,
       pagination: {
-        total_rows: employees.length,
+        total_rows: totalRows,
         rows_per_page: rowsPerPage,
         page_number: pageNumber,
         total_pages,
@@ -346,7 +348,11 @@ export async function invite(req, res, next) {
             {
               model: UserOrganisationRoles,
               as: "user_organisations_role",
-              attributes: ["id", "user_id", "role_id"],
+              attributes: ["id", "user_id", "organisation_id", "role_id"],
+              required: false,
+              where: {
+                organisation_id: organisation.id,
+              },
               include: [
                 {
                   model: OrganisationRoles,

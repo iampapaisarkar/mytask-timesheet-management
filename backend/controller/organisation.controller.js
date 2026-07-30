@@ -661,11 +661,21 @@ export async function acceptInvitation(req, res, next) {
       raw: true,
     });
 
-    await UserOrganisationRoles.create({
-      organisation_id: organisation_id,
-      user_id: user.id,
-      role_id: role.id,
+    const existingRole = await UserOrganisationRoles.findOne({
+      where: {
+        organisation_id: organisation_id,
+        user_id: user.id,
+      },
     });
+    if (existingRole) {
+      await existingRole.update({ role_id: role.id });
+    } else {
+      await UserOrganisationRoles.create({
+        organisation_id: organisation_id,
+        user_id: user.id,
+        role_id: role.id,
+      });
+    }
 
     await sendEmailAndNotification(user, organisation_id, invitation, "Accept");
 

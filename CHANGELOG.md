@@ -2,6 +2,13 @@
 
 ## 2026-07-30
 
+### Fixed
+
+- Duplicate employees in list/dropdowns/reports: root cause was duplicate `user_organisation_roles` rows for the same `(user_id, organisation_id)`, multiplied by an unscoped `hasOne` join on `user_id` in the Employees defaultScope
+- Deduped existing UOR/employee rows and added unique indexes on `(user_id, organisation_id)` for both tables
+- Scoped UOR includes to the employee/org context; invite accept now updates an existing role instead of always inserting
+- Org bootstrap (`Employees.organisation_id` unknown in ON clause): stop joining UOR inside Employees defaultScope; attach the org-scoped role in `afterFind` so nested `employee` aliases work
+
 ### Added
 
 - Timesheet ↔ jobs many-to-many (`timesheet_jobs`): one timesheet can include multiple jobs; the same job can be used by many employees

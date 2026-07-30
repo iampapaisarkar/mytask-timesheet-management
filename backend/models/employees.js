@@ -1,4 +1,4 @@
-import { DataTypes } from "sequelize";
+import { DataTypes, Op } from "sequelize";
 import { db } from "../database.js";
 import Users from "./users.js";
 import UserOrganisationRoles from "./userOrganisationRoles.js";
@@ -13,6 +13,50 @@ import EmployeePayrolls from "./employeePayrolls.js";
 import UserTimezones from "./userTimezones.js";
 import States from "./states.js";
 import EmployeeAddress from "./employeeAddress.js";
+
+/**
+ * Attach the org-scoped role without joining UOR in the main query.
+ * A JOIN on user_id alone multiplies rows (multi-org / historical dupes), and
+ * correlating on `Employees.organisation_id` breaks when this model is nested
+ * under alias `employee` (e.g. Organisations.withUser / orgBootstrap).
+ */
+async function attachOrganisationRoles(findResult) {
+  if (!findResult) return;
+  const rows = Array.isArray(findResult) ? findResult : [findResult];
+  const targets = rows.filter((r) => r?.user_id && r?.organisation_id);
+  if (!targets.length) return;
+
+  const roleRows = await UserOrganisationRoles.findAll({
+    where: {
+      [Op.or]: targets.map((t) => ({
+        user_id: t.user_id,
+        organisation_id: t.organisation_id,
+      })),
+    },
+    attributes: ["id", "user_id", "organisation_id", "role_id"],
+    include: [
+      {
+        model: OrganisationRoles,
+        as: "role",
+        attributes: ["id", "name", "code"],
+      },
+    ],
+  });
+
+  const byKey = new Map(
+    roleRows.map((r) => [`${r.user_id}:${r.organisation_id}`, r]),
+  );
+
+  for (const emp of targets) {
+    const uor = byKey.get(`${emp.user_id}:${emp.organisation_id}`);
+    if (!uor || !emp.user) continue;
+    if (typeof emp.user.setDataValue === "function") {
+      emp.user.setDataValue("user_organisations_role", uor);
+    } else {
+      emp.user.user_organisations_role = uor;
+    }
+  }
+}
 
 const Employees = db.define(
   "Employees",
@@ -89,10 +133,10 @@ Employees.associate = function (models) {
     foreignKey: "user_id",
   });
 
-  models.Employees.belongsTo(models.EmployeeInvitations, {
+  models.Employees.hasOne(models.EmployeeInvitations, {
     as: "invitation",
-    foreignKey: "id",
-    targetKey: "employee_id",
+    foreignKey: "employee_id",
+    sourceKey: "id",
   });
 
   models.Employees.belongsTo(models.Users, {
@@ -151,18 +195,6 @@ Employees.addScope(
         required: false,
         include: [
           {
-            model: UserOrganisationRoles,
-            as: "user_organisations_role",
-            attributes: ["id", "user_id", "role_id"],
-            include: [
-              {
-                model: OrganisationRoles,
-                as: "role",
-                attributes: ["id", "name", "code"],
-              },
-            ],
-          },
-          {
             model: UserTimezones,
             as: "timezone",
           },
@@ -212,5 +244,9 @@ Employees.addScope(
   },
   { override: true },
 );
+
+Employees.addHook("afterFind", async (result) => {
+  await attachOrganisationRoles(result);
+});
 
 export default Employees;

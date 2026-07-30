@@ -102,8 +102,17 @@ Organisations.addScope("withUser", (userId) => ({
       ],
     },
     {
-      model: Employees,
+      // Unscoped: defaultScope's heavy includes are unnecessary for membership
+      // lookups and previously broke when UOR was correlated on Employees.*.
+      model: Employees.unscoped(),
       as: "employee",
+      attributes: [
+        "id",
+        "user_id",
+        "organisation_id",
+        "preferred_name",
+        "created_by",
+      ],
       where: { user_id: userId },
       required: false,
     },

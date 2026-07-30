@@ -389,8 +389,11 @@ export async function managerEmployees(req, res, next) {
               {
                 model: UserOrganisationRoles,
                 as: "user_organisations_role", // optional alias if you defined one
-                attributes: ["id", "user_id", "role_id"],
+                attributes: ["id", "user_id", "organisation_id", "role_id"],
                 required: true,
+                where: {
+                  organisation_id: organisation.id,
+                },
                 include: [
                   {
                     model: OrganisationRoles,
@@ -503,8 +506,11 @@ export async function managerStaffEmployees(req, res, next) {
               {
                 model: UserOrganisationRoles,
                 as: "user_organisations_role", // optional alias if you defined one
-                attributes: ["id", "user_id", "role_id"],
+                attributes: ["id", "user_id", "organisation_id", "role_id"],
                 required: true,
+                where: {
+                  organisation_id: organisation.id,
+                },
                 include: [
                   {
                     model: OrganisationRoles,
