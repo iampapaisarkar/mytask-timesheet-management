@@ -3,8 +3,11 @@ import moment from "moment";
 import models from "../models/index.js";
 import organisationService from "./organisation.service.js";
 import timsheetService from "./timsheet.service.js";
+import payoutService from "./payout.service.js";
 import { TimesheetConfig } from "../class/timesheet.config.js";
 import redisUtils from "../utils/redis.utils.js";
+import { resolveOrganisationDisplayCurrency } from "../utils/currency.utils.js";
+import currencyService from "./currency.service.js";
 import {
   mapInvitation,
   mapJobOption,
@@ -28,6 +31,7 @@ const {
   Timesheets,
   TimesheetStatus,
   TimesheetDays,
+  Payouts,
 } = models;
 
 async function listOrganisationsForUser(userId, { limit = 50 } = {}) {
@@ -415,15 +419,33 @@ async function buildTimesheetWhereForDashboard(organisation) {
 
 /**
  * Org home dashboard overview — server-computed KPIs (no mock charts).
+ * Role-scoped timesheet + payout analytics.
  */
 export async function getDashboardOverview(user, organisation) {
   const { whereCondition, source } =
     await buildTimesheetWhereForDashboard(organisation);
 
   if (!whereCondition) {
+    const displayCurrency = resolveOrganisationDisplayCurrency(organisation);
+    const empty = emptyDashboard(source, organisation?.role?.code);
+    empty.display_currency = displayCurrency;
+    if (organisation.acl?.payout?.list) {
+      const payoutStats = await payoutService.dashboardPayoutStats(
+        organisation,
+        null,
+        { displayCurrency },
+      );
+      empty.payroll_trend = payoutStats.monthly_payroll_trend || [];
+      empty.payout_status_donut = payoutStats.status_distribution || [];
+      empty.kpis.payroll_this_month = payoutStats.paid_amount_month || 0;
+      empty.kpis.pending_payout_amount = payoutStats.pending_amount || 0;
+      empty.kpis.pending_payouts =
+        (payoutStats.ready || 0) + (payoutStats.pending_approval || 0);
+      empty.kpis.paid_payouts = payoutStats.paid || 0;
+    }
     return {
       success: true,
-      data: emptyDashboard(source),
+      data: empty,
     };
   }
 
@@ -435,6 +457,7 @@ export async function getDashboardOverview(user, organisation) {
       "period_start_date",
       "period_end_date",
       "created_at",
+      "employee_id",
     ],
     include: [
       {
@@ -469,6 +492,21 @@ export async function getDashboardOverview(user, organisation) {
     decided > 0 ? Math.round((approved / decided) * 100) : 0;
 
   const timesheetIds = timesheets.map((t) => t.id);
+  const approvedIds = timesheets
+    .filter((t) => {
+      const plain = t.toJSON ? t.toJSON() : t;
+      return plain.status?.code === "approved";
+    })
+    .map((t) => t.id);
+  const pendingIds = timesheets
+    .filter((t) => {
+      const plain = t.toJSON ? t.toJSON() : t;
+      return (
+        plain.status?.code === "draft" || plain.status?.code === "submitted"
+      );
+    })
+    .map((t) => t.id);
+
   const weekStart = moment().startOf("isoWeek");
   const weekEnd = moment().endOf("isoWeek");
   const monthStart = moment().startOf("month");
@@ -489,6 +527,7 @@ export async function getDashboardOverview(user, organisation) {
       },
       attributes: [
         "date",
+        "timesheet_id",
         "total_working_hours_in_decimal",
         "is_public_holiday",
       ],
@@ -566,6 +605,23 @@ export async function getDashboardOverview(user, organisation) {
   }
   const productivity_trend = Object.values(trendBuckets);
 
+  let worked_hours_month = 0;
+  let approved_hours_month = 0;
+  let pending_hours_month = 0;
+  const approvedSet = new Set(approvedIds);
+  const pendingSet = new Set(pendingIds);
+  for (const day of dayRows) {
+    const m = moment(day.date);
+    if (!m.isBetween(monthStart, monthEnd, "day", "[]")) continue;
+    const hours = Number(day.total_working_hours_in_decimal) || 0;
+    worked_hours_month += hours;
+    if (approvedSet.has(day.timesheet_id)) approved_hours_month += hours;
+    if (pendingSet.has(day.timesheet_id)) pending_hours_month += hours;
+  }
+  worked_hours_month = Number(worked_hours_month.toFixed(2));
+  approved_hours_month = Number(approved_hours_month.toFixed(2));
+  pending_hours_month = Number(pending_hours_month.toFixed(2));
+
   const notifications = await listNotificationsForUser(user.id, {
     limit: 8,
   }).catch(() => ({ items: [], unread_count: 0 }));
@@ -589,10 +645,126 @@ export async function getDashboardOverview(user, organisation) {
     return plain.status?.code === "submitted";
   });
 
+  let employeeScopeIds = null;
+  if (organisation.role?.code === "staff" && organisation?.employee?.id) {
+    employeeScopeIds = [Number(organisation.employee.id)];
+  } else if (organisation.role?.code === "manager") {
+    employeeScopeIds = await resolveManagementStaffIds(organisation);
+  }
+
+  // Org admins see reporting currency; staff see their own wage currency.
+  let displayCurrency = resolveOrganisationDisplayCurrency(organisation);
+  if (
+    organisation.role?.code === "staff" &&
+    organisation?.employee?.id
+  ) {
+    const { EmployeeWages } = models;
+    const wage = await EmployeeWages.findOne({
+      where: {
+        organisation_id: organisation.id,
+        employee_id: organisation.employee.id,
+      },
+      attributes: ["currency"],
+      order: [["id", "DESC"]],
+      raw: true,
+    }).catch(() => null);
+    if (wage?.currency) {
+      displayCurrency = String(wage.currency).toUpperCase();
+    }
+  }
+
+  let payoutStats = {
+    draft: 0,
+    pending_approval: 0,
+    ready: 0,
+    paid: 0,
+    cancelled: 0,
+    paid_amount_month: 0,
+    pending_amount: 0,
+    status_distribution: [],
+    monthly_payroll_trend: [],
+  };
+  if (organisation.acl?.payout?.list) {
+    payoutStats = await payoutService.dashboardPayoutStats(
+      organisation,
+      employeeScopeIds,
+      { displayCurrency },
+    );
+  }
+
+  let latest_payout = null;
+  if (
+    organisation.acl?.payout?.list &&
+    organisation.role?.code === "staff" &&
+    organisation?.employee?.id
+  ) {
+    const latest = await Payouts.findOne({
+      where: {
+        organisation_id: organisation.id,
+        employee_id: organisation.employee.id,
+        status: { [Op.ne]: "CANCELLED" },
+      },
+      order: [["id", "DESC"]],
+      attributes: [
+        "id",
+        "payout_number",
+        "status",
+        "amount",
+        "net_amount",
+        "currency",
+        "paid_at",
+        "pay_date",
+        "period_start_date",
+        "period_end_date",
+      ],
+      raw: true,
+    });
+    latest_payout = latest || null;
+    if (
+      latest_payout &&
+      latest_payout.currency &&
+      String(latest_payout.currency).toUpperCase() !== displayCurrency
+    ) {
+      try {
+        const converted = await currencyService.convertAmount(
+          latest_payout.net_amount ?? latest_payout.amount,
+          latest_payout.currency,
+          displayCurrency,
+        );
+        latest_payout = {
+          ...latest_payout,
+          amount_original: latest_payout.net_amount ?? latest_payout.amount,
+          currency_original: latest_payout.currency,
+          net_amount: converted.amount,
+          amount: converted.amount,
+          currency: displayCurrency,
+        };
+      } catch {
+        /* keep native */
+      }
+    }
+  }
+
+  const employeeCount =
+    source === "management"
+      ? await Employees.unscoped().count({
+          where: {
+            organisation_id: organisation.id,
+            ...(employeeScopeIds
+              ? { id: { [Op.in]: employeeScopeIds } }
+              : {}),
+          },
+        })
+      : organisation?.employee?.id
+        ? 1
+        : 0;
+
   return {
     success: true,
     data: {
       source,
+      role: organisation?.role?.code || null,
+      display_currency: displayCurrency,
       kpis: {
         approved,
         draft,
@@ -600,13 +772,25 @@ export async function getDashboardOverview(user, organisation) {
         rejected,
         total,
         approval_rate_pct,
+        employees: employeeCount,
+        worked_hours_month,
+        approved_hours_month,
+        pending_hours_month,
+        payroll_this_month: payoutStats.paid_amount_month,
+        pending_payout_amount: payoutStats.pending_amount,
+        pending_payouts:
+          (payoutStats.ready || 0) + (payoutStats.pending_approval || 0),
+        paid_payouts: payoutStats.paid || 0,
       },
       status_donut: Array.from(statusCounts.values()),
       weekly_progress,
       monthly_progress,
       productivity_trend,
+      payroll_trend: payoutStats.monthly_payroll_trend || [],
+      payout_status_donut: payoutStats.status_distribution || [],
       team_activity,
       recent_activity,
+      latest_payout,
       quick_links_hint: {
         has_pending_approvals: submitted > 0,
         open_timesheet_id: pendingSubmitted?.id ?? null,
@@ -615,9 +799,11 @@ export async function getDashboardOverview(user, organisation) {
   };
 }
 
-function emptyDashboard(source) {
+function emptyDashboard(source, role = null) {
   return {
     source,
+    role,
+    display_currency: null,
     kpis: {
       approved: 0,
       draft: 0,
@@ -625,6 +811,14 @@ function emptyDashboard(source) {
       rejected: 0,
       total: 0,
       approval_rate_pct: 0,
+      employees: 0,
+      worked_hours_month: 0,
+      approved_hours_month: 0,
+      pending_hours_month: 0,
+      payroll_this_month: 0,
+      pending_payout_amount: 0,
+      pending_payouts: 0,
+      paid_payouts: 0,
     },
     status_donut: [],
     weekly_progress: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
@@ -632,8 +826,11 @@ function emptyDashboard(source) {
     ),
     monthly_progress: [],
     productivity_trend: [],
+    payroll_trend: [],
+    payout_status_donut: [],
     team_activity: [],
     recent_activity: [],
+    latest_payout: null,
     quick_links_hint: {
       has_pending_approvals: false,
       open_timesheet_id: null,

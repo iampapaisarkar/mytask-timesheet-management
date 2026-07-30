@@ -162,7 +162,43 @@ export const SUPPORTED_CURRENCIES = [
 export type SupportedCurrencyCode =
   (typeof SUPPORTED_CURRENCIES)[number]["code"];
 
-export const DEFAULT_CURRENCY: SupportedCurrencyCode = "AUD";
+/**
+ * Last-resort fallback when country/locale cannot be resolved.
+ * Prefer `currencyFromCountryIso` / org `default_currency` instead.
+ */
+export const DEFAULT_CURRENCY: SupportedCurrencyCode = "USD";
+
+/** ISO 3166-1 alpha-2 → ISO 4217 for supported currencies. */
+export const COUNTRY_TO_CURRENCY: Record<string, SupportedCurrencyCode> = {
+  US: "USD",
+  IN: "INR",
+  AU: "AUD",
+  GB: "GBP",
+  NZ: "NZD",
+  CA: "CAD",
+  SG: "SGD",
+  IE: "EUR",
+  DE: "EUR",
+  FR: "EUR",
+  NL: "EUR",
+  ES: "EUR",
+  IT: "EUR",
+  PT: "EUR",
+  BE: "EUR",
+  AT: "EUR",
+  FI: "EUR",
+  LU: "EUR",
+  GR: "EUR",
+};
+
+export function currencyFromCountryIso(
+  countryIso: string | null | undefined,
+  fallback: SupportedCurrencyCode = DEFAULT_CURRENCY,
+): SupportedCurrencyCode {
+  if (!countryIso) return fallback;
+  const key = countryIso.trim().toUpperCase();
+  return COUNTRY_TO_CURRENCY[key] || fallback;
+}
 
 export const SUPPORTED_CURRENCY_CODES = SUPPORTED_CURRENCIES.map(
   (c) => c.code,

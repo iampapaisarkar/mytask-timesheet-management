@@ -28,6 +28,7 @@
 | Reports pay PDF | ✅ Done | 2026-07-30 | Single employee + approved timesheet; day amounts; PDF download/email; `(You)` labels |
 | Realtime Socket.IO architecture | ✅ Done | 2026-07-30 | Shared `@mytask/realtime`; JWT gateway; org/user rooms; domain stores; logout wipe |
 | Org logout + Back to myTask + web FCM + legal | ✅ Done | 2026-07-30 | Shared logout; notification routing; SW push; Help/Terms/Privacy |
+| Enterprise payouts + role dashboard | ✅ Done | 2026-07-31 | Workflow statuses, audit, snapshots, filters/export, live payroll KPIs |
 
 ## Vue ↔ Web ↔ Mobile gap matrix
 
@@ -43,7 +44,7 @@
 | `timesheet` list/detail/day | ✅ | ✅ | Day editor + map |
 | `timesheet-management` | ✅ | ✅ list | Web has full detail |
 | `reports` | ✅ | — | Approved timesheet pay report + PDF |
-| `payouts` | ✅ | — | MVP eligible + mark paid |
+| `payouts` | ✅ | — | Enterprise workflow + history/export |
 | `settings` + CRUD | ✅ | ✅ hub | Mobile hub placeholders |
 | `employees` wizard | ✅ | ✅ list | |
 | `customers` / `jobs` / MG | ✅ | — | GoogleAddress + radius |
@@ -55,4 +56,4 @@
 
 ## Current focus
 
-Parity shipped. Next refinements: full award-rate IF/THEN builder, enable native Transistorsoft autolinking with license, deeper mobile settings CRUD.
+Enterprise payout + role dashboard shipped. Next refinements: full award-rate IF/THEN builder, enable native Transistorsoft autolinking with license, deeper mobile settings CRUD / mobile payouts.

@@ -970,3 +970,43 @@ export async function organisationSetupStatus(req, res) {
     return res.status(500).json({ message: "Unable to fetch organisation setup status" });
   }
 }
+
+/**
+ * Live FX rates for dashboard / reporting conversion.
+ * Google has no official currency API — uses Frankfurter (ECB) with fallback.
+ */
+export async function exchangeRates(req, res) {
+  try {
+    const currencyService = (await import("../service/currency.service.js"))
+      .default;
+    const data = await currencyService.getUsdRates();
+    return res.status(200).json({ data });
+  } catch (err) {
+    console.error("exchangeRates:", err);
+    return res.status(502).json({
+      message: "Unable to fetch exchange rates",
+      details: err.message,
+    });
+  }
+}
+
+export async function convertCurrency(req, res) {
+  try {
+    const { amount, from, to } = { ...req.query, ...req.body };
+    if (amount == null || !from || !to) {
+      return res.status(400).json({
+        message: "amount, from, and to are required",
+      });
+    }
+    const currencyService = (await import("../service/currency.service.js"))
+      .default;
+    const data = await currencyService.convertAmount(amount, from, to);
+    return res.status(200).json({ data });
+  } catch (err) {
+    console.error("convertCurrency:", err);
+    return res.status(502).json({
+      message: "Unable to convert currency",
+      details: err.message,
+    });
+  }
+}

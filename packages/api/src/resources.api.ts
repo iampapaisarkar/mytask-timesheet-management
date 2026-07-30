@@ -299,6 +299,12 @@ export const payoutsApi = {
       ...req(options, buildListQuery(params)),
     });
   },
+  get(id: string | number, options?: RequestOptions) {
+    return getApiClient().get<ApiResponse<unknown>>(
+      `/payouts/${id}`,
+      req(options),
+    );
+  },
   eligible(options?: RequestOptions) {
     return getApiClient().get<ApiResponse<unknown[]>>(
       "/payouts/eligible",
@@ -312,12 +318,53 @@ export const payoutsApi = {
       req(options),
     );
   },
-  markPaid(id: string | number, options?: RequestOptions) {
+  submit(id: string | number, payload: Record<string, unknown> = {}, options?: RequestOptions) {
     return getApiClient().post<ApiResponse<unknown>>(
-      `/payouts/${id}/mark-paid`,
-      {},
+      `/payouts/${id}/submit`,
+      payload,
       req(options),
     );
+  },
+  approve(id: string | number, payload: Record<string, unknown> = {}, options?: RequestOptions) {
+    return getApiClient().post<ApiResponse<unknown>>(
+      `/payouts/${id}/approve`,
+      payload,
+      req(options),
+    );
+  },
+  release(id: string | number, payload: Record<string, unknown> = {}, options?: RequestOptions) {
+    return getApiClient().post<ApiResponse<unknown>>(
+      `/payouts/${id}/release`,
+      payload,
+      req(options),
+    );
+  },
+  markPaid(id: string | number, payload: Record<string, unknown> = {}, options?: RequestOptions) {
+    return getApiClient().post<ApiResponse<unknown>>(
+      `/payouts/${id}/mark-paid`,
+      payload,
+      req(options),
+    );
+  },
+  cancel(id: string | number, payload: Record<string, unknown> = {}, options?: RequestOptions) {
+    return getApiClient().post<ApiResponse<unknown>>(
+      `/payouts/${id}/cancel`,
+      payload,
+      req(options),
+    );
+  },
+  adjust(id: string | number, payload: Record<string, unknown>, options?: RequestOptions) {
+    return getApiClient().post<ApiResponse<unknown>>(
+      `/payouts/${id}/adjust`,
+      payload,
+      req(options),
+    );
+  },
+  exportCsv(params: ListParams = {}, options?: RequestOptions) {
+    return getApiClient().get("/payouts/export", {
+      ...req(options, buildListQuery(params)),
+      responseType: "blob",
+    });
   },
 };
 

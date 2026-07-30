@@ -17,6 +17,8 @@ import {
   employeeTimesheets,
   states,
   organisationSetupStatus,
+  exchangeRates,
+  convertCurrency,
 } from "../../controller/system.controller.js";
 import OrganisationValidate from "../../middleware/organisationvalidate.js";
 
@@ -44,5 +46,7 @@ router.get(
   OrganisationValidate,
   organisationSetupStatus,
 );
+router.get("/exchange-rates", exchangeRates);
+router.get("/convert-currency", convertCurrency);
 
 export default router;

@@ -11,6 +11,7 @@ import {
   formatPhoneDisplay,
   isValidInternationalPhone,
   phoneValueFromE164,
+  detectLocalePreferences,
   type PhoneValue,
 } from "@mytask/utils";
 
@@ -33,12 +34,13 @@ export type GlobalPhoneInputProps = {
 /**
  * Shared international phone input — use on every phone field.
  * Emits E.164 + dial code + ISO country.
+ * Default country comes from the browser locale when not provided.
  */
 export function GlobalPhoneInput({
   label,
   value,
   e164,
-  defaultCountry = "US",
+  defaultCountry,
   required,
   disabled,
   error,
@@ -48,6 +50,12 @@ export function GlobalPhoneInput({
   onChange,
   onBlur,
 }: GlobalPhoneInputProps) {
+  const resolvedDefaultCountry = useMemo(() => {
+    if (defaultCountry) return defaultCountry;
+    const iso = detectLocalePreferences().defaultCountryIso;
+    return (iso || "US") as Country;
+  }, [defaultCountry]);
+
   const [touched, setTouched] = useState(false);
   const currentE164 = (value?.phone_number || e164 || "") as Value | undefined;
 
@@ -89,7 +97,7 @@ export function GlobalPhoneInput({
           name={name}
           international
           countryCallingCodeEditable={false}
-          defaultCountry={defaultCountry}
+          defaultCountry={resolvedDefaultCountry}
           flags={flags}
           value={currentE164 || undefined}
           disabled={disabled}

@@ -10,6 +10,7 @@ import {
   DEFAULT_CURRENCY,
   SUPPORTED_CURRENCIES,
   currencyDisplayPrefix,
+  currencyFromCountryIso,
   isSupportedCurrency,
   type SupportedCurrencyCode,
 } from "@mytask/constants";
@@ -23,6 +24,8 @@ import {
   emptyAddress,
 } from "@/components/GoogleAddress";
 import { useToastStore } from "@/store/toastStore";
+import { useOrganisationStore } from "@/store/organisationStore";
+import { useLocaleDefaults } from "@/hooks/useLocaleDefaults";
 
 const selectClass =
   "mt-focus rounded-xl border border-border bg-[var(--mt-surface)] px-3.5 py-3 text-[var(--mt-text)] outline-none focus:border-primary";
@@ -85,7 +88,10 @@ const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
   { value: "BANK_TRANSFER", label: "Bank Transfer" },
 ];
 
-function emptyForm(email = ""): EmployeeForm {
+function emptyForm(
+  email = "",
+  currency: SupportedCurrencyCode = DEFAULT_CURRENCY,
+): EmployeeForm {
   return {
     action: null,
     details: {
@@ -106,7 +112,7 @@ function emptyForm(email = ""): EmployeeForm {
       employment_type: null,
       payroll_calendar: null,
       pay_type: "HOURLY",
-      currency: DEFAULT_CURRENCY,
+      currency,
       hourly_rate_exc_super: "",
       fixed_rate_exc_super: "",
     },
@@ -255,6 +261,24 @@ export function CreateEmployeeDialog({
   employee?: EmployeeListRow | null;
 }) {
   const toast = useToastStore();
+  const organisation = useOrganisationStore((s) => s.organisation);
+  const localeDefaults = useLocaleDefaults(
+    (organisation as { default_country?: string | null } | null)
+      ?.default_country ||
+      (organisation as { phone_country_iso?: string | null } | null)
+        ?.phone_country_iso ||
+      null,
+  );
+  const defaultWageCurrency = useMemo(() => {
+    const orgCurrency = (organisation as { default_currency?: string | null } | null)
+      ?.default_currency;
+    if (isSupportedCurrency(orgCurrency)) return orgCurrency;
+    return currencyFromCountryIso(
+      localeDefaults.defaultCountryIso,
+      localeDefaults.currency as SupportedCurrencyCode,
+    );
+  }, [organisation, localeDefaults]);
+
   const searchMutation = useSearchEmployeeByEmail();
   const createMutation = useCreateEmployee();
   const updateMutation = useUpdateEmployee();
@@ -262,7 +286,9 @@ export function CreateEmployeeDialog({
   const employeeId = employee?.details?.id ?? employee?.id;
   const [step, setStep] = useState(isEdit ? 1 : 0);
   const [email, setEmail] = useState("");
-  const [form, setForm] = useState<EmployeeForm>(() => emptyForm());
+  const [form, setForm] = useState<EmployeeForm>(() =>
+    emptyForm("", defaultWageCurrency),
+  );
 
   const enabled = open && (isEdit || step >= 1);
   const formLookupsQuery = useEmployeeFormLookups(enabled);
@@ -286,7 +312,7 @@ export function CreateEmployeeDialog({
     if (!open) {
       setStep(0);
       setEmail("");
-      setForm(emptyForm());
+      setForm(emptyForm("", defaultWageCurrency));
       return;
     }
     if (employee) {
@@ -297,7 +323,7 @@ export function CreateEmployeeDialog({
     } else {
       setStep(0);
       setEmail("");
-      setForm(emptyForm());
+      setForm(emptyForm("", defaultWageCurrency));
     }
   }, [open, employee]);
 
@@ -754,6 +780,7 @@ export function CreateEmployeeDialog({
                 <GlobalPhoneInput
                   label="Phone number"
                   required
+                  defaultCountry={localeDefaults.defaultCountry}
                   value={{
                     phone_number: form.details.phone_number || null,
                     phone_country_code: form.details.phone_country_code,

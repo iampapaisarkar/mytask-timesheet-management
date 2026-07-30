@@ -7,8 +7,12 @@ import {
   type CreateOrganisationFormValues,
 } from "@mytask/validation";
 import { useCreateOrganisation } from "@mytask/hooks";
-import { ROUTES } from "@mytask/constants";
-import { getErrorMessage, getOrganisationRoleCode, toAddressApiPayload } from "@mytask/utils";
+import { ROUTES, currencyFromCountryIso } from "@mytask/constants";
+import {
+  getErrorMessage,
+  getOrganisationRoleCode,
+  toAddressApiPayload,
+} from "@mytask/utils";
 import type { OrganisationMembership, UserProfile } from "@mytask/types";
 import { TextInput } from "@/components/ui/TextInput";
 import { GlobalPhoneInput } from "@/components/ui/GlobalPhoneInput";
@@ -116,6 +120,9 @@ export function CreateOrganisationPage() {
         phone_country_iso: values.phone_country_iso,
         default_country:
           values.country_code || values.phone_country_iso || null,
+        default_currency: currencyFromCountryIso(
+          values.country_code || values.phone_country_iso || null,
+        ),
         email: values.email,
         address: toAddressApiPayload(address, { includeCoordinates: false }),
       });

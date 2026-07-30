@@ -9,6 +9,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@mytask/constants": "*",
     "libphonenumber-js": "^1.13.9"
   }
 }

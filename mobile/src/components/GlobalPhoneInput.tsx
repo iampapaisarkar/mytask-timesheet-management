@@ -16,6 +16,7 @@ import {
   listCountryIsos,
   phoneValueFromE164,
   countryFlagEmoji,
+  detectLocalePreferences,
   type PhoneValue,
 } from "@mytask/utils";
 import { useThemeStore } from "../store/themeStore";
@@ -33,11 +34,12 @@ export type GlobalPhoneInputProps = {
 /**
  * Shared international phone input for React Native.
  * Country list comes from libphonenumber-js (ISO), not a hardcoded set.
+ * Default country follows device locale when not provided.
  */
 export function GlobalPhoneInput({
   label,
   value,
-  defaultCountry = "US",
+  defaultCountry,
   required,
   disabled,
   error,
@@ -47,7 +49,11 @@ export function GlobalPhoneInput({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [touched, setTouched] = useState(false);
-  const iso = (value?.phone_country_iso || defaultCountry).toUpperCase();
+  const resolvedDefault =
+    defaultCountry ||
+    detectLocalePreferences().defaultCountryIso ||
+    "US";
+  const iso = (value?.phone_country_iso || resolvedDefault).toUpperCase();
   const dial = value?.phone_country_code || getDialCode(iso) || "+1";
 
   const countries = useMemo(() => {

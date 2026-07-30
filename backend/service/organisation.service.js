@@ -11,6 +11,7 @@ const {
 import Auth from "#auth";
 import { Acl } from "#acl";
 import moment from "moment";
+import { currencyFromCountryIso } from "../utils/currency.utils.js";
 
 class AppError extends Error {
   constructor(message, statusCode = 400) {
@@ -144,7 +145,10 @@ async function createOrgAdminEmployee(
           payroll_calendar_id: payrollCalendarId,
           employment_type_id: fullTime?.id || null,
           pay_type: "HOURLY",
-          currency: "INR",
+          currency:
+            options.currency ||
+            currencyFromCountryIso(options.countryIso) ||
+            "USD",
           hourly_rate_exc_super: 500,
           fixed_rate_exc_super: null,
           created_at: currentUTCTime,

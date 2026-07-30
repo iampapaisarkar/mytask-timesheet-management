@@ -218,4 +218,46 @@ async function calculate(params) {
   return results;
 }
 
-export default { calculate };
+/** Standard day length used only to split display OT hours (not a separate OT rate). */
+export const STANDARD_DAY_HOURS = 8;
+
+/**
+ * Summarize a timesheet period using the same day-rate engine as reports/payouts.
+ * Does not invent a second calculator.
+ */
+async function summarizePeriod(params) {
+  const days = await calculate(params);
+  const wage = days[0] || {};
+  const payType = String(wage.pay_type || "HOURLY").toUpperCase();
+  const currency = String(wage.currency || "AUD").toUpperCase();
+  const hourlyRate = Number(wage.hourly_rate) || 0;
+
+  let workedHours = 0;
+  let regularHours = 0;
+  let overtimeHours = 0;
+  let gross = 0;
+
+  for (const day of days) {
+    const hours = Number(day.total_working_hours_in_decimal) || 0;
+    workedHours += hours;
+    const regular = Math.min(hours, STANDARD_DAY_HOURS);
+    const ot = Math.max(0, hours - STANDARD_DAY_HOURS);
+    regularHours += regular;
+    overtimeHours += ot;
+    gross += Number(day.total_payble_amount) || 0;
+  }
+
+  return {
+    days,
+    currency,
+    pay_type: payType,
+    hourly_rate: hourlyRate,
+    fixed_rate: Number(wage.fixed_rate) || 0,
+    worked_hours: Number(workedHours.toFixed(2)),
+    regular_hours: Number(regularHours.toFixed(2)),
+    overtime_hours: Number(overtimeHours.toFixed(2)),
+    gross_amount: Number(gross.toFixed(2)),
+  };
+}
+
+export default { calculate, summarizePeriod, STANDARD_DAY_HOURS };

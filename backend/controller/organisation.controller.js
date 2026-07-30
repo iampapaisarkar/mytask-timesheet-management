@@ -27,6 +27,10 @@ import { db } from "../database.js";
 import { resolveStateId } from "../utils/state.utils.js";
 import { resolvePhoneFields } from "../utils/phone.js";
 import {
+  currencyFromCountryIso,
+  normalizeCurrency,
+} from "../utils/currency.utils.js";
+import {
   assertAddressSelected,
   buildAddressRow,
 } from "../utils/address.utils.js";
@@ -120,6 +124,7 @@ export async function create(req, res, next) {
     phone_country_code,
     phone_country_iso,
     default_country,
+    default_currency,
     email,
   } = req.body;
   let transaction;
@@ -173,6 +178,10 @@ export async function create(req, res, next) {
         ? default_country.toUpperCase()
         : null) || phoneFields.phone_country_iso;
 
+    const orgDefaultCurrency = normalizeCurrency(
+      default_currency || currencyFromCountryIso(orgDefaultCountry),
+    );
+
     const response = await Organisations.create(
       {
         name: name,
@@ -181,6 +190,7 @@ export async function create(req, res, next) {
         phone_country_code: phoneFields.phone_country_code,
         phone_country_iso: phoneFields.phone_country_iso,
         default_country: orgDefaultCountry,
+        default_currency: orgDefaultCurrency,
         email: email,
         code: orgCode,
         created_at: currentUTCTime,
@@ -297,7 +307,11 @@ export async function create(req, res, next) {
       response.id,
       user,
       transaction,
-      { payrollCalendarId: defaultPayrollCalendar?.id || null },
+      {
+        payrollCalendarId: defaultPayrollCalendar?.id || null,
+        currency: orgDefaultCurrency,
+        countryIso: orgDefaultCountry,
+      },
     );
 
     await transaction.commit();
@@ -331,6 +345,7 @@ export async function update(req, res, next) {
     phone_country_code,
     phone_country_iso,
     default_country,
+    default_currency,
     email,
     organisation,
     orgCode,
@@ -381,6 +396,12 @@ export async function update(req, res, next) {
         ? default_country.toUpperCase()
         : phoneFields.phone_country_iso;
 
+    const orgDefaultCurrency = normalizeCurrency(
+      default_currency ||
+        organisation.default_currency ||
+        currencyFromCountryIso(orgDefaultCountry),
+    );
+
     const response = await Organisations.update(
       {
         name: name,
@@ -389,6 +410,7 @@ export async function update(req, res, next) {
         phone_country_code: phoneFields.phone_country_code,
         phone_country_iso: phoneFields.phone_country_iso,
         default_country: orgDefaultCountry,
+        default_currency: orgDefaultCurrency,
         email: email,
         updated_at: currentUTCTime,
       },

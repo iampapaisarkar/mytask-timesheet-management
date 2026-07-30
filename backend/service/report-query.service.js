@@ -187,11 +187,22 @@ export async function buildApprovedTimesheetReport({
     where: {
       organisation_id: organisationId,
       timesheet_id: timesheetId,
-      status: { [Op.ne]: "VOID" },
+      status: { [Op.notIn]: ["VOID", "CANCELLED"] },
     },
+    order: [["id", "DESC"]],
   });
   const payoutPlain = payout?.toJSON ? payout.toJSON() : payout;
   const isPaid = String(payoutPlain?.status || "").toUpperCase() === "PAID";
+  const snapshotNet =
+    payoutPlain?.net_amount != null
+      ? round2(payoutPlain.net_amount)
+      : payoutPlain?.amount != null
+        ? round2(payoutPlain.amount)
+        : null;
+  const snapshotGross =
+    payoutPlain?.gross_amount != null
+      ? round2(payoutPlain.gross_amount)
+      : null;
 
   const dayRows = days.map((day) => {
     const dateKey = String(day.date || "").slice(0, 10);
@@ -228,13 +239,23 @@ export async function buildApprovedTimesheetReport({
     };
   });
 
+  const computedAmount = round2(dayRows.reduce((a, d) => a + d.amount, 0));
   const totals = {
-    working_hours: round2(dayRows.reduce((a, d) => a + d.working_hours, 0)),
+    working_hours: round2(
+      payoutPlain?.worked_hours != null
+        ? Number(payoutPlain.worked_hours)
+        : dayRows.reduce((a, d) => a + d.working_hours, 0),
+    ),
     break_hours: round2(dayRows.reduce((a, d) => a + d.break_hours, 0)),
     travel_hours: round2(dayRows.reduce((a, d) => a + d.travel_hours, 0)),
-    overtime_hours: round2(dayRows.reduce((a, d) => a + d.overtime_hours, 0)),
+    overtime_hours: round2(
+      payoutPlain?.overtime_hours != null
+        ? Number(payoutPlain.overtime_hours)
+        : dayRows.reduce((a, d) => a + d.overtime_hours, 0),
+    ),
     days_worked: dayRows.filter((d) => d.working_hours > 0).length,
-    amount: round2(dayRows.reduce((a, d) => a + d.amount, 0)),
+    // Prefer frozen payout snapshot when a payout record exists
+    amount: snapshotNet != null ? snapshotNet : computedAmount,
   };
 
   if (typeof onProgress === "function") onProgress(100);
@@ -265,13 +286,24 @@ export async function buildApprovedTimesheetReport({
     totals,
     pay_cycle: {
       total_amount: totals.amount,
-      currency,
+      currency: String(payoutPlain?.currency || currency).toUpperCase(),
       payout_status: payoutPlain?.status || null,
+      payout_number: payoutPlain?.payout_number || null,
       is_paid: isPaid,
       paid_label: isPaid ? "Paid" : "Not paid",
       paid_at: payoutPlain?.paid_at || null,
-      payout_amount:
-        payoutPlain?.amount != null ? round2(payoutPlain.amount) : null,
+      payout_amount: snapshotNet,
+      gross_amount: snapshotGross,
+      deductions:
+        payoutPlain?.deductions != null ? round2(payoutPlain.deductions) : null,
+      bonuses:
+        payoutPlain?.bonuses != null ? round2(payoutPlain.bonuses) : null,
+      adjustments:
+        payoutPlain?.adjustments != null
+          ? round2(payoutPlain.adjustments)
+          : null,
+      tax_amount:
+        payoutPlain?.tax_amount != null ? round2(payoutPlain.tax_amount) : null,
     },
     standard_day_hours: STANDARD_DAY_HOURS,
   };

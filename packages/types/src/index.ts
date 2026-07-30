@@ -217,6 +217,9 @@ export interface TimesheetDayEditorView {
 
 export interface DashboardOverviewView {
   source?: string;
+  role?: string | null;
+  /** Reporting currency for aggregated amounts (org default or staff wage). */
+  display_currency?: string | null;
   kpis: {
     approved: number;
     draft: number;
@@ -224,11 +227,21 @@ export interface DashboardOverviewView {
     rejected: number;
     total: number;
     approval_rate_pct: number;
+    employees?: number;
+    worked_hours_month?: number;
+    approved_hours_month?: number;
+    pending_hours_month?: number;
+    payroll_this_month?: number;
+    pending_payout_amount?: number;
+    pending_payouts?: number;
+    paid_payouts?: number;
   };
   status_donut: Array<{ code: string; name: string; count: number }>;
   weekly_progress: Array<{ day: string; completed: number; pending: number }>;
   monthly_progress: Array<{ week: string; progress_pct: number }>;
   productivity_trend: Array<{ label: string; value: number }>;
+  payroll_trend?: Array<{ label: string; value: number }>;
+  payout_status_donut?: Array<{ code: string; name: string; count: number }>;
   team_activity: Array<{ name: string; count: number }>;
   recent_activity: Array<{
     title: string;
@@ -236,6 +249,18 @@ export interface DashboardOverviewView {
     at?: string | null;
     url?: string | null;
   }>;
+  latest_payout?: {
+    id: number;
+    payout_number?: string | null;
+    status?: string | null;
+    amount?: number | string | null;
+    net_amount?: number | string | null;
+    currency?: string | null;
+    paid_at?: string | null;
+    pay_date?: string | null;
+    period_start_date?: string | null;
+    period_end_date?: string | null;
+  } | null;
   quick_links_hint: {
     has_pending_approvals: boolean;
     open_timesheet_id: number | string | null;

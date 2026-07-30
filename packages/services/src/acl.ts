@@ -22,8 +22,19 @@ const perms = (
 
 /** Mirrors backend/class/acl.js organisationAcl — organisation roles only. */
 export function getOrganisationAcl(
-  role: OrganisationRoleCode | string | undefined | null,
+  role:
+    | OrganisationRoleCode
+    | string
+    | { code?: string }
+    | undefined
+    | null,
 ): OrganisationAcl {
+  const roleCode =
+    typeof role === "string"
+      ? role
+      : role && typeof role === "object"
+        ? role.code
+        : undefined;
   const rolePermissions: Record<string, OrganisationAcl> = {
     owner: {
       organisationSetting: perms(false, true, false, true, false),
@@ -49,7 +60,7 @@ export function getOrganisationAcl(
       holidayCalendar: perms(true, false, true, true, false),
       payrollCalendar: perms(true, true, true, false, false),
       setting: perms(true, false, false, false, false),
-      payout: none(),
+      payout: perms(true, true, true, true, false),
     },
     manager: {
       organisationSetting: none(),
@@ -62,7 +73,7 @@ export function getOrganisationAcl(
       holidayCalendar: none(),
       payrollCalendar: none(),
       setting: none(),
-      payout: none(),
+      payout: perms(true, true, false, false, false),
     },
     staff: {
       organisationSetting: none(),
@@ -75,12 +86,12 @@ export function getOrganisationAcl(
       holidayCalendar: none(),
       payrollCalendar: none(),
       setting: none(),
-      payout: none(),
+      payout: perms(true, true, false, false, false),
     },
   };
 
   return (
-    rolePermissions[role || ""] || {
+    rolePermissions[roleCode || ""] || {
       organisationSetting: none(),
       timesheet: none(),
       timesheetManagement: none(),

@@ -2,6 +2,12 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { organisationsApi } from "@mytask/api";
 import { queryKeys } from "@mytask/hooks";
+import {
+  SUPPORTED_CURRENCIES,
+  currencyFromCountryIso,
+  isSupportedCurrency,
+  type SupportedCurrencyCode,
+} from "@mytask/constants";
 import { getErrorMessage, phoneValueFromE164, fromAddressRecord, toAddressApiPayload, type PhoneValue } from "@mytask/utils";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { useOrganisationStore } from "@/store/organisationStore";
@@ -20,6 +26,7 @@ import {
   emptyAddress,
   type AddressValue,
 } from "@/components/GoogleAddress";
+import { useLocaleDefaults } from "@/hooks/useLocaleDefaults";
 
 export function OrganisationDetailsPage() {
   const organisation = useOrganisationStore((s) => s.organisation);
@@ -51,6 +58,13 @@ export function OrganisationDetailsPage() {
   const [website, setWebsite] = useState("");
   const [address, setAddress] = useState<AddressValue>(emptyAddress);
   const [frequency, setFrequency] = useState("weekly");
+  const [defaultCurrency, setDefaultCurrency] =
+    useState<SupportedCurrencyCode>("USD");
+  const localeDefaults = useLocaleDefaults(
+    phone.phone_country_iso ||
+      (organisation as { default_country?: string } | null)?.default_country ||
+      null,
+  );
 
   useEffect(() => {
     if (!query.data) return;
@@ -70,6 +84,18 @@ export function OrganisationDetailsPage() {
     setFrequency(
       String(settings.timesheet_submission_frequency || "weekly"),
     );
+    const stored = String(data.default_currency || "").toUpperCase();
+    if (isSupportedCurrency(stored)) {
+      setDefaultCurrency(stored);
+    } else {
+      setDefaultCurrency(
+        currencyFromCountryIso(
+          (data.default_country as string) ||
+            (data.phone_country_iso as string) ||
+            null,
+        ),
+      );
+    }
   }, [query.data]);
 
   if (query.isLoading) return <LoadingState />;
@@ -96,6 +122,7 @@ export function OrganisationDetailsPage() {
         phone_country_code: phone.phone_country_code,
         phone_country_iso: phone.phone_country_iso,
         default_country: phone.phone_country_iso || address.country_code,
+        default_currency: defaultCurrency,
         website: website.trim() || null,
         address: toAddressApiPayload(address, { includeCoordinates: false }),
       });
@@ -135,9 +162,39 @@ export function OrganisationDetailsPage() {
           <GlobalPhoneInput
             label="Phone"
             required
+            defaultCountry={localeDefaults.defaultCountry}
             value={phone}
-            onChange={setPhone}
+            onChange={(next) => {
+              setPhone(next);
+              if (next.phone_country_iso) {
+                setDefaultCurrency(
+                  currencyFromCountryIso(next.phone_country_iso),
+                );
+              }
+            }}
           />
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium text-muted">
+              Reporting currency (dashboard)
+            </span>
+            <select
+              className="rounded-xl border border-border bg-[var(--mt-surface)] px-3 py-2.5"
+              value={defaultCurrency}
+              onChange={(e) =>
+                setDefaultCurrency(e.target.value as SupportedCurrencyCode)
+              }
+            >
+              {SUPPORTED_CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+            <span className="text-xs text-muted">
+              Aggregated payroll on the dashboard converts employee payouts into
+              this currency.
+            </span>
+          </label>
           <TextInput label="Website" value={website} onChange={(e) => setWebsite(e.target.value)} />
           <GoogleAddressAutocomplete
             label="Address"
@@ -200,6 +257,14 @@ export function OrganisationDetailsPage() {
                 (data.phone_country_iso as string | null | undefined) || null
               }
             />
+          </p>
+        </Card>
+        <Card>
+          <p className="text-xs font-medium uppercase text-muted">
+            Reporting currency
+          </p>
+          <p className="mt-1 text-lg font-semibold">
+            {String(data.default_currency || defaultCurrency || "—")}
           </p>
         </Card>
         <Card>

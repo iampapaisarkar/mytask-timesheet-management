@@ -25,16 +25,50 @@ export async function list(req, res) {
   if (!organisation.acl.payout.list) return deny(res);
 
   try {
-    const payouts = await payoutService.listPayouts(organisation);
+    const {
+      employee_id,
+      status,
+      from,
+      to,
+      search,
+      rows_per_page,
+      page_number,
+    } = req.query;
+    const limit = Number(rows_per_page) || 100;
+    const page = Math.max(Number(page_number) || 1, 1);
+    const payouts = await payoutService.listPayouts(organisation, {
+      employee_id,
+      status,
+      from,
+      to,
+      search,
+      limit,
+      offset: (page - 1) * limit,
+    });
     return res.status(200).json({ data: payouts });
   } catch (err) {
     return handleError(res, err, "Unable to fetch payouts");
   }
 }
 
+export async function get(req, res) {
+  const { organisation } = req.body;
+  if (!organisation.acl.payout.view && !organisation.acl.payout.list) {
+    return deny(res);
+  }
+  try {
+    const payout = await payoutService.getPayout(organisation, req.params.id);
+    return res.status(200).json({ data: payout });
+  } catch (err) {
+    return handleError(res, err, "Unable to fetch payout");
+  }
+}
+
 export async function eligible(req, res) {
   const { organisation } = req.body;
-  if (!organisation.acl.payout.list) return deny(res);
+  if (!organisation.acl.payout.list && !organisation.acl.payout.create) {
+    return deny(res);
+  }
 
   try {
     const timesheets = await payoutService.listEligibleTimesheets(organisation);
@@ -45,7 +79,18 @@ export async function eligible(req, res) {
 }
 
 export async function create(req, res) {
-  const { user, organisation, timesheet_id, notes } = req.body;
+  const {
+    user,
+    organisation,
+    timesheet_id,
+    notes,
+    as_draft,
+    deductions,
+    bonuses,
+    adjustments,
+    tax_amount,
+    pay_date,
+  } = req.body;
   if (!organisation.acl.payout.create) return deny(res);
 
   try {
@@ -54,6 +99,12 @@ export async function create(req, res) {
       user,
       timesheet_id,
       notes,
+      as_draft: Boolean(as_draft),
+      deductions,
+      bonuses,
+      adjustments,
+      tax_amount,
+      pay_date,
     });
     emitPayoutCreated(organisation.id, payout, user?.id);
     emitDashboardUpdated(organisation.id);
@@ -66,8 +117,64 @@ export async function create(req, res) {
   }
 }
 
+export async function submit(req, res) {
+  const { user, organisation, notes } = req.body;
+  if (!organisation.acl.payout.edit) return deny(res);
+  try {
+    const payout = await payoutService.submitForApproval({
+      organisation,
+      user,
+      id: req.params.id,
+      notes,
+    });
+    emitPayoutUpdated(organisation.id, payout, user?.id);
+    emitDashboardUpdated(organisation.id);
+    return res.status(200).json({ data: payout, message: "Payout submitted" });
+  } catch (err) {
+    return handleError(res, err, "Unable to submit payout");
+  }
+}
+
+export async function approve(req, res) {
+  const { user, organisation, notes } = req.body;
+  if (!organisation.acl.payout.edit) return deny(res);
+  try {
+    const payout = await payoutService.approve({
+      organisation,
+      user,
+      id: req.params.id,
+      notes,
+    });
+    emitPayoutUpdated(organisation.id, payout, user?.id);
+    emitDashboardUpdated(organisation.id);
+    return res.status(200).json({ data: payout, message: "Payout approved" });
+  } catch (err) {
+    return handleError(res, err, "Unable to approve payout");
+  }
+}
+
+export async function release(req, res) {
+  const { user, organisation, notes } = req.body;
+  if (!organisation.acl.payout.edit) return deny(res);
+  try {
+    const payout = await payoutService.release({
+      organisation,
+      user,
+      id: req.params.id,
+      notes,
+    });
+    emitPayoutUpdated(organisation.id, payout, user?.id);
+    emitDashboardUpdated(organisation.id);
+    return res
+      .status(200)
+      .json({ data: payout, message: "Payout ready for payout" });
+  } catch (err) {
+    return handleError(res, err, "Unable to release payout");
+  }
+}
+
 export async function markPaid(req, res) {
-  const { user, organisation } = req.body;
+  const { user, organisation, notes } = req.body;
   const { id } = req.params;
   if (!organisation.acl.payout.edit) return deny(res);
 
@@ -76,6 +183,7 @@ export async function markPaid(req, res) {
       organisation,
       user,
       id,
+      notes,
     });
     emitPayoutUpdated(organisation.id, payout, user?.id);
     emitDashboardUpdated(organisation.id);
@@ -85,5 +193,68 @@ export async function markPaid(req, res) {
     });
   } catch (err) {
     return handleError(res, err, "Unable to mark payout as paid");
+  }
+}
+
+export async function cancel(req, res) {
+  const { user, organisation, notes } = req.body;
+  if (!organisation.acl.payout.edit) return deny(res);
+  try {
+    const payout = await payoutService.cancel({
+      organisation,
+      user,
+      id: req.params.id,
+      notes,
+    });
+    emitPayoutUpdated(organisation.id, payout, user?.id);
+    emitDashboardUpdated(organisation.id);
+    return res.status(200).json({ data: payout, message: "Payout cancelled" });
+  } catch (err) {
+    return handleError(res, err, "Unable to cancel payout");
+  }
+}
+
+export async function adjust(req, res) {
+  const {
+    user,
+    organisation,
+    deductions,
+    bonuses,
+    adjustments,
+    tax_amount,
+    notes,
+  } = req.body;
+  if (!organisation.acl.payout.edit) return deny(res);
+  try {
+    const payout = await payoutService.updateAmounts({
+      organisation,
+      user,
+      id: req.params.id,
+      deductions,
+      bonuses,
+      adjustments,
+      tax_amount,
+      notes,
+    });
+    emitPayoutUpdated(organisation.id, payout, user?.id);
+    return res.status(200).json({ data: payout, message: "Payout updated" });
+  } catch (err) {
+    return handleError(res, err, "Unable to update payout");
+  }
+}
+
+export async function exportCsv(req, res) {
+  const { organisation } = req.body;
+  if (!organisation.acl.payout.list) return deny(res);
+  try {
+    const csv = await payoutService.exportCsv(organisation, req.query);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="payouts-${organisation.code || "org"}.csv"`,
+    );
+    return res.status(200).send(csv);
+  } catch (err) {
+    return handleError(res, err, "Unable to export payouts");
   }
 }

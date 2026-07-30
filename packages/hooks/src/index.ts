@@ -587,6 +587,17 @@ export function usePayouts(params: ListParams = {}, enabled = true) {
   });
 }
 
+export function usePayout(id: string | number | null | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ["payouts", "detail", id] as const,
+    queryFn: async ({ signal }) => {
+      const res = await payoutsApi.get(id!, { signal });
+      return res.data.data;
+    },
+    enabled: Boolean(id) && enabled,
+  });
+}
+
 export function useEligiblePayouts(enabled = true) {
   return useQuery({
     queryKey: queryKeys.payoutsEligible,
@@ -598,31 +609,78 @@ export function useEligiblePayouts(enabled = true) {
   });
 }
 
+function invalidatePayoutQueries(qc: ReturnType<typeof useQueryClient>) {
+  void qc.invalidateQueries({ queryKey: ["payouts"] });
+  void qc.invalidateQueries({ queryKey: ["screens", "dashboard"] });
+}
+
 export function useCreatePayout() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (payload: {
       timesheet_id: string | number;
       notes?: string;
+      as_draft?: boolean;
     }) => {
       const res = await payoutsApi.create(payload);
       return res.data;
     },
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["payouts"] });
+    onSuccess: () => invalidatePayoutQueries(qc),
+  });
+}
+
+export function usePayoutTransition(
+  action: "submit" | "approve" | "release" | "markPaid" | "cancel",
+) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      id: string | number;
+      notes?: string;
+    }) => {
+      const payload = args.notes ? { notes: args.notes } : {};
+      const fn =
+        action === "submit"
+          ? payoutsApi.submit
+          : action === "approve"
+            ? payoutsApi.approve
+            : action === "release"
+              ? payoutsApi.release
+              : action === "markPaid"
+                ? payoutsApi.markPaid
+                : payoutsApi.cancel;
+      const res = await fn(args.id, payload);
+      return res.data;
     },
+    onSuccess: () => invalidatePayoutQueries(qc),
   });
 }
 
 export function useMarkPayoutPaid() {
-  const qc = useQueryClient();
+  return usePayoutTransition("markPaid");
+}
+
+export function useSubmitPayout() {
+  return usePayoutTransition("submit");
+}
+
+export function useApprovePayout() {
+  return usePayoutTransition("approve");
+}
+
+export function useReleasePayout() {
+  return usePayoutTransition("release");
+}
+
+export function useCancelPayout() {
+  return usePayoutTransition("cancel");
+}
+
+export function useExportPayouts() {
   return useMutation({
-    mutationFn: async (id: string | number) => {
-      const res = await payoutsApi.markPaid(id);
-      return res.data;
-    },
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["payouts"] });
+    mutationFn: async (params: ListParams = {}) => {
+      const res = await payoutsApi.exportCsv(params);
+      return res.data as Blob;
     },
   });
 }

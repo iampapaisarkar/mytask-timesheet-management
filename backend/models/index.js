@@ -43,6 +43,7 @@ import EmailSendLogs from "./emailSendLogs.js";
 import ExternalApiCallLogs from "./externalApiCallLogs.js";
 import OrganisationAddress from "./organisationAddress.js";
 import Payouts from "./payouts.js";
+import PayoutEvents from "./payoutEvents.js";
 import ReportRequests from "./reportRequests.js";
 
 const models = {
@@ -90,6 +91,7 @@ const models = {
   ExternalApiCallLogs,
   OrganisationAddress,
   Payouts,
+  PayoutEvents,
   ReportRequests,
 };
 

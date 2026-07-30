@@ -1,5 +1,33 @@
 # Changelog
 
+## 2026-07-31
+
+### Added
+
+- Organisation `default_currency` (reporting currency) with country→currency mapping; dashboard payroll KPIs convert into that currency via Frankfurter ECB rates (fallback open.er-api)
+- System FX endpoints: `GET /api/system/exchange-rates`, `GET /api/system/convert-currency`
+- Locale-aware phone country + currency defaults (`detectLocalePreferences`, `useLocaleDefaults`); docs in `docs/CURRENCY_AND_LOCALE.md`
+
+### Changed
+
+- Dashboard money widgets use API `display_currency` (no silent AUD fallback)
+- Global phone inputs default to the user’s current country from browser/device locale
+- Org create/update persists reporting currency; owner wage seed uses org currency (not hard-coded INR)
+- Default unsupported-currency fallback is USD (was AUD)
+
+### Added
+
+- Enterprise payout workflow: statuses `DRAFT` → `PENDING_APPROVAL` → `APPROVED` → `READY_FOR_PAYOUT` → `PAID` / `CANCELLED`, validated transitions, frozen rate snapshots (hours, OT, gross/net, deductions/bonuses/tax), payout numbers, and `payout_events` audit trail
+- Payout APIs: `GET /:id`, submit/approve/release/cancel/adjust, CSV export; unique active payout per timesheet (cancelled excluded via generated key)
+- Role-based live org dashboard KPIs: employees, hours, payroll this month, pending/paid payouts, payroll trend, payout status distribution, staff latest payout
+- Web Payouts page: filters (status/date/search), eligible create/draft, workflow actions, detail + audit, CSV export
+- ACL: moderator full payout; manager/staff list+view (staff scoped to self; manager to assigned employees)
+
+### Changed
+
+- Reports pay cycle prefers frozen payout snapshot amounts when a payout exists; treats `CANCELLED` like former `VOID`
+- Shared ACL helper accepts role objects (`{ code }`) as well as role code strings
+
 ## 2026-07-30
 
 ### Added

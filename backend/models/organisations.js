@@ -40,6 +40,10 @@ const Organisations = db.define(
       type: DataTypes.STRING(2),
       allowNull: true,
     },
+    default_currency: {
+      type: DataTypes.STRING(8),
+      allowNull: true,
+    },
     email: {
       type: DataTypes.STRING,
     },

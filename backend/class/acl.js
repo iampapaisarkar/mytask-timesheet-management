@@ -31,7 +31,7 @@ export const Acl = {
         holidayCalendar: createPermissions(true, false, true, true, false),
         payrollCalendar: createPermissions(true, true, true, false, false),
         setting: createPermissions(true, false, false, false, false),
-        payout: createPermissions(false, false, false, false, false),
+        payout: createPermissions(true, true, true, true, false),
       },
       manager: {
         organisationSetting: createPermissions(
@@ -50,7 +50,7 @@ export const Acl = {
         holidayCalendar: createPermissions(false, false, false, false, false),
         payrollCalendar: createPermissions(false, false, false, false, false),
         setting: createPermissions(false, false, false, false, false),
-        payout: createPermissions(false, false, false, false, false),
+        payout: createPermissions(true, true, false, false, false),
       },
       staff: {
         organisationSetting: createPermissions(
@@ -75,7 +75,7 @@ export const Acl = {
         holidayCalendar: createPermissions(false, false, false, false, false),
         payrollCalendar: createPermissions(false, false, false, false, false),
         setting: createPermissions(false, false, false, false, false),
-        payout: createPermissions(false, false, false, false, false),
+        payout: createPermissions(true, true, false, false, false),
       },
     };
 

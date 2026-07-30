@@ -30,4 +30,7 @@ Employee list filters: `phone_country_iso`, `phone_country_code`, `area_id`.
 
 ## Future-ready locale
 
-`detectLocalePreferences()` in `@mytask/utils` prepares locale / timezone / currency / default country without coupling forms to a single area.
+`detectLocalePreferences()` / `useLocaleDefaults()` derive phone country ISO and
+currency from the browser/device locale (and optionally org `default_country`).
+
+See also [CURRENCY_AND_LOCALE.md](./CURRENCY_AND_LOCALE.md).
