@@ -4,14 +4,15 @@ import models from "../models/index.js";
 import { Op } from "sequelize";
 import { SocketIO } from "#socketio";
 import externalApiLogService from "../service/external-api-log.service.js";
+import { resolveAuditOrganisation } from "../service/audit/audit-context.service.js";
 
 const { FcmConnections, Notifications, NotificationStatus } = models;
 
-function logFcm(result, { success, error, durationMs, feature }) {
+function logFcm(result, { success, error, durationMs, feature, user, organisation }) {
   void externalApiLogService
     .storeExternalApiCallLog(
-      null,
-      null,
+      user || null,
+      organisation || null,
       "FCM",
       "firebase.messaging.sendEachForMulticast",
       "POST",
@@ -30,16 +31,31 @@ function logFcm(result, { success, error, durationMs, feature }) {
     .catch(() => {});
 }
 
+async function resolveFcmAuditContext(context = {}, userIds = []) {
+  const user = context.user || null;
+  let organisation = context.organisation || null;
+  if (!organisation?.id) {
+    const seedUserId =
+      user?.id ||
+      (Array.isArray(userIds) && userIds.length ? userIds[0] : null);
+    organisation = await resolveAuditOrganisation(organisation, seedUserId);
+  }
+  return { user, organisation };
+}
+
 export const FirebaseMessaging = {
   /**
    * 🔔 SEND DATA MESSAGE (background / silent push)
    * Used mostly for background sync
+   * @param {object} [context] optional { user, organisation } for System Logs External tab
    */
-  sendMessage: async (userIds = [], message = {}) => {
+  sendMessage: async (userIds = [], message = {}, context = {}) => {
     try {
       if (!Array.isArray(userIds) || userIds.length === 0 || !message) {
         return { success: false };
       }
+
+      const audit = await resolveFcmAuditContext(context, userIds);
 
       // Fetch all tokens once
       const userFcms = await FcmConnections.findAll({
@@ -77,6 +93,7 @@ export const FirebaseMessaging = {
             success: true,
             durationMs: Date.now() - startedAt,
             feature: "Push Data Message",
+            ...audit,
           });
         })
         .catch((err) => {
@@ -86,6 +103,7 @@ export const FirebaseMessaging = {
             error: err,
             durationMs: Date.now() - startedAt,
             feature: "Push Data Message",
+            ...audit,
           });
         });
 
@@ -98,8 +116,9 @@ export const FirebaseMessaging = {
 
   /**
    * 🔔 SEND NOTIFICATION (DB + socket for ALL users; FCM when tokens exist)
+   * @param {object} [context] optional { user, organisation } for System Logs External tab
    */
-  sendNotification: async (userIds = [], message = {}, url = null) => {
+  sendNotification: async (userIds = [], message = {}, url = null, context = {}) => {
     try {
       if (!Array.isArray(userIds) || userIds.length === 0 || !message) {
         return { success: false };
@@ -109,6 +128,8 @@ export const FirebaseMessaging = {
         ...new Set(userIds.map((id) => Number(id)).filter((id) => id > 0)),
       ];
       if (uniqueUserIds.length === 0) return { success: false };
+
+      const audit = await resolveFcmAuditContext(context, uniqueUserIds);
 
       const userFcms = await FcmConnections.findAll({
         where: {
@@ -174,6 +195,15 @@ export const FirebaseMessaging = {
         };
 
         const startedAt = Date.now();
+        // Prefer recipient org when sender org missing (multi-tenant attribution)
+        const recipientAudit =
+          audit.organisation?.id
+            ? audit
+            : {
+                user: audit.user,
+                organisation: await resolveAuditOrganisation(null, userId),
+              };
+
         admin
           .messaging()
           .sendEachForMulticast(payload)
@@ -197,6 +227,7 @@ export const FirebaseMessaging = {
               error: ok
                 ? null
                 : { message: `${result.failureCount} FCM token(s) failed` },
+              ...recipientAudit,
             });
           })
           .catch((err) => {
@@ -206,6 +237,7 @@ export const FirebaseMessaging = {
               error: err,
               durationMs: Date.now() - startedAt,
               feature: "Send Notification",
+              ...recipientAudit,
             });
           });
       }

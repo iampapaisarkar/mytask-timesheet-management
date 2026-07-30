@@ -150,9 +150,12 @@ export async function markAllAs(req, res, next) {
 }
 
 export async function sendServerNotification(req, res, next) {
-  const { user_ids, message, url = null } = req.body;
+  const { user, organisation, user_ids, message, url = null } = req.body;
   try {
-    await FirebaseMessaging.sendNotification(user_ids, message, url);
+    await FirebaseMessaging.sendNotification(user_ids, message, url, {
+      user,
+      organisation,
+    });
     return res.status(200).json({});
   } catch (err) {
     console.log("err: ", err);

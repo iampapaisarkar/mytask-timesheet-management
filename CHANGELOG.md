@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- **System Logs → External** now receives org-scoped rows: FCM passes organisation/user (or resolves from recipient membership); Firebase Auth Admin + Identity Toolkit password-reset/verification calls are logged via `storeExternalApiCallLog`
+
+### Fixed
+
 - List tables (including System Logs) now paginate correctly with a default of **10 rows** per page; clients read `pagination` from the enterprise envelope (`info` / `meta`)
 - Payouts list returns `{ data, pagination }` instead of loading up to 100 rows without page metadata
 

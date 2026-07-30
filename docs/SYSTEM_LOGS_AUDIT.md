@@ -9,10 +9,21 @@ Organisation-scoped audit trail (not developer console logs):
 | Tab | Source | Table |
 |-----|--------|-------|
 | Internal API | `requestAudit` middleware | `audit_internal_api_logs` |
-| External API | `external-api-log.service` (FCM, future wrappers) | `audit_external_api_logs` |
+| External API | Outbound integrations: Firebase FCM, Identity Toolkit / Auth Admin, Maps, FX, payments | `audit_external_api_logs` |
 | Email | `email.service` via NodeMailer | `audit_email_logs` |
 
 Writes are **async** via BullMQ `auditQueue` (fallback in-process buffer if Redis is down).
+
+### External writers (org-scoped)
+
+| Integration | Where logged |
+|-------------|--------------|
+| Firebase Cloud Messaging | `class/firebase-messaging.js` (org from request context or recipient membership) |
+| Firebase Auth Admin (reset / verify links) | `utils/firebase-auth-links.js` |
+| Firebase Identity Toolkit `sendOobCode` | `utils/firebase-auth-links.js` |
+| Email SMTP | Email tab via `email.service` (not External) |
+
+Rows without `organisation_id` are hidden from the org System Logs UI by design.
 
 ## Security
 

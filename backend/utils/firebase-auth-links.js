@@ -1,4 +1,6 @@
 import admin from "firebase-admin";
+import externalApiLogService from "../service/external-api-log.service.js";
+import { resolveAuditContextByEmail } from "../service/audit/audit-context.service.js";
 
 /**
  * Build continue URL for Firebase email action links.
@@ -26,6 +28,45 @@ export function toAppAuthActionLink(firebaseLink) {
   return `${base}auth-actions?mode=${encodeURIComponent(mode)}&oobCode=${encodeURIComponent(oobCode)}`;
 }
 
+function logFirebaseExternal({
+  user,
+  organisation,
+  apiName,
+  feature,
+  endpoint,
+  method = "POST",
+  success,
+  statusCode,
+  durationMs,
+  response,
+  error,
+  body,
+}) {
+  void externalApiLogService
+    .storeExternalApiCallLog(
+      user || null,
+      organisation || null,
+      "Firebase",
+      endpoint,
+      method,
+      body || null,
+      "application/json",
+      response || null,
+      {
+        apiName,
+        feature,
+        success,
+        statusCode,
+        durationMs,
+        error,
+        technicalMessage: error
+          ? String(error?.message || error)
+          : undefined,
+      },
+    )
+    .catch(() => {});
+}
+
 /**
  * Generate a password-reset link via Admin SDK.
  * Returns null when Admin credentials are unavailable/invalid.
@@ -35,10 +76,40 @@ export async function generatePasswordResetAppLink(email) {
     url: authActionContinueUrl(email),
     handleCodeInApp: true,
   };
-  const firebaseLink = await admin
-    .auth()
-    .generatePasswordResetLink(email, actionCodeSettings);
-  return toAppAuthActionLink(firebaseLink);
+  const startedAt = Date.now();
+  const { user, organisation } = await resolveAuditContextByEmail(email);
+  try {
+    const firebaseLink = await admin
+      .auth()
+      .generatePasswordResetLink(email, actionCodeSettings);
+    logFirebaseExternal({
+      user,
+      organisation,
+      apiName: "Firebase Auth Admin",
+      feature: "Password Reset Link",
+      endpoint: "firebase.auth.generatePasswordResetLink",
+      success: true,
+      statusCode: 200,
+      durationMs: Date.now() - startedAt,
+      response: { success: true },
+      body: { email },
+    });
+    return toAppAuthActionLink(firebaseLink);
+  } catch (err) {
+    logFirebaseExternal({
+      user,
+      organisation,
+      apiName: "Firebase Auth Admin",
+      feature: "Password Reset Link",
+      endpoint: "firebase.auth.generatePasswordResetLink",
+      success: false,
+      statusCode: 500,
+      durationMs: Date.now() - startedAt,
+      error: err,
+      body: { email },
+    });
+    throw err;
+  }
 }
 
 /**
@@ -49,10 +120,40 @@ export async function generateEmailVerificationAppLink(email) {
     url: authActionContinueUrl(email),
     handleCodeInApp: true,
   };
-  const firebaseLink = await admin
-    .auth()
-    .generateEmailVerificationLink(email, actionCodeSettings);
-  return toAppAuthActionLink(firebaseLink);
+  const startedAt = Date.now();
+  const { user, organisation } = await resolveAuditContextByEmail(email);
+  try {
+    const firebaseLink = await admin
+      .auth()
+      .generateEmailVerificationLink(email, actionCodeSettings);
+    logFirebaseExternal({
+      user,
+      organisation,
+      apiName: "Firebase Auth Admin",
+      feature: "Email Verification Link",
+      endpoint: "firebase.auth.generateEmailVerificationLink",
+      success: true,
+      statusCode: 200,
+      durationMs: Date.now() - startedAt,
+      response: { success: true },
+      body: { email },
+    });
+    return toAppAuthActionLink(firebaseLink);
+  } catch (err) {
+    logFirebaseExternal({
+      user,
+      organisation,
+      apiName: "Firebase Auth Admin",
+      feature: "Email Verification Link",
+      endpoint: "firebase.auth.generateEmailVerificationLink",
+      success: false,
+      statusCode: 500,
+      durationMs: Date.now() - startedAt,
+      error: err,
+      body: { email },
+    });
+    throw err;
+  }
 }
 
 /**
@@ -70,9 +171,12 @@ export async function sendFirebasePasswordResetEmail(email) {
     throw new Error("FIREBASE_API_KEY is not configured");
   }
 
+  const { user, organisation } = await resolveAuditContextByEmail(email);
+  const endpoint = `${apiUrl}/accounts:sendOobCode`;
+
   async function request(payload) {
     const response = await fetch(
-      `${apiUrl}/accounts:sendOobCode?key=${encodeURIComponent(apiKey)}`,
+      `${endpoint}?key=${encodeURIComponent(apiKey)}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -83,6 +187,7 @@ export async function sendFirebasePasswordResetEmail(email) {
     return { response, data };
   }
 
+  const startedAt = Date.now();
   let { response, data } = await request({
     requestType: "PASSWORD_RESET",
     email,
@@ -100,7 +205,28 @@ export async function sendFirebasePasswordResetEmail(email) {
     }));
   }
 
-  if (!response.ok) {
+  const ok = response.ok;
+  logFirebaseExternal({
+    user,
+    organisation,
+    apiName: "Firebase Identity Toolkit",
+    feature: "Password Reset Email",
+    endpoint: "identitytoolkit.googleapis.com/v1/accounts:sendOobCode",
+    success: ok,
+    statusCode: response.status,
+    durationMs: Date.now() - startedAt,
+    response: {
+      status: response.status,
+      // Never store API key or full oob payloads
+      error: data?.error?.message || null,
+      kind: data?.kind || null,
+      email: data?.email || email,
+    },
+    error: ok ? null : { message: data?.error?.message || `HTTP ${response.status}` },
+    body: { requestType: "PASSWORD_RESET", email },
+  });
+
+  if (!ok) {
     const message =
       data?.error?.message ||
       `Firebase sendOobCode failed (${response.status})`;

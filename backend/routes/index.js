@@ -140,6 +140,7 @@ function mountTestRoutes(target) {
         [user_id],
         message,
         url,
+        { user: req.body?.user || null, organisation: req.body?.organisation || null },
       );
 
       res.json({ response });
@@ -162,7 +163,10 @@ function mountTestRoutes(target) {
         title: "myTask test data message",
       };
 
-      const response = await FirebaseMessaging.sendMessage([user_id], message);
+      const response = await FirebaseMessaging.sendMessage([user_id], message, {
+        user: req.body?.user || null,
+        organisation: req.body?.organisation || null,
+      });
 
       res.json({ response });
     } catch (err) {
