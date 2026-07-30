@@ -15,6 +15,8 @@ const {
 import { fn, col, literal, Op } from "sequelize";
 import moment from "moment";
 import redisUtils from "../utils/redis.utils.js";
+import externalApiLogService from "../service/external-api-log.service.js";
+import { resolveAuditOrganisation } from "../service/audit/audit-context.service.js";
 
 const AUTH_CACHE_PREFIX = "auth:claims:";
 const AUTH_CACHE_MAX_SEC = 300;
@@ -42,6 +44,64 @@ function mapFirebaseAuthError(err) {
     return { code: "AUTH_INVALID", message: "Invalid Firebase ID token" };
   }
   return { code: "AUTH_INVALID", message: "Invalid or expired session" };
+}
+
+/**
+ * Log real Firebase Admin Auth verifyIdToken calls (not Redis cache hits).
+ * Fire-and-forget — never block auth.
+ */
+function logFirebaseVerifyIdToken({
+  user,
+  organisation,
+  success,
+  durationMs,
+  error,
+  feature = "Verify ID Token",
+}) {
+  void externalApiLogService
+    .storeExternalApiCallLog(
+      user || null,
+      organisation || null,
+      "Firebase",
+      "firebase.auth.verifyIdToken",
+      "POST",
+      { feature },
+      "application/json",
+      success
+        ? { success: true, statusCode: 200 }
+        : {
+            success: false,
+            statusCode: 401,
+            error: error?.code || error?.message || null,
+          },
+      {
+        apiName: "Firebase Auth Admin",
+        feature,
+        success: Boolean(success),
+        statusCode: success ? 200 : 401,
+        durationMs,
+        error: success ? null : error,
+        technicalMessage: success
+          ? null
+          : String(error?.message || error?.code || "verifyIdToken failed"),
+      },
+    )
+    .catch(() => {});
+}
+
+async function resolveOrgForAuthLog(options = {}, userId = null) {
+  if (options.organisation?.id) {
+    return options.organisation;
+  }
+  if (options.orgCode) {
+    const org = await Organisations.findOne({
+      where: { code: String(options.orgCode) },
+      attributes: ["id", "code"],
+      raw: true,
+    }).catch(() => null);
+    if (org) return org;
+  }
+  return resolveAuditOrganisation(null, userId);
 }
 
 class Auth {
@@ -89,11 +149,17 @@ class Auth {
    * Prefer this for login/signup and request auth.
    */
   static async verifyFirebaseToken(token) {
+    const startedAt = Date.now();
     try {
       if (!token) {
         return { success: false, code: "AUTH_MISSING", message: "Token missing" };
       }
       const decoded = await admin.auth().verifyIdToken(token, true);
+      logFirebaseVerifyIdToken({
+        success: true,
+        durationMs: Date.now() - startedAt,
+        feature: "Login Verify ID Token",
+      });
       return {
         success: true,
         data: { users: [{ localId: decoded.uid, email: decoded.email }] },
@@ -101,6 +167,12 @@ class Auth {
       };
     } catch (error) {
       const mapped = mapFirebaseAuthError(error);
+      logFirebaseVerifyIdToken({
+        success: false,
+        durationMs: Date.now() - startedAt,
+        error: { code: mapped.code, message: mapped.message },
+        feature: "Login Verify ID Token",
+      });
       return { success: false, ...mapped };
     }
   }
@@ -169,10 +241,19 @@ class Auth {
       }
 
       let decoded;
+      const verifyStartedAt = Date.now();
       try {
         decoded = await admin.auth().verifyIdToken(token, true);
       } catch (err) {
         const mapped = mapFirebaseAuthError(err);
+        const organisation = await resolveOrgForAuthLog(options, null);
+        logFirebaseVerifyIdToken({
+          organisation,
+          success: false,
+          durationMs: Date.now() - verifyStartedAt,
+          error: { code: mapped.code, message: mapped.message },
+          feature: options.logFeature || "Verify ID Token",
+        });
         return { success: false, ...mapped };
       }
 
@@ -225,6 +306,18 @@ class Auth {
       if (options.touchSession !== false) {
         void this.touchSession(userId, tokenHash, options.meta);
       }
+
+      // Only log real Firebase Admin calls (cache misses), with org attribution
+      void (async () => {
+        const organisation = await resolveOrgForAuthLog(options, userId);
+        logFirebaseVerifyIdToken({
+          user: userResponse.user,
+          organisation,
+          success: true,
+          durationMs: Date.now() - verifyStartedAt,
+          feature: options.logFeature || "Verify ID Token",
+        });
+      })();
 
       return {
         success: true,

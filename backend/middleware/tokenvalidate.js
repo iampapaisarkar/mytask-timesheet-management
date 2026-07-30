@@ -26,6 +26,8 @@ const TokenValidate = async (req, res, next) => {
 
     const result = await Auth.verifyIdTokenAndResolveUser(token, {
       touchSession: true,
+      orgCode,
+      logFeature: "Request Auth Verify ID Token",
       meta: {
         platform: req.body?.platform || req.headers["x-client-platform"] || null,
         user_agent: req.headers["user-agent"] || null,

@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- **System Logs → External** logs Firebase Auth Admin `verifyIdToken` on real Admin SDK calls (login + request auth cache miss), with organisation attribution — not only FCM
 - **System Logs → External** now receives org-scoped rows: FCM passes organisation/user (or resolves from recipient membership); Firebase Auth Admin + Identity Toolkit password-reset/verification calls are logged via `storeExternalApiCallLog`
 
 ### Fixed

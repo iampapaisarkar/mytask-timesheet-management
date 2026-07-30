@@ -18,6 +18,7 @@ Writes are **async** via BullMQ `auditQueue` (fallback in-process buffer if Redi
 
 | Integration | Where logged |
 |-------------|--------------|
+| Firebase Auth Admin `verifyIdToken` | `class/auth.js` (login + request auth; **cache misses only**) |
 | Firebase Cloud Messaging | `class/firebase-messaging.js` (org from request context or recipient membership) |
 | Firebase Auth Admin (reset / verify links) | `utils/firebase-auth-links.js` |
 | Firebase Identity Toolkit `sendOobCode` | `utils/firebase-auth-links.js` |
