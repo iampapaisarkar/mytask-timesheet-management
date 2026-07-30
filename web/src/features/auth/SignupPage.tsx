@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signupSchema, type SignupFormValues } from "@mytask/validation";
 import { authApi } from "@mytask/api";
 import { ROUTES } from "@mytask/constants";
 import { getErrorMessage, getTimezone } from "@mytask/utils";
 import { TextInput } from "@/components/ui/TextInput";
+import { GlobalPhoneInput } from "@/components/ui/GlobalPhoneInput";
 import { Button } from "@/components/ui/Button";
 import { firebaseSignup } from "@/lib/firebase";
 import { useAuthStore } from "@/store/authStore";
@@ -23,10 +24,22 @@ export function SignupPage() {
   const {
     register,
     handleSubmit,
+    control,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
+    defaultValues: {
+      phone_number: "",
+      phone_country_code: null,
+      phone_country_iso: null,
+    },
   });
+
+  const phoneNumber = watch("phone_number");
+  const phoneIso = watch("phone_country_iso");
+  const phoneCode = watch("phone_country_code");
 
   async function onSubmit(values: SignupFormValues) {
     setError(null);
@@ -40,6 +53,9 @@ export function SignupPage() {
         last_name: values.last_name,
         email: values.email,
         dob: values.dob,
+        phone_number: values.phone_number,
+        phone_country_code: values.phone_country_code,
+        phone_country_iso: values.phone_country_iso,
         uid: credential.user.uid,
         providerData: credential.user.providerData as unknown as unknown[],
         platform: "web",
@@ -78,6 +94,32 @@ export function SignupPage() {
         <TextInput label="Middle Name" {...register("middle_name")} />
         <TextInput label="Last Name" error={errors.last_name?.message} {...register("last_name")} />
         <TextInput label="Email" type="email" error={errors.email?.message} {...register("email")} />
+        <Controller
+          name="phone_number"
+          control={control}
+          render={({ field }) => (
+            <GlobalPhoneInput
+              label="Phone number"
+              required
+              value={{
+                phone_number: phoneNumber || null,
+                phone_country_code: phoneCode || null,
+                phone_country_iso: phoneIso || null,
+              }}
+              error={errors.phone_number?.message}
+              onChange={(phone) => {
+                field.onChange(phone.phone_number || "");
+                setValue("phone_country_code", phone.phone_country_code, {
+                  shouldValidate: true,
+                });
+                setValue("phone_country_iso", phone.phone_country_iso, {
+                  shouldValidate: true,
+                });
+              }}
+              onBlur={field.onBlur}
+            />
+          )}
+        />
         <TextInput label="Date of Birth" type="date" {...register("dob")} />
         <TextInput label="Password" type="password" error={errors.password?.message} {...register("password")} />
         <TextInput

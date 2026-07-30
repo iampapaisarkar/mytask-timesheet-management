@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { useEmployees } from "@mytask/hooks";
 import { spacing } from "@mytask/theme";
+import { formatPhoneDisplay } from "@mytask/utils";
 import { useThemeStore } from "../store/themeStore";
 
 type EmployeeRow = {
@@ -17,6 +18,7 @@ type EmployeeRow = {
     full_name?: string;
     email?: string;
     phone_number?: string;
+    phone_country_iso?: string;
     role?: { name?: string };
   };
 };
@@ -77,7 +79,10 @@ export function EmployeesListScreen() {
             </Text>
             {details?.phone_number ? (
               <Text style={[styles.phone, { color: c.muted }]}>
-                {details.phone_number}
+                {formatPhoneDisplay(
+                  details.phone_number,
+                  details.phone_country_iso,
+                )}
               </Text>
             ) : null}
           </View>

@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { organisationsApi } from "@mytask/api";
 import { queryKeys } from "@mytask/hooks";
-import { getErrorMessage } from "@mytask/utils";
+import { getErrorMessage, phoneValueFromE164, type PhoneValue } from "@mytask/utils";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { useOrganisationStore } from "@/store/organisationStore";
 import { Card, PageHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { TextInput } from "@/components/ui/TextInput";
+import { GlobalPhoneInput, GlobalPhoneDisplay } from "@/components/ui/GlobalPhoneInput";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { useToastStore } from "@/store/toastStore";
 import {
@@ -41,7 +42,11 @@ export function OrganisationDetailsPage() {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState<PhoneValue>({
+    phone_number: null,
+    phone_country_code: null,
+    phone_country_iso: null,
+  });
   const [website, setWebsite] = useState("");
   const [address, setAddress] = useState<AddressValue>({
     address_1: "",
@@ -66,7 +71,12 @@ export function OrganisationDetailsPage() {
     const settings = (data.settings || {}) as Record<string, unknown>;
     setName(String(data.name || ""));
     setEmail(String(data.email || ""));
-    setPhone(String(data.phone_number || ""));
+    setPhone(
+      phoneValueFromE164(
+        String(data.phone_number || ""),
+        (data.phone_country_iso as string) || null,
+      ),
+    );
     setWebsite(String(data.website || ""));
     setAddress({
       address_1: String(addr.address_1 || ""),
@@ -104,7 +114,10 @@ export function OrganisationDetailsPage() {
       await updateOrg.mutateAsync({
         name: name.trim(),
         email: email.trim(),
-        phone_number: phone.trim(),
+        phone_number: phone.phone_number,
+        phone_country_code: phone.phone_country_code,
+        phone_country_iso: phone.phone_country_iso,
+        default_country: phone.phone_country_iso,
         website: website.trim() || null,
         address: {
           address_1: address.address_1.trim(),
@@ -155,7 +168,12 @@ export function OrganisationDetailsPage() {
         <Card className="flex flex-col gap-3">
           <TextInput label="Name" value={name} onChange={(e) => setName(e.target.value)} />
           <TextInput label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <TextInput label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <GlobalPhoneInput
+            label="Phone"
+            required
+            value={phone}
+            onChange={setPhone}
+          />
           <TextInput label="Website" value={website} onChange={(e) => setWebsite(e.target.value)} />
           <GoogleAddress value={address} onChange={setAddress} />
           <label className="flex flex-col gap-1 text-sm">
@@ -207,7 +225,12 @@ export function OrganisationDetailsPage() {
         <Card>
           <p className="text-xs font-medium uppercase text-muted">Phone</p>
           <p className="mt-1 text-lg font-semibold">
-            {String(data.phone_number || "—")}
+            <GlobalPhoneDisplay
+              phoneNumber={String(data.phone_number || "")}
+              countryIso={
+                (data.phone_country_iso as string | null | undefined) || null
+              }
+            />
           </p>
         </Card>
         <Card>

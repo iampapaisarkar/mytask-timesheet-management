@@ -154,3 +154,48 @@ button:disabled,
 .mt-fullscreen-panel {
   animation: mt-fullscreen-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+
+/* react-phone-number-input — theme-aware */
+.global-phone-input .PhoneInput {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.global-phone-input .PhoneInputCountry {
+  margin-right: 0.25rem;
+}
+
+.global-phone-input .PhoneInputCountryIcon {
+  width: 1.35rem;
+  height: 1rem;
+  box-shadow: none;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.global-phone-input .PhoneInputCountrySelect {
+  color: var(--mt-text);
+}
+
+.global-phone-input .PhoneInputCountrySelectArrow {
+  border-color: var(--mt-muted);
+  opacity: 0.7;
+}
+
+.global-phone-input .PhoneInputInput {
+  flex: 1;
+  min-width: 0;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--mt-text);
+  font: inherit;
+  padding: 0.55rem 0.35rem;
+  outline: none;
+}
+
+.global-phone-input .PhoneInputCountryIcon--border {
+  background-color: transparent;
+  box-shadow: none;
+}

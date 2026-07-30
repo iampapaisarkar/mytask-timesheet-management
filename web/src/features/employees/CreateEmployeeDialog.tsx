@@ -6,10 +6,11 @@ import {
   useSearchEmployeeByEmail,
   useUpdateEmployee,
 } from "@mytask/hooks";
-import { getErrorMessage } from "@mytask/utils";
+import { getErrorMessage, isValidInternationalPhone, phoneValueFromE164, type PhoneValue } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
 import { FullScreenModal } from "@/components/ui/FullScreenModal";
 import { TextInput } from "@/components/ui/TextInput";
+import { GlobalPhoneInput } from "@/components/ui/GlobalPhoneInput";
 import {
   GoogleAddress,
   type AddressValue,
@@ -45,6 +46,8 @@ type EmployeeForm = {
     preferred_name: string;
     dob: string;
     phone_number: string;
+    phone_country_code: string | null;
+    phone_country_iso: string | null;
     address: {
       address_1: string;
       address_2: string;
@@ -57,6 +60,8 @@ type EmployeeForm = {
     nok: string;
     nok_relationship: NamedId | null;
     nok_phone_number: string;
+    nok_phone_country_code: string | null;
+    nok_phone_country_iso: string | null;
   };
   management_group: {
     manager_of_groups: NamedId[];
@@ -94,6 +99,8 @@ function emptyForm(email = ""): EmployeeForm {
       preferred_name: "",
       dob: "",
       phone_number: "",
+      phone_country_code: null,
+      phone_country_iso: null,
       address: {
         address_1: "",
         address_2: "",
@@ -106,6 +113,8 @@ function emptyForm(email = ""): EmployeeForm {
       nok: "",
       nok_relationship: null,
       nok_phone_number: "",
+      nok_phone_country_code: null,
+      nok_phone_country_iso: null,
     },
     management_group: {
       manager_of_groups: [],
@@ -164,6 +173,8 @@ function formFromEmployeeRow(row: EmployeeListRow): EmployeeForm {
       preferred_name: String(details.preferred_name || ""),
       dob: String(details.dob || ""),
       phone_number: String(details.phone_number || ""),
+      phone_country_code: (details.phone_country_code as string) || phoneValueFromE164(String(details.phone_number || "")).phone_country_code,
+      phone_country_iso: (details.phone_country_iso as string) || phoneValueFromE164(String(details.phone_number || "")).phone_country_iso,
       address: {
         address_1: String(addressRaw.address_1 || ""),
         address_2: String(addressRaw.address_2 || ""),
@@ -176,6 +187,8 @@ function formFromEmployeeRow(row: EmployeeListRow): EmployeeForm {
       nok: String(details.nok || ""),
       nok_relationship: asNamed(details.nok_relationship),
       nok_phone_number: String(details.nok_phone_number || ""),
+      nok_phone_country_code: (details.nok_phone_country_code as string) || phoneValueFromE164(String(details.nok_phone_number || "")).phone_country_code,
+      nok_phone_country_iso: (details.nok_phone_country_iso as string) || phoneValueFromE164(String(details.nok_phone_number || "")).phone_country_iso,
     },
     management_group: {
       manager_of_groups: Array.isArray(mg.manager_of_groups)
@@ -335,6 +348,14 @@ export function CreateEmployeeDialog({
           preferred_name: String(details.preferred_name || ""),
           dob: String(details.dob || ""),
           phone_number: String(details.phone_number || ""),
+          phone_country_code:
+            (details.phone_country_code as string) ||
+            phoneValueFromE164(String(details.phone_number || ""))
+              .phone_country_code,
+          phone_country_iso:
+            (details.phone_country_iso as string) ||
+            phoneValueFromE164(String(details.phone_number || ""))
+              .phone_country_iso,
           address: {
             address_1: String(addressRaw.address_1 || ""),
             address_2: String(addressRaw.address_2 || ""),
@@ -347,6 +368,14 @@ export function CreateEmployeeDialog({
           nok: String(details.nok || ""),
           nok_relationship: asNamed(details.nok_relationship),
           nok_phone_number: String(details.nok_phone_number || ""),
+          nok_phone_country_code:
+            (details.nok_phone_country_code as string) ||
+            phoneValueFromE164(String(details.nok_phone_number || ""))
+              .phone_country_code,
+          nok_phone_country_iso:
+            (details.nok_phone_country_iso as string) ||
+            phoneValueFromE164(String(details.nok_phone_number || ""))
+              .phone_country_iso,
         },
         management_group: {
           manager_of_groups: Array.isArray(mg.manager_of_groups)
@@ -403,6 +432,15 @@ export function CreateEmployeeDialog({
       return "State / province / region is required";
     if (!d.address.postcode.trim()) return "Postcode / ZIP is required";
     if (!d.phone_number.trim()) return "Phone number is required";
+    if (!isValidInternationalPhone(d.phone_number)) {
+      return "Enter a valid international phone number";
+    }
+    if (
+      d.nok_phone_number.trim() &&
+      !isValidInternationalPhone(d.nok_phone_number)
+    ) {
+      return "Enter a valid next-of-kin phone number";
+    }
     if (!d.role?.id) return "Role is required";
     if (!d.region?.id) return "Region is required";
     return null;
@@ -484,6 +522,8 @@ export function CreateEmployeeDialog({
         preferred_name: d.preferred_name.trim() || null,
         dob: d.dob,
         phone_number: d.phone_number.trim(),
+        phone_country_code: d.phone_country_code,
+        phone_country_iso: d.phone_country_iso,
         address: {
           address_1: d.address.address_1.trim(),
           address_2: d.address.address_2.trim() || null,
@@ -496,6 +536,12 @@ export function CreateEmployeeDialog({
         nok: d.nok.trim() || null,
         nok_relationship: d.nok_relationship,
         nok_phone_number: d.nok_phone_number.trim() || null,
+        nok_phone_country_code: d.nok_phone_number.trim()
+          ? d.nok_phone_country_code
+          : null,
+        nok_phone_country_iso: d.nok_phone_number.trim()
+          ? d.nok_phone_country_iso
+          : null,
       },
       management_group: {
         manager_of_groups:
@@ -694,11 +740,20 @@ export function CreateEmployeeDialog({
                   onChange={(e) => patchDetails({ dob: e.target.value })}
                   disabled={form.action?.create_user === false && !!form.details.dob}
                 />
-                <TextInput
+                <GlobalPhoneInput
                   label="Phone number"
-                  value={form.details.phone_number}
-                  onChange={(e) =>
-                    patchDetails({ phone_number: e.target.value })
+                  required
+                  value={{
+                    phone_number: form.details.phone_number || null,
+                    phone_country_code: form.details.phone_country_code,
+                    phone_country_iso: form.details.phone_country_iso,
+                  }}
+                  onChange={(phone: PhoneValue) =>
+                    patchDetails({
+                      phone_number: phone.phone_number || "",
+                      phone_country_code: phone.phone_country_code,
+                      phone_country_iso: phone.phone_country_iso,
+                    })
                   }
                 />
               </div>
@@ -788,11 +843,19 @@ export function CreateEmployeeDialog({
                     ))}
                   </select>
                 </label>
-                <TextInput
+                <GlobalPhoneInput
                   label="NOK phone"
-                  value={form.details.nok_phone_number}
-                  onChange={(e) =>
-                    patchDetails({ nok_phone_number: e.target.value })
+                  value={{
+                    phone_number: form.details.nok_phone_number || null,
+                    phone_country_code: form.details.nok_phone_country_code,
+                    phone_country_iso: form.details.nok_phone_country_iso,
+                  }}
+                  onChange={(phone: PhoneValue) =>
+                    patchDetails({
+                      nok_phone_number: phone.phone_number || "",
+                      nok_phone_country_code: phone.phone_country_code,
+                      nok_phone_country_iso: phone.phone_country_iso,
+                    })
                   }
                 />
               </div>

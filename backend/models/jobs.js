@@ -38,6 +38,14 @@ const Jobs = db.define(
     site_contact_phone_number: {
       type: DataTypes.STRING,
     },
+    site_contact_phone_country_code: {
+      type: DataTypes.STRING(16),
+      allowNull: true,
+    },
+    site_contact_phone_country_iso: {
+      type: DataTypes.STRING(2),
+      allowNull: true,
+    },
     is_active: {
       type: DataTypes.BOOLEAN,
     },

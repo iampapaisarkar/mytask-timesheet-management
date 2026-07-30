@@ -18,6 +18,7 @@ import {
   generatePasswordResetAppLink,
   sendFirebasePasswordResetEmail,
 } from "../utils/firebase-auth-links.js";
+import { resolvePhoneFields } from "../utils/phone.js";
 
 export async function login(req, res, next) {
   const { email, invitation_token, fcmToken, oldFcmToken, platform, timezone } =
@@ -94,6 +95,9 @@ export async function signup(req, res, next) {
     last_name,
     email,
     dob,
+    phone_number,
+    phone_country_code,
+    phone_country_iso,
     uid,
     providerData,
     invitation_token,
@@ -124,6 +128,25 @@ export async function signup(req, res, next) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
+    let phoneFields = {
+      phone_number: null,
+      phone_country_code: null,
+      phone_country_iso: null,
+    };
+    try {
+      phoneFields = resolvePhoneFields({
+        phone_number,
+        phone_country_code,
+        phone_country_iso,
+        required: true,
+        label: "Phone number",
+      });
+    } catch (phoneErr) {
+      return res.status(phoneErr.status || 400).json({
+        message: phoneErr.message,
+      });
+    }
+
     // 2. Start the transaction
     transaction = await db.transaction();
 
@@ -144,6 +167,7 @@ export async function signup(req, res, next) {
           last_name,
           dob,
           firebase_user_id: uid,
+          ...phoneFields,
         },
         { transaction },
       );
@@ -158,6 +182,7 @@ export async function signup(req, res, next) {
           dob,
           firebase_user_id: uid,
           created_at: currentUTCTime,
+          ...phoneFields,
         },
         { transaction },
       );
@@ -430,13 +455,41 @@ async function onboardInvitation(user, invitationToken) {
 }
 
 export async function updateProfile(req, res, next) {
-  const { user, first_name, middle_name, last_name } = req.body;
+  const {
+    user,
+    first_name,
+    middle_name,
+    last_name,
+    dob,
+    phone_number,
+    phone_country_code,
+    phone_country_iso,
+  } = req.body;
   try {
+    let phoneFields = {};
+    if (phone_number !== undefined) {
+      try {
+        phoneFields = resolvePhoneFields({
+          phone_number,
+          phone_country_code,
+          phone_country_iso,
+          required: false,
+          label: "Phone number",
+        });
+      } catch (phoneErr) {
+        return res.status(phoneErr.status || 400).json({
+          message: phoneErr.message,
+        });
+      }
+    }
+
     await Users.update(
       {
         first_name,
         middle_name,
         last_name,
+        ...(dob !== undefined ? { dob } : {}),
+        ...phoneFields,
       },
       {
         where: { id: user.id },
@@ -445,8 +498,10 @@ export async function updateProfile(req, res, next) {
 
     await redisUtils.delCache(`user:${user.id}`);
 
+    const updated = await Users.findByPk(user.id);
+
     return res.status(200).json({
-      data: user,
+      data: updated,
       message: "Profile successfully updated",
     });
   } catch (err) {

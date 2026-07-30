@@ -44,6 +44,14 @@ const Employees = db.define(
     nok_phone_number: {
       type: DataTypes.STRING,
     },
+    nok_phone_country_code: {
+      type: DataTypes.STRING(16),
+      allowNull: true,
+    },
+    nok_phone_country_iso: {
+      type: DataTypes.STRING(2),
+      allowNull: true,
+    },
     award_id: {
       type: DataTypes.INTEGER,
     },
@@ -55,6 +63,14 @@ const Employees = db.define(
     },
     phone_number: {
       type: DataTypes.STRING,
+    },
+    phone_country_code: {
+      type: DataTypes.STRING(16),
+      allowNull: true,
+    },
+    phone_country_iso: {
+      type: DataTypes.STRING(2),
+      allowNull: true,
     },
     xero_employee_id: {
       type: DataTypes.UUID,
@@ -194,10 +210,14 @@ Employees.addScope(
       "nok",
       "nok_relation_id",
       "nok_phone_number",
+      "nok_phone_country_code",
+      "nok_phone_country_iso",
       "award_id",
       "region_id",
       "preferred_name",
       "phone_number",
+      "phone_country_code",
+      "phone_country_iso",
       "xero_employee_id",
       "created_at",
       "created_by",

@@ -2,6 +2,7 @@ import { fn, col, literal, Op } from "sequelize";
 import models from "../models/index.js";
 const { Customers } = models;
 import moment from "moment";
+import { resolvePhoneFields } from "../utils/phone.js";
 
 export async function list(req, res, next) {
   const { user, organisation } = req.body;
@@ -75,6 +76,8 @@ export async function create(req, res, next) {
     contact_email,
     contact_name,
     contact_phone_number,
+    contact_phone_country_code,
+    contact_phone_country_iso,
     hourly_rate,
     is_active,
     name,
@@ -92,6 +95,21 @@ export async function create(req, res, next) {
       });
     }
 
+    let contactPhone;
+    try {
+      contactPhone = resolvePhoneFields({
+        phone_number: contact_phone_number,
+        phone_country_code: contact_phone_country_code,
+        phone_country_iso: contact_phone_country_iso,
+        required: false,
+        label: "Contact phone",
+      });
+    } catch (phoneErr) {
+      return res.status(phoneErr.status || 400).json({
+        message: phoneErr.message,
+      });
+    }
+
     const currentUTCTime = moment().utc().format();
 
     const response = await Customers.create({
@@ -100,7 +118,9 @@ export async function create(req, res, next) {
       address: address,
       contact_email: contact_email,
       contact_name: contact_name,
-      contact_phone_number: contact_phone_number,
+      contact_phone_number: contactPhone.phone_number,
+      contact_phone_country_code: contactPhone.phone_country_code,
+      contact_phone_country_iso: contactPhone.phone_country_iso,
       hourly_rate: hourly_rate,
       is_active: is_active,
       name: name,
@@ -130,6 +150,8 @@ export async function update(req, res, next) {
     contact_email,
     contact_name,
     contact_phone_number,
+    contact_phone_country_code,
+    contact_phone_country_iso,
     hourly_rate,
     is_active,
     name,
@@ -148,6 +170,21 @@ export async function update(req, res, next) {
       });
     }
 
+    let contactPhone;
+    try {
+      contactPhone = resolvePhoneFields({
+        phone_number: contact_phone_number,
+        phone_country_code: contact_phone_country_code,
+        phone_country_iso: contact_phone_country_iso,
+        required: false,
+        label: "Contact phone",
+      });
+    } catch (phoneErr) {
+      return res.status(phoneErr.status || 400).json({
+        message: phoneErr.message,
+      });
+    }
+
     const currentUTCTime = moment().utc().format();
 
     const response = await Customers.update(
@@ -156,7 +193,9 @@ export async function update(req, res, next) {
         address: address,
         contact_email: contact_email,
         contact_name: contact_name,
-        contact_phone_number: contact_phone_number,
+        contact_phone_number: contactPhone.phone_number,
+        contact_phone_country_code: contactPhone.phone_country_code,
+        contact_phone_country_iso: contactPhone.phone_country_iso,
         hourly_rate: hourly_rate,
         is_active: is_active,
         name: name,

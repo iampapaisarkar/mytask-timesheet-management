@@ -20,8 +20,17 @@ import moment from "moment";
 
 export async function list(req, res, next) {
   const { user, orgCode, organisation } = req.body;
-  let { rows_per_page, page_number, sort_by, sort_direction, search } =
-    req.query;
+  let {
+    rows_per_page,
+    page_number,
+    sort_by,
+    sort_direction,
+    search,
+    phone_country_iso,
+    phone_country_code,
+    role_id,
+    region_id,
+  } = req.query;
 
   if (!organisation.acl.employee.list) {
     return res.status(403).json({
@@ -48,12 +57,29 @@ export async function list(req, res, next) {
       };
     }
 
+    if (phone_country_iso && String(phone_country_iso).trim()) {
+      whereCondition.phone_country_iso = String(phone_country_iso)
+        .trim()
+        .toUpperCase();
+    }
+    if (phone_country_code && String(phone_country_code).trim()) {
+      const code = String(phone_country_code).trim();
+      whereCondition.phone_country_code = code.startsWith("+")
+        ? code
+        : `+${code}`;
+    }
+    if (region_id) {
+      whereCondition.region_id = Number(region_id);
+    }
+
     if (search && search.trim() !== "") {
       whereCondition = {
         ...whereCondition,
         [Op.or]: [
           { preferred_name: { [Op.like]: `%${search}%` } },
           { phone_number: { [Op.like]: `%${search}%` } },
+          { phone_country_iso: { [Op.like]: `%${search}%` } },
+          { phone_country_code: { [Op.like]: `%${search}%` } },
           { nok: { [Op.like]: `%${search}%` } },
           { nok_phone_number: { [Op.like]: `%${search}%` } },
 

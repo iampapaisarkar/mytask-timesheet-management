@@ -11,6 +11,13 @@ export default defineConfig({
     },
     dedupe: ["react", "react-dom"],
   },
+  optimizeDeps: {
+    include: [
+      "react-phone-number-input",
+      "react-phone-number-input/flags",
+      "libphonenumber-js",
+    ],
+  },
   server: {
     port: 9000,
   },

@@ -88,3 +88,6 @@ export function getTimezone(): string {
     return "UTC";
   }
 }
+
+export * from "./phone";
+export * from "./locale";

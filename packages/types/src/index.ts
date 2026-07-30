@@ -61,6 +61,13 @@ export type OrganisationAcl = {
   xero: CrudPermission;
 };
 
+/** International phone fields (E.164 + metadata). */
+export interface PhoneFields {
+  phone_number?: string | null;
+  phone_country_code?: string | null;
+  phone_country_iso?: string | null;
+}
+
 export interface UserProfile {
   id: number | string;
   email: string;
@@ -68,6 +75,9 @@ export interface UserProfile {
   middle_name?: string | null;
   last_name?: string;
   dob?: string | null;
+  phone_number?: string | null;
+  phone_country_code?: string | null;
+  phone_country_iso?: string | null;
   firebase_user_id?: string;
   organisations?: OrganisationMembership[];
   [key: string]: unknown;
@@ -110,6 +120,9 @@ export interface AuthSignupPayload {
   last_name: string;
   email: string;
   dob?: string;
+  phone_number?: string | null;
+  phone_country_code?: string | null;
+  phone_country_iso?: string | null;
   uid: string;
   providerData?: unknown[];
   invitation_token?: string;

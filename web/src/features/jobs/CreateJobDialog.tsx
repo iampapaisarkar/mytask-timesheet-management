@@ -4,10 +4,11 @@ import {
   useCustomers,
   useManagementGroups,
 } from "@mytask/hooks";
-import { getErrorMessage } from "@mytask/utils";
+import { getErrorMessage, emptyPhoneValue, type PhoneValue } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
 import { FullScreenModal } from "@/components/ui/FullScreenModal";
 import { TextInput } from "@/components/ui/TextInput";
+import { GlobalPhoneInput } from "@/components/ui/GlobalPhoneInput";
 import {
   GoogleAddress,
   type AddressValue,
@@ -45,7 +46,8 @@ export function CreateJobDialog({
   const [radius, setRadius] = useState("100");
   const [siteContactName, setSiteContactName] = useState("");
   const [siteContactEmail, setSiteContactEmail] = useState("");
-  const [siteContactPhone, setSiteContactPhone] = useState("");
+  const [siteContactPhone, setSiteContactPhone] =
+    useState<PhoneValue>(emptyPhoneValue);
   const [groupIds, setGroupIds] = useState<number[]>([]);
   const [isActive, setIsActive] = useState(true);
 
@@ -64,7 +66,7 @@ export function CreateJobDialog({
       setRadius("100");
       setSiteContactName("");
       setSiteContactEmail("");
-      setSiteContactPhone("");
+      setSiteContactPhone(emptyPhoneValue());
       setGroupIds([]);
       setIsActive(true);
     }
@@ -140,7 +142,9 @@ export function CreateJobDialog({
         radius: Number(radius),
         site_contact_name: siteContactName.trim() || null,
         site_contact_email: siteContactEmail.trim() || null,
-        site_contact_phone_number: siteContactPhone.trim() || null,
+        site_contact_phone_number: siteContactPhone.phone_number,
+        site_contact_phone_country_code: siteContactPhone.phone_country_code,
+        site_contact_phone_country_iso: siteContactPhone.phone_country_iso,
         management_groups: groupIds.map((id) => ({ id })),
         is_active: isActive,
       });
@@ -219,10 +223,10 @@ export function CreateJobDialog({
           value={siteContactEmail}
           onChange={(e) => setSiteContactEmail(e.target.value)}
         />
-        <TextInput
+        <GlobalPhoneInput
           label="Site contact phone"
           value={siteContactPhone}
-          onChange={(e) => setSiteContactPhone(e.target.value)}
+          onChange={setSiteContactPhone}
         />
 
         <fieldset className="flex flex-col gap-2">

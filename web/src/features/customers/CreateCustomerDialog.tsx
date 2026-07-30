@@ -3,10 +3,11 @@ import {
   useCreateCustomer,
   useUpdateCustomer,
 } from "@mytask/hooks";
-import { getErrorMessage } from "@mytask/utils";
+import { getErrorMessage, phoneValueFromE164, type PhoneValue } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
 import { FullScreenModal } from "@/components/ui/FullScreenModal";
 import { TextInput } from "@/components/ui/TextInput";
+import { GlobalPhoneInput } from "@/components/ui/GlobalPhoneInput";
 import { useToastStore } from "@/store/toastStore";
 
 export type CustomerRow = {
@@ -17,6 +18,8 @@ export type CustomerRow = {
   contact_name?: string | null;
   contact_email?: string | null;
   contact_phone_number?: string | null;
+  contact_phone_country_code?: string | null;
+  contact_phone_country_iso?: string | null;
   hourly_rate?: number | string | null;
   is_active?: boolean | null;
 };
@@ -40,7 +43,11 @@ export function CustomerFormDialog({
   const [address, setAddress] = useState("");
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
+  const [contactPhone, setContactPhone] = useState<PhoneValue>({
+    phone_number: null,
+    phone_country_code: null,
+    phone_country_iso: null,
+  });
   const [hourlyRate, setHourlyRate] = useState("");
   const [isActive, setIsActive] = useState(true);
 
@@ -51,7 +58,12 @@ export function CustomerFormDialog({
     setAddress(customer?.address || "");
     setContactName(customer?.contact_name || "");
     setContactEmail(customer?.contact_email || "");
-    setContactPhone(customer?.contact_phone_number || "");
+    setContactPhone(
+      phoneValueFromE164(
+        customer?.contact_phone_number,
+        customer?.contact_phone_country_iso,
+      ),
+    );
     setHourlyRate(
       customer?.hourly_rate != null ? String(customer.hourly_rate) : "",
     );
@@ -71,7 +83,9 @@ export function CustomerFormDialog({
       address: address.trim() || null,
       contact_name: contactName.trim() || null,
       contact_email: contactEmail.trim() || null,
-      contact_phone_number: contactPhone.trim() || null,
+      contact_phone_number: contactPhone.phone_number,
+      contact_phone_country_code: contactPhone.phone_country_code,
+      contact_phone_country_iso: contactPhone.phone_country_iso,
       hourly_rate: hourlyRate.trim() ? Number(hourlyRate) : null,
       is_active: isActive,
     };
@@ -135,10 +149,10 @@ export function CustomerFormDialog({
           value={contactEmail}
           onChange={(e) => setContactEmail(e.target.value)}
         />
-        <TextInput
+        <GlobalPhoneInput
           label="Contact phone"
           value={contactPhone}
-          onChange={(e) => setContactPhone(e.target.value)}
+          onChange={setContactPhone}
         />
         <TextInput
           label="Hourly rate"

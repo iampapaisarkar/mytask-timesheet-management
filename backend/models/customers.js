@@ -30,6 +30,14 @@ const Customers = db.define(
     contact_phone_number: {
       type: DataTypes.STRING,
     },
+    contact_phone_country_code: {
+      type: DataTypes.STRING(16),
+      allowNull: true,
+    },
+    contact_phone_country_iso: {
+      type: DataTypes.STRING(2),
+      allowNull: true,
+    },
     hourly_rate: {
       type: DataTypes.DECIMAL(10, 2),
     },

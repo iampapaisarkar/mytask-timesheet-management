@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   createOrganisationSchema,
@@ -11,6 +11,7 @@ import { ROUTES } from "@mytask/constants";
 import { getErrorMessage, getOrganisationRoleCode } from "@mytask/utils";
 import type { OrganisationMembership, UserProfile } from "@mytask/types";
 import { TextInput } from "@/components/ui/TextInput";
+import { GlobalPhoneInput } from "@/components/ui/GlobalPhoneInput";
 import { Button } from "@/components/ui/Button";
 import {
   GoogleAddress,
@@ -39,6 +40,8 @@ export function CreateOrganisationPage() {
     register,
     handleSubmit,
     setValue,
+    control,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<CreateOrganisationFormValues>({
     resolver: zodResolver(createOrganisationSchema),
@@ -46,6 +49,8 @@ export function CreateOrganisationPage() {
       name: "",
       website: "",
       phone_number: "",
+      phone_country_code: null,
+      phone_country_iso: null,
       email: "",
       address_1: "",
       address_2: "",
@@ -55,6 +60,10 @@ export function CreateOrganisationPage() {
       postcode: "",
     },
   });
+
+  const phoneNumber = watch("phone_number");
+  const phoneIso = watch("phone_country_iso");
+  const phoneCode = watch("phone_country_code");
 
   function handleAddressChange(next: AddressValue) {
     setAddress(next);
@@ -75,6 +84,9 @@ export function CreateOrganisationPage() {
         name: values.name,
         website: values.website || null,
         phone_number: values.phone_number,
+        phone_country_code: values.phone_country_code,
+        phone_country_iso: values.phone_country_iso,
+        default_country: values.phone_country_iso || null,
         email: values.email,
         address: {
           address_1: values.address_1,
@@ -154,10 +166,27 @@ export function CreateOrganisationPage() {
           {...register("name")}
         />
         <TextInput label="Website" {...register("website")} />
-        <TextInput
-          label="Phone number"
-          error={errors.phone_number?.message}
-          {...register("phone_number")}
+        <Controller
+          name="phone_number"
+          control={control}
+          render={({ field }) => (
+            <GlobalPhoneInput
+              label="Phone number"
+              required
+              value={{
+                phone_number: phoneNumber || null,
+                phone_country_code: phoneCode || null,
+                phone_country_iso: phoneIso || null,
+              }}
+              error={errors.phone_number?.message}
+              onChange={(phone) => {
+                field.onChange(phone.phone_number || "");
+                setValue("phone_country_code", phone.phone_country_code);
+                setValue("phone_country_iso", phone.phone_country_iso);
+              }}
+              onBlur={field.onBlur}
+            />
+          )}
         />
         <TextInput
           label="Email"

@@ -12,6 +12,7 @@ import moment from "moment";
 import { enqueueSendEmail } from "../queue-jobs/send-email.job.js";
 import { enqueueSendNotification } from "../queue-jobs/send-notification.job.js";
 import { resolveStateId } from "../utils/state.utils.js";
+import { resolvePhoneFields } from "../utils/phone.js";
 
 export async function list(req, res, next) {
   const { user, organisation } = req.body;
@@ -99,6 +100,8 @@ export async function create(req, res, next) {
     site_contact_name,
     site_contact_email,
     site_contact_phone_number,
+    site_contact_phone_country_code,
+    site_contact_phone_country_iso,
     management_groups,
     is_active,
     organisation,
@@ -175,6 +178,21 @@ export async function create(req, res, next) {
       });
     }
 
+    let sitePhone;
+    try {
+      sitePhone = resolvePhoneFields({
+        phone_number: site_contact_phone_number,
+        phone_country_code: site_contact_phone_country_code,
+        phone_country_iso: site_contact_phone_country_iso,
+        required: false,
+        label: "Site contact phone",
+      });
+    } catch (phoneErr) {
+      return res.status(phoneErr.status || 400).json({
+        message: phoneErr.message,
+      });
+    }
+
     const currentUTCTime = moment().utc().format();
 
     const job = await Jobs.create({
@@ -184,7 +202,9 @@ export async function create(req, res, next) {
       radius: radius,
       site_contact_name: site_contact_name,
       site_contact_email: site_contact_email,
-      site_contact_phone_number: site_contact_phone_number,
+      site_contact_phone_number: sitePhone.phone_number,
+      site_contact_phone_country_code: sitePhone.phone_country_code,
+      site_contact_phone_country_iso: sitePhone.phone_country_iso,
       is_active: is_active,
       created_at: currentUTCTime,
       created_by: user.id,
@@ -247,6 +267,8 @@ export async function update(req, res, next) {
     site_contact_name,
     site_contact_email,
     site_contact_phone_number,
+    site_contact_phone_country_code,
+    site_contact_phone_country_iso,
     management_groups,
     is_active,
     organisation,
@@ -324,6 +346,21 @@ export async function update(req, res, next) {
       });
     }
 
+    let sitePhone;
+    try {
+      sitePhone = resolvePhoneFields({
+        phone_number: site_contact_phone_number,
+        phone_country_code: site_contact_phone_country_code,
+        phone_country_iso: site_contact_phone_country_iso,
+        required: false,
+        label: "Site contact phone",
+      });
+    } catch (phoneErr) {
+      return res.status(phoneErr.status || 400).json({
+        message: phoneErr.message,
+      });
+    }
+
     const currentUTCTime = moment().utc().format();
 
     const response = await Jobs.update(
@@ -336,7 +373,9 @@ export async function update(req, res, next) {
         radius: radius,
         site_contact_name: site_contact_name,
         site_contact_email: site_contact_email,
-        site_contact_phone_number: site_contact_phone_number,
+        site_contact_phone_number: sitePhone.phone_number,
+        site_contact_phone_country_code: sitePhone.phone_country_code,
+        site_contact_phone_country_iso: sitePhone.phone_country_iso,
         is_active: is_active,
         updated_at: currentUTCTime,
         updated_by: user.id,

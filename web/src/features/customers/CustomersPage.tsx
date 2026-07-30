@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useCustomers } from "@mytask/hooks";
 import { can, getOrganisationAcl } from "@mytask/services";
+import { formatPhoneDisplay } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
 import { ResourceListPage } from "@/features/shared/ResourceListPage";
 import { useOrganisationStore } from "@/store/organisationStore";
@@ -46,7 +47,15 @@ export function CustomersPage() {
           { key: "abn", label: "ABN" },
           { key: "contact_name", label: "Contact" },
           { key: "contact_email", label: "Email" },
-          { key: "contact_phone_number", label: "Phone" },
+          {
+            key: "contact_phone_number",
+            label: "Phone",
+            accessor: (row) =>
+              formatPhoneDisplay(
+                row.contact_phone_number as string | undefined,
+                row.contact_phone_country_iso as string | undefined,
+              ) || "—",
+          },
           {
             key: "is_active",
             label: "Active",

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useEmployees } from "@mytask/hooks";
 import { can, getOrganisationAcl } from "@mytask/services";
+import { formatPhoneDisplay, listCountryIsos } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
 import { ResourceListPage, getRowId, type Row } from "@/features/shared/ResourceListPage";
 import { useOrganisationStore } from "@/store/organisationStore";
@@ -22,19 +23,28 @@ function invitationStatusCode(row: Row): string | undefined {
 
 function shouldShowInvite(row: Row): boolean {
   const code = invitationStatusCode(row);
-  // Accepted members should not see Invite again
   if (code === "accept") return false;
   return true;
 }
 
+const selectClass =
+  "mt-focus rounded-xl border border-border bg-[var(--mt-surface)] px-3 py-2 text-sm text-[var(--mt-text)] outline-none focus:border-primary";
+
 export function EmployeesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<EmployeeListRow | null>(null);
+  const [countryIso, setCountryIso] = useState("");
+  const [countryCode, setCountryCode] = useState("");
   const role = useOrganisationStore((s) => s.organisation?.role);
   const acl = getOrganisationAcl(role);
   const canCreate = can(acl, "employee", "create");
   const canEdit = can(acl, "employee", "edit");
-  const query = useEmployees({ rows_per_page: 50, sort_by: "id" });
+  const query = useEmployees({
+    rows_per_page: 50,
+    sort_by: "id",
+    ...(countryIso ? { phone_country_iso: countryIso } : {}),
+    ...(countryCode ? { phone_country_code: countryCode } : {}),
+  });
 
   function openEdit(row: Row) {
     if (!canEdit) return;
@@ -44,6 +54,44 @@ export function EmployeesPage() {
 
   return (
     <>
+      <div className="mb-3 flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-muted">Filter by country</span>
+          <select
+            className={selectClass}
+            value={countryIso}
+            onChange={(e) => setCountryIso(e.target.value)}
+          >
+            <option value="">All countries</option>
+            {listCountryIsos().map((iso) => (
+              <option key={iso} value={iso}>
+                {iso}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-muted">Country code</span>
+          <input
+            className={selectClass}
+            placeholder="+91"
+            value={countryCode}
+            onChange={(e) => setCountryCode(e.target.value)}
+          />
+        </label>
+        {(countryIso || countryCode) && (
+          <Button
+            variant="secondary"
+            className="px-3 py-2 text-sm"
+            onClick={() => {
+              setCountryIso("");
+              setCountryCode("");
+            }}
+          >
+            Clear filters
+          </Button>
+        )}
+      </div>
       <ResourceListPage
         title="Employees"
         query={query}
@@ -84,11 +132,29 @@ export function EmployeesPage() {
                 ?.name,
           },
           {
+            key: "country",
+            label: "Country",
+            accessor: (row) =>
+              (row.details as { phone_country_iso?: string } | undefined)
+                ?.phone_country_iso || "—",
+          },
+          {
             key: "phone",
             label: "Phone",
-            accessor: (row) =>
-              (row.details as { phone_number?: string } | undefined)
-                ?.phone_number,
+            accessor: (row) => {
+              const details = row.details as
+                | {
+                    phone_number?: string;
+                    phone_country_iso?: string;
+                  }
+                | undefined;
+              return (
+                formatPhoneDisplay(
+                  details?.phone_number,
+                  details?.phone_country_iso,
+                ) || "—"
+              );
+            },
           },
         ]}
         rowActions={

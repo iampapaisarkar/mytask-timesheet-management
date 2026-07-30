@@ -29,6 +29,18 @@ const Users = db.define(
     dob: {
       type: DataTypes.DATEONLY,
     },
+    phone_number: {
+      type: DataTypes.STRING(32),
+      allowNull: true,
+    },
+    phone_country_code: {
+      type: DataTypes.STRING(16),
+      allowNull: true,
+    },
+    phone_country_iso: {
+      type: DataTypes.STRING(2),
+      allowNull: true,
+    },
     firebase_user_id: {
       type: DataTypes.STRING,
       allowNull: true,

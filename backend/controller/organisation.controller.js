@@ -25,6 +25,7 @@ import { enqueueSendNotification } from "../queue-jobs/send-notification.job.js"
 import { db } from "../database.js";
 import { SystemFunction } from "#systemfunction";
 import { resolveStateId } from "../utils/state.utils.js";
+import { resolvePhoneFields } from "../utils/phone.js";
 
 export async function list(req, res, next) {
   const { user } = req.body;
@@ -106,7 +107,17 @@ export async function get(req, res, next) {
 }
 
 export async function create(req, res, next) {
-  const { user, name, address, website, phone_number, email } = req.body;
+  const {
+    user,
+    name,
+    address,
+    website,
+    phone_number,
+    phone_country_code,
+    phone_country_iso,
+    default_country,
+    email,
+  } = req.body;
   let transaction;
   try {
     const ownOrganisations = await Auth.getOwnOrganisations(user.id);
@@ -143,9 +154,17 @@ export async function create(req, res, next) {
       });
     }
 
-    if (!phone_number) {
-      return res.status(501).json({
-        message: "Phone number is required!",
+    let phoneFields;
+    try {
+      phoneFields = resolvePhoneFields({
+        phone_number,
+        phone_country_code,
+        phone_country_iso,
+        required: true,
+      });
+    } catch (phoneErr) {
+      return res.status(phoneErr.status || 400).json({
+        message: phoneErr.message,
       });
     }
     if (!email) {
@@ -160,11 +179,19 @@ export async function create(req, res, next) {
 
     const orgCode = generateOrgCode();
 
+    const orgDefaultCountry =
+      (typeof default_country === "string" && default_country.length === 2
+        ? default_country.toUpperCase()
+        : null) || phoneFields.phone_country_iso;
+
     const response = await Organisations.create(
       {
         name: name,
         website: website || null,
-        phone_number: phone_number,
+        phone_number: phoneFields.phone_number,
+        phone_country_code: phoneFields.phone_country_code,
+        phone_country_iso: phoneFields.phone_country_iso,
+        default_country: orgDefaultCountry,
         email: email,
         code: orgCode,
         created_at: currentUTCTime,
@@ -277,6 +304,9 @@ export async function update(req, res, next) {
     address,
     website,
     phone_number,
+    phone_country_code,
+    phone_country_iso,
+    default_country,
     email,
     organisation,
     orgCode,
@@ -310,9 +340,17 @@ export async function update(req, res, next) {
       });
     }
 
-    if (!phone_number) {
-      return res.status(501).json({
-        message: "Phone number is required!",
+    let phoneFields;
+    try {
+      phoneFields = resolvePhoneFields({
+        phone_number,
+        phone_country_code,
+        phone_country_iso,
+        required: true,
+      });
+    } catch (phoneErr) {
+      return res.status(phoneErr.status || 400).json({
+        message: phoneErr.message,
       });
     }
     if (!email) {
@@ -323,11 +361,19 @@ export async function update(req, res, next) {
 
     const currentUTCTime = moment().utc().format();
 
+    const orgDefaultCountry =
+      typeof default_country === "string" && default_country.length === 2
+        ? default_country.toUpperCase()
+        : phoneFields.phone_country_iso;
+
     const response = await Organisations.update(
       {
         name: name,
         website: website || null,
-        phone_number: phone_number,
+        phone_number: phoneFields.phone_number,
+        phone_country_code: phoneFields.phone_country_code,
+        phone_country_iso: phoneFields.phone_country_iso,
+        default_country: orgDefaultCountry,
         email: email,
         updated_at: currentUTCTime,
       },

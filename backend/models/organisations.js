@@ -29,6 +29,18 @@ const Organisations = db.define(
     phone_number: {
       type: DataTypes.STRING,
     },
+    phone_country_code: {
+      type: DataTypes.STRING(16),
+      allowNull: true,
+    },
+    phone_country_iso: {
+      type: DataTypes.STRING(2),
+      allowNull: true,
+    },
+    default_country: {
+      type: DataTypes.STRING(2),
+      allowNull: true,
+    },
     email: {
       type: DataTypes.STRING,
     },

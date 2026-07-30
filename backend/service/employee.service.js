@@ -22,6 +22,7 @@ import { enqueueSendNotification } from "../queue-jobs/send-notification.job.js"
 import { SystemFunction } from "#systemfunction";
 import moment from "moment";
 import { resolveStateId } from "../utils/state.utils.js";
+import { resolvePhoneFields } from "../utils/phone.js";
 class AppError extends Error {
   constructor(message, statusCode = 400) {
     super(message);
@@ -66,8 +67,24 @@ async function createOrUpdateEmployeeDetails(
     if (!details?.address?.postcode) {
       throw new AppError("Postcode is required!", 400);
     }
-    if (!details.phone_number) {
-      throw new AppError("Phone number is required!", 400);
+    let phoneFields;
+    let nokPhoneFields;
+    try {
+      phoneFields = resolvePhoneFields({
+        phone_number: details.phone_number,
+        phone_country_code: details.phone_country_code,
+        phone_country_iso: details.phone_country_iso,
+        required: true,
+      });
+      nokPhoneFields = resolvePhoneFields({
+        phone_number: details.nok_phone_number,
+        phone_country_code: details.nok_phone_country_code,
+        phone_country_iso: details.nok_phone_country_iso,
+        required: false,
+        label: "Next of kin phone",
+      });
+    } catch (err) {
+      throw new AppError(err.message, err.status || 400);
     }
     if (!details.role) {
       throw new AppError("Role is required!", 400);
@@ -92,11 +109,15 @@ async function createOrUpdateEmployeeDetails(
         {
           nok: details?.nok || null,
           nok_relation_id: details?.nok_relationship?.id || null,
-          nok_phone_number: details?.nok_phone_number || null,
+          nok_phone_number: nokPhoneFields.phone_number,
+          nok_phone_country_code: nokPhoneFields.phone_country_code,
+          nok_phone_country_iso: nokPhoneFields.phone_country_iso,
           award_id: null,
           region_id: details.region.id,
           preferred_name: details.preferred_name,
-          phone_number: details.phone_number,
+          phone_number: phoneFields.phone_number,
+          phone_country_code: phoneFields.phone_country_code,
+          phone_country_iso: phoneFields.phone_country_iso,
           updated_at: currentUTCTime,
           updated_by: user.id,
         },
@@ -170,11 +191,15 @@ async function createOrUpdateEmployeeDetails(
           organisation_id: organisation.id,
           nok: details?.nok || null,
           nok_relation_id: details?.nok_relationship?.id || null,
-          nok_phone_number: details?.nok_phone_number || null,
+          nok_phone_number: nokPhoneFields.phone_number,
+          nok_phone_country_code: nokPhoneFields.phone_country_code,
+          nok_phone_country_iso: nokPhoneFields.phone_country_iso,
           award_id: null,
           region_id: details?.region?.id,
           preferred_name: details?.preferred_name,
-          phone_number: details?.phone_number,
+          phone_number: phoneFields.phone_number,
+          phone_country_code: phoneFields.phone_country_code,
+          phone_country_iso: phoneFields.phone_country_iso,
           created_at: currentUTCTime,
           created_by: user.id,
           updated_at: currentUTCTime,
