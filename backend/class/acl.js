@@ -15,7 +15,6 @@ export const Acl = {
         earningRate: createPermissions(true, false, true, true, false),
         awardRate: createPermissions(true, false, true, true, false),
         setting: createPermissions(true, false, false, false, false),
-        xero: createPermissions(true, true, true, true, false),
       },
       moderator: {
         organisationSetting: createPermissions(
@@ -37,7 +36,6 @@ export const Acl = {
         earningRate: createPermissions(true, false, true, true, false),
         awardRate: createPermissions(true, false, true, true, false),
         setting: createPermissions(true, false, false, false, false),
-        xero: createPermissions(false, false, false, false, false),
       },
       manager: {
         organisationSetting: createPermissions(
@@ -59,7 +57,6 @@ export const Acl = {
         earningRate: createPermissions(false, false, false, false, false),
         awardRate: createPermissions(false, false, false, false, false),
         setting: createPermissions(false, false, false, false, false),
-        xero: createPermissions(false, false, false, false, false),
       },
       staff: {
         organisationSetting: createPermissions(
@@ -87,7 +84,6 @@ export const Acl = {
         earningRate: createPermissions(false, false, false, false, false),
         awardRate: createPermissions(false, false, false, false, false),
         setting: createPermissions(false, false, false, false, false),
-        xero: createPermissions(false, false, false, false, false),
       },
     };
 
@@ -106,7 +102,6 @@ export const Acl = {
         earningRate: createPermissions(),
         awardRate: createPermissions(),
         setting: createPermissions(),
-        xero: createPermissions(),
       }
     );
   },

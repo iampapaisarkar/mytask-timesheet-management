@@ -3,7 +3,6 @@ import models from "../models/index.js";
 const { EarningRates } = models;
 import moment from "moment";
 import awardRateService from "../service/award-rate.service.js";
-import { enqueueSingleEarningRateToXero } from "../queue-jobs/push-single-earning-rate.job.js";
 
 export async function list(req, res, next) {
   const { user, organisation } = req.body;
@@ -64,21 +63,13 @@ export async function list(req, res, next) {
 }
 
 export async function create(req, res, next) {
-  const { user, name, rate, push_to_xero, organisation } = req.body;
+  const { user, name, rate, organisation } = req.body;
   if (!organisation.acl.earningRate.create) {
     return res.status(403).json({
       message: "Access denied: You are not authorized to access this action.",
     });
   }
   try {
-    if (organisation?.xero_connection && push_to_xero) {
-      if (!organisation?.settings?.default_earning_rate_expense_account) {
-        return res.status(501).json({
-          message:
-            "To push the earning rate to Xero, you must set up a default expense account in the Organisation settings.",
-        });
-      }
-    }
     if (!name) {
       return res.status(501).json({
         message: "Name is required!",
@@ -122,14 +113,6 @@ export async function create(req, res, next) {
 
     const insertedEarningRate = await earningRate.save();
 
-    if (organisation?.xero_connection && push_to_xero) {
-      await enqueueSingleEarningRateToXero({
-        user,
-        organisation,
-        earningRate: insertedEarningRate,
-      });
-    }
-
     return res.status(200).json({
       message: "Earning rate created",
     });
@@ -143,7 +126,7 @@ export async function create(req, res, next) {
 }
 
 export async function update(req, res, next) {
-  const { user, name, rate, push_to_xero, organisation } = req.body;
+  const { user, name, rate, organisation } = req.body;
   const id = req?.params?.id;
   if (!organisation.acl.earningRate.edit) {
     return res.status(403).json({
@@ -151,14 +134,6 @@ export async function update(req, res, next) {
     });
   }
   try {
-    if (organisation?.xero_connection && push_to_xero) {
-      if (!organisation?.settings?.default_earning_rate_expense_account) {
-        return res.status(501).json({
-          message:
-            "To push the earning rate to Xero, you must set up a default expense account in the Organisation settings.",
-        });
-      }
-    }
     if (!name) {
       return res.status(501).json({
         message: "Name is required!",
@@ -204,14 +179,6 @@ export async function update(req, res, next) {
     existingEarningRate.updated_by = user.id;
 
     await existingEarningRate.save();
-
-    if (organisation?.xero_connection && push_to_xero) {
-      await enqueueSingleEarningRateToXero({
-        user,
-        organisation,
-        earningRate: existingEarningRate,
-      });
-    }
 
     return res.status(200).json({
       message: "Earning rate updated",

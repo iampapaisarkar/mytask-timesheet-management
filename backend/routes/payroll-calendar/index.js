@@ -4,14 +4,12 @@ import {
   list,
   create,
   // update,
-  pullFromXeroToApp,
 } from "../../controller/payroll-calendar.controller.js";
 import TokenValidate from "../../middleware/tokenvalidate.js";
 
 router.get("/list", list);
 router.post("/create", create);
 // router.post("/update", update);
-router.post("/pull-from-xero-to-app", pullFromXeroToApp);
 // router.post("/:id/update", update);
 
 export default router;

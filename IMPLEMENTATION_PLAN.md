@@ -44,7 +44,7 @@ Order (dependency + ACL frequency):
 9. Reports
 10. Profile
 11. Org invitation / Auth actions
-12. Xero connect flows
+12. Payroll integration connect flows
 13. Notifications
 14. Timesheet activity / location (mobile-first)
 

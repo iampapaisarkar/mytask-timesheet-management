@@ -9,7 +9,6 @@ const SETTINGS_LINKS = [
   { label: "Payroll Calendar", hint: "Pay periods" },
   { label: "Earning Rates", hint: "Rate catalogue" },
   { label: "Earning Rate Rules", hint: "Rule mappings" },
-  { label: "Xero", hint: "Payroll integration" },
 ];
 
 export function SettingsHubScreen() {

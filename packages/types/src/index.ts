@@ -57,7 +57,6 @@ export type OrganisationAcl = {
   earningRate: CrudPermission;
   awardRate: CrudPermission;
   setting: CrudPermission;
-  xero: CrudPermission;
 };
 
 /** International phone fields (E.164 + metadata). */

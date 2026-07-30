@@ -14,8 +14,6 @@ const {
 } = models;
 import { db } from "../database.js";
 import employeeService from "../service/employee.service.js";
-import { enqueueSingleEmployeeToXero } from "../queue-jobs/push-single-employee.job.js";
-import xeroService from "../service/xero.service.js";
 import moment from "moment";
 
 export async function list(req, res, next) {
@@ -189,7 +187,6 @@ export async function create(req, res, next) {
     orgCode,
     organisation,
     orgName,
-    push_to_xero,
   } = req.body;
   if (!organisation.acl.employee.create) {
     return res.status(403).json({
@@ -198,27 +195,6 @@ export async function create(req, res, next) {
   }
   const transaction = await db.transaction();
   try {
-    if (organisation?.xero_connection && push_to_xero) {
-      if (!organisation?.settings?.default_ordinary_hours_earning_rate_type) {
-        return res.status(501).json({
-          message:
-            "To push the employee to Xero, you must set up a default ordinary hours earning rate in the Organisation settings",
-        });
-      }
-      if (!organisation?.settings?.default_superannuation_expense_account) {
-        return res.status(501).json({
-          message:
-            "To push the employee to Xero, you must set up a default superannuation expense account in the Organisation settings",
-        });
-      }
-      if (!organisation?.settings?.default_superannuation_liability_account) {
-        return res.status(501).json({
-          message:
-            "To push the employee to Xero, you must set up a default superannuation liability account in the Organisation settings",
-        });
-      }
-    }
-
     const employee = await employeeService.createOrUpdateEmployeeDetails(
       user,
       organisation,
@@ -263,15 +239,6 @@ export async function create(req, res, next) {
 
     await transaction.commit();
 
-    if (organisation?.xero_connection && push_to_xero) {
-      details.id = employee.id;
-      await enqueueSingleEmployeeToXero({
-        user,
-        organisation,
-        employee: { details, wage, payroll },
-      });
-    }
-
     return res.status(200).json({
       message: "Employee created & invitation sent",
     });
@@ -295,7 +262,6 @@ export async function update(req, res, next) {
     orgCode,
     organisation,
     orgName,
-    push_to_xero,
   } = req.body;
   const id = req?.params?.id;
   if (!organisation.acl.employee.edit) {
@@ -305,28 +271,6 @@ export async function update(req, res, next) {
   }
   const transaction = await db.transaction();
   try {
-    if (organisation?.xero_connection && push_to_xero) {
-      if (organisation?.xero_connection && push_to_xero) {
-        if (!organisation?.settings?.default_ordinary_hours_earning_rate_type) {
-          return res.status(501).json({
-            message:
-              "To push the employee to Xero, you must set up a default ordinary hours earning rate in the Organisation settings",
-          });
-        }
-        if (!organisation?.settings?.default_superannuation_expense_account) {
-          return res.status(501).json({
-            message:
-              "To push the employee to Xero, you must set up a default superannuation expense account in the Organisation settings",
-          });
-        }
-        if (!organisation?.settings?.default_superannuation_liability_account) {
-          return res.status(501).json({
-            message:
-              "To push the employee to Xero, you must set up a default superannuation liability account in the Organisation settings",
-          });
-        }
-      }
-    }
     const response = await employeeService.createOrUpdateEmployeeDetails(
       user,
       organisation,
@@ -370,14 +314,6 @@ export async function update(req, res, next) {
     );
 
     await transaction.commit();
-
-    if (organisation?.xero_connection && push_to_xero) {
-      await enqueueSingleEmployeeToXero({
-        user,
-        organisation,
-        employee: { details, wage, payroll },
-      });
-    }
 
     return res.status(200).json({
       message: "Employee updated",
@@ -465,10 +401,6 @@ export async function invite(req, res, next) {
 export async function searchUserByEmail(req, res, next) {
   const { user, email, organisation } = req.body;
   try {
-    console.log(
-      "organisation_xero_connection::",
-      organisation?.xero_connection,
-    );
     if (user.email === email) {
       return res.status(501).json({
         message: "Employee already exists",
@@ -489,99 +421,8 @@ export async function searchUserByEmail(req, res, next) {
       });
     }
 
-    // Fetch from Xero first
-    let xeroEmployee;
-    if (organisation?.xero_connection) {
-      const xeroEmployee = await xeroService.fetchEmployeeByEmail(
-        user,
-        organisation,
-        email,
-      );
-    }
-
     let formattedEmployee;
-    if (xeroEmployee) {
-      const state = await States.findOne({
-        where: { code: xeroEmployee?.homeAddress?.region },
-        raw: true,
-      });
-      const employmentStatus = await EmploymentStatus.findOne({
-        where: { code: xeroEmployee?.status },
-        raw: true,
-      });
-      const employmentTypes = await EmploymentTypes.findOne({
-        where: { code: xeroEmployee?.taxDeclaration?.employmentBasis },
-        raw: true,
-      });
-
-      const payrollCalendar = await PayrollCalendars.findOne({
-        where: { xero_payroll_calendar_id: xeroEmployee?.payrollCalendarID },
-        raw: true,
-      });
-
-      const xeroPayrollCalendar = await xeroService.fetchPayrollCalendarById(
-        user,
-        organisation,
-        xeroEmployee?.payrollCalendarID,
-      );
-
-      formattedEmployee = {
-        details: {
-          id: null,
-          first_name: xeroEmployee?.firstName,
-          middle_name: xeroEmployee?.middleNames,
-          last_name: xeroEmployee?.lastName,
-          email: xeroEmployee?.email,
-          preferred_name: xeroEmployee?.title,
-          address: xeroEmployee?.homeAddress?.addressLine1,
-          address_2: xeroEmployee?.homeAddress?.addressLine2,
-          city: xeroEmployee?.homeAddress?.city,
-          state: state,
-          postcode: xeroEmployee?.homeAddress?.postalCode,
-          dob: moment(xeroEmployee?.dateOfBirth).format("YYYY-MM-DD"),
-          phone_number: xeroEmployee?.mobile || xeroEmployee?.phone,
-          role: null,
-          region: null,
-          nok: null,
-          nok_relationship: null,
-          nok_phone_number: null,
-          xero_employee_id: xeroEmployee?.employeeID,
-        },
-        wage: {
-          start_date: moment(xeroEmployee?.startDate).format("YYYY-MM-DD"),
-          employment_status: employmentStatus,
-          payroll_calendar: payrollCalendar || null,
-          xero_payroll_calendar: xeroPayrollCalendar || null,
-          use_xero_payroll_calendar: false,
-          employment_type: employmentTypes,
-          hourly_rate_exc_super:
-            `${xeroEmployee?.payTemplate?.earningsLines[0]?.ratePerUnit}.00` ||
-            null,
-          timesheet_submission_frequency: null,
-          award_rate: null,
-        },
-        payroll: {
-          tax_file_number: null,
-          superannuation_fund: null,
-          superannuation_member_number: null,
-          bank_bsb: xeroEmployee?.bankAccounts[0]?.bSB || null,
-          bank_account_number:
-            xeroEmployee?.bankAccounts[0]?.accountNumber || null,
-          bank_account_name: xeroEmployee?.bankAccounts[0]?.accountName || null,
-          bank_statement_text:
-            xeroEmployee?.bankAccounts[0]?.statementText || null,
-        },
-        push_to_xero: true,
-        action: {
-          edit: true,
-          create: false,
-          message:
-            "An employee with this email already exists in your Xero organisation. You can send an invitation to this employee.",
-          found_in_xero: true,
-          create_user: true,
-        },
-      };
-    } else {
+    {
       // Fetch from mysheet system
       let systemEmployee = await Users.findOne({
         where: {
@@ -611,7 +452,6 @@ export async function searchUserByEmail(req, res, next) {
             nok: null,
             nok_relationship: null,
             nok_phone_number: null,
-            xero_employee_id: null,
           },
           wage: {
             start_date: null,
@@ -631,7 +471,6 @@ export async function searchUserByEmail(req, res, next) {
             bank_account_name: null,
             bank_statement_text: null,
           },
-          push_to_xero: true,
           action: {
             edit: true,
             create: false,
@@ -662,7 +501,6 @@ export async function searchUserByEmail(req, res, next) {
             nok: null,
             nok_relationship: null,
             nok_phone_number: null,
-            xero_employee_id: null,
           },
           wage: {
             start_date: null,
@@ -682,12 +520,11 @@ export async function searchUserByEmail(req, res, next) {
             bank_account_name: null,
             bank_statement_text: null,
           },
-          push_to_xero: true,
           action: {
             edit: false,
             create: true,
             message:
-              "No existing user was found in Xero or any other organisation. You can create a new user and employee account for this email, then send an invitation.",
+              "No existing user was found in any other organisation. You can create a new user and employee account for this email, then send an invitation.",
             create_user: true,
           },
         };

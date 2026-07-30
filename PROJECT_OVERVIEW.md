@@ -2,7 +2,7 @@
 
 ## Product
 
-**myTask** is a multi-tenant timesheet and workforce management application. Users belong to one or more organisations, work under organisation roles (`owner`, `moderator`, `manager`, `staff`), and manage timesheets, employees, jobs, customers, payroll calendars, earning/award rates, reports, and Xero integration.
+**myTask** is a multi-tenant timesheet and workforce management application. Users belong to one or more organisations, work under organisation roles (`owner`, `moderator`, `manager`, `staff`), and manage timesheets, employees, jobs, customers, payroll calendars, earning/award rates, and reports.
 
 ## Source of truth
 
@@ -19,7 +19,7 @@
 3. **Timesheets** — employee self-service sheets + manager approval workflow
 4. **Workforce** — employees, management groups, jobs, customers, regions
 5. **Payroll settings** — holiday calendars, payroll calendars, earning rates, award rate rules
-6. **Integrations** — Xero connect/push, Firebase Cloud Messaging, Socket.IO
+6. **Integrations** — Firebase Cloud Messaging, Socket.IO
 7. **Activity** — geolocation / timesheet activity tracking (mobile-oriented)
 
 ## Platforms

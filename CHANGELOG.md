@@ -9,6 +9,7 @@
 - Mobile env configured via `src/config/env.ts`
 - Added Cursor rules and docs for root, backend, web, and mobile
 - Expanded root README with detailed run instructions for backend, web, iOS, and Android
+- Removed external payroll integration runtime paths and deprecated obsolete payroll-sync endpoints to keep the production API aligned with currently supported workflows
 
 ## 2026-07-29
 
@@ -27,4 +28,4 @@
 
 - Original Vue source unavailable; behaviour recovered from production Quasar build + backend source
 - Backend behaviour intentionally unchanged
-- Settings subpages, timesheet details, create dialogs, Xero/FCM still pending
+- Settings subpages, timesheet details, create dialogs, and FCM were pending at that stage

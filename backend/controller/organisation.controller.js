@@ -12,7 +12,6 @@ const {
   TimesheetSubmissionFrequencies,
   OrganisationAddress,
   PayrollCalendars,
-  PayCycles,
 } = models;
 import Auth from "#auth";
 import moment from "moment";
@@ -22,7 +21,6 @@ import organisationService from "../service/organisation.service.js";
 import { enqueueSendEmail } from "../queue-jobs/send-email.job.js";
 import { enqueueSendNotification } from "../queue-jobs/send-notification.job.js";
 import { db } from "../database.js";
-import { SystemFunction } from "#systemfunction";
 import { resolveStateId } from "../utils/state.utils.js";
 import { resolvePhoneFields } from "../utils/phone.js";
 import {
@@ -381,13 +379,8 @@ export async function update(req, res, next) {
 }
 
 export async function updateSettings(req, res, next) {
-  const { user, organisation, timesheet_submission_frequency, leaves, xero } =
-    req.body;
+  const { user, organisation, timesheet_submission_frequency, leaves } = req.body;
   try {
-    // return res.status(500).json({
-    //   data: xero,
-    // });
-
     const currentUTCTime = moment().utc().format();
 
     // if (!timesheet_submission_frequency) {
@@ -422,131 +415,6 @@ export async function updateSettings(req, res, next) {
           value: timesheet_submission_frequency,
           key: "timesheet_submission_frequency",
         });
-      }
-    }
-
-    // xero setup
-    if (xero) {
-      if (xero.default_ordinary_hours_earning_rate_type) {
-        let defaultOrdinaryHoursEarningRateType =
-          await OrganisationSettings.findOne({
-            where: {
-              key: "default_ordinary_hours_earning_rate_type",
-              organisation_id: organisation.id,
-            },
-          });
-
-        if (defaultOrdinaryHoursEarningRateType) {
-          defaultOrdinaryHoursEarningRateType.value =
-            xero.default_ordinary_hours_earning_rate_type;
-          await defaultOrdinaryHoursEarningRateType.save();
-        } else {
-          await OrganisationSettings.create({
-            organisation_id: organisation.id,
-            value: xero.default_ordinary_hours_earning_rate_type,
-            key: "default_ordinary_hours_earning_rate_type",
-          });
-        }
-      }
-      if (xero.default_earning_rate_expense_account) {
-        let defaultEarningrateExpenseAccount =
-          await OrganisationSettings.findOne({
-            where: {
-              key: "default_earning_rate_expense_account",
-              organisation_id: organisation.id,
-            },
-          });
-
-        if (defaultEarningrateExpenseAccount) {
-          defaultEarningrateExpenseAccount.value =
-            xero.default_earning_rate_expense_account;
-          await defaultEarningrateExpenseAccount.save();
-        } else {
-          await OrganisationSettings.create({
-            organisation_id: organisation.id,
-            value: xero.default_earning_rate_expense_account,
-            key: "default_earning_rate_expense_account",
-          });
-        }
-      }
-      if (xero.default_superannuation_expense_account) {
-        let defaultSuperannuationExpenseAccount =
-          await OrganisationSettings.findOne({
-            where: {
-              key: "default_superannuation_expense_account",
-              organisation_id: organisation.id,
-            },
-          });
-
-        if (defaultSuperannuationExpenseAccount) {
-          defaultSuperannuationExpenseAccount.value =
-            xero.default_superannuation_expense_account;
-          await defaultSuperannuationExpenseAccount.save();
-        } else {
-          await OrganisationSettings.create({
-            organisation_id: organisation.id,
-            value: xero.default_superannuation_expense_account,
-            key: "default_superannuation_expense_account",
-          });
-        }
-      }
-      if (xero.default_superannuation_liability_account) {
-        let defaultSuperannuationLiabilityAccount =
-          await OrganisationSettings.findOne({
-            where: {
-              key: "default_superannuation_liability_account",
-              organisation_id: organisation.id,
-            },
-          });
-
-        if (defaultSuperannuationLiabilityAccount) {
-          defaultSuperannuationLiabilityAccount.value =
-            xero.default_superannuation_liability_account;
-          await defaultSuperannuationLiabilityAccount.save();
-        } else {
-          await OrganisationSettings.create({
-            organisation_id: organisation.id,
-            value: xero.default_superannuation_liability_account,
-            key: "default_superannuation_liability_account",
-          });
-        }
-      }
-
-      if (xero.payroll_calendars) {
-        for (const payrollCalendar of xero.payroll_calendars) {
-          const exitingAppPayroll = await PayrollCalendars.findOne({
-            where: {
-              xero_payroll_calendar_id: payrollCalendar.payrollCalendarID,
-            },
-          });
-
-          if (!exitingAppPayroll) {
-            const payCycle = await PayCycles.findOne({
-              where: {
-                code: payrollCalendar.calendarType,
-              },
-            });
-            const end_date =
-              await SystemFunction.getPayrollEndDateByPayCycleType(
-                payCycle.code,
-                payrollCalendar.startDate,
-              );
-            await PayrollCalendars.create({
-              organisation_id: organisation.id,
-              name: payrollCalendar.name,
-              pay_cycle_id: payCycle.id,
-              start_date: payrollCalendar.startDate,
-              end_date: end_date,
-              first_payment_date: payrollCalendar.paymentDate,
-              default: false,
-              xero_payroll_calendar_id: payrollCalendar.payrollCalendarID,
-              created_at: currentUTCTime,
-              created_by: user.id,
-              updated_at: currentUTCTime,
-              updated_by: user.id,
-            });
-          }
-        }
       }
     }
 

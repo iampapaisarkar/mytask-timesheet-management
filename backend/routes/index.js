@@ -17,7 +17,6 @@ import awardRates from "./award-rate/index.js";
 import system from "./system/index.js";
 import Notification from "./notifications/index.js";
 import TimesheetActivity from "./timesheet-activity/index.js";
-import Xero from "./xero/index.js";
 import Report from "./report/index.js";
 import screens from "./screens/index.js";
 import { SocketIO } from "#socketio";
@@ -61,7 +60,6 @@ router.use("/notifications", TokenValidate, Notification);
 router.use("/timesheet-activity", TimesheetActivity);
 router.use("/reports", TokenValidate, OrganisationValidate, Report);
 router.use("/screens", TokenValidate, screens);
-router.use("/xero", TokenValidate, Xero);
 
 router.get("/mail-test", async (req, res) => {
   const { email = null } = req.query;

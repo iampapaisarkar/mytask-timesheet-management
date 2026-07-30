@@ -38,9 +38,6 @@ const Timesheets = db.define(
     reject_reason: {
       type: DataTypes.TEXT,
     },
-    xero_timesheet_id: {
-      type: DataTypes.UUID,
-    },
     created_at: {
       type: DataTypes.DATE,
       field: "created_at",
@@ -60,12 +57,6 @@ const Timesheets = db.define(
         const endFmt = moment(end).format("DD MMM, YYYY");
 
         return `${startFmt} to ${endFmt}`;
-      },
-    },
-    push_to_xero: {
-      type: DataTypes.VIRTUAL,
-      get() {
-        return true;
       },
     },
   },

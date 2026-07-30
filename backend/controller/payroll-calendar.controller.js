@@ -3,7 +3,6 @@ import models from "../models/index.js";
 const { PayrollCalendars, PayCycles } = models;
 import { SystemFunction } from "#systemfunction";
 import moment from "moment";
-import { enqueueSinglePayrollCalendarToXero } from "../queue-jobs/push-single-payroll-calendar.job.js";
 
 export async function list(req, res, next) {
   const { user, organisation } = req.body;
@@ -79,7 +78,6 @@ export async function create(req, res, next) {
     start_date,
     first_payment_date,
     default: isDefault,
-    push_to_xero,
   } = req.body;
   if (!organisation.acl.payrollCalendar.create) {
     return res.status(403).json({
@@ -168,15 +166,6 @@ export async function create(req, res, next) {
 
     const insertedPayrollCalendar = await payrollCalendar.save();
 
-    if (organisation?.xero_connection && push_to_xero) {
-      await enqueueSinglePayrollCalendarToXero({
-        user,
-        organisation,
-        payrollCalendar: insertedPayrollCalendar,
-        payCycle: pay_cycle,
-      });
-    }
-
     return res.status(200).json({
       message: "Payroll calendar created",
     });
@@ -190,196 +179,4 @@ export async function create(req, res, next) {
   }
 }
 
-// export async function update(req, res, next) {
-//   const {
-//     user,
-//     organisation,
-//     pay_cycle,
-//     name,
-//     start_date,
-//     first_payment_date,
-//     default: isDefault,
-//     push_to_xero,
-//   } = req.body;
-//   const id = req?.params?.id;
-//   if (!organisation.acl.payrollCalendar.edit) {
-//     return res.status(403).json({
-//       message: "Access denied: You are not authorized to access this action.",
-//     });
-//   }
-//   try {
-//     if (!pay_cycle) {
-//       return res.status(501).json({
-//         message: "Pay cycle is required!",
-//       });
-//     }
-//     if (!name) {
-//       return res.status(501).json({
-//         message: "Name is required!",
-//       });
-//     }
-//     if (!start_date) {
-//       return res.status(501).json({
-//         message: "Start date is required!",
-//       });
-//     }
-//     if (!first_payment_date) {
-//       return res.status(501).json({
-//         message: "FIrst payment date is required!",
-//       });
-//     }
 
-//     let existingPayrollCalendarName = await PayrollCalendars.findOne({
-//       where: {
-//         name: name,
-//         organisation_id: organisation.id,
-//         id: { [Op.ne]: id },
-//       },
-//     });
-
-//     if (existingPayrollCalendarName) {
-//       return res.status(501).json({
-//         message:
-//           "The given rate name already exists in the system. Please use a different name.",
-//       });
-//     }
-
-//     let existingPayrollCalendar = await PayrollCalendars.findOne({
-//       where: {
-//         id: id,
-//         organisation_id: organisation.id,
-//       },
-//     });
-
-//     if (isDefault) {
-//       await PayrollCalendars.update(
-//         {
-//           default: false,
-//         },
-//         {
-//           where: {
-//             organisation_id: organisation.id,
-//           },
-//         }
-//       );
-//     }
-
-//     const currentUTCTime = moment().utc().format();
-
-//     const end_date = await SystemFunction.getPayrollEndDateByPayCycleType(
-//       pay_cycle.code,
-//       start_date
-//     );
-
-//     let formattedFirstPaymentDate = first_payment_date;
-
-//     if (
-//       typeof first_payment_date === "string" &&
-//       first_payment_date.includes("/")
-//     ) {
-//       formattedFirstPaymentDate = moment(
-//         first_payment_date.trim(),
-//         "YYYY/MM/DD",
-//         true
-//       ).format("YYYY-MM-DD");
-//     }
-
-//     existingPayrollCalendar.name = name;
-//     existingPayrollCalendar.start_date = start_date;
-//     existingPayrollCalendar.end_date = end_date;
-//     existingPayrollCalendar.first_payment_date = formattedFirstPaymentDate;
-//     existingPayrollCalendar.default = isDefault;
-//     existingPayrollCalendar.updated_at = currentUTCTime;
-//     existingPayrollCalendar.updated_by = user.id;
-
-//     if (organisation?.xero_connection && push_to_xero) {
-//       const xeroPayrollCalendar =
-//         await xeroService.pushSystemPayrollCalendarToXero(
-//           user,
-//           organisation,
-//           existingPayrollCalendar,
-//           pay_cycle
-//         );
-//       existingPayrollCalendar.xero_payroll_calendar_id =
-//         xeroPayrollCalendar?.payrollCalendarID || null;
-//     }
-
-//     await existingPayrollCalendar.save();
-
-//     return res.status(200).json({
-//       message: "Payroll calendar updated",
-//     });
-//   } catch (err) {
-//     console.log("error::", err);
-//     return res.status(err.statusCode || 500).json({
-//       message:
-//         err.message ||
-//         "Unable to update payroll calendar. Please ty again later.",
-//     });
-//   }
-// }
-
-export async function pullFromXeroToApp(req, res, next) {
-  const { user, organisation, payroll_calendars } = req.body;
-  if (!organisation.acl.payrollCalendar.create) {
-    return res.status(403).json({
-      message: "Access denied: You are not authorized to access this action.",
-    });
-  }
-  try {
-    if (!payroll_calendars || payroll_calendars.length <= 0) {
-      return res.status(501).json({
-        message: "Payroll calendars are required!",
-      });
-    }
-
-    const currentUTCTime = moment().utc().format();
-
-    if (payroll_calendars) {
-      for (const payrollCalendar of payroll_calendars) {
-        const exitingAppPayroll = await PayrollCalendars.findOne({
-          where: {
-            xero_payroll_calendar_id: payrollCalendar.payrollCalendarID,
-          },
-        });
-
-        if (!exitingAppPayroll) {
-          const payCycle = await PayCycles.findOne({
-            where: {
-              code: payrollCalendar.calendarType,
-            },
-          });
-          const end_date = await SystemFunction.getPayrollEndDateByPayCycleType(
-            payCycle.code,
-            payrollCalendar.startDate,
-          );
-          await PayrollCalendars.create({
-            organisation_id: organisation.id,
-            name: payrollCalendar.name,
-            pay_cycle_id: payCycle.id,
-            start_date: payrollCalendar.startDate,
-            end_date: end_date,
-            first_payment_date: payrollCalendar.paymentDate,
-            default: false,
-            xero_payroll_calendar_id: payrollCalendar.payrollCalendarID,
-            created_at: currentUTCTime,
-            created_by: user.id,
-            updated_at: currentUTCTime,
-            updated_by: user.id,
-          });
-        }
-      }
-    }
-
-    return res.status(200).json({
-      message: "Payroll calendars successfully pulled from xero",
-    });
-  } catch (err) {
-    console.log("error::", err);
-    return res.status(err.statusCode || 500).json({
-      message:
-        err.message ||
-        "Unable to pull payroll calendar. Please ty again later.",
-    });
-  }
-}

@@ -3,7 +3,6 @@ import { getErrorMessage } from "@mytask/utils";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { useOrganisationStore } from "@/store/organisationStore";
 import { TextInput } from "@/components/ui/TextInput";
-import { Button } from "@/components/ui/Button";
 import { FormDialog } from "@/components/ui/FormDialog";
 import { useToastStore } from "@/store/toastStore";
 import { ResourceListPage } from "@/features/shared/ResourceListPage";
@@ -11,7 +10,6 @@ import {
   useCreatePayrollCalendar,
   usePayCycles,
   usePayrollCalendars,
-  usePullPayrollFromXero,
 } from "./settingsHooks";
 
 export function PayrollCalendarsPage() {
@@ -21,17 +19,14 @@ export function PayrollCalendarsPage() {
   const role = useOrganisationStore((s) => s.organisation?.role);
   const acl = getOrganisationAcl(role);
   const canCreate = can(acl, "payrollCalendar", "create");
-  const canXero = can(acl, "xero", "edit");
 
   const createMutation = useCreatePayrollCalendar();
-  const pullMutation = usePullPayrollFromXero();
 
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [payCycleId, setPayCycleId] = useState("");
   const [startDate, setStartDate] = useState("");
   const [firstPaymentDate, setFirstPaymentDate] = useState("");
-  const [pushToXero, setPushToXero] = useState(false);
 
   const payCycles = (payCyclesQuery.data || []) as Array<{
     id: number;
@@ -49,7 +44,6 @@ export function PayrollCalendarsPage() {
         pay_cycle: { id: Number(payCycleId) },
         start_date: startDate,
         first_payment_date: firstPaymentDate,
-        push_to_xero: pushToXero,
       });
       toast.success("Payroll calendar created");
       setOpen(false);
@@ -58,29 +52,8 @@ export function PayrollCalendarsPage() {
     }
   }
 
-  async function handlePull() {
-    try {
-      await pullMutation.mutateAsync();
-      toast.success("Pulled payroll calendars from Xero");
-    } catch (err) {
-      toast.error("Pull failed", getErrorMessage(err));
-    }
-  }
-
   return (
     <>
-      {canXero ? (
-        <div className="mb-3 flex justify-end">
-          <Button
-            type="button"
-            variant="secondary"
-            loading={pullMutation.isPending}
-            onClick={() => void handlePull()}
-          >
-            Pull from Xero
-          </Button>
-        </div>
-      ) : null}
       <ResourceListPage
         title="Payroll calendars"
         query={query}
@@ -98,7 +71,6 @@ export function PayrollCalendarsPage() {
                 setPayCycleId("");
                 setStartDate("");
                 setFirstPaymentDate("");
-                setPushToXero(false);
                 setOpen(true);
               }
             : undefined
@@ -144,14 +116,6 @@ export function PayrollCalendarsPage() {
           value={firstPaymentDate}
           onChange={(e) => setFirstPaymentDate(e.target.value)}
         />
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={pushToXero}
-            onChange={(e) => setPushToXero(e.target.checked)}
-          />
-          Push to Xero
-        </label>
       </FormDialog>
     </>
   );

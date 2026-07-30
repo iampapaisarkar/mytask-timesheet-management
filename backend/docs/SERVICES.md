@@ -8,7 +8,6 @@ Located in `service/`:
 - `timesheet-activity.service.js`
 - `timesheet-rate.service.js` / `timesheetRateService.js`
 - `award-rate.service.js`
-- `xero.service.js`
 - `email.service.js`
 - `external-api-log.service.js`
 

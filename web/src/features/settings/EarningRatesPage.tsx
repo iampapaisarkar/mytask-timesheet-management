@@ -33,13 +33,11 @@ export function EarningRatesPage() {
   const [editing, setEditing] = useState<Row | null>(null);
   const [name, setName] = useState("");
   const [rate, setRate] = useState("");
-  const [pushToXero, setPushToXero] = useState(false);
 
   function openCreate() {
     setEditing(null);
     setName("");
     setRate("");
-    setPushToXero(false);
     setOpen(true);
   }
 
@@ -48,7 +46,6 @@ export function EarningRatesPage() {
     setEditing(row);
     setName(String(row.name || ""));
     setRate(String(row.rate ?? ""));
-    setPushToXero(false);
     setOpen(true);
   }
 
@@ -60,7 +57,6 @@ export function EarningRatesPage() {
     const payload = {
       name: name.trim(),
       rate: Number(rate),
-      push_to_xero: pushToXero,
     };
     try {
       if (editing?.id != null) {
@@ -108,14 +104,6 @@ export function EarningRatesPage() {
           value={rate}
           onChange={(e) => setRate(e.target.value)}
         />
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={pushToXero}
-            onChange={(e) => setPushToXero(e.target.checked)}
-          />
-          Push to Xero
-        </label>
       </FormDialog>
     </>
   );

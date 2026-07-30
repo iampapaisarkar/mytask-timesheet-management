@@ -90,7 +90,6 @@ type EmployeeForm = {
     bank_account_name: string;
     bank_statement_text: string;
   };
-  push_to_xero: boolean;
 };
 
 function emptyForm(email = ""): EmployeeForm {
@@ -148,7 +147,6 @@ function emptyForm(email = ""): EmployeeForm {
       bank_account_name: "",
       bank_statement_text: "",
     },
-    push_to_xero: false,
   };
 }
 
@@ -234,7 +232,6 @@ function formFromEmployeeRow(row: EmployeeListRow): EmployeeForm {
       bank_account_name: String(payroll.bank_account_name || ""),
       bank_statement_text: String(payroll.bank_statement_text || ""),
     },
-    push_to_xero: false,
   };
 }
 
@@ -422,7 +419,6 @@ export function CreateEmployeeDialog({
           bank_account_name: String(payroll.bank_account_name || ""),
           bank_statement_text: String(payroll.bank_statement_text || ""),
         },
-        push_to_xero: Boolean(data.push_to_xero),
       });
       setStep(1);
       if (action?.message) {
@@ -574,10 +570,8 @@ export function CreateEmployeeDialog({
         timesheet_submission_frequency:
           form.wage.timesheet_submission_frequency,
         award_rate: form.wage.award_rate,
-        use_xero_payroll_calendar: false,
       },
       payroll: { ...form.payroll },
-      push_to_xero: form.push_to_xero,
     };
 
     try {
@@ -1077,20 +1071,6 @@ export function CreateEmployeeDialog({
                   patchPayroll({ bank_statement_text: e.target.value })
                 }
               />
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="size-4 accent-primary"
-                  checked={form.push_to_xero}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      push_to_xero: e.target.checked,
-                    }))
-                  }
-                />
-                <span className="font-medium">Push to Xero</span>
-              </label>
             </div>
           ) : null}
         </div>

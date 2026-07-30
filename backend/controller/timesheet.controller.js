@@ -12,7 +12,6 @@ const {
 import { TimesheetConfig } from "../class/timesheet.config.js";
 import timsheetService from "../service/timsheet.service.js";
 import redisUtils from "../utils/redis.utils.js";
-import { enqueueSingleTimesheetToXero } from "../queue-jobs/push-single-timesheet.job.js";
 
 export async function list(req, res, next) {
   const { user, organisation } = req.body;
@@ -368,15 +367,6 @@ export async function submitForApproval(req, res, next) {
       timesheet,
       "submit-by-staff"
     );
-
-    if (organisation?.xero_connection) {
-      await enqueueSingleTimesheetToXero({
-        user,
-        organisation,
-        timesheetId: timesheet.id,
-        status: "PROCESSED",
-      });
-    }
 
     return res.status(200).json({
       message: "Timesheet submitted for approval",

@@ -4,6 +4,6 @@
 - Config: `database.js` + env `DB_*`
 - Migrations: `migrations/` via Umzug / custom commands
 - Seeders: `seeders/`
-- Models: `models/` (Users, Organisations, Timesheets, Employees, Jobs, Customers, rates, calendars, Xero, notifications, etc.)
+- Models: `models/` (Users, Organisations, Timesheets, Employees, Jobs, Customers, rates, calendars, notifications, etc.)
 
 Indexing helpers: `database-table-indexing.sql`.

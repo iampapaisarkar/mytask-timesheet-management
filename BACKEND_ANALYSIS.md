@@ -9,7 +9,7 @@
 - **Realtime:** Socket.IO (+ Redis adapter)
 - **Queue:** BullMQ + Redis
 - **Storage:** Google Cloud Storage
-- **Integrations:** Xero (`xero-node`), Firebase Admin, Nodemailer
+- **Integrations:** Firebase Admin, Nodemailer
 - **Other:** Multer uploads, Sharp/HEIC image processing, Puppeteer, compression, CORS `*`
 
 ## Entry
@@ -34,11 +34,11 @@
 
 ## Models (selected)
 
-Users, UserSessions, Organisations, OrganisationRoles, UserOrganisationRoles, Employees, EmployeeInvitations, Timesheets, TimesheetDays, TimesheetDayTasks, Customers, Jobs, Regions, HolidayCalendars, PayrollCalendars, EarningRates, AwardRates (+ rule tables), Notifications, FcmConnections, XeroConnections, and many lookup tables (employment types, leave categories, states, etc.).
+Users, UserSessions, Organisations, OrganisationRoles, UserOrganisationRoles, Employees, EmployeeInvitations, Timesheets, TimesheetDays, TimesheetDayTasks, Customers, Jobs, Regions, HolidayCalendars, PayrollCalendars, EarningRates, AwardRates (+ rule tables), Notifications, FcmConnections, and many lookup tables (employment types, leave categories, states, etc.).
 
 ## Services
 
-Organisation, employee, timesheet, timesheet-activity, timesheet-rate, award-rate, xero, email, external-api-log.
+Organisation, employee, timesheet, timesheet-activity, timesheet-rate, award-rate, email, external-api-log.
 
 ## GraphQL
 
@@ -46,7 +46,7 @@ Present under `graphql/` but **disabled** (`setupGraphQL` commented out). Rebuil
 
 ## Environment (from `.env.example`)
 
-`APP_HOST_PORT`, `APP_NAME`, `CLIENT_URL`, `SERVER_URL`, DB_*, `NODE_ENV`, `START_SERVER`, `RUN_WORKERS`, `CRON_SECRET`, Firebase, SocketIO token, Mail, Xero, Redis.
+`APP_HOST_PORT`, `APP_NAME`, `CLIENT_URL`, `SERVER_URL`, DB_*, `NODE_ENV`, `START_SERVER`, `RUN_WORKERS`, `CRON_SECRET`, Firebase, SocketIO token, Mail, Redis.
 
 ## Frontend implications
 

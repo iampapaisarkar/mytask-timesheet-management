@@ -15,7 +15,7 @@
 | Timesheet management | ✅ Done | 2026-07-30 | Create, approve/reject/revert, day editor |
 | Employees / Customers / Jobs / MG | ✅ Done | 2026-07-30 | Wizard, CRUD dialogs, GoogleAddress |
 | Settings CRUD | ✅ Done | 2026-07-30 | Org edit + regions/holidays/payroll/rates/rules |
-| Reports / Xero / Notifications | ✅ Done | 2026-07-30 | Reports page, Xero OAuth, notifications bell |
+| Reports / Notifications | ✅ Done | 2026-07-30 | Reports page, notifications bell |
 | Invitations + ACL guards | ✅ Done | 2026-07-30 | Org invitation + OrgAclRoute |
 | Mobile BGL + ClockInOut | ✅ Done | 2026-07-30 | Transistorsoft + geolocation fallback |
 | Mobile org shell + maps | ✅ Done | 2026-07-30 | Detail/day/TM/employees/settings + TrackingMap |
@@ -39,7 +39,7 @@
 | `employees` wizard | ✅ | ✅ list | |
 | `customers` / `jobs` / MG | ✅ | — | GoogleAddress + radius |
 | Timesheet day MapView | ✅ | ✅ | Maps or coordinate fallback |
-| Xero connect/push | ✅ | — | finalize + settings connect |
+| Legacy payroll integration removal | ✅ | 2026-07-30 | Removed runtime and UI integration |
 | BackgroundGeolocation | N/A | ✅ | See `mobile/docs/TRACKING.md` |
 
 **Not in Vue (intentionally omitted):** standalone Live Tracking, Attendance, Schedule pages.

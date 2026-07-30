@@ -67,7 +67,6 @@ export function CreateTimesheetDialog({
           start_date: period.start_date,
           end_date: period.end_date,
         },
-        push_to_xero: false,
       });
       toast.success("Timesheet created");
       onClose();

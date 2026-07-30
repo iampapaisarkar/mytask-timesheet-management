@@ -2,8 +2,6 @@ import { fn, col, literal, Op } from "sequelize";
 import models from "../models/index.js";
 const {
   Users,
-  Organisations,
-  OrganisationRoles,
   UserOrganisationRoles,
   Employees,
   EmployeeInvitations,
@@ -12,13 +10,10 @@ const {
   NokRelations,
   EmployeeWages,
   EmployeePayrolls,
-  PayrollCalendars,
-  PayCycles,
   EmployeeAddress,
 } = models;
 import { enqueueSendEmail } from "../queue-jobs/send-email.job.js";
 import { enqueueSendNotification } from "../queue-jobs/send-notification.job.js";
-import { SystemFunction } from "#systemfunction";
 import moment from "moment";
 import { resolveStateId } from "../utils/state.utils.js";
 import { resolvePhoneFields } from "../utils/phone.js";
@@ -245,7 +240,7 @@ async function createOrUpdateEmployeeWage(
     if (!wage.employment_status) {
       throw new AppError("Employment status is required!", 400);
     }
-    if (!wage?.use_xero_payroll_calendar && !wage.payroll_calendar) {
+    if (!wage.payroll_calendar) {
       throw new AppError("Payroll calendar is required!", 400);
     }
     if (!wage.employment_type) {
@@ -270,54 +265,13 @@ async function createOrUpdateEmployeeWage(
 
     const currentUTCTime = moment().utc().format();
 
-    let payrollCalendar = wage.payroll_calendar;
-
-    // store xero payroll calendar to system if use_xero_payroll_calendar true
-    if (wage?.use_xero_payroll_calendar) {
-      const payCyle = await PayCycles.findOne(
-        {
-          where: { code: wage?.xero_payroll_calendar?.calendarType },
-          raw: true,
-        },
-        { transaction },
-      );
-
-      const end_date = await SystemFunction.getPayrollEndDateByPayCycleType(
-        payCyle.code,
-        moment(wage?.xero_payroll_calendar?.startDate).format("YYYY-MM-DD"),
-      );
-
-      payrollCalendar = await PayrollCalendars.create(
-        {
-          organisation_id: organisation.id,
-          name: wage?.xero_payroll_calendar?.name,
-          pay_cycle_id: payCyle.id,
-          start_date: moment(wage?.xero_payroll_calendar?.startDate).format(
-            "YYYY-MM-DD",
-          ),
-          end_date: end_date,
-          first_payment_date: moment(
-            wage?.xero_payroll_calendar?.paymentDate,
-          ).format("YYYY-MM-DD"),
-          default: false,
-          xero_payroll_calendar_id:
-            wage?.xero_payroll_calendar?.payrollCalendarID,
-          created_at: currentUTCTime,
-          created_by: user.id,
-          updated_at: currentUTCTime,
-          updated_by: user.id,
-        },
-        { transaction },
-      );
-    }
-
     await EmployeeWages.create(
       {
         organisation_id: organisation.id,
         employee_id: employee.id,
         start_date: moment(wage.start_date, "YYYY-MM-DD"),
         employment_status_id: wage.employment_status?.id,
-        payroll_calendar_id: payrollCalendar?.id,
+        payroll_calendar_id: wage.payroll_calendar?.id,
         employment_type_id: wage.employment_type?.id,
         hourly_rate_exc_super: wage.hourly_rate_exc_super,
         timesheet_submission_frequency: wage.timesheet_submission_frequency,

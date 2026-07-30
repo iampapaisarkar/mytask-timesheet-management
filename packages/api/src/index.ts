@@ -32,7 +32,6 @@ export {
   systemApi,
   notificationsApi,
   reportsApi,
-  xeroApi,
   timesheetActivityApi,
 } from "./resources.api";
 export { screensApi } from "./screens.api";

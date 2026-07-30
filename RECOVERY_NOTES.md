@@ -12,7 +12,7 @@
 - Timesheet status labels
 - Major form field labels for CRUD entities
 - Firebase web config (dev) from service worker
-- Presence of Socket.IO, FCM, Google Maps, ApexCharts, Xero
+- Presence of Socket.IO, FCM, Google Maps, ApexCharts
 
 ## Folder naming
 

@@ -140,14 +140,6 @@ export function useCreatePayrollCalendar() {
   });
 }
 
-export function usePullPayrollFromXero() {
-  const invalidate = useInvalidate(["payroll-calendars"]);
-  return useMutation({
-    mutationFn: () => payrollCalendarsApi.pullFromXero({}),
-    onSuccess: invalidate,
-  });
-}
-
 export function useCreateEarningRate() {
   const invalidate = useInvalidate(["earning-rates"]);
   return useMutation({

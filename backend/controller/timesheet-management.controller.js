@@ -14,7 +14,6 @@ import timsheetService from "../service/timsheet.service.js";
 import timeUtils from "../utils/time.utils.js";
 import redisUtils from "../utils/redis.utils.js";
 import { db } from "../database.js";
-import { enqueueSingleTimesheetToXero } from "../queue-jobs/push-single-timesheet.job.js";
 
 export async function list(req, res, next) {
   const { user, organisation } = req.body;
@@ -325,7 +324,7 @@ export async function getDay(req, res, next) {
 }
 
 export async function create(req, res, next) {
-  const { user, employee, period, organisation, push_to_xero } = req.body;
+  const { user, employee, period, organisation } = req.body;
   if (!organisation.acl.timesheetManagement.create) {
     return res.status(403).json({
       message: "Access denied: You are not authorized to access this action.",
@@ -453,15 +452,6 @@ export async function create(req, res, next) {
         "Timesheet created but notification failed:",
         notifyErr?.message || notifyErr,
       );
-    }
-
-    if (organisation?.xero_connection && push_to_xero) {
-      await enqueueSingleTimesheetToXero({
-        user,
-        organisation,
-        timesheetId: timesheet.id,
-        status: "DRAFT",
-      });
     }
 
     return res.status(200).json({
@@ -620,15 +610,6 @@ export async function submitForApproval(req, res, next) {
       "submit-by-manager",
     );
 
-    if (organisation?.xero_connection) {
-      await enqueueSingleTimesheetToXero({
-        user,
-        organisation,
-        timesheetId: timesheet.id,
-        status: "PROCESSED",
-      });
-    }
-
     return res.status(200).json({
       message: "Timesheet submitted",
     });
@@ -701,15 +682,6 @@ export async function approve(req, res, next) {
       timesheet,
       "approve",
     );
-
-    if (organisation?.xero_connection) {
-      await enqueueSingleTimesheetToXero({
-        user,
-        organisation,
-        timesheetId: timesheet.id,
-        status: "APPROVED",
-      });
-    }
 
     return res.status(200).json({
       message: "Timesheet approved",
@@ -784,15 +756,6 @@ export async function reject(req, res, next) {
       "reject",
     );
 
-    if (organisation?.xero_connection) {
-      await enqueueSingleTimesheetToXero({
-        user,
-        organisation,
-        timesheetId: timesheet.id,
-        status: "DRAFT",
-      });
-    }
-
     return res.status(200).json({
       message: "Timesheet rejected",
     });
@@ -865,15 +828,6 @@ export async function revert(req, res, next) {
       timesheet,
       "revert",
     );
-
-    if (organisation?.xero_connection) {
-      await enqueueSingleTimesheetToXero({
-        user,
-        organisation,
-        timesheetId: timesheet.id,
-        status: "DRAFT",
-      });
-    }
 
     return res.status(200).json({
       message: "Timesheet revert back to draft",

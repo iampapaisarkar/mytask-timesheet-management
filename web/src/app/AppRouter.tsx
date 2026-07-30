@@ -27,7 +27,6 @@ import { EarningRateRulesPage } from "@/features/settings/EarningRateRulesPage";
 import { ProfilePage } from "@/features/profile/ProfilePage";
 import { CreateOrganisationPage } from "@/features/organisation/CreateOrganisationPage";
 import { ReportsPage } from "@/features/reports/ReportsPage";
-import { XeroAuthenticatePage } from "@/features/xero/XeroAuthenticatePage";
 
 export function AppRouter() {
   return (
@@ -37,7 +36,6 @@ export function AppRouter() {
         <Route element={<AuthLayout />}>
           <Route path="/auth-actions" element={<AuthActionsPage />} />
           <Route path="/org-invitation" element={<OrgInvitationPage />} />
-          <Route path="/xero/authenticate" element={<XeroAuthenticatePage />} />
         </Route>
 
         <Route element={<GuestRoute />}>

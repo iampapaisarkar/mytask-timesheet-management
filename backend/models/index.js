@@ -51,7 +51,6 @@ import TimesheetActivityLogs from "./timesheetActivityLogs.js";
 import TimesheetActivityTypes from "./timesheetActivityTypes.js";
 import GeofenceEvents from "./geofenceEvents.js";
 import UserTimezones from "./userTimezones.js";
-import XeroConnections from "./xeroConnections.js";
 import States from "./states.js";
 import EmailSendLogs from "./emailSendLogs.js";
 import ExternalApiCallLogs from "./externalApiCallLogs.js";
@@ -110,7 +109,6 @@ const models = {
   TimesheetActivityTypes,
   GeofenceEvents,
   UserTimezones,
-  XeroConnections,
   States,
   EmailSendLogs,
   ExternalApiCallLogs,

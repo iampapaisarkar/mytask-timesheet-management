@@ -169,7 +169,7 @@ sequenceDiagram
 - `/screens/*` mounted behind `TokenValidate`
 - Org-scoped routes use `OrganisationValidate` (except org-bootstrap / home)
 - Dashboard and day-editor reuse the same ACL and employee scoping as list/get-day
-- Mappers omit secrets; Xero tokens are not added to screen DTOs
+- Mappers omit secrets and avoid exposing integration credentials in screen DTOs
 
 ## Client HTTP layer (unchanged principles)
 

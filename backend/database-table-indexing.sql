@@ -110,12 +110,6 @@ CREATE INDEX idx_org_settings_org_key
 ON organisation_settings(organisation_id, `key`(50));
 
 -- =========================
--- XERO
--- =========================
-CREATE INDEX idx_xero_org_tenant 
-ON xero_connections(organisation_id, tenant_id);
-
--- =========================
 -- USER META
 -- =========================
 CREATE INDEX idx_user_timezones_user_id ON user_timezones(user_id);

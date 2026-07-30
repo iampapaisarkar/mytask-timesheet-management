@@ -9,7 +9,6 @@ import { setIO } from "./functions/socket-registry.js";
 import admin from "firebase-admin";
 import compression from "compression";
 // import setupGraphQL from "./graphql/index.js";
-import { setupXero } from "./functions/xero-registry.js";
 import { fork } from "child_process";
 
 dotenv.config();
@@ -38,8 +37,6 @@ app.use(bodyParser.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cors(corsOptions));
 
 // setupGraphQL(app);
-setupXero(app);
-
 // Middleware to add 'info' globally to every response
 app.use(async (req, res, next) => {
   const originalJson = res.json;

@@ -60,7 +60,7 @@ Edit `.env` and set at least:
 - `FIREBASE_API_KEY` (+ `FIREBASE_API_URL` if not using the example)
 - `CLIENT_URL` — e.g. `http://localhost:9000/` for local web
 - `REDIS_HOST` — e.g. `127.0.0.1` if Redis is running
-- Mail / Xero / secrets as needed for the features you use
+- Mail / secrets as needed for the features you use
 
 Ensure Firebase service account JSON is present as configured by the backend (`serviceAccountKey.json` or env-specific files already in the repo for your environments).
 

@@ -70,10 +70,6 @@ const Employees = db.define(
       type: DataTypes.STRING(2),
       allowNull: true,
     },
-    xero_employee_id: {
-      type: DataTypes.UUID,
-      allowNull: true,
-    },
     created_at: {
       type: DataTypes.DATE,
       field: "created_at",
@@ -114,7 +110,6 @@ Employees.prototype.toJSON = function () {
     },
     wage: wage || null,
     payroll: payroll || null,
-    push_to_xero: true,
   };
 };
 
@@ -194,7 +189,6 @@ Employees.addScope(
       "phone_number",
       "phone_country_code",
       "phone_country_iso",
-      "xero_employee_id",
       "created_at",
       "created_by",
       // [mysheet.col("user.name"), "name"],

@@ -16,7 +16,6 @@ const {
 import moment from "moment";
 import { db } from "../database.js";
 import awardRateService from "../service/award-rate.service.js";
-import { earningRateQueue } from "../queue/earning-rate.queue.js";
 
 export async function list(req, res, next) {
   const { user, organisation } = req.body;
@@ -137,7 +136,6 @@ export async function create(req, res) {
     settings,
     rules,
     earning_rates,
-    push_to_xero,
   } = req.body;
 
   if (!organisation.acl.awardRate.create) {
@@ -149,14 +147,6 @@ export async function create(req, res) {
   try {
     awardRateService.validateAwardRateInput({ name, settings, rules });
 
-    if (organisation?.xero_connection && push_to_xero) {
-      if (!organisation?.settings?.default_earning_rate_expense_account) {
-        return res.status(501).json({
-          message:
-            "To push the earning rate to Xero, you must set up a default expense account in the Organisation settings.",
-        });
-      }
-    }
 
     const currentUTCTime = moment().utc().format();
 
@@ -194,14 +184,6 @@ export async function create(req, res) {
       transaction,
     });
 
-    if (organisation?.xero_connection && push_to_xero) {
-      await earningRateQueue.add("pushEarningRatesToXero", {
-        user,
-        organisation,
-        all: true,
-      });
-    }
-
     await transaction.commit();
 
     return res.status(200).json({ message: "Award rate created" });
@@ -220,7 +202,6 @@ export async function update(req, res) {
     settings,
     rules,
     earning_rates,
-    push_to_xero,
   } = req.body;
   const id = req.params.id;
 
@@ -235,14 +216,6 @@ export async function update(req, res) {
   try {
     awardRateService.validateAwardRateInput({ name, settings, rules });
 
-    if (organisation?.xero_connection && push_to_xero) {
-      if (!organisation?.settings?.default_earning_rate_expense_account) {
-        return res.status(501).json({
-          message:
-            "To push the earning rate to Xero, you must set up a default expense account in the Organisation settings.",
-        });
-      }
-    }
 
     const currentUTCTime = moment().utc().format();
 
@@ -287,14 +260,6 @@ export async function update(req, res) {
       rules: updatedRules,
       transaction,
     });
-
-    if (organisation?.xero_connection && push_to_xero) {
-      await earningRateQueue.add("pushEarningRatesToXero", {
-        user,
-        organisation,
-        all: true,
-      });
-    }
 
     await transaction.commit();
 

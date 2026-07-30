@@ -35,7 +35,7 @@ Note: `assets/` contains many historical duplicate builds (~73MB). Treat `index.
 
 | Layout | Purpose |
 |--------|---------|
-| `AuthLayout` | Login, Signup, Forgot password, Auth actions, Org invitation, Xero shell |
+| `AuthLayout` | Login, Signup, Forgot password, Auth actions, Org invitation |
 | `MainLayout` | Authenticated non-org shell (home, profile) |
 | `OrgLayout` | Org drawer: Home, My Timesheets, Timesheets (mgmt), Reports, Employees, Customers, Management Group, Jobs, Settings |
 

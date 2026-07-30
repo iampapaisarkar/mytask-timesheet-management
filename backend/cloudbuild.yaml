@@ -64,10 +64,7 @@ steps:
           --set-env-vars="MAIL_PORT=587" \
           --set-env-vars="MAIL_USER=apikey" \
           --set-env-vars="ORG_DEFAULT_DAILY_LOG_FREQUENCY=8" \
-          --set-env-vars="XERO_CALLBACK_URL=https://app.mysheet.au/xero/authenticate" \
-          --set-env-vars="XERO_SCOPES=openid email profile offline_access payroll.employees payroll.payruns payroll.timesheets payroll.settings accounting.settings" \
-          --set-env-vars="XERO_API_URL=https://api.xero.com/payroll.xro/2.0" \
-          --set-secrets="DB_PASSWORD=mysheet-db-password:latest,CRON_SECRET=mysheet-cron-secret:latest,FIREBASE_API_KEY=mysheet-firebase-api-key:latest,SOCKETIO_TOKEN=mysheet-socketio-token:latest,MAIL_PASSWORD=mysheet-mail-password:latest,MAIL_FROM=mysheet-mail-from:latest,XERO_CLIENT_ID=mysheet-xero-client-id:latest,REDIS_HOST=mysheet-redis-host:latest"
+          --set-secrets="DB_PASSWORD=mysheet-db-password:latest,CRON_SECRET=mysheet-cron-secret:latest,FIREBASE_API_KEY=mysheet-firebase-api-key:latest,SOCKETIO_TOKEN=mysheet-socketio-token:latest,MAIL_PASSWORD=mysheet-mail-password:latest,MAIL_FROM=mysheet-mail-from:latest,REDIS_HOST=mysheet-redis-host:latest"
 
 options:
   machineType: "E2_MEDIUM"

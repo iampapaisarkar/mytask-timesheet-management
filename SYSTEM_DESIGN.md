@@ -48,7 +48,6 @@ Permissions per resource: `list`, `view`, `create`, `edit`, `delete`.
 | region / holiday / earning / award | yes | yes | no | no |
 | payrollCalendar | list+create | list+create | no | no |
 | setting | list | list | no | no |
-| xero | full | none | none | none |
 | organisationSetting | view+edit | view | none | none |
 
 Jobs and timesheet-management staff lists are organisation-scoped (no management groups). Managers see all org employees for timesheet management; staff see only their own timesheets.
@@ -60,6 +59,4 @@ Frontend routes gate via `meta.acl: { action, permission }`.
 - **Socket.IO** — client connects with token; events for live updates.
 - **FCM** — `POST /api/auth/update-fcm-token`; service worker present in web build.
 
-## Xero
-
-OAuth-style connect under `/xero/authenticate` (frontend) → backend `/api/xero/connect`, `/finalize`, `/disconnect`, push/fetch endpoints.
+External payroll integration is not part of active application flows.

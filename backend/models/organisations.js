@@ -4,7 +4,6 @@ import Users from "./users.js";
 import Employees from "./employees.js";
 import UserOrganisationRoles from "./userOrganisationRoles.js";
 import OrganisationRoles from "./organisationRoles.js";
-import XeroConnections from "./xeroConnections.js";
 import OrganisationAddress from "./organisationAddress.js";
 import States from "./states.js";
 
@@ -74,10 +73,6 @@ Organisations.associate = (models) => {
     foreignKey: "organisation_id",
     as: "user_organisations_role",
   });
-  models.Organisations.hasOne(models.XeroConnections, {
-    foreignKey: "organisation_id",
-    as: "xero_connection",
-  });
   models.Organisations.hasOne(models.OrganisationAddress, {
     foreignKey: "organisation_id",
     as: "address",
@@ -111,11 +106,6 @@ Organisations.addScope("withUser", (userId) => ({
       as: "employee",
       where: { user_id: userId },
       required: false,
-    },
-    {
-      model: XeroConnections,
-      as: "xero_connection",
-      attributes: ["organisation_id", "connection_id", "tenant_id"],
     },
     {
       model: UserOrganisationRoles,

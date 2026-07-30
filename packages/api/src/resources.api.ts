@@ -78,16 +78,6 @@ export const payrollCalendarsApi = {
       req(options),
     );
   },
-  pullFromXero(
-    payload: Record<string, unknown> = {},
-    options?: RequestOptions,
-  ) {
-    return getApiClient().post(
-      "/payroll-calendars/pull-from-xero-to-app",
-      payload,
-      req(options),
-    );
-  },
 };
 
 export const timesheetsApi = {
@@ -259,36 +249,6 @@ export const reportsApi = {
       "/reports/rate-by-per-timesheet-day",
       req(options, params),
     );
-  },
-};
-
-export const xeroApi = {
-  connect(payload: Record<string, unknown> = {}, options?: RequestOptions) {
-    return getApiClient().post("/xero/connect", payload, req(options));
-  },
-  finalize(payload: Record<string, unknown> = {}, options?: RequestOptions) {
-    return getApiClient().post("/xero/finalize", payload, req(options));
-  },
-  disconnect(payload: Record<string, unknown> = {}, options?: RequestOptions) {
-    return getApiClient().post("/xero/disconnect", payload, req(options));
-  },
-  fetchEarningRates(options?: RequestOptions) {
-    return getApiClient().get("/xero/fetch-earning-rates", req(options));
-  },
-  fetchAccounts(options?: RequestOptions) {
-    return getApiClient().get("/xero/fetch-accounts", req(options));
-  },
-  fetchPayrollCalendars(options?: RequestOptions) {
-    return getApiClient().get("/xero/fetch-payroll-calendars", req(options));
-  },
-  pushData(payload: Record<string, unknown> = {}, options?: RequestOptions) {
-    return getApiClient().post("/xero/push-data", payload, req(options));
-  },
-  pushTimesheet(
-    payload: Record<string, unknown> = {},
-    options?: RequestOptions,
-  ) {
-    return getApiClient().post("/xero/push-timesheet", payload, req(options));
   },
 };
 

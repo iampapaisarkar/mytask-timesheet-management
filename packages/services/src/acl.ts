@@ -39,7 +39,6 @@ export function getOrganisationAcl(
       earningRate: perms(true, false, true, true, false),
       awardRate: perms(true, false, true, true, false),
       setting: perms(true, false, false, false, false),
-      xero: perms(true, true, true, true, false),
     },
     moderator: {
       organisationSetting: perms(false, true, false, false, false),
@@ -55,7 +54,6 @@ export function getOrganisationAcl(
       earningRate: perms(true, false, true, true, false),
       awardRate: perms(true, false, true, true, false),
       setting: perms(true, false, false, false, false),
-      xero: none(),
     },
     manager: {
       organisationSetting: none(),
@@ -71,7 +69,6 @@ export function getOrganisationAcl(
       earningRate: none(),
       awardRate: none(),
       setting: none(),
-      xero: none(),
     },
     staff: {
       organisationSetting: none(),
@@ -87,7 +84,6 @@ export function getOrganisationAcl(
       earningRate: none(),
       awardRate: none(),
       setting: none(),
-      xero: none(),
     },
   };
 
@@ -106,7 +102,6 @@ export function getOrganisationAcl(
       earningRate: none(),
       awardRate: none(),
       setting: none(),
-      xero: none(),
     }
   );
 }

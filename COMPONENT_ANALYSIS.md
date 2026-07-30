@@ -31,17 +31,17 @@ Recovered component inventory from Quasar build chunk names and string literals.
 |------|------------------|
 | Login | email, password |
 | Signup | first/middle/last name, email, dob, password (Firebase) |
-| Organisation details | name, code, website, phone, email, address, settings (submission frequency, leaves, xero defaults) |
+| Organisation details | name, code, website, phone, email, address, settings (submission frequency, leaves) |
 | Customer | name, address, contact name/email/phone, hourly rate, active |
 | Region | name |
 | Holiday calendar | name, date, region |
-| Payroll calendar | name, pay cycle, next period, start date, first payment, push_to_xero |
-| Earning rate | name, rate, push_to_xero |
+| Payroll calendar | name, pay cycle, next period, start date, first payment |
+| Earning rate | name, rate |
 | Award rate rules | name, rounding settings, rule blocks (field/comparison/from/to/then) |
 | Employee | multi-step: personal, address, employment, NOK, payroll, wages, invite |
 | Job | name, customer, address, radius, management groups |
 | Management group | name |
-| Create timesheet | employee, period, push_to_xero |
+| Create timesheet | employee, period |
 | Timesheet day view | status chips Draft/Submitted/Approved/Rejected; day rates loader |
 
 ## Charts / maps

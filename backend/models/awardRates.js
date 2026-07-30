@@ -29,12 +29,6 @@ const AwardRates = db.define(
     updated_by: {
       type: DataTypes.INTEGER,
     },
-    push_to_xero: {
-      type: DataTypes.VIRTUAL,
-      get() {
-        return true;
-      },
-    },
   },
   {
     tableName: "award_rates", // Table name should be in lowercase and plural

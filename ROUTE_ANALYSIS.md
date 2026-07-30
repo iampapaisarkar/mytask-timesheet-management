@@ -11,7 +11,6 @@ Recovered from `index-CCUdSRjz.js` Vue Router config.
 | `/forgot-password` | Forgot Password | AuthLayout | |
 | `/auth-actions` | Auth Actions | AuthLayout | Firebase email action handler |
 | `/org-invitation` | Signup & Accept Invitation | AuthLayout | |
-| `/xero` → `authenticate` | XeroAuthenticate | AuthLayout | Xero OAuth |
 
 ## Authenticated (MainLayout)
 

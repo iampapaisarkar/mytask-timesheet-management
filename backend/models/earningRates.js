@@ -21,10 +21,6 @@ const EarningRates = db.define(
     rate: {
       type: DataTypes.DECIMAL(10, 2),
     },
-    xero_earning_rate_id: {
-      type: DataTypes.UUID,
-      defaultValue: null,
-    },
     account_code: {
       type: DataTypes.STRING,
     },
@@ -62,12 +58,6 @@ const EarningRates = db.define(
     },
     updated_by: {
       type: DataTypes.INTEGER,
-    },
-    push_to_xero: {
-      type: DataTypes.VIRTUAL,
-      get() {
-        return true;
-      },
     },
     label: {
       type: DataTypes.VIRTUAL,

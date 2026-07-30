@@ -124,12 +124,10 @@ export function AwardRateRulesFormDialog({
   open,
   onClose,
   awardRate,
-  hasXero,
 }: {
   open: boolean;
   onClose: () => void;
   awardRate?: AwardRateRow | null;
-  hasXero?: boolean;
 }) {
   const toast = useToastStore();
   const isEdit = awardRate?.id != null;
@@ -144,7 +142,6 @@ export function AwardRateRulesFormDialog({
   const [roundingDown, setRoundingDown] = useState("");
   const [earningRates, setEarningRates] = useState<EarningRateOption[]>([]);
   const [rules, setRules] = useState<RuleBlock[]>([]);
-  const [pushToXero, setPushToXero] = useState(false);
   const [seeded, setSeeded] = useState(false);
 
   useEffect(() => {
@@ -197,7 +194,6 @@ export function AwardRateRulesFormDialog({
       setRoundingDown("");
       setRules(defaultRuleBlocks(lookups.days));
     }
-    setPushToXero(Boolean(hasXero));
     setSeeded(true);
   }, [
     open,
@@ -207,7 +203,6 @@ export function AwardRateRulesFormDialog({
     lookups.isLoading,
     lookups.days,
     lookups.earningRates,
-    hasXero,
   ]);
 
   const usedDayIds = useMemo(() => {
@@ -446,7 +441,6 @@ export function AwardRateRulesFormDialog({
         })),
       })),
       earning_rates: earningRates,
-      push_to_xero: pushToXero,
     };
 
     try {
@@ -584,16 +578,6 @@ export function AwardRateRulesFormDialog({
                 </div>
               ))}
             </div>
-            {hasXero ? (
-              <label className="mt-3 flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={pushToXero}
-                  onChange={(e) => setPushToXero(e.target.checked)}
-                />
-                Push earning rates to Xero
-              </label>
-            ) : null}
           </section>
 
           <section className="rounded-2xl border border-border p-4">

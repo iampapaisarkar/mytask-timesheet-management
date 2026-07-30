@@ -200,7 +200,6 @@ async function getTimesheetDays(
         "period_range",
         "approval_reason",
         "reject_reason",
-        "xero_timesheet_id",
       ],
       include: [
         {

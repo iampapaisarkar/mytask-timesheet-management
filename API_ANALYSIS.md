@@ -103,7 +103,6 @@ Org headers (org-scoped): `ms-organisation-code`, `ms-organisation-id`, `ms-orga
 |--------|------|
 | GET | `/list` |
 | POST | `/create` |
-| POST | `/pull-from-xero-to-app` |
 
 ## Earning rates — `/api/earning-rates`
 
@@ -172,20 +171,6 @@ Org headers (org-scoped): `ms-organisation-code`, `ms-organisation-id`, `ms-orga
 | Method | Path |
 |--------|------|
 | GET | `/rate-by-per-timesheet-day` |
-
-## Xero — `/api/xero`
-
-| Method | Path |
-|--------|------|
-| POST | `/connect` |
-| POST | `/finalize` |
-| POST | `/disconnect` |
-| GET | `/fetch-earning-rates` |
-| GET | `/fetch-accounts` |
-| GET | `/fetch-payroll-calendars` |
-| POST | `/push-data` |
-| POST | `/push-timesheet` |
-| GET | `/fetch-test-data` |
 
 ## Test utilities (not for production UI)
 

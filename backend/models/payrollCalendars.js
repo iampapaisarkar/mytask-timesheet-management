@@ -91,18 +91,11 @@ const PayrollCalendars = db.define(
     end_date: DataTypes.DATEONLY,
     first_payment_date: DataTypes.DATEONLY,
     default: DataTypes.BOOLEAN,
-    xero_payroll_calendar_id: DataTypes.UUID,
 
     created_at: DataTypes.DATE,
     created_by: DataTypes.INTEGER,
     updated_at: DataTypes.DATE,
     updated_by: DataTypes.INTEGER,
-    push_to_xero: {
-      type: DataTypes.VIRTUAL,
-      get() {
-        return true;
-      },
-    },
 
     next_pay_period: {
       type: DataTypes.VIRTUAL,
