@@ -29,8 +29,9 @@ const EXPECTED = {
     timesheet: { list: true, edit: true },
     timesheetManagement: { list: false, create: false },
     customer: { list: false },
-    payout: { list: false },
+    payout: { list: true, view: true },
     report: { list: true, view: true, create: true },
+    systemLog: { list: true, view: false },
   },
 };
 

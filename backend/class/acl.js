@@ -13,6 +13,7 @@ export const Acl = {
         payrollCalendar: createPermissions(true, true, true, false, false),
         setting: createPermissions(true, false, false, false, false),
         payout: createPermissions(true, true, true, true, false),
+        systemLog: createPermissions(true, true, false, false, false),
       },
       moderator: {
         organisationSetting: createPermissions(
@@ -32,6 +33,7 @@ export const Acl = {
         payrollCalendar: createPermissions(true, true, true, false, false),
         setting: createPermissions(true, false, false, false, false),
         payout: createPermissions(true, true, true, true, false),
+        systemLog: createPermissions(true, true, false, false, false),
       },
       manager: {
         organisationSetting: createPermissions(
@@ -51,6 +53,7 @@ export const Acl = {
         payrollCalendar: createPermissions(false, false, false, false, false),
         setting: createPermissions(false, false, false, false, false),
         payout: createPermissions(true, true, false, false, false),
+        systemLog: createPermissions(true, true, false, false, false),
       },
       staff: {
         organisationSetting: createPermissions(
@@ -76,6 +79,7 @@ export const Acl = {
         payrollCalendar: createPermissions(false, false, false, false, false),
         setting: createPermissions(false, false, false, false, false),
         payout: createPermissions(true, true, false, false, false),
+        systemLog: createPermissions(true, false, false, false, false),
       },
     };
 
@@ -92,6 +96,7 @@ export const Acl = {
         payrollCalendar: createPermissions(),
         setting: createPermissions(),
         payout: createPermissions(),
+        systemLog: createPermissions(),
       }
     );
   },

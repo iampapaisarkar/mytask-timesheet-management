@@ -31,5 +31,6 @@ export {
   reportsApi,
   payoutsApi,
   timesheetActivityApi,
+  systemLogsApi,
 } from "./resources.api";
 export { screensApi } from "./screens.api";

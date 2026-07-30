@@ -5,30 +5,51 @@ import {
   organisationsApi,
   systemApi,
 } from "@mytask/api";
+import { DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
+import type { ListParams } from "@mytask/types";
+import { extractPagination, type PaginatedList } from "@mytask/utils";
 import { useQuery } from "@tanstack/react-query";
 
-export function useHolidayCalendars() {
+function toPaginatedList(res: {
+  data: {
+    data?: unknown;
+    pagination?: unknown;
+    info?: { pagination?: unknown };
+    meta?: { pagination?: unknown };
+  };
+}): PaginatedList {
+  return {
+    data: Array.isArray(res.data.data) ? res.data.data : [],
+    pagination: extractPagination(res.data),
+  };
+}
+
+export function useHolidayCalendars(params: ListParams = {}) {
+  const listParams = {
+    rows_per_page: DEFAULT_LIST_PAGE_SIZE,
+    sort_by: "id",
+    ...params,
+  };
   return useQuery({
-    queryKey: ["holiday-calendars"],
+    queryKey: ["holiday-calendars", listParams],
     queryFn: async () => {
-      const res = await holidayCalendarsApi.list({
-        rows_per_page: 50,
-        sort_by: "id",
-      });
-      return res.data.data;
+      const res = await holidayCalendarsApi.list(listParams);
+      return toPaginatedList(res);
     },
   });
 }
 
-export function usePayrollCalendars() {
+export function usePayrollCalendars(params: ListParams = {}) {
+  const listParams = {
+    rows_per_page: DEFAULT_LIST_PAGE_SIZE,
+    sort_by: "id",
+    ...params,
+  };
   return useQuery({
-    queryKey: ["payroll-calendars"],
+    queryKey: ["payroll-calendars", listParams],
     queryFn: async () => {
-      const res = await payrollCalendarsApi.list({
-        rows_per_page: 50,
-        sort_by: "id",
-      });
-      return res.data.data;
+      const res = await payrollCalendarsApi.list(listParams);
+      return toPaginatedList(res);
     },
   });
 }

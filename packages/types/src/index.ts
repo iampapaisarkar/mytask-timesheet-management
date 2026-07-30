@@ -60,6 +60,7 @@ export type OrganisationAcl = {
   payrollCalendar: CrudPermission;
   setting: CrudPermission;
   payout: CrudPermission;
+  systemLog: CrudPermission;
 };
 
 /** International phone fields (E.164 + metadata). */

@@ -12,6 +12,7 @@ import correlationId from "./middleware/correlation-id.js";
 import securityHeaders from "./middleware/security-headers.js";
 import requestLogger from "./middleware/request-logger.js";
 import rateLimiter from "./middleware/rate-limiter.js";
+import requestAudit from "./middleware/request-audit.js";
 import errorHandler from "./middleware/error-handler.js";
 
 dotenv.config();
@@ -55,6 +56,7 @@ app.use(correlationId);
 app.use(securityHeaders);
 app.use(requestLogger);
 app.use(rateLimiter);
+app.use(requestAudit);
 app.use(compression());
 app.use(bodyParser.json({ limit: "10mb" }));
 app.use(bodyParser.urlencoded({ extended: true, limit: "10mb" }));

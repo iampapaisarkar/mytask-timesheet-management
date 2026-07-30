@@ -2,6 +2,22 @@
 
 ## 2026-07-31
 
+### Fixed
+
+- List tables (including System Logs) now paginate correctly with a default of **10 rows** per page; clients read `pagination` from the enterprise envelope (`info` / `meta`)
+- Payouts list returns `{ data, pagination }` instead of loading up to 100 rows without page metadata
+
+### Changed
+
+- Shared `DEFAULT_LIST_PAGE_SIZE = 10`; list hooks return `{ data, pagination }` via `listRows` / `extractPagination`
+
+### Added
+
+- Enterprise **System Logs** module: org-scoped audit UI (`/org/:orgCode/system-logs`) with Internal / External / Email tabs, filters, CSV export, detail drawer, and dashboard widgets
+- Audit schema: `audit_internal_api_logs`, `audit_external_api_logs`, `audit_email_logs` with indexes for high-volume reads
+- Async `auditQueue` writer + request-audit middleware (non-blocking); email/FCM/external helpers enqueue enterprise logs with redaction
+- ACL resource `systemLog` (owner/moderator/manager list+view; staff list own rows only); retention job (`AUDIT_LOG_RETENTION_DAYS`, default 90)
+
 ### Added
 
 - Enterprise API architecture: split dashboard into `summary` / `graphs` / `recent` / `pending` endpoints; aggregate `/screens/dashboard` retained

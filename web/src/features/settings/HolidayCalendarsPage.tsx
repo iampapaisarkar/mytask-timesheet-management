@@ -20,7 +20,8 @@ type Row = Record<string, unknown> & {
 };
 
 export function HolidayCalendarsPage() {
-  const query = useHolidayCalendars();
+  const [page, setPage] = useState(1);
+  const query = useHolidayCalendars({ page_number: page });
   const toast = useToastStore();
   const role = useOrganisationStore((s) => s.organisation?.role);
   const acl = getOrganisationAcl(role);
@@ -79,6 +80,8 @@ export function HolidayCalendarsPage() {
       <ResourceListPage
         title="Holiday calendars"
         query={query}
+        page={page}
+        onPageChange={setPage}
         columns={[
           { key: "id", label: "ID" },
           { key: "name", label: "Name" },

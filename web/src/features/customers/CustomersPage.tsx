@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useCustomers } from "@mytask/hooks";
-import { formatMoney } from "@mytask/constants";
+import { DEFAULT_LIST_PAGE_SIZE, formatMoney } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { formatPhoneDisplay } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
@@ -14,17 +14,24 @@ import {
 export function CustomersPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CustomerRow | null>(null);
+  const [page, setPage] = useState(1);
   const role = useOrganisationStore((s) => s.organisation?.role);
   const acl = getOrganisationAcl(role);
   const canCreate = can(acl, "customer", "create");
   const canEdit = can(acl, "customer", "edit");
-  const query = useCustomers({ rows_per_page: 50, sort_by: "id" });
+  const query = useCustomers({
+    rows_per_page: DEFAULT_LIST_PAGE_SIZE,
+    page_number: page,
+    sort_by: "id",
+  });
 
   return (
     <>
       <ResourceListPage
         title="Customers"
         query={query}
+        page={page}
+        onPageChange={setPage}
         createLabel={canCreate ? "Create" : undefined}
         onCreate={
           canCreate

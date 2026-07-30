@@ -10,6 +10,7 @@ import {
   systemApi,
   screensApi,
   payoutsApi,
+  systemLogsApi,
 } from "@mytask/api";
 import type {
   DashboardGraphsView,
@@ -23,6 +24,25 @@ import type {
   OrgBootstrapView,
   TimesheetDayEditorView,
 } from "@mytask/types";
+import {
+  extractPagination,
+  type PaginatedList,
+} from "@mytask/utils";
+
+function toPaginatedList(res: {
+  data: {
+    data?: unknown;
+    pagination?: unknown;
+    info?: { pagination?: unknown };
+    meta?: { pagination?: unknown };
+  };
+}): PaginatedList {
+  const rows = Array.isArray(res.data.data) ? res.data.data : [];
+  return {
+    data: rows,
+    pagination: extractPagination(res.data),
+  };
+}
 
 export const queryKeys = {
   me: ["auth", "me"] as const,
@@ -47,6 +67,16 @@ export const queryKeys = {
   payrollCalendars: ["payroll-calendars"] as const,
   payouts: (params?: ListParams) => ["payouts", params] as const,
   payoutsEligible: ["payouts", "eligible"] as const,
+  systemLogs: {
+    summary: (params?: ListParams) => ["system-logs", "summary", params] as const,
+    internal: (params?: ListParams) =>
+      ["system-logs", "internal", params] as const,
+    external: (params?: ListParams) =>
+      ["system-logs", "external", params] as const,
+    email: (params?: ListParams) => ["system-logs", "email", params] as const,
+    detail: (type: string, id: string | number) =>
+      ["system-logs", type, id] as const,
+  },
   screens: {
     orgBootstrap: (orgCode: string) =>
       ["screens", "org-bootstrap", orgCode] as const,
@@ -338,7 +368,7 @@ export function useTimesheets(params: ListParams = {}, enabled = true) {
     queryKey: queryKeys.timesheets(params),
     queryFn: async ({ signal }) => {
       const res = await timesheetsApi.list(params, { signal });
-      return res.data.data;
+      return toPaginatedList(res);
     },
     enabled,
   });
@@ -360,7 +390,7 @@ export function useTimesheetManagement(params: ListParams = {}, enabled = true) 
     queryKey: queryKeys.timesheetManagement(params),
     queryFn: async ({ signal }) => {
       const res = await timesheetManagementApi.list(params, { signal });
-      return res.data.data;
+      return toPaginatedList(res);
     },
     enabled,
   });
@@ -661,7 +691,7 @@ export function useEmployees(params: ListParams = {}, enabled = true) {
     queryKey: queryKeys.employees(params),
     queryFn: async ({ signal }) => {
       const res = await employeesApi.list(params, { signal });
-      return res.data.data;
+      return toPaginatedList(res);
     },
     enabled,
   });
@@ -672,7 +702,7 @@ export function useCustomers(params: ListParams = {}, enabled = true) {
     queryKey: queryKeys.customers(params),
     queryFn: async ({ signal }) => {
       const res = await customersApi.list(params, { signal });
-      return res.data.data;
+      return toPaginatedList(res);
     },
     enabled,
   });
@@ -683,7 +713,7 @@ export function useJobs(params: ListParams = {}, enabled = true) {
     queryKey: queryKeys.jobs(params),
     queryFn: async ({ signal }) => {
       const res = await jobsApi.list(params, { signal });
-      return res.data.data;
+      return toPaginatedList(res);
     },
     enabled,
   });
@@ -694,7 +724,7 @@ export function usePayouts(params: ListParams = {}, enabled = true) {
     queryKey: queryKeys.payouts(params),
     queryFn: async ({ signal }) => {
       const res = await payoutsApi.list(params, { signal });
-      return res.data.data;
+      return toPaginatedList(res);
     },
     enabled,
   });
@@ -795,6 +825,79 @@ export function useExportPayouts() {
       const res = await payoutsApi.exportCsv(params);
       return res.data as Blob;
     },
+  });
+}
+
+export function useSystemLogsSummary(params: ListParams = {}, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.systemLogs.summary(params),
+    queryFn: async ({ signal }) => {
+      const res = await systemLogsApi.summary(params, { signal });
+      return res.data.data as Record<string, unknown>;
+    },
+    enabled,
+    staleTime: 5_000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+export function useSystemLogsInternal(params: ListParams = {}, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.systemLogs.internal(params),
+    queryFn: async ({ signal }) => {
+      const res = await systemLogsApi.listInternal(params, { signal });
+      const pagination = extractPagination(res.data);
+      return {
+        rows: (Array.isArray(res.data.data) ? res.data.data : []) as Record<
+          string,
+          unknown
+        >[],
+        pagination,
+      };
+    },
+    enabled,
+    staleTime: 5_000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+export function useSystemLogsExternal(params: ListParams = {}, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.systemLogs.external(params),
+    queryFn: async ({ signal }) => {
+      const res = await systemLogsApi.listExternal(params, { signal });
+      const pagination = extractPagination(res.data);
+      return {
+        rows: (Array.isArray(res.data.data) ? res.data.data : []) as Record<
+          string,
+          unknown
+        >[],
+        pagination,
+      };
+    },
+    enabled,
+    staleTime: 5_000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+export function useSystemLogsEmail(params: ListParams = {}, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.systemLogs.email(params),
+    queryFn: async ({ signal }) => {
+      const res = await systemLogsApi.listEmail(params, { signal });
+      const pagination = extractPagination(res.data);
+      return {
+        rows: (Array.isArray(res.data.data) ? res.data.data : []) as Record<
+          string,
+          unknown
+        >[],
+        pagination,
+      };
+    },
+    enabled,
+    staleTime: 5_000,
+    refetchOnWindowFocus: true,
   });
 }
 

@@ -41,6 +41,9 @@ import UserTimezones from "./userTimezones.js";
 import States from "./states.js";
 import EmailSendLogs from "./emailSendLogs.js";
 import ExternalApiCallLogs from "./externalApiCallLogs.js";
+import AuditInternalApiLogs from "./auditInternalApiLogs.js";
+import AuditExternalApiLogs from "./auditExternalApiLogs.js";
+import AuditEmailLogs from "./auditEmailLogs.js";
 import OrganisationAddress from "./organisationAddress.js";
 import Payouts from "./payouts.js";
 import PayoutEvents from "./payoutEvents.js";
@@ -89,6 +92,9 @@ const models = {
   States,
   EmailSendLogs,
   ExternalApiCallLogs,
+  AuditInternalApiLogs,
+  AuditExternalApiLogs,
+  AuditEmailLogs,
   OrganisationAddress,
   Payouts,
   PayoutEvents,

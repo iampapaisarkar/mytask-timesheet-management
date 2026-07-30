@@ -34,9 +34,9 @@ export async function list(req, res) {
       rows_per_page,
       page_number,
     } = req.query;
-    const limit = Number(rows_per_page) || 100;
+    const limit = Math.min(Math.max(Number(rows_per_page) || 10, 1), 100);
     const page = Math.max(Number(page_number) || 1, 1);
-    const payouts = await payoutService.listPayouts(organisation, {
+    const result = await payoutService.listPayouts(organisation, {
       employee_id,
       status,
       from,
@@ -45,7 +45,16 @@ export async function list(req, res) {
       limit,
       offset: (page - 1) * limit,
     });
-    return res.status(200).json({ data: payouts });
+    const totalRows = Number(result.total) || 0;
+    return res.status(200).json({
+      data: result.data,
+      pagination: {
+        total_rows: totalRows,
+        rows_per_page: limit,
+        page_number: page,
+        total_pages: Math.max(1, Math.ceil(totalRows / limit) || 1),
+      },
+    });
   } catch (err) {
     return handleError(res, err, "Unable to fetch payouts");
   }

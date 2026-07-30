@@ -54,6 +54,58 @@ export function buildListQuery(
   };
 }
 
+export type ListPagination = {
+  total_rows?: number;
+  rows_per_page?: number;
+  page_number?: number;
+  total_pages?: number;
+  [key: string]: unknown;
+};
+
+export type PaginatedList<T = unknown> = {
+  data: T[];
+  pagination: ListPagination | null;
+};
+
+/**
+ * Backend response envelope lifts `pagination` into `info.pagination`.
+ * Read both so list UIs keep working.
+ */
+export function extractPagination(body: unknown): ListPagination | null {
+  if (!body || typeof body !== "object") return null;
+  const record = body as {
+    pagination?: ListPagination | null;
+    info?: { pagination?: ListPagination | null };
+    meta?: { pagination?: ListPagination | null };
+  };
+  return (
+    record.pagination ||
+    record.info?.pagination ||
+    record.meta?.pagination ||
+    null
+  );
+}
+
+/** Normalize hook results that may be a bare array or `{ data, pagination }`. */
+export function listRows<T = unknown>(queryData: unknown): T[] {
+  if (!queryData) return [];
+  if (Array.isArray(queryData)) return queryData as T[];
+  if (
+    typeof queryData === "object" &&
+    Array.isArray((queryData as { data?: unknown }).data)
+  ) {
+    return (queryData as { data: T[] }).data;
+  }
+  return [];
+}
+
+export function listPagination(queryData: unknown): ListPagination | null {
+  if (!queryData || typeof queryData !== "object" || Array.isArray(queryData)) {
+    return null;
+  }
+  return (queryData as PaginatedList).pagination ?? null;
+}
+
 /** Normalize org list / user.organisations items into OrganisationContext fields. */
 export function getOrganisationRoleCode(org: {
   role?: unknown;

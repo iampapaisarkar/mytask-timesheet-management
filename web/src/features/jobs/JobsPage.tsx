@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useJobs } from "@mytask/hooks";
+import { DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { Button } from "@/components/ui/Button";
 import { ResourceListPage } from "@/features/shared/ResourceListPage";
@@ -9,17 +10,24 @@ import { JobFormDialog, type JobRow } from "./CreateJobDialog";
 export function JobsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<JobRow | null>(null);
+  const [page, setPage] = useState(1);
   const role = useOrganisationStore((s) => s.organisation?.role);
   const acl = getOrganisationAcl(role);
   const canCreate = can(acl, "job", "create");
   const canEdit = can(acl, "job", "edit");
-  const query = useJobs({ rows_per_page: 50, sort_by: "id" });
+  const query = useJobs({
+    rows_per_page: DEFAULT_LIST_PAGE_SIZE,
+    page_number: page,
+    sort_by: "id",
+  });
 
   return (
     <>
       <ResourceListPage
         title="Jobs"
         query={query}
+        page={page}
+        onPageChange={setPage}
         createLabel={canCreate ? "Create" : undefined}
         onCreate={
           canCreate

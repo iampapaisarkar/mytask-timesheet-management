@@ -21,6 +21,7 @@ export const REALTIME_EVENTS = {
   PAYOUT_UPDATED: "payout.updated",
   NOTIFICATION_CREATED: "notification.created",
   DASHBOARD_UPDATED: "dashboard.updated",
+  AUDIT_LOG_CREATED: "audit.log.created",
 };
 
 function toPlain(entity) {
@@ -162,6 +163,29 @@ export function emitAuthLogout(userId, reason = "manual") {
   });
 }
 
+/** Broadcast a new System Log row so org clients refetch live. */
+export function emitAuditLogCreated(row, auditType) {
+  if (!row) return;
+  const data = {
+    ...(typeof row.toJSON === "function" ? row.toJSON() : row),
+    audit_type: auditType,
+  };
+  if (data.organisation_id) {
+    return emitOrgEvent(
+      data.organisation_id,
+      REALTIME_EVENTS.AUDIT_LOG_CREATED,
+      data,
+      { actorUserId: data.user_id ?? null },
+    );
+  }
+  if (data.user_id) {
+    return emitUserEvent(data.user_id, REALTIME_EVENTS.AUDIT_LOG_CREATED, data, {
+      organisation_id: data.organisation_id ?? null,
+    });
+  }
+  return null;
+}
+
 export default {
   REALTIME_EVENTS,
   emitOrgEvent,
@@ -179,4 +203,5 @@ export default {
   emitPayrollUpdated,
   emitDashboardUpdated,
   emitAuthLogout,
+  emitAuditLogCreated,
 };

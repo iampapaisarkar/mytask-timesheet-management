@@ -74,22 +74,50 @@ export const NodeMailer = {
       }
     }
 
-    const info = await transporter.sendMail({
-      from: `"${BRAND.appName()}" <${fromAddress}>`,
-      to: formattedEmails,
-      subject: renderTemplate(message.subject || "", variables),
-      text: stripHtml(renderedBody),
-      html: finalHTML,
-      attachments,
-    });
-
+    const startedAt = Date.now();
     try {
-      await mailService.storeEmailSendLog(user, organisation, list, message);
-    } catch (logErr) {
-      console.error("Failed to store email send log:", logErr?.message || logErr);
-    }
+      const info = await transporter.sendMail({
+        from: `"${BRAND.appName()}" <${fromAddress}>`,
+        to: formattedEmails,
+        subject: renderTemplate(message.subject || "", variables),
+        text: stripHtml(renderedBody),
+        html: finalHTML,
+        attachments,
+      });
 
-    return { success: true, data: info };
+      try {
+        await mailService.storeEmailSendLog(user, organisation, list, message, {
+          success: true,
+          startedAt,
+          durationMs: Date.now() - startedAt,
+          messageId: info?.messageId || null,
+          provider: "smtp",
+          providerResponse: { accepted: info?.accepted, rejected: info?.rejected },
+          feature: message?.feature || "Email",
+        });
+      } catch (logErr) {
+        console.error("Failed to store email send log:", logErr?.message || logErr);
+      }
+
+      return { success: true, data: info };
+    } catch (err) {
+      try {
+        await mailService.storeEmailSendLog(user, organisation, list, message, {
+          success: false,
+          startedAt,
+          durationMs: Date.now() - startedAt,
+          provider: "smtp",
+          error: err,
+          feature: message?.feature || "Email",
+        });
+      } catch (logErr) {
+        console.error("Failed to store email send log:", logErr?.message || logErr);
+      }
+      return {
+        success: false,
+        message: err?.message || "Failed to send email",
+      };
+    }
   },
 };
 

@@ -59,6 +59,8 @@ export const EVENT_QUERY_INVALIDATIONS: Record<
 
   [SOCKET_EVENTS.DASHBOARD_UPDATED]: [["screens", "dashboard"], ["screens", "home"]],
 
+  [SOCKET_EVENTS.AUDIT_LOG_CREATED]: [["system-logs"]],
+
   [SOCKET_EVENTS.AUTH_LOGOUT]: [],
 };
 
@@ -91,6 +93,14 @@ export function applyRealtimeEnvelopeToQueryClient(
         unread_count: (previous.unread_count ?? 0) + 1,
       });
     }
+  }
+
+  // Audit writes are async (queue) — brief delay so refetch usually sees the row
+  if (event === SOCKET_EVENTS.AUDIT_LOG_CREATED) {
+    globalThis.setTimeout(() => {
+      invalidateQueriesForEvent(queryClient, event);
+    }, 350);
+    return;
   }
 
   invalidateQueriesForEvent(queryClient, event);

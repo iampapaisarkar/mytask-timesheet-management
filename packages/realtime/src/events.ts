@@ -27,6 +27,9 @@ export const SOCKET_EVENTS = {
 
   DASHBOARD_UPDATED: "dashboard.updated",
 
+  /** System Logs — internal / external / email audit rows */
+  AUDIT_LOG_CREATED: "audit.log.created",
+
   /** Client → server: join an organisation room after membership validation */
   ORG_JOIN: "org.join",
   /** Client → server: leave an organisation room */
@@ -56,6 +59,7 @@ export const DOMAIN_SYNC_EVENTS = [
   SOCKET_EVENTS.PAYOUT_UPDATED,
   SOCKET_EVENTS.NOTIFICATION_CREATED,
   SOCKET_EVENTS.DASHBOARD_UPDATED,
+  SOCKET_EVENTS.AUDIT_LOG_CREATED,
   SOCKET_EVENTS.AUTH_LOGOUT,
 ] as const;
 

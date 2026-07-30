@@ -27,6 +27,7 @@ import {
   LogOut,
   Menu,
   Settings,
+  ScrollText,
   Users,
   Wallet,
   X,
@@ -43,6 +44,7 @@ const ICONS: Record<string, typeof Home> = {
   customers: Building2,
   jobs: Briefcase,
   settings: Settings,
+  systemLogs: ScrollText,
 };
 
 export function OrgLayout() {

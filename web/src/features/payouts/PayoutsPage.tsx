@@ -11,9 +11,9 @@ import {
   useReleasePayout,
   useSubmitPayout,
 } from "@mytask/hooks";
-import { formatMoney } from "@mytask/constants";
+import { DEFAULT_LIST_PAGE_SIZE, formatMoney } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
-import { getErrorMessage } from "@mytask/utils";
+import { getErrorMessage, listPagination, listRows } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
 import { Card, PageHeader } from "@/components/ui/Card";
 import { ErrorState, LoadingState } from "@/components/ui/States";
@@ -215,6 +215,7 @@ export function PayoutsPage() {
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
 
   const dateRange = useMemo(
     () => rangeToDates(range, customFrom, customTo),
@@ -223,14 +224,15 @@ export function PayoutsPage() {
 
   const listParams = useMemo(
     () => ({
-      rows_per_page: 100,
+      rows_per_page: DEFAULT_LIST_PAGE_SIZE,
+      page_number: page,
       sort_by: "id",
       status: status || undefined,
       search: search || undefined,
       from: dateRange.from,
       to: dateRange.to,
     }),
-    [status, search, dateRange],
+    [status, search, dateRange, page],
   );
 
   const payoutsQuery = usePayouts(listParams, canList);
@@ -244,9 +246,11 @@ export function PayoutsPage() {
   const cancelMutation = useCancelPayout();
   const exportMutation = useExportPayouts();
 
-  const payouts = (Array.isArray(payoutsQuery.data)
-    ? payoutsQuery.data
-    : []) as PayoutRow[];
+  const payouts = listRows<PayoutRow>(payoutsQuery.data);
+  const payoutPagination = listPagination(payoutsQuery.data);
+  const totalPages = Math.max(1, Number(payoutPagination?.total_pages) || 1);
+  const totalRows = Number(payoutPagination?.total_rows) || payouts.length;
+  const currentPage = Number(payoutPagination?.page_number) || page;
   const eligible = (Array.isArray(eligibleQuery.data)
     ? eligibleQuery.data
     : []) as TimesheetLike[];
@@ -482,7 +486,10 @@ export function PayoutsPage() {
             <select
               className="rounded-lg border border-border bg-[var(--mt-bg)] px-3 py-2 text-sm text-[var(--mt-text)]"
               value={status}
-              onChange={(e) => setStatus(e.target.value)}
+              onChange={(e) => {
+                setStatus(e.target.value);
+                setPage(1);
+              }}
             >
               {STATUS_OPTIONS.map((o) => (
                 <option key={o.value || "all"} value={o.value}>
@@ -496,7 +503,10 @@ export function PayoutsPage() {
             <select
               className="rounded-lg border border-border bg-[var(--mt-bg)] px-3 py-2 text-sm text-[var(--mt-text)]"
               value={range}
-              onChange={(e) => setRange(e.target.value)}
+              onChange={(e) => {
+                setRange(e.target.value);
+                setPage(1);
+              }}
             >
               {RANGE_PRESETS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -514,13 +524,19 @@ export function PayoutsPage() {
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") setSearch(searchInput.trim());
+                  if (e.key === "Enter") {
+                    setSearch(searchInput.trim());
+                    setPage(1);
+                  }
                 }}
               />
               <Button
                 variant="soft"
                 className="px-3 py-2 text-sm"
-                onClick={() => setSearch(searchInput.trim())}
+                onClick={() => {
+                  setSearch(searchInput.trim());
+                  setPage(1);
+                }}
               >
                 Search
               </Button>
@@ -616,6 +632,33 @@ export function PayoutsPage() {
             </table>
           </div>
         )}
+        {payouts.length > 0 || totalRows > 0 ? (
+          <div className="mt-4 flex items-center justify-between gap-3 text-sm text-muted">
+            <span>
+              {totalRows} total · page {currentPage} of {totalPages}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={currentPage <= 1 || payoutsQuery.isFetching}
+                onClick={() => setPage(Math.max(1, currentPage - 1))}
+              >
+                Previous
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={currentPage >= totalPages || payoutsQuery.isFetching}
+                onClick={() =>
+                  setPage(Math.min(totalPages, currentPage + 1))
+                }
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </Card>
 
       {selectedId != null ? (

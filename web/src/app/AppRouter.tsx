@@ -112,6 +112,11 @@ const PayoutsPage = lazy(() =>
     default: m.PayoutsPage,
   })),
 );
+const SystemLogsPage = lazy(() =>
+  import("@/features/system-logs/SystemLogsPage").then((m) => ({
+    default: m.SystemLogsPage,
+  })),
+);
 const HelpFaqPage = lazy(() =>
   import("@/features/legal").then((m) => ({ default: m.HelpFaqPage })),
 );
@@ -243,6 +248,16 @@ export function AppRouter() {
                     }
                   >
                     <Route path="payouts" element={<PayoutsPage />} />
+                  </Route>
+
+                  <Route
+                    element={
+                      <OrgAclRoute
+                        acl={{ action: "systemLog", permission: "list" }}
+                      />
+                    }
+                  >
+                    <Route path="system-logs" element={<SystemLogsPage />} />
                   </Route>
 
                   <Route

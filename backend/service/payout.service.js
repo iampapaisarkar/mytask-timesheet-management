@@ -234,21 +234,43 @@ async function resolveManagerStaffIds(organisation) {
   return employees.map((e) => Number(e.id));
 }
 
+function payoutMatchesSearch(row, search) {
+  const plain = row.toJSON ? row.toJSON() : row;
+  const name =
+    plain.employee?.user?.full_name ||
+    plain.employee?.details?.full_name ||
+    "";
+  const number = plain.payout_number || "";
+  const code = plain.timesheet?.code || "";
+  return (
+    name.toLowerCase().includes(search) ||
+    number.toLowerCase().includes(search) ||
+    code.toLowerCase().includes(search) ||
+    String(plain.id).includes(search)
+  );
+}
+
 async function listPayouts(organisation, filters = {}) {
   const where = { organisation_id: organisation.id };
   const role = organisation?.role?.code;
+  const empty = { data: [], total: 0 };
+  const limit = Math.min(Math.max(Number(filters.limit) || 10, 1), 500);
+  const offset = Math.max(Number(filters.offset) || 0, 0);
+  const search = String(filters.search || "")
+    .trim()
+    .toLowerCase();
 
   // Staff: own payouts only; manager: assigned employees
   if (role === "staff") {
     const eid = selfEmployeeId(organisation);
-    if (!eid) return [];
+    if (!eid) return empty;
     where.employee_id = eid;
   } else if (role === "manager") {
     const staffIds = await resolveManagerStaffIds(organisation);
-    if (!staffIds?.length) return [];
+    if (!staffIds?.length) return empty;
     if (filters.employee_id) {
       const eid = Number(filters.employee_id);
-      if (!staffIds.includes(eid)) return [];
+      if (!staffIds.includes(eid)) return empty;
       where.employee_id = eid;
     } else {
       where.employee_id = { [Op.in]: staffIds };
@@ -281,40 +303,36 @@ async function listPayouts(organisation, filters = {}) {
     }
   }
 
-  if (filters.search) {
-    // resolved after join via employee name is harder in SQL; filter in memory lightly
+  // Search spans joined employee/timesheet fields — filter then page in memory.
+  if (search) {
+    const all = await Payouts.findAll({
+      where,
+      include: [employeeInclude, timesheetInclude],
+      order: [["id", "DESC"]],
+      limit: 500,
+      offset: 0,
+      raw: false,
+      nest: true,
+    });
+    const filtered = all.filter((row) => payoutMatchesSearch(row, search));
+    return {
+      data: filtered.slice(offset, offset + limit),
+      total: filtered.length,
+    };
   }
 
-  const rows = await Payouts.findAll({
+  const { rows, count } = await Payouts.findAndCountAll({
     where,
     include: [employeeInclude, timesheetInclude],
     order: [["id", "DESC"]],
-    limit: Math.min(Number(filters.limit) || 200, 500),
-    offset: Math.max(Number(filters.offset) || 0, 0),
+    limit,
+    offset,
+    distinct: true,
     raw: false,
     nest: true,
   });
 
-  const search = String(filters.search || "")
-    .trim()
-    .toLowerCase();
-  if (!search) return rows;
-
-  return rows.filter((row) => {
-    const plain = row.toJSON ? row.toJSON() : row;
-    const name =
-      plain.employee?.user?.full_name ||
-      plain.employee?.details?.full_name ||
-      "";
-    const number = plain.payout_number || "";
-    const code = plain.timesheet?.code || "";
-    return (
-      name.toLowerCase().includes(search) ||
-      number.toLowerCase().includes(search) ||
-      code.toLowerCase().includes(search) ||
-      String(plain.id).includes(search)
-    );
-  });
+  return { data: rows, total: Number(count) || 0 };
 }
 
 async function getPayout(organisation, id) {
@@ -796,11 +814,12 @@ function toCsv(rows) {
 }
 
 async function exportCsv(organisation, filters = {}) {
-  const rows = await listPayouts(organisation, {
+  const result = await listPayouts(organisation, {
     ...filters,
     limit: 5000,
+    offset: 0,
   });
-  return toCsv(rows);
+  return toCsv(result.data);
 }
 
 async function dashboardPayoutStats(

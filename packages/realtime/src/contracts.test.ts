@@ -8,6 +8,7 @@ describe("realtime contracts", () => {
     assert.equal(SOCKET_EVENTS.EMPLOYEE_CREATED, "employee.created");
     assert.equal(SOCKET_EVENTS.TIMESHEET_UPDATED, "timesheet.updated");
     assert.equal(SOCKET_EVENTS.NOTIFICATION_CREATED, "notification.created");
+    assert.equal(SOCKET_EVENTS.AUDIT_LOG_CREATED, "audit.log.created");
     assert.equal(SOCKET_EVENTS.AUTH_LOGOUT, "auth.logout");
   });
 
@@ -15,6 +16,7 @@ describe("realtime contracts", () => {
     assert.ok(DOMAIN_SYNC_EVENTS.includes(SOCKET_EVENTS.EMPLOYEE_CREATED));
     assert.ok(DOMAIN_SYNC_EVENTS.includes(SOCKET_EVENTS.TIMESHEET_UPDATED));
     assert.ok(DOMAIN_SYNC_EVENTS.includes(SOCKET_EVENTS.NOTIFICATION_CREATED));
+    assert.ok(DOMAIN_SYNC_EVENTS.includes(SOCKET_EVENTS.AUDIT_LOG_CREATED));
   });
 
   it("builds organisation and user rooms", () => {

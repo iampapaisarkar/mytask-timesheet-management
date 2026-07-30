@@ -48,6 +48,7 @@ export function getOrganisationAcl(
       payrollCalendar: perms(true, true, true, false, false),
       setting: perms(true, false, false, false, false),
       payout: perms(true, true, true, true, false),
+      systemLog: perms(true, true, false, false, false),
     },
     moderator: {
       organisationSetting: perms(false, true, false, false, false),
@@ -61,6 +62,7 @@ export function getOrganisationAcl(
       payrollCalendar: perms(true, true, true, false, false),
       setting: perms(true, false, false, false, false),
       payout: perms(true, true, true, true, false),
+      systemLog: perms(true, true, false, false, false),
     },
     manager: {
       organisationSetting: none(),
@@ -74,6 +76,7 @@ export function getOrganisationAcl(
       payrollCalendar: none(),
       setting: none(),
       payout: perms(true, true, false, false, false),
+      systemLog: perms(true, true, false, false, false),
     },
     staff: {
       organisationSetting: none(),
@@ -87,6 +90,7 @@ export function getOrganisationAcl(
       payrollCalendar: none(),
       setting: none(),
       payout: perms(true, true, false, false, false),
+      systemLog: perms(true, false, false, false, false),
     },
   };
 
@@ -103,6 +107,7 @@ export function getOrganisationAcl(
       payrollCalendar: none(),
       setting: none(),
       payout: none(),
+      systemLog: none(),
     }
   );
 }

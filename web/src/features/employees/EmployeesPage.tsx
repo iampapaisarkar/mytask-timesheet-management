@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useEmployees } from "@mytask/hooks";
+import { DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { formatPhoneDisplay, listCountryIsos } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
@@ -35,12 +36,14 @@ export function EmployeesPage() {
   const [editing, setEditing] = useState<EmployeeListRow | null>(null);
   const [countryIso, setCountryIso] = useState("");
   const [countryCode, setCountryCode] = useState("");
+  const [page, setPage] = useState(1);
   const role = useOrganisationStore((s) => s.organisation?.role);
   const acl = getOrganisationAcl(role);
   const canCreate = can(acl, "employee", "create");
   const canEdit = can(acl, "employee", "edit");
   const query = useEmployees({
-    rows_per_page: 50,
+    rows_per_page: DEFAULT_LIST_PAGE_SIZE,
+    page_number: page,
     sort_by: "id",
     ...(countryIso ? { phone_country_iso: countryIso } : {}),
     ...(countryCode ? { phone_country_code: countryCode } : {}),
@@ -60,7 +63,10 @@ export function EmployeesPage() {
           <select
             className={selectClass}
             value={countryIso}
-            onChange={(e) => setCountryIso(e.target.value)}
+            onChange={(e) => {
+              setCountryIso(e.target.value);
+              setPage(1);
+            }}
           >
             <option value="">All countries</option>
             {listCountryIsos().map((iso) => (
@@ -76,7 +82,10 @@ export function EmployeesPage() {
             className={selectClass}
             placeholder="+91"
             value={countryCode}
-            onChange={(e) => setCountryCode(e.target.value)}
+            onChange={(e) => {
+              setCountryCode(e.target.value);
+              setPage(1);
+            }}
           />
         </label>
         {(countryIso || countryCode) && (
@@ -86,6 +95,7 @@ export function EmployeesPage() {
             onClick={() => {
               setCountryIso("");
               setCountryCode("");
+              setPage(1);
             }}
           >
             Clear filters
@@ -95,6 +105,8 @@ export function EmployeesPage() {
       <ResourceListPage
         title="Employees"
         query={query}
+        page={page}
+        onPageChange={setPage}
         createLabel={canCreate ? "Create" : undefined}
         onCreate={
           canCreate

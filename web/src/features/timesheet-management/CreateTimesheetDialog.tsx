@@ -5,7 +5,7 @@ import {
   useEmployees,
   useJobs,
 } from "@mytask/hooks";
-import { getErrorMessage } from "@mytask/utils";
+import { getErrorMessage, listRows } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
 import { FullScreenModal } from "@/components/ui/FullScreenModal";
 import { useToastStore } from "@/store/toastStore";
@@ -56,15 +56,11 @@ export function CreateTimesheetDialog({
     employeeId ? Number(employeeId) : undefined,
   );
 
-  const employees = (Array.isArray(employeesQuery.data)
-    ? employeesQuery.data
-    : []) as EmployeeRow[];
+  const employees = listRows<EmployeeRow>(employeesQuery.data);
   const periods = (Array.isArray(cyclesQuery.data)
     ? cyclesQuery.data
     : []) as Period[];
-  const jobs = (Array.isArray(jobsQuery.data)
-    ? jobsQuery.data
-    : []) as JobRow[];
+  const jobs = listRows<JobRow>(jobsQuery.data);
 
   const canCreate = Boolean(
     employeeId && periodKey && selectedJobIds.length > 0,

@@ -1,5 +1,8 @@
 export const APP_NAME = "myTask";
 
+/** Default page size for all org data tables (first load). */
+export const DEFAULT_LIST_PAGE_SIZE = 10;
+
 export const ORG_HEADERS = {
   id: "ms-organisation-id",
   code: "ms-organisation-code",
@@ -37,6 +40,7 @@ export const ROUTES = {
   reports: (orgCode: string) => `/org/${orgCode}/reports`,
   payouts: (orgCode: string) => `/org/${orgCode}/payouts`,
   settings: (orgCode: string) => `/org/${orgCode}/settings`,
+  systemLogs: (orgCode: string) => `/org/${orgCode}/system-logs`,
   organisationDetails: (orgCode: string) =>
     `/org/${orgCode}/settings/organisation-details`,
   holidayCalendars: (orgCode: string) =>
@@ -100,6 +104,12 @@ export const ORG_NAV = [
     path: "settings",
     acl: { action: "setting", permission: "list" },
   },
+  {
+    key: "systemLogs",
+    label: "System Logs",
+    path: "system-logs",
+    acl: { action: "systemLog", permission: "list" },
+  },
 ] as const;
 
 /**
@@ -138,6 +148,7 @@ export const ORG_ROUTE_ACL = [
   { path: "employees", acl: { action: "employee", permission: "list" } },
   { path: "customers", acl: { action: "customer", permission: "list" } },
   { path: "jobs", acl: { action: "job", permission: "list" } },
+  { path: "system-logs", acl: { action: "systemLog", permission: "list" } },
 ] as const;
 
 export const TIMESHEET_STATUSES = [

@@ -17,6 +17,7 @@ import TimesheetActivity from "./timesheet-activity/index.js";
 import Report from "./report/index.js";
 import screens from "./screens/index.js";
 import payout from "./payout/index.js";
+import systemLogs from "./system-logs/index.js";
 import { SocketIO } from "#socketio";
 import { NodeMailer } from "#nodemailer";
 import { FirebaseMessaging } from "#firebasemessaging";
@@ -56,6 +57,7 @@ router.use("/notifications", TokenValidate, Notification);
 router.use("/timesheet-activity", TimesheetActivity);
 router.use("/reports", TokenValidate, OrganisationValidate, Report);
 router.use("/screens", TokenValidate, screens);
+router.use("/system-logs", TokenValidate, OrganisationValidate, systemLogs);
 
 mountTestRoutes(router);
 

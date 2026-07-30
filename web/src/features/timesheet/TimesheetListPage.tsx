@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useJobs, useTimesheets } from "@mytask/hooks";
-import { ROUTES } from "@mytask/constants";
+import { DEFAULT_LIST_PAGE_SIZE, ROUTES } from "@mytask/constants";
+import { listRows } from "@mytask/utils";
 import { ResourceListPage } from "@/features/shared/ResourceListPage";
 
 const selectClass =
@@ -15,22 +16,22 @@ type JobRow = {
 export function TimesheetListPage() {
   const [jobId, setJobId] = useState("");
   const [statusCode, setStatusCode] = useState("");
+  const [page, setPage] = useState(1);
 
   const listParams = useMemo(() => {
     const params: Record<string, unknown> = {
-      rows_per_page: 50,
+      rows_per_page: DEFAULT_LIST_PAGE_SIZE,
+      page_number: page,
       sort_by: "id",
     };
     if (jobId) params.job_id = jobId;
     if (statusCode) params.status_code = statusCode;
     return params;
-  }, [jobId, statusCode]);
+  }, [jobId, statusCode, page]);
 
   const query = useTimesheets(listParams);
   const jobsQuery = useJobs({ rows_per_page: 200 });
-  const jobs = (Array.isArray(jobsQuery.data)
-    ? jobsQuery.data
-    : []) as JobRow[];
+  const jobs = listRows<JobRow>(jobsQuery.data);
 
   return (
     <>
@@ -38,7 +39,10 @@ export function TimesheetListPage() {
         <select
           className={selectClass}
           value={jobId}
-          onChange={(e) => setJobId(e.target.value)}
+          onChange={(e) => {
+            setJobId(e.target.value);
+            setPage(1);
+          }}
           aria-label="Filter by job"
         >
           <option value="">All jobs</option>
@@ -54,7 +58,10 @@ export function TimesheetListPage() {
         <select
           className={selectClass}
           value={statusCode}
-          onChange={(e) => setStatusCode(e.target.value)}
+          onChange={(e) => {
+            setStatusCode(e.target.value);
+            setPage(1);
+          }}
           aria-label="Filter by status"
         >
           <option value="">All statuses</option>
@@ -67,6 +74,8 @@ export function TimesheetListPage() {
       <ResourceListPage
         title="My Sheets"
         query={query}
+        page={page}
+        onPageChange={setPage}
         columns={[
           { key: "code", label: "Code" },
           { key: "period_range", label: "Period" },

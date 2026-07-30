@@ -393,3 +393,46 @@ export const timesheetActivityApi = {
     );
   },
 };
+
+export const systemLogsApi = {
+  summary(params: ListParams = {}, options?: RequestOptions) {
+    return getApiClient().get<ApiResponse<Record<string, unknown>>>(
+      "/system-logs/summary",
+      req(options, buildListQuery(params)),
+    );
+  },
+  listInternal(params: ListParams = {}, options?: RequestOptions) {
+    return getApiClient().get<ApiResponse<unknown[]>>(
+      "/system-logs/internal",
+      req(options, buildListQuery(params)),
+    );
+  },
+  listExternal(params: ListParams = {}, options?: RequestOptions) {
+    return getApiClient().get<ApiResponse<unknown[]>>(
+      "/system-logs/external",
+      req(options, buildListQuery(params)),
+    );
+  },
+  listEmail(params: ListParams = {}, options?: RequestOptions) {
+    return getApiClient().get<ApiResponse<unknown[]>>(
+      "/system-logs/email",
+      req(options, buildListQuery(params)),
+    );
+  },
+  get(
+    type: "internal" | "external" | "email",
+    id: string | number,
+    options?: RequestOptions,
+  ) {
+    return getApiClient().get<ApiResponse<Record<string, unknown>>>(
+      `/system-logs/${type}/${id}`,
+      req(options),
+    );
+  },
+  exportCsv(params: ListParams & { type?: string } = {}, options?: RequestOptions) {
+    return getApiClient().get("/system-logs/export", {
+      ...req(options, buildListQuery(params)),
+      responseType: "blob",
+    });
+  },
+};

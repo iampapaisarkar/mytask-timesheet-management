@@ -4,7 +4,8 @@ import {
   useJobs,
   useTimesheetManagement,
 } from "@mytask/hooks";
-import { ROUTES } from "@mytask/constants";
+import { DEFAULT_LIST_PAGE_SIZE, ROUTES } from "@mytask/constants";
+import { listRows } from "@mytask/utils";
 import { ResourceListPage } from "@/features/shared/ResourceListPage";
 import { CreateTimesheetDialog } from "./CreateTimesheetDialog";
 
@@ -27,28 +28,26 @@ export function TimesheetManagementListPage() {
   const [employeeId, setEmployeeId] = useState("");
   const [jobId, setJobId] = useState("");
   const [statusCode, setStatusCode] = useState("");
+  const [page, setPage] = useState(1);
 
   const listParams = useMemo(() => {
     const params: Record<string, unknown> = {
-      rows_per_page: 50,
+      rows_per_page: DEFAULT_LIST_PAGE_SIZE,
+      page_number: page,
       sort_by: "id",
     };
     if (employeeId) params.employee_id = employeeId;
     if (jobId) params.job_id = jobId;
     if (statusCode) params.status_code = statusCode;
     return params;
-  }, [employeeId, jobId, statusCode]);
+  }, [employeeId, jobId, statusCode, page]);
 
   const query = useTimesheetManagement(listParams);
   const employeesQuery = useEmployees({ rows_per_page: 200 });
   const jobsQuery = useJobs({ rows_per_page: 200 });
 
-  const employees = (Array.isArray(employeesQuery.data)
-    ? employeesQuery.data
-    : []) as EmployeeRow[];
-  const jobs = (Array.isArray(jobsQuery.data)
-    ? jobsQuery.data
-    : []) as JobRow[];
+  const employees = listRows<EmployeeRow>(employeesQuery.data);
+  const jobs = listRows<JobRow>(jobsQuery.data);
 
   return (
     <>
@@ -56,7 +55,10 @@ export function TimesheetManagementListPage() {
         <select
           className={selectClass}
           value={employeeId}
-          onChange={(e) => setEmployeeId(e.target.value)}
+          onChange={(e) => {
+            setEmployeeId(e.target.value);
+            setPage(1);
+          }}
           aria-label="Filter by employee"
         >
           <option value="">All employees</option>
@@ -74,7 +76,10 @@ export function TimesheetManagementListPage() {
         <select
           className={selectClass}
           value={jobId}
-          onChange={(e) => setJobId(e.target.value)}
+          onChange={(e) => {
+            setJobId(e.target.value);
+            setPage(1);
+          }}
           aria-label="Filter by job"
         >
           <option value="">All jobs</option>
@@ -90,7 +95,10 @@ export function TimesheetManagementListPage() {
         <select
           className={selectClass}
           value={statusCode}
-          onChange={(e) => setStatusCode(e.target.value)}
+          onChange={(e) => {
+            setStatusCode(e.target.value);
+            setPage(1);
+          }}
           aria-label="Filter by status"
         >
           <option value="">All statuses</option>
@@ -103,6 +111,8 @@ export function TimesheetManagementListPage() {
       <ResourceListPage
         title="Timesheets"
         query={query}
+        page={page}
+        onPageChange={setPage}
         createLabel="Create"
         onCreate={() => setCreateOpen(true)}
         columns={[

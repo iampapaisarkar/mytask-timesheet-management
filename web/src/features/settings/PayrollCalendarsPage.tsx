@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { getErrorMessage } from "@mytask/utils";
+import { getErrorMessage, listRows } from "@mytask/utils";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { useOrganisationStore } from "@/store/organisationStore";
 import { Button } from "@/components/ui/Button";
@@ -27,7 +27,8 @@ type Row = Record<string, unknown> & {
 type DialogMode = "create" | "view";
 
 export function PayrollCalendarsPage() {
-  const query = usePayrollCalendars();
+  const [page, setPage] = useState(1);
+  const query = usePayrollCalendars({ page_number: page });
   const payCyclesQuery = usePayCycles();
   const toast = useToastStore();
   const role = useOrganisationStore((s) => s.organisation?.role);
@@ -36,7 +37,7 @@ export function PayrollCalendarsPage() {
 
   const createMutation = useCreatePayrollCalendar();
 
-  const calendars = (Array.isArray(query.data) ? query.data : []) as Row[];
+  const calendars = listRows<Row>(query.data);
 
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<DialogMode>("create");
@@ -105,6 +106,8 @@ export function PayrollCalendarsPage() {
       <ResourceListPage
         title="Payroll calendars"
         query={query}
+        page={page}
+        onPageChange={setPage}
         columns={[
           { key: "id", label: "ID" },
           { key: "name", label: "Name" },

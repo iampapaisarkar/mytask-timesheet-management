@@ -11,6 +11,7 @@ import {
   fromAddressRecord,
   toAddressApiPayload,
   hasAddressContent,
+  listRows,
   type PhoneValue,
 } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
@@ -71,9 +72,9 @@ export function JobFormDialog({
   const [siteContactPhone, setSiteContactPhone] =
     useState<PhoneValue>(emptyPhoneValue);
 
-  const customers = (Array.isArray(customersQuery.data)
-    ? customersQuery.data
-    : []) as Array<{ id?: number; name?: string }>;
+  const customers = listRows<{ id?: number; name?: string }>(
+    customersQuery.data,
+  );
 
   useEffect(() => {
     if (!open) return;

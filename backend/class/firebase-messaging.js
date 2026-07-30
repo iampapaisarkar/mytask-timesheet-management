@@ -3,8 +3,32 @@ import admin from "firebase-admin";
 import models from "../models/index.js";
 import { Op } from "sequelize";
 import { SocketIO } from "#socketio";
+import externalApiLogService from "../service/external-api-log.service.js";
 
 const { FcmConnections, Notifications, NotificationStatus } = models;
+
+function logFcm(result, { success, error, durationMs, feature }) {
+  void externalApiLogService
+    .storeExternalApiCallLog(
+      null,
+      null,
+      "FCM",
+      "firebase.messaging.sendEachForMulticast",
+      "POST",
+      { feature },
+      "application/json",
+      result || null,
+      {
+        apiName: "Firebase Cloud Messaging",
+        feature: feature || "Notifications",
+        success,
+        error,
+        durationMs,
+        statusCode: success ? 200 : 500,
+      },
+    )
+    .catch(() => {});
+}
 
 export const FirebaseMessaging = {
   /**
@@ -44,11 +68,25 @@ export const FirebaseMessaging = {
       };
 
       // 🔥 fire-and-forget batch send
+      const startedAt = Date.now();
       admin
         .messaging()
         .sendEachForMulticast(payload)
+        .then((result) => {
+          logFcm(result, {
+            success: true,
+            durationMs: Date.now() - startedAt,
+            feature: "Push Data Message",
+          });
+        })
         .catch((err) => {
           console.error("FCM data message error:", err.message);
+          logFcm(null, {
+            success: false,
+            error: err,
+            durationMs: Date.now() - startedAt,
+            feature: "Push Data Message",
+          });
         });
 
       return { success: true };
@@ -135,10 +173,12 @@ export const FirebaseMessaging = {
           },
         };
 
+        const startedAt = Date.now();
         admin
           .messaging()
           .sendEachForMulticast(payload)
           .then((result) => {
+            const ok = !result.failureCount;
             if (result.failureCount > 0) {
               for (const r of result.responses) {
                 if (r.error) {
@@ -149,14 +189,24 @@ export const FirebaseMessaging = {
                   );
                 }
               }
-            } else {
-              console.log(
-                `FCM sent ok user=${userId} tokens=${tokens.length}`,
-              );
             }
+            logFcm(result, {
+              success: ok,
+              durationMs: Date.now() - startedAt,
+              feature: "Send Notification",
+              error: ok
+                ? null
+                : { message: `${result.failureCount} FCM token(s) failed` },
+            });
           })
           .catch((err) => {
             console.error("FCM notification error:", err.message);
+            logFcm(null, {
+              success: false,
+              error: err,
+              durationMs: Date.now() - startedAt,
+              feature: "Send Notification",
+            });
           });
       }
 

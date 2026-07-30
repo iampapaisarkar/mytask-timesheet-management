@@ -1,0 +1,6 @@
+import { Queue } from "bullmq";
+import redis from "../functions/redis-registry.js";
+
+export const auditQueue = new Queue("auditQueue", {
+  connection: redis,
+});

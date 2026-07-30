@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import type { UseQueryResult } from "@tanstack/react-query";
-import { getErrorMessage } from "@mytask/utils";
+import { getErrorMessage, listPagination, listRows } from "@mytask/utils";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { PageHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -63,6 +63,8 @@ export function ResourceListPage({
   onCreate,
   onRowClick,
   rowActions,
+  page = 1,
+  onPageChange,
 }: {
   title: string;
   query: UseQueryResult<unknown>;
@@ -72,10 +74,16 @@ export function ResourceListPage({
   onCreate?: () => void;
   onRowClick?: (row: Row) => void;
   rowActions?: (row: Row) => ReactNode;
+  page?: number;
+  onPageChange?: (page: number) => void;
 }) {
   const { orgCode = "" } = useParams();
   const navigate = useNavigate();
-  const rows = (Array.isArray(query.data) ? query.data : []) as Row[];
+  const rows = listRows<Row>(query.data);
+  const pagination = listPagination(query.data);
+  const totalPages = Math.max(1, Number(pagination?.total_pages) || 1);
+  const totalRows = Number(pagination?.total_rows) || rows.length;
+  const currentPage = Number(pagination?.page_number) || page;
 
   if (query.isLoading) return <LoadingState />;
   if (query.isError) {
@@ -209,6 +217,33 @@ export function ResourceListPage({
           </table>
         </div>
       )}
+      {onPageChange && (rows.length > 0 || totalRows > 0) ? (
+        <div className="flex items-center justify-between gap-3 text-sm text-muted">
+          <span>
+            {totalRows} total · page {currentPage} of {totalPages}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={currentPage <= 1 || query.isFetching}
+              onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+            >
+              Previous
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={currentPage >= totalPages || query.isFetching}
+              onClick={() =>
+                onPageChange(Math.min(totalPages, currentPage + 1))
+              }
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
