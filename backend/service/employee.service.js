@@ -6,7 +6,6 @@ const {
   Employees,
   EmployeeInvitations,
   InvitationStatus,
-  Regions,
   NokRelations,
   EmployeeWages,
   EmployeePayrolls,
@@ -78,10 +77,6 @@ async function createOrUpdateEmployeeDetails(
     if (!details.role) {
       throw new AppError("Role is required!", 400);
     }
-    if (!details.region) {
-      throw new AppError("Region is required!", 400);
-    }
-
     const currentUTCTime = moment().utc().format();
 
     const userRepsonse = await Users.findOne({
@@ -102,7 +97,6 @@ async function createOrUpdateEmployeeDetails(
           nok_phone_country_code: nokPhoneFields.phone_country_code,
           nok_phone_country_iso: nokPhoneFields.phone_country_iso,
           award_id: null,
-          region_id: details.region.id,
           preferred_name: details.preferred_name,
           phone_number: phoneFields.phone_number,
           phone_country_code: phoneFields.phone_country_code,
@@ -177,7 +171,6 @@ async function createOrUpdateEmployeeDetails(
           nok_phone_country_code: nokPhoneFields.phone_country_code,
           nok_phone_country_iso: nokPhoneFields.phone_country_iso,
           award_id: null,
-          region_id: details?.region?.id,
           preferred_name: details?.preferred_name,
           phone_number: phoneFields.phone_number,
           phone_country_code: phoneFields.phone_country_code,

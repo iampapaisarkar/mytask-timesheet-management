@@ -35,7 +35,6 @@ export const ROUTES = {
   settings: (orgCode: string) => `/org/${orgCode}/settings`,
   organisationDetails: (orgCode: string) =>
     `/org/${orgCode}/settings/organisation-details`,
-  regions: (orgCode: string) => `/org/${orgCode}/settings/regions`,
   holidayCalendars: (orgCode: string) =>
     `/org/${orgCode}/settings/holiday-calendars`,
   payrollCalendars: (orgCode: string) =>
@@ -119,7 +118,6 @@ export const ORG_ROUTE_ACL = [
     path: "settings/organisation-details",
     acl: { action: "organisationSetting", permission: "view" },
   },
-  { path: "settings/regions", acl: { action: "region", permission: "list" } },
   {
     path: "settings/holiday-calendars",
     acl: { action: "holidayCalendar", permission: "list" },

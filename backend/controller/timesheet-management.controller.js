@@ -411,14 +411,7 @@ export async function create(req, res, next) {
       period?.end_date,
     );
 
-    const holidays = employeeData?.details?.region?.holidays || null;
-
     for (const day of timesheetDays) {
-      let holiday = null;
-      if (holidays && holidays?.length > 0) {
-        holiday = holidays.find((h) => h.date === day.date);
-      }
-
       await TimesheetDays.create(
         {
           organisation_id: organisation.id,
@@ -426,8 +419,8 @@ export async function create(req, res, next) {
           timesheet_id: timesheet.id,
           date: day.date,
           day_of_week: day.day_of_week,
-          is_public_holiday: holiday ? true : false,
-          holiday_calendar_id: holiday ? holiday?.id : null,
+          is_public_holiday: false,
+          holiday_calendar_id: null,
           is_weekend: timeUtils.isWeekend(day.day_of_week),
           created_at: currentUTCTime,
           created_by: user.id,

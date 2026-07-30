@@ -2,7 +2,6 @@ import express from "express";
 const router = express.Router();
 import {
   organisationRoles,
-  regions,
   nokRelations,
   allCustomers,
   earningRateTypes,
@@ -27,7 +26,6 @@ import {
 import OrganisationValidate from "../../middleware/organisationvalidate.js";
 
 router.get("/organisation-roles", OrganisationValidate, organisationRoles);
-router.get("/regions", OrganisationValidate, regions);
 router.get("/nok-relations", nokRelations);
 router.get("/customers", OrganisationValidate, allCustomers);
 router.get("/earning-rate-types", OrganisationValidate, earningRateTypes);

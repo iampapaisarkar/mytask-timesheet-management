@@ -4,9 +4,9 @@ import models from "../models/index.js";
 const { States } = models;
 
 /**
- * Resolve a state/region/province id for worldwide addresses.
+ * Resolve a state/province id for worldwide addresses.
  * Matches by name first (codes like "WA" collide across countries),
- * then creates a new row when Places returns an unknown region.
+ * then creates a new row when Places returns an unknown area label.
  */
 export async function resolveStateId(state, transaction) {
   if (!state) return null;

@@ -1,6 +1,6 @@
 /**
- * Initial region seed (sample). Worldwide regions are upserted at runtime
- * from Google Places administrative_area_level_1 (any country).
+ * Initial area seed (sample). Worldwide state/province values are upserted
+ * at runtime from Google Places administrative_area_level_1 (any country).
  * These AU rows remain as historical seed data only — not a country lock.
  */
 export async function up(queryInterface, Sequelize) {

@@ -3,7 +3,6 @@ import models from "../models/index.js";
 const {
   Users,
   OrganisationRoles,
-  Regions,
   NokRelations,
   Customers,
   EarningRateTypes,
@@ -82,61 +81,6 @@ export async function organisationRoles(req, res, next) {
     console.error("Error featching organisation roles:", err);
     return res.status(500).json({
       message: "Unable to fetch organisation roles",
-      details: err.message,
-    });
-  }
-}
-
-export async function regions(req, res, next) {
-  const { user, organisation } = req.body;
-  let { rows_per_page, page_number, sort_by, sort_direction, search } =
-    req.query;
-  try {
-    const rowsPerPage = parseInt(rows_per_page) || 10;
-    const pageNumber = parseInt(page_number) || 1;
-    const offset = (pageNumber - 1) * rowsPerPage;
-    const sortBy = sort_by || "id";
-    const sortDirection = sort_direction || "asc";
-
-    let whereCondition = {
-      organisation_id: organisation.id,
-    };
-
-    if (search && search.trim() !== "") {
-      whereCondition = {
-        ...whereCondition,
-        [Op.or]: [
-          { code: { [Op.like]: `%${search}%` } },
-          { name: { [Op.like]: `%${search}%` } },
-        ],
-      };
-    }
-
-    const { count, rows: regions } = await Regions.findAndCountAll({
-      where: whereCondition,
-      offset,
-      limit: rowsPerPage,
-      order: [[sortBy, sortDirection]],
-      raw: true,
-    });
-
-    const total_pages = Math.ceil(regions.length / rowsPerPage);
-
-    return res.status(200).json({
-      data: regions,
-      pagination: {
-        total_rows: regions.length,
-        rows_per_page: rowsPerPage,
-        page_number: pageNumber,
-        total_pages,
-        sort_by: sortBy,
-        sort_direction: sortDirection,
-      },
-    });
-  } catch (err) {
-    console.error("Error featching regions:", err);
-    return res.status(500).json({
-      message: "Unable to fetch regions",
       details: err.message,
     });
   }

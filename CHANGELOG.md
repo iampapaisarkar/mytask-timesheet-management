@@ -10,6 +10,9 @@
 - Added Cursor rules and docs for root, backend, web, and mobile
 - Expanded root README with detailed run instructions for backend, web, iOS, and Android
 - Removed external payroll integration runtime paths and deprecated obsolete payroll-sync endpoints to keep the production API aligned with currently supported workflows
+- Removed geographic lookup (regions) API/UI and related employee/holiday calendar links so org settings stay role-and-calendar based only
+- Added defensive schema retirement migration to drop leftover group/lookup/external-sync tables and columns from existing databases
+- Removed archived Vue reference frontend and historical create/drop migrations for retired modules to keep the monorepo free of those product surfaces
 
 ## 2026-07-29
 

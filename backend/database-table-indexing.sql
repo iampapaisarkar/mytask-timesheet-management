@@ -3,8 +3,6 @@
 -- =========================
 CREATE INDEX idx_employees_user_id ON employees(user_id);
 CREATE INDEX idx_employees_org_id ON employees(organisation_id);
-CREATE INDEX idx_employees_region_id ON employees(region_id);
-
 -- =========================
 -- WAGES & PAYROLL
 -- =========================

@@ -7,7 +7,6 @@ import FirebaseProviders from "./firebaseProviders.js";
 import Organisations from "./organisations.js";
 import OrganisationRoles from "./organisationRoles.js";
 import UserOrganisationRoles from "./userOrganisationRoles.js";
-import Regions from "./regions.js";
 import Employees from "./employees.js";
 import NokRelations from "./nokRelations.js";
 import EmployeeInvitations from "./employeeInvitations.js";
@@ -65,7 +64,6 @@ const models = {
   Organisations,
   OrganisationRoles,
   UserOrganisationRoles,
-  Regions,
   Employees,
   NokRelations,
   EmployeeInvitations,

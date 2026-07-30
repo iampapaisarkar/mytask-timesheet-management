@@ -22,7 +22,7 @@ export type AddressValue = {
   address_1: string;
   address_2?: string;
   city: string;
-  /** Region / state / province / emirate — id optional; backend upserts by name */
+  /** State / province / emirate — id optional; backend upserts by name */
   state: { id?: number; name?: string; code?: string } | null;
   administrative_area: string;
   postcode: string;
@@ -374,7 +374,7 @@ export function GoogleAddressAutocomplete({
               ) : null}
               {form.administrative_area || form.state?.name ? (
                 <TextInput
-                  label="State / province / region"
+                  label="State / province / emirate"
                   value={
                     form.administrative_area ||
                     form.state?.name ||
@@ -432,7 +432,7 @@ export function GoogleAddressAutocomplete({
               ) : null}
               {form.administrative_area || form.state?.name ? (
                 <div>
-                  <dt className="text-xs text-muted">Region</dt>
+                  <dt className="text-xs text-muted">Administrative area</dt>
                   <dd>
                     {form.administrative_area ||
                       form.state?.name ||

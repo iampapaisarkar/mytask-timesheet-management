@@ -65,7 +65,7 @@ Org headers (org-scoped): `ms-organisation-code`, `ms-organisation-id`, `ms-orga
 | POST | `/:id/invite` |
 | POST | `/search-user-by-email` |
 
-## Region — `/api/region`
+## Area — `/api/area`
 
 | Method | Path |
 |--------|------|
@@ -125,7 +125,7 @@ Org headers (org-scoped): `ms-organisation-code`, `ms-organisation-id`, `ms-orga
 | Method | Path |
 |--------|------|
 | GET | `/organisation-roles` |
-| GET | `/regions` |
+| GET | `/areas` |
 | GET | `/nok-relations` |
 | GET | `/customers` |
 | GET | `/earning-rate-types` |

@@ -34,7 +34,7 @@
 
 ## Models (selected)
 
-Users, UserSessions, Organisations, OrganisationRoles, UserOrganisationRoles, Employees, EmployeeInvitations, Timesheets, TimesheetDays, TimesheetDayTasks, Customers, Jobs, Regions, HolidayCalendars, PayrollCalendars, EarningRates, AwardRates (+ rule tables), Notifications, FcmConnections, and many lookup tables (employment types, leave categories, states, etc.).
+Users, UserSessions, Organisations, OrganisationRoles, UserOrganisationRoles, Employees, EmployeeInvitations, Timesheets, TimesheetDays, TimesheetDayTasks, Customers, Jobs, geographic lookup tables, HolidayCalendars, PayrollCalendars, EarningRates, AwardRates (+ rule tables), Notifications, FcmConnections, and many lookup tables (employment types, leave categories, states, etc.).
 
 ## Services
 

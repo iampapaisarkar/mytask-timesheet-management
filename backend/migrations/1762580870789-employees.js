@@ -28,9 +28,6 @@ export async function up(queryInterface, Sequelize) {
       award_id: {
         type: DataTypes.INTEGER,
       },
-      region_id: {
-        type: DataTypes.INTEGER,
-      },
       preferred_name: {
         type: DataTypes.STRING,
       },

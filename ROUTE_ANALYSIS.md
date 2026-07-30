@@ -33,7 +33,7 @@ Requires `requiresAuth` + `requiresOrganisation`.
 | `reports` | Reports | `report.view` |
 | `settings` | Settings | `setting.list` |
 | `settings/organisation-details` | Organisation Details | `organisationSetting.view` |
-| `settings/regions` | Region | `region.list` |
+| `settings/areas` | Area | `area.list` |
 | `settings/holiday-calendars` | Holiday Calendar | `holidayCalendar.list` |
 | `settings/payroll-calendars` | Payroll Calendar | `payrollCalendar.list` |
 | `settings/earning-rates` | Earning Rate | `earningRate.list` |

@@ -42,7 +42,7 @@ steps:
           --image=australia-southeast1-docker.pkg.dev/mysheet-prod/mysheet-api/mysheet-api-image:${_TAG_NAME} \
           --platform=managed \
           --allow-unauthenticated \
-          --region=australia-southeast1 \
+          --area=australia-southeast1 \
           --memory=4Gi \
           --cpu=1 \
           --max-instances=10 \

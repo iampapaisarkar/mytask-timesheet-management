@@ -4,21 +4,10 @@ import {
   payrollCalendarsApi,
   earningRatesApi,
   awardRatesApi,
-  regionsApi,
   organisationsApi,
   systemApi,
 } from "@mytask/api";
 import { useQuery } from "@tanstack/react-query";
-
-export function useRegions() {
-  return useQuery({
-    queryKey: ["regions"],
-    queryFn: async () => {
-      const res = await regionsApi.list({ rows_per_page: 50, sort_by: "id" });
-      return res.data.data;
-    },
-  });
-}
 
 export function useHolidayCalendars() {
   return useQuery({
@@ -90,23 +79,6 @@ function useInvalidate(keys: string[]) {
       void qc.invalidateQueries({ queryKey: [key] });
     }
   };
-}
-
-export function useCreateRegion() {
-  const invalidate = useInvalidate(["regions"]);
-  return useMutation({
-    mutationFn: (payload: { name: string }) => regionsApi.create(payload),
-    onSuccess: invalidate,
-  });
-}
-
-export function useUpdateRegion() {
-  const invalidate = useInvalidate(["regions"]);
-  return useMutation({
-    mutationFn: ({ id, name }: { id: string | number; name: string }) =>
-      regionsApi.update(id, { name }),
-    onSuccess: invalidate,
-  });
 }
 
 export function useCreateHolidayCalendar() {

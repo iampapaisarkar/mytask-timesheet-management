@@ -4,7 +4,6 @@ import { useThemeStore } from "../store/themeStore";
 
 const SETTINGS_LINKS = [
   { label: "Organisation details", hint: "Name, timezone, branding" },
-  { label: "Region", hint: "Service regions" },
   { label: "Holiday Calendar", hint: "Public holidays" },
   { label: "Payroll Calendar", hint: "Pay periods" },
   { label: "Earning Rates", hint: "Rate catalogue" },

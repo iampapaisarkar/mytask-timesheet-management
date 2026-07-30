@@ -51,7 +51,6 @@ export type OrganisationAcl = {
   employee: CrudPermission;
   customer: CrudPermission;
   job: CrudPermission;
-  region: CrudPermission;
   holidayCalendar: CrudPermission;
   payrollCalendar: CrudPermission;
   earningRate: CrudPermission;
@@ -189,7 +188,6 @@ export interface HomeBootstrapView {
 
 export interface EmployeeFormLookupsView {
   roles: NamedLookup[];
-  regions: NamedLookup[];
   nok_relations: NamedLookup[];
   employment_status: NamedLookup[];
   employment_types: NamedLookup[];

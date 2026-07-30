@@ -14,7 +14,7 @@
 | Timesheets + day editor + map | ✅ Done | 2026-07-30 | Shared day editor + TrackingMapView |
 | Timesheet management | ✅ Done | 2026-07-30 | Create, approve/reject/revert, day editor |
 | Employees / Customers / Jobs / MG | ✅ Done | 2026-07-30 | Wizard, CRUD dialogs, GoogleAddress |
-| Settings CRUD | ✅ Done | 2026-07-30 | Org edit + regions/holidays/payroll/rates/rules |
+| Settings CRUD | ✅ Done | 2026-07-30 | Org edit + areas/holidays/payroll/rates/rules |
 | Reports / Notifications | ✅ Done | 2026-07-30 | Reports page, notifications bell |
 | Invitations + ACL guards | ✅ Done | 2026-07-30 | Org invitation + OrgAclRoute |
 | Mobile BGL + ClockInOut | ✅ Done | 2026-07-30 | Transistorsoft + geolocation fallback |

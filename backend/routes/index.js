@@ -7,7 +7,6 @@ import organisation from "./organisation/index.js";
 import timesheet from "./timesheet/index.js";
 import timesheetManagement from "./timesheet-management/index.js";
 import employee from "./employee/index.js";
-import region from "./region/index.js";
 import customer from "./customer/index.js";
 import job from "./job/index.js";
 import holidayCalendar from "./holiday-calendar/index.js";
@@ -38,7 +37,6 @@ router.use(
   timesheetManagement,
 );
 router.use("/employees", TokenValidate, OrganisationValidate, employee);
-router.use("/region", TokenValidate, OrganisationValidate, region);
 router.use("/customers", TokenValidate, OrganisationValidate, customer);
 router.use("/jobs", TokenValidate, OrganisationValidate, job);
 router.use(

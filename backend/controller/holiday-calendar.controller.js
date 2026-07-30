@@ -1,6 +1,6 @@
 import { fn, col, literal, Op } from "sequelize";
 import models from "../models/index.js";
-const { HolidayCalendars, Regions } = models;
+const { HolidayCalendars } = models;
 import moment from "moment";
 
 export async function list(req, res, next) {
@@ -32,13 +32,6 @@ export async function list(req, res, next) {
 
     const { count, rows: calendars } = await HolidayCalendars.findAndCountAll({
       where: whereCondition,
-      include: [
-        {
-          model: Regions,
-          as: "region",
-          attributes: ["id", "name"],
-        },
-      ],
       offset,
       limit: rowsPerPage,
       order: [[sortBy, sortDirection]],
@@ -69,7 +62,7 @@ export async function list(req, res, next) {
 }
 
 export async function create(req, res, next) {
-  const { user, name, region, date, organisation } = req.body;
+  const { user, name, date, organisation } = req.body;
   if (!organisation.acl.holidayCalendar.create) {
     return res.status(403).json({
       message: "Access denied: You are not authorized to access this action.",
@@ -88,19 +81,12 @@ export async function create(req, res, next) {
       });
     }
 
-    if (!region) {
-      return res.status(501).json({
-        message: "Region is required!",
-      });
-    }
-
     const currentUTCTime = moment().utc().format();
 
     const response = await HolidayCalendars.create({
       organisation_id: organisation.id,
       name: name,
       date: date,
-      region_id: region.id,
       created_at: currentUTCTime,
       created_by: user.id,
       updated_at: currentUTCTime,
@@ -120,7 +106,7 @@ export async function create(req, res, next) {
 }
 
 export async function update(req, res, next) {
-  const { user, name, region, date, organisation } = req.body;
+  const { user, name, date, organisation } = req.body;
   const id = req?.params?.id;
   if (!organisation.acl.holidayCalendar.edit) {
     return res.status(403).json({
@@ -140,19 +126,12 @@ export async function update(req, res, next) {
       });
     }
 
-    if (!region) {
-      return res.status(501).json({
-        message: "Region is required!",
-      });
-    }
-
     const currentUTCTime = moment().utc().format();
 
     const response = await HolidayCalendars.update(
       {
         name: name,
         date: date,
-        region_id: region.id,
         updated_at: currentUTCTime,
         updated_by: user.id,
       },

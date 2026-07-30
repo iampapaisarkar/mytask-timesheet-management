@@ -27,7 +27,6 @@ export async function list(req, res, next) {
     phone_country_iso,
     phone_country_code,
     role_id,
-    region_id,
   } = req.query;
 
   if (!organisation.acl.employee.list) {
@@ -66,10 +65,6 @@ export async function list(req, res, next) {
         ? code
         : `+${code}`;
     }
-    if (region_id) {
-      whereCondition.region_id = Number(region_id);
-    }
-
     if (search && search.trim() !== "") {
       whereCondition = {
         ...whereCondition,
@@ -448,7 +443,6 @@ export async function searchUserByEmail(req, res, next) {
             dob: systemEmployee?.dob,
             phone_number: null,
             role: null,
-            region: null,
             nok: null,
             nok_relationship: null,
             nok_phone_number: null,
@@ -497,7 +491,6 @@ export async function searchUserByEmail(req, res, next) {
             dob: null,
             phone_number: null,
             role: null,
-            region: null,
             nok: null,
             nok_relationship: null,
             nok_phone_number: null,

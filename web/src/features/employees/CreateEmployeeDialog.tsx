@@ -65,7 +65,6 @@ type EmployeeForm = {
       longitude?: string | number | null;
     };
     role: NamedId | null;
-    region: NamedId | null;
     nok: string;
     nok_relationship: NamedId | null;
     nok_phone_number: string;
@@ -122,7 +121,6 @@ function emptyForm(email = ""): EmployeeForm {
         longitude: "",
       },
       role: null,
-      region: null,
       nok: "",
       nok_relationship: null,
       nok_phone_number: "",
@@ -203,7 +201,6 @@ function formFromEmployeeRow(row: EmployeeListRow): EmployeeForm {
         longitude: (addressRaw.longitude as string | number | null) ?? "",
       },
       role: asNamed(details.role),
-      region: asNamed(details.region),
       nok: String(details.nok || ""),
       nok_relationship: asNamed(details.nok_relationship),
       nok_phone_number: String(details.nok_phone_number || ""),
@@ -259,7 +256,6 @@ export function CreateEmployeeDialog({
   const lookups = formLookupsQuery.data;
 
   const roles = (lookups?.roles || []) as NamedId[];
-  const regions = (lookups?.regions || []) as NamedId[];
   const nokRelations = (lookups?.nok_relations || []) as NamedId[];
   const employmentStatuses = (lookups?.employment_status || []) as NamedId[];
   const employmentTypes = (lookups?.employment_types || []) as NamedId[];
@@ -384,7 +380,6 @@ export function CreateEmployeeDialog({
             longitude: (addressRaw.longitude as string | number | null) ?? "",
           },
           role: asNamed(details.role),
-          region: asNamed(details.region),
           nok: String(details.nok || ""),
           nok_relationship: asNamed(details.nok_relationship),
           nok_phone_number: String(details.nok_phone_number || ""),
@@ -451,7 +446,6 @@ export function CreateEmployeeDialog({
       return "Enter a valid next-of-kin phone number";
     }
     if (!d.role?.id) return "Role is required";
-    if (!d.region?.id) return "Region is required";
     return null;
   }
 
@@ -550,7 +544,6 @@ export function CreateEmployeeDialog({
           longitude: d.address.longitude ?? null,
         },
         role: d.role,
-        region: d.region,
         nok: d.nok.trim() || null,
         nok_relationship: d.nok_relationship,
         nok_phone_number: d.nok_phone_number.trim() || null,
@@ -822,26 +815,6 @@ export function CreateEmployeeDialog({
                   >
                     <option value="">Select role</option>
                     {roles.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="flex w-full flex-col gap-1.5 text-sm">
-                  <span className="font-medium">Region</span>
-                  <select
-                    className={selectClass}
-                    value={form.details.region?.id ?? ""}
-                    onChange={(e) => {
-                      const id = Number(e.target.value);
-                      const matched =
-                        regions.find((r) => r.id === id) || null;
-                      patchDetails({ region: matched });
-                    }}
-                  >
-                    <option value="">Select region</option>
-                    {regions.map((r) => (
                       <option key={r.id} value={r.id}>
                         {r.name}
                       </option>

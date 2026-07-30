@@ -19,9 +19,6 @@ export async function up(queryInterface, Sequelize) {
       date: {
         type: DataTypes.DATEONLY,
       },
-      region_id: {
-        type: DataTypes.INTEGER,
-      },
       created_at: {
         type: DataTypes.DATE,
         field: "created_at",

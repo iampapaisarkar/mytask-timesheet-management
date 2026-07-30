@@ -33,8 +33,8 @@ Recovered component inventory from Quasar build chunk names and string literals.
 | Signup | first/middle/last name, email, dob, password (Firebase) |
 | Organisation details | name, code, website, phone, email, address, settings (submission frequency, leaves) |
 | Customer | name, address, contact name/email/phone, hourly rate, active |
-| Region | name |
-| Holiday calendar | name, date, region |
+| Area | name |
+| Holiday calendar | name, date, area |
 | Payroll calendar | name, pay cycle, next period, start date, first payment |
 | Earning rate | name, rate |
 | Award rate rules | name, rounding settings, rule blocks (field/comparison/from/to/then) |

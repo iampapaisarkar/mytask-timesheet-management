@@ -17,7 +17,7 @@
 1. **Auth** — Firebase ID tokens verified by backend; app sessions stored in DB
 2. **Organisation** — multi-org membership, invitations, org-scoped headers
 3. **Timesheets** — employee self-service sheets + manager approval workflow
-4. **Workforce** — employees, management groups, jobs, customers, regions
+4. **Workforce** — employees, management groups, jobs, customers, areas
 5. **Payroll settings** — holiday calendars, payroll calendars, earning rates, award rate rules
 6. **Integrations** — Firebase Cloud Messaging, Socket.IO
 7. **Activity** — geolocation / timesheet activity tracking (mobile-oriented)

@@ -45,7 +45,7 @@ Permissions per resource: `list`, `view`, `create`, `edit`, `delete`.
 | employee | CRUD-ish | CRUD-ish | none | none |
 | customer | CRUD-ish | CRUD-ish | none | none |
 | job | CRUD-ish | CRUD-ish | CRUD-ish | list |
-| region / holiday / earning / award | yes | yes | no | no |
+| area / holiday / earning / award | yes | yes | no | no |
 | payrollCalendar | list+create | list+create | no | no |
 | setting | list | list | no | no |
 | organisationSetting | view+edit | view | none | none |

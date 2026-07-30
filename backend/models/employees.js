@@ -1,6 +1,5 @@
 import { DataTypes } from "sequelize";
 import { db } from "../database.js";
-import Regions from "./regions.js";
 import Users from "./users.js";
 import NokRelations from "./nokRelations.js";
 import UserOrganisationRoles from "./userOrganisationRoles.js";
@@ -15,7 +14,6 @@ import PayCycles from "./payCycles.js";
 import AwardRates from "./awardRates.js";
 import EmployeePayrolls from "./employeePayrolls.js";
 import UserTimezones from "./userTimezones.js";
-import HolidayCalendars from "./holidayCalendars.js";
 import States from "./states.js";
 import EmployeeAddress from "./employeeAddress.js";
 
@@ -51,9 +49,6 @@ const Employees = db.define(
       allowNull: true,
     },
     award_id: {
-      type: DataTypes.INTEGER,
-    },
-    region_id: {
       type: DataTypes.INTEGER,
     },
     preferred_name: {
@@ -117,11 +112,6 @@ Employees.prototype.toJSON = function () {
 // Associations
 // ----------------------------------------------------------------------
 Employees.associate = function (models) {
-  models.Employees.belongsTo(models.Regions, {
-    as: "region",
-    foreignKey: "region_id",
-  });
-
   models.Employees.belongsTo(models.NokRelations, {
     as: "nok_relationship",
     foreignKey: "nok_relation_id",
@@ -141,11 +131,6 @@ Employees.associate = function (models) {
   models.Employees.belongsTo(models.Users, {
     as: "creator",
     foreignKey: "created_by",
-  });
-
-  models.Employees.belongsTo(models.Regions, {
-    as: "regions",
-    foreignKey: "region_id",
   });
 
   if (models.EmployeeWages) {
@@ -184,7 +169,6 @@ Employees.addScope(
       "nok_phone_country_code",
       "nok_phone_country_iso",
       "award_id",
-      "region_id",
       "preferred_name",
       "phone_number",
       "phone_country_code",
@@ -198,17 +182,6 @@ Employees.addScope(
       // ],
     ],
     include: [
-      {
-        model: Regions,
-        as: "region",
-        attributes: ["id", "name", "code"],
-        include: [
-          {
-            model: HolidayCalendars,
-            as: "holidays",
-          },
-        ],
-      },
       {
         model: EmployeeAddress,
         as: "address",

@@ -9,7 +9,7 @@ UX:
 1. User sees a single Address search field.
 2. Google Places suggestions appear (all countries — no AU lock).
 3. On selection, structured fields populate automatically.
-4. Details (street, city, region, postal, country, coords) show only after selection.
+4. Details (street, city, area, postal, country, coords) show only after selection.
 
 Payload fields:
 
@@ -19,7 +19,7 @@ Payload fields:
 - `country`, `country_code` (ISO-2)
 - `place_id`, `latitude`, `longitude`
 
-City / region / postal code are **optional** when Google does not return them for that country.
+City / area / postal code are **optional** when Google does not return them for that country.
 
 ## Database
 

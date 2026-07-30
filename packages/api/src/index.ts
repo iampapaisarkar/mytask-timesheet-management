@@ -22,7 +22,6 @@ export {
   employeesApi,
   customersApi,
   jobsApi,
-  regionsApi,
   holidayCalendarsApi,
   earningRatesApi,
   awardRatesApi,

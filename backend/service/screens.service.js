@@ -22,7 +22,6 @@ const {
   Users,
   Notifications,
   NotificationStatus,
-  Regions,
   NokRelations,
   EmploymentStatus,
   EmploymentTypes,
@@ -199,7 +198,6 @@ export async function getEmployeeFormLookups(organisation) {
 
   const [
     roles,
-    regions,
     nok_relations,
     employment_status,
     employment_types,
@@ -210,12 +208,6 @@ export async function getEmployeeFormLookups(organisation) {
     OrganisationRoles.findAll({
       where: roleWhere,
       attributes: ["id", "name", "code"],
-      order: [["name", "asc"]],
-      raw: true,
-    }),
-    Regions.findAll({
-      where: { organisation_id: organisation.id },
-      attributes: ["id", "name"],
       order: [["name", "asc"]],
       raw: true,
     }),
@@ -257,7 +249,6 @@ export async function getEmployeeFormLookups(organisation) {
     success: true,
     data: {
       roles: mapNamedIdList(roles),
-      regions: mapNamedIdList(regions),
       nok_relations: mapNamedIdList(nok_relations),
       employment_status: mapNamedIdList(employment_status),
       employment_types: mapNamedIdList(employment_types),

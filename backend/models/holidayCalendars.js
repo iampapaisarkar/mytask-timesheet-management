@@ -18,9 +18,6 @@ const HolidayCalendars = db.define(
     date: {
       type: DataTypes.DATEONLY,
     },
-    region_id: {
-      type: DataTypes.INTEGER,
-    },
     created_at: {
       type: DataTypes.DATE,
       field: "created_at",
@@ -42,14 +39,6 @@ const HolidayCalendars = db.define(
   }
 );
 
-// -----------------------------
-//   ASSOCIATIONS
-// -----------------------------
-HolidayCalendars.associate = (models) => {
-  models.HolidayCalendars.belongsTo(models.Regions, {
-    foreignKey: "region_id",
-    as: "region",
-  });
-};
+HolidayCalendars.associate = () => {};
 
 export default HolidayCalendars;

@@ -19,7 +19,6 @@ import { CustomersPage } from "@/features/customers/CustomersPage";
 import { JobsPage } from "@/features/jobs/JobsPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
 import { OrganisationDetailsPage } from "@/features/settings/OrganisationDetailsPage";
-import { RegionsPage } from "@/features/settings/RegionsPage";
 import { HolidayCalendarsPage } from "@/features/settings/HolidayCalendarsPage";
 import { PayrollCalendarsPage } from "@/features/settings/PayrollCalendarsPage";
 import { EarningRatesPage } from "@/features/settings/EarningRatesPage";
@@ -128,13 +127,6 @@ export function AppRouter() {
                 path="settings/organisation-details"
                 element={<OrganisationDetailsPage />}
               />
-            </Route>
-            <Route
-              element={
-                <OrgAclRoute acl={{ action: "region", permission: "list" }} />
-              }
-            >
-              <Route path="settings/regions" element={<RegionsPage />} />
             </Route>
             <Route
               element={

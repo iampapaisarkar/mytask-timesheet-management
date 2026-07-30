@@ -40,7 +40,7 @@ Order (dependency + ACL frequency):
 5. Customers
 6. Jobs
 7. Management Groups
-8. Settings hub + subpages (org details, regions, holidays, payroll calendars, earning rates, award rules)
+8. Settings hub + subpages (org details, areas, holidays, payroll calendars, earning rates, award rules)
 9. Reports
 10. Profile
 11. Org invitation / Auth actions

@@ -4,7 +4,6 @@ import { ChevronRight } from "lucide-react";
 
 const SETTINGS_LINKS = [
   { label: "Organisation details", path: "organisation-details" as const },
-  { label: "Region", path: "regions" as const },
   { label: "Holiday Calendar", path: "holiday-calendars" as const },
   { label: "Payroll Calendar", path: "payroll-calendars" as const },
   { label: "Earning Rates", path: "earning-rates" as const },

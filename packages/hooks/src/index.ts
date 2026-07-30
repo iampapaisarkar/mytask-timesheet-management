@@ -38,7 +38,6 @@ export const queryKeys = {
   system: (path: string) => ["system", path] as const,
   notifications: ["notifications"] as const,
   notificationsList: ["notifications", "list"] as const,
-  regions: ["regions"] as const,
   holidayCalendars: ["holiday-calendars"] as const,
   payrollCalendars: ["payroll-calendars"] as const,
   earningRates: ["earning-rates"] as const,

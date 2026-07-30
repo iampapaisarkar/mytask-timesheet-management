@@ -26,8 +26,8 @@ Use `GlobalPhoneInput` for every phone field. Display with `formatPhoneDisplay` 
 
 Create/update payloads must send the three phone fields. Backend validates via `backend/utils/phone.js` (`resolvePhoneFields`).
 
-Employee list filters: `phone_country_iso`, `phone_country_code`, `region_id`.
+Employee list filters: `phone_country_iso`, `phone_country_code`, `area_id`.
 
 ## Future-ready locale
 
-`detectLocalePreferences()` in `@mytask/utils` prepares locale / timezone / currency / default country without coupling forms to a single region.
+`detectLocalePreferences()` in `@mytask/utils` prepares locale / timezone / currency / default country without coupling forms to a single area.
