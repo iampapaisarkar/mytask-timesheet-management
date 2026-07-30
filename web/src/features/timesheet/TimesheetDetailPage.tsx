@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { timesheetsApi } from "@mytask/api";
 import { useSubmitTimesheet } from "@mytask/hooks";
@@ -41,33 +41,16 @@ type TimesheetDetail = {
   employee?: { user?: { full_name?: string } };
 };
 
-const STATUS_TABS = [
-  { code: "", label: "All" },
-  { code: "draft", label: "Draft" },
-  { code: "submitted", label: "Submitted" },
-  { code: "approved", label: "Approved" },
-  { code: "rejected", label: "Rejected" },
-] as const;
-
-/**
- * Vue AuthActions/View loads via ?tab=draft|submitted|… which maps to API `type`.
- * We keep that contract but default to no type so the timesheet always loads.
- */
 export function TimesheetDetailPage() {
   const { orgCode = "", id = "" } = useParams();
-  const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToastStore();
   const submit = useSubmitTimesheet();
   const [selectedDayId, setSelectedDayId] = useState<number | null>(null);
 
-  const tab = (searchParams.get("tab") || "").toLowerCase();
-  const typeParam =
-    tab && tab !== "all" ? tab : undefined;
-
   const query = useQuery({
-    queryKey: ["timesheets", id, typeParam || "all"] as const,
+    queryKey: ["timesheets", id] as const,
     queryFn: async () => {
-      const res = await timesheetsApi.get(id, typeParam ? { type: typeParam } : undefined);
+      const res = await timesheetsApi.get(id);
       return (res.data as { data: TimesheetDetail }).data;
     },
     enabled: Boolean(id),
@@ -100,9 +83,7 @@ export function TimesheetDetailPage() {
   }
 
   if (!id) {
-    return (
-      <ErrorState message="Missing timesheet id in the URL." />
-    );
+    return <ErrorState message="Missing timesheet id in the URL." />;
   }
 
   if (query.isLoading) return <LoadingState label="Loading timesheet…" />;
@@ -128,7 +109,6 @@ export function TimesheetDetailPage() {
   }
 
   const perms = data.permissions;
-  const activeTab = typeParam || "";
 
   return (
     <div className="mt-fade-in flex flex-col gap-4">
@@ -150,39 +130,16 @@ export function TimesheetDetailPage() {
               <Button variant="secondary">Back</Button>
             </Link>
             {perms?.can_submit ? (
-              <Button loading={submit.isPending} onClick={() => void handleSubmit()}>
+              <Button
+                loading={submit.isPending}
+                onClick={() => void handleSubmit()}
+              >
                 Submit for approval
               </Button>
             ) : null}
           </div>
         }
       />
-
-      <div className="flex flex-wrap gap-2">
-        {STATUS_TABS.map((item) => {
-          const selected = activeTab === item.code;
-          return (
-            <button
-              key={item.code || "all"}
-              type="button"
-              className={`rounded-xl px-3 py-1.5 text-sm font-medium transition ${
-                selected
-                  ? "bg-primary text-white"
-                  : "border border-border bg-[var(--mt-surface)] text-[var(--mt-text)] hover:border-primary"
-              }`}
-              onClick={() => {
-                if (!item.code) {
-                  setSearchParams({});
-                } else {
-                  setSearchParams({ tab: item.code });
-                }
-              }}
-            >
-              {item.label}
-            </button>
-          );
-        })}
-      </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -226,11 +183,7 @@ export function TimesheetDetailPage() {
           {perms?.can_save === false ? " (read-only for this status)" : ""}.
         </p>
         {!days.length ? (
-          <p className="text-sm text-muted">
-            {typeParam
-              ? `No days for status “${typeParam}”. Try the All tab — Vue only returns the timesheet when its status matches the tab.`
-              : "No days on this timesheet yet."}
-          </p>
+          <p className="text-sm text-muted">No days on this timesheet yet.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
