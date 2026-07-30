@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, useQueries } from "@tanstack/react-query";
 import {
   authApi,
   organisationsApi,
@@ -12,7 +12,11 @@ import {
   payoutsApi,
 } from "@mytask/api";
 import type {
+  DashboardGraphsView,
   DashboardOverviewView,
+  DashboardPendingView,
+  DashboardRecentView,
+  DashboardSummaryView,
   EmployeeFormLookupsView,
   HomeBootstrapView,
   ListParams,
@@ -55,6 +59,14 @@ export const queryKeys = {
     ) => ["screens", "timesheet-day-editor", mode, dayId, employeeId] as const,
     dashboard: (orgCode: string) =>
       ["screens", "dashboard", orgCode] as const,
+    dashboardSummary: (orgCode: string) =>
+      ["screens", "dashboard", "summary", orgCode] as const,
+    dashboardGraphs: (orgCode: string) =>
+      ["screens", "dashboard", "graphs", orgCode] as const,
+    dashboardRecent: (orgCode: string) =>
+      ["screens", "dashboard", "recent", orgCode] as const,
+    dashboardPending: (orgCode: string) =>
+      ["screens", "dashboard", "pending", orgCode] as const,
   },
 };
 
@@ -169,6 +181,107 @@ export function useDashboardOverview(orgCode: string, enabled = true) {
     enabled: enabled && Boolean(orgCode),
     staleTime: 30_000,
   });
+}
+
+/**
+ * Enterprise parallel dashboard load — four independent slices via useQueries.
+ * KPI strip / charts / activity / pending each render as soon as their slice arrives.
+ */
+export function useDashboardParallel(orgCode: string, enabled = true) {
+  const active = enabled && Boolean(orgCode);
+  const results = useQueries({
+    queries: [
+      {
+        queryKey: queryKeys.screens.dashboardSummary(orgCode),
+        queryFn: async ({ signal }: { signal?: AbortSignal }) => {
+          const res = await screensApi.dashboardSummary({ signal });
+          return res.data.data as DashboardSummaryView;
+        },
+        enabled: active,
+        staleTime: 30_000,
+      },
+      {
+        queryKey: queryKeys.screens.dashboardGraphs(orgCode),
+        queryFn: async ({ signal }: { signal?: AbortSignal }) => {
+          const res = await screensApi.dashboardGraphs({ signal });
+          return res.data.data as DashboardGraphsView;
+        },
+        enabled: active,
+        staleTime: 30_000,
+      },
+      {
+        queryKey: queryKeys.screens.dashboardRecent(orgCode),
+        queryFn: async ({ signal }: { signal?: AbortSignal }) => {
+          const res = await screensApi.dashboardRecent({ signal });
+          return res.data.data as DashboardRecentView;
+        },
+        enabled: active,
+        staleTime: 30_000,
+      },
+      {
+        queryKey: queryKeys.screens.dashboardPending(orgCode),
+        queryFn: async ({ signal }: { signal?: AbortSignal }) => {
+          const res = await screensApi.dashboardPending({ signal });
+          return res.data.data as DashboardPendingView;
+        },
+        enabled: active,
+        staleTime: 30_000,
+      },
+    ],
+  });
+
+  const [summaryQ, graphsQ, recentQ, pendingQ] = results;
+
+  const overview: DashboardOverviewView | undefined =
+    summaryQ.data || graphsQ.data || recentQ.data || pendingQ.data
+      ? {
+          source: summaryQ.data?.source ?? graphsQ.data?.source,
+          role: summaryQ.data?.role ?? graphsQ.data?.role ?? null,
+          display_currency: summaryQ.data?.display_currency ?? null,
+          kpis: summaryQ.data?.kpis ?? {
+            approved: 0,
+            draft: 0,
+            submitted: 0,
+            rejected: 0,
+            total: 0,
+            approval_rate_pct: 0,
+            employees: 0,
+            worked_hours_month: 0,
+            approved_hours_month: 0,
+            pending_hours_month: 0,
+            payroll_this_month: 0,
+            pending_payout_amount: 0,
+            pending_payouts: 0,
+            paid_payouts: 0,
+          },
+          status_donut: graphsQ.data?.status_donut ?? [],
+          weekly_progress: graphsQ.data?.weekly_progress ?? [],
+          monthly_progress: graphsQ.data?.monthly_progress ?? [],
+          productivity_trend: graphsQ.data?.productivity_trend ?? [],
+          payroll_trend: graphsQ.data?.payroll_trend ?? [],
+          payout_status_donut: graphsQ.data?.payout_status_donut ?? [],
+          team_activity: recentQ.data?.team_activity ?? [],
+          recent_activity: recentQ.data?.recent_activity ?? [],
+          latest_payout: recentQ.data?.latest_payout ?? null,
+          quick_links_hint: pendingQ.data?.quick_links_hint ?? {
+            has_pending_approvals: false,
+            open_timesheet_id: null,
+          },
+        }
+      : undefined;
+
+  return {
+    summaryQuery: summaryQ,
+    graphsQuery: graphsQ,
+    recentQuery: recentQ,
+    pendingQuery: pendingQ,
+    overview,
+    isLoading: results.some((q) => q.isLoading),
+    isFetching: results.some((q) => q.isFetching),
+    isError: results.some((q) => q.isError),
+    error: results.find((q) => q.error)?.error,
+    refetch: () => Promise.all(results.map((q) => q.refetch())),
+  };
 }
 
 

@@ -36,6 +36,22 @@ export async function login(req, res, next) {
     let tokenVerifyResponse = await Auth.verifyFirebaseToken(token);
 
     if (tokenVerifyResponse.success) {
+      const tokenEmail = (
+        tokenVerifyResponse.decoded?.email ||
+        tokenVerifyResponse.data?.users?.[0]?.email ||
+        ""
+      )
+        .toString()
+        .trim()
+        .toLowerCase();
+      const bodyEmail = (email || "").toString().trim().toLowerCase();
+      if (!tokenEmail || !bodyEmail || tokenEmail !== bodyEmail) {
+        return res.status(401).json({
+          code: "AUTH_EMAIL_MISMATCH",
+          message: "Email does not match the authenticated Firebase account.",
+        });
+      }
+
       let authAttemptResponse = await Auth.attempt(email);
 
       if (authAttemptResponse.success) {

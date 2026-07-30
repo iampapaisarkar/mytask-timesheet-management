@@ -57,111 +57,114 @@ router.use("/timesheet-activity", TimesheetActivity);
 router.use("/reports", TokenValidate, OrganisationValidate, Report);
 router.use("/screens", TokenValidate, screens);
 
-router.get("/mail-test", async (req, res) => {
-  const { email = null } = req.query;
-  const appName = process.env.APP_NAME || "myTask";
-
-  if (!email) {
-    return res.status(400).json({
-      message: "Pass ?email=you@example.com to send a test message",
-    });
-  }
-
-  try {
-    const message = {
-      subject: `${appName} - Mail test`,
-      template: "forgot-password.html",
-      variables: {
-        title: `${appName} mail test`,
-        message:
-          "If you can read this, myTask SMTP delivery is working with the updated templates.",
-        button_url: process.env.CLIENT_URL || "http://localhost:9000/",
-        button_label: "Open myTask",
-      },
-    };
-    const response = await NodeMailer.send(
-      { email },
-      null,
-      [email],
-      message,
-    );
-
-    res.json({ response });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-router.get("/socket-io-test", async (req, res) => {
-  const { user_id } = req.query;
-
-  if (!user_id) {
-    return res.status(500).json({
-      message: "User ID is required!",
-    });
-  }
-
-  try {
-    let message = {};
-    message = {
-      name: "Papai Sarkar",
-    };
-
-    const response = await SocketIO.sendMessage([user_id], message);
-
-    res.json({ response });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-router.get("/firebase-notification-test", async (req, res) => {
-  const { user_id, url } = req.query;
-
-  let testUrl = null;
-  if (url) {
-    testUrl = url;
-  }
-
-  try {
-    let message = {
-      title: "Test Notification",
-      body: "Ignore this is test notification",
-    };
-
-    const response = await FirebaseMessaging.sendNotification(
-      [user_id],
-      message,
-      url,
-    );
-
-    res.json({ response });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-router.get("/firebase-messaging-test", async (req, res) => {
-  const { user_id } = req.query;
-
-  if (!user_id) {
-    return res.status(500).json({
-      message: "User Id is required!",
-    });
-  }
-
-  try {
-    // Example: send FCM message
-    let message = {
-      title: "myTask test data message",
-    };
-
-    const response = await FirebaseMessaging.sendMessage([user_id], message);
-
-    res.json({ response });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
+mountTestRoutes(router);
 
 export default router;
+
+function mountTestRoutes(target) {
+  const enabled =
+    process.env.ENABLE_TEST_ROUTES === "true" ||
+    process.env.NODE_ENV !== "production";
+  if (!enabled) return;
+
+  target.get("/mail-test", async (req, res) => {
+    const { email = null } = req.query;
+    const appName = process.env.APP_NAME || "myTask";
+
+    if (!email) {
+      return res.status(400).json({
+        message: "Pass ?email=you@example.com to send a test message",
+      });
+    }
+
+    try {
+      const message = {
+        subject: `${appName} - Mail test`,
+        template: "forgot-password.html",
+        variables: {
+          title: `${appName} mail test`,
+          message:
+            "If you can read this, myTask SMTP delivery is working with the updated templates.",
+          button_url: process.env.CLIENT_URL || "http://localhost:9000/",
+          button_label: "Open myTask",
+        },
+      };
+      const response = await NodeMailer.send(
+        { email },
+        null,
+        [email],
+        message,
+      );
+
+      res.json({ response });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  target.get("/socket-io-test", async (req, res) => {
+    const { user_id } = req.query;
+
+    if (!user_id) {
+      return res.status(500).json({
+        message: "User ID is required!",
+      });
+    }
+
+    try {
+      let message = {};
+      message = {
+        name: "Papai Sarkar",
+      };
+
+      const response = await SocketIO.sendMessage([user_id], message);
+
+      res.json({ response });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  target.get("/firebase-notification-test", async (req, res) => {
+    const { user_id, url } = req.query;
+
+    try {
+      let message = {
+        title: "Test Notification",
+        body: "Ignore this is test notification",
+      };
+
+      const response = await FirebaseMessaging.sendNotification(
+        [user_id],
+        message,
+        url,
+      );
+
+      res.json({ response });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  target.get("/firebase-messaging-test", async (req, res) => {
+    const { user_id } = req.query;
+
+    if (!user_id) {
+      return res.status(500).json({
+        message: "User Id is required!",
+      });
+    }
+
+    try {
+      let message = {
+        title: "myTask test data message",
+      };
+
+      const response = await FirebaseMessaging.sendMessage([user_id], message);
+
+      res.json({ response });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+}

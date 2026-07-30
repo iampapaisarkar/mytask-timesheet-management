@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ROUTES, formatMoney } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
-import { useDashboardOverview } from "@mytask/hooks";
+import { useDashboardParallel } from "@mytask/hooks";
 import type { DashboardOverviewView } from "@mytask/types";
 import { useOrganisationStore } from "@/store/organisationStore";
 import { Card, PageHeader } from "@/components/ui/Card";
@@ -150,8 +150,8 @@ export function OrganisationHomePage() {
   const canPayout = can(acl, "payout", "list");
   const canViewDashboard = canManage || canSelf;
 
-  const dashboardQuery = useDashboardOverview(orgCode, canViewDashboard);
-  const overview = dashboardQuery.data || emptyDashboard();
+  const dashboard = useDashboardParallel(orgCode, canViewDashboard);
+  const overview = dashboard.overview || emptyDashboard();
   const displayCurrency = overview.display_currency || null;
   const isStaff = (overview.role || roleCode) === "staff";
   const isManager = (overview.role || roleCode) === "manager";
@@ -247,18 +247,18 @@ export function OrganisationHomePage() {
     },
   ].filter((item) => item.show);
 
-  if (canViewDashboard && dashboardQuery.isLoading) {
+  if (canViewDashboard && dashboard.summaryQuery.isLoading && !dashboard.overview) {
     return <LoadingState label="Loading dashboard…" />;
   }
 
-  if (canViewDashboard && dashboardQuery.isError) {
+  if (canViewDashboard && dashboard.isError && !dashboard.overview) {
     return (
       <ErrorState
         message={getErrorMessage(
-          dashboardQuery.error,
+          dashboard.error,
           "Unable to load dashboard",
         )}
-        onRetry={() => void dashboardQuery.refetch()}
+        onRetry={() => void dashboard.refetch()}
       />
     );
   }

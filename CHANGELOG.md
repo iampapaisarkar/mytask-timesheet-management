@@ -2,6 +2,22 @@
 
 ## 2026-07-31
 
+### Added
+
+- Enterprise API architecture: split dashboard into `summary` / `graphs` / `recent` / `pending` endpoints; aggregate `/screens/dashboard` retained
+- Backend layered dashboard (`repository/` + `dashboard.service.js`); Redis-shared context for parallel slice loads
+- Middleware: correlation ID, security headers, request logger, Redis rate limiter, fixed error-handler order
+- Additive enterprise response fields (`success`, `meta`, `errors`, `requestId`) alongside legacy `info`
+- Client `useDashboardParallel()` (TanStack `useQueries`) on web + mobile org home; web route-level code splitting
+- Mobile `src/features/*` feature entrypoints aligned with web
+
+### Security
+
+- Login rejects Firebase token / body email mismatch
+- Production gates test routes (`ENABLE_TEST_ROUTES`) and activity simulate (`ENABLE_ACTIVITY_SIMULATE`)
+- Activity `send-location` requires `userId` + `organisationCode` (BGL-compatible)
+- Stop logging DB password on server boot; optional `CORS_ORIGINS` allowlist in production
+
 ### Fixed
 
 - Random logouts: clients no longer send stale stored JWTs; `@mytask/auth` TokenManager single-flights Firebase ID token refresh, Axios retries once on 401 after force refresh, and sockets reconnect with rotated tokens
@@ -9,7 +25,7 @@
 ### Changed
 
 - Backend auth uses Firebase Admin `verifyIdToken(checkRevoked)` with Redis claims cache and structured codes (`AUTH_MISSING` / `AUTH_EXPIRED` / `AUTH_REVOKED` / …); `user_sessions` is device audit keyed by `token_hash` (raw JWT no longer the session primary key)
-- Docs: `docs/AUTH_ARCHITECTURE.md`, `backend/docs/AUTHENTICATION.md`
+- Docs: `docs/AUTH_ARCHITECTURE.md`, `backend/docs/AUTHENTICATION.md`, `docs/ENTERPRISE_API_ARCHITECTURE.md`
 
 ### Added
 

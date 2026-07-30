@@ -19,9 +19,14 @@ export interface PaginationInfo {
 export interface ApiResponse<T> {
   data: T;
   info?: ApiInfo;
+  /** Enterprise additive fields (backward-compatible). */
+  success?: boolean;
   message?: string;
   caption?: string;
   pagination?: PaginationInfo;
+  meta?: Record<string, unknown>;
+  errors?: Array<{ code?: string; message: string }> | null;
+  requestId?: string | null;
 }
 
 export interface ListParams {
@@ -266,4 +271,37 @@ export interface DashboardOverviewView {
     open_timesheet_id: number | string | null;
   };
 }
+
+/** Split dashboard slices — loaded in parallel via useQueries. */
+export type DashboardSummaryView = Pick<
+  DashboardOverviewView,
+  "source" | "role" | "display_currency" | "kpis"
+>;
+
+export type DashboardGraphsView = Pick<
+  DashboardOverviewView,
+  | "source"
+  | "role"
+  | "display_currency"
+  | "status_donut"
+  | "weekly_progress"
+  | "monthly_progress"
+  | "productivity_trend"
+  | "payroll_trend"
+  | "payout_status_donut"
+>;
+
+export type DashboardRecentView = Pick<
+  DashboardOverviewView,
+  "source" | "role" | "recent_activity" | "team_activity" | "latest_payout"
+>;
+
+export type DashboardPendingView = {
+  source?: string;
+  role?: string | null;
+  submitted: number;
+  draft: number;
+  pending_hours_month: number;
+  quick_links_hint: DashboardOverviewView["quick_links_hint"];
+};
 

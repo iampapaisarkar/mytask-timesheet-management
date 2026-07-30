@@ -1,4 +1,35 @@
 import screensService from "../service/screens.service.js";
+import dashboardService from "../service/dashboard.service.js";
+
+function assertDashboardAccess(organisation, res) {
+  const canManage = organisation?.acl?.timesheetManagement?.list;
+  const canSelf = organisation?.acl?.timesheet?.list;
+  if (!canManage && !canSelf) {
+    res.status(403).json({
+      message: "Access denied: You are not authorized to access this action.",
+    });
+    return false;
+  }
+  return true;
+}
+
+async function runDashboardSlice(req, res, loader, errorLabel) {
+  const { user, organisation } = req.body;
+  if (!assertDashboardAccess(organisation, res)) return;
+  try {
+    const result = await loader(user, organisation);
+    if (!result.success) {
+      return res.status(result.code || 400).json({ message: result.message });
+    }
+    return res.status(200).json({ data: result.data, message: "Success" });
+  } catch (err) {
+    console.error(`${errorLabel}:`, err);
+    return res.status(500).json({
+      message: `Unable to load ${errorLabel}`,
+      details: err.message,
+    });
+  }
+}
 
 export async function orgBootstrap(req, res) {
   const { user } = req.body;
@@ -94,29 +125,48 @@ export async function timesheetDayEditor(req, res) {
   }
 }
 
+/** Aggregate dashboard — backward compatible. Prefer split slice routes. */
 export async function dashboard(req, res) {
-  const { user, organisation } = req.body;
-  const canManage = organisation?.acl?.timesheetManagement?.list;
-  const canSelf = organisation?.acl?.timesheet?.list;
-  if (!canManage && !canSelf) {
-    return res.status(403).json({
-      message: "Access denied: You are not authorized to access this action.",
-    });
-  }
-  try {
-    const result = await screensService.getDashboardOverview(
-      user,
-      organisation,
-    );
-    if (!result.success) {
-      return res.status(result.code || 400).json({ message: result.message });
-    }
-    return res.status(200).json({ data: result.data });
-  } catch (err) {
-    console.error("dashboard:", err);
-    return res.status(500).json({
-      message: "Unable to load dashboard",
-      details: err.message,
-    });
-  }
+  return runDashboardSlice(
+    req,
+    res,
+    dashboardService.getDashboardOverview,
+    "dashboard",
+  );
+}
+
+export async function dashboardSummary(req, res) {
+  return runDashboardSlice(
+    req,
+    res,
+    dashboardService.getDashboardSummary,
+    "dashboard summary",
+  );
+}
+
+export async function dashboardGraphs(req, res) {
+  return runDashboardSlice(
+    req,
+    res,
+    dashboardService.getDashboardGraphs,
+    "dashboard graphs",
+  );
+}
+
+export async function dashboardRecent(req, res) {
+  return runDashboardSlice(
+    req,
+    res,
+    dashboardService.getDashboardRecent,
+    "dashboard recent",
+  );
+}
+
+export async function dashboardPending(req, res) {
+  return runDashboardSlice(
+    req,
+    res,
+    dashboardService.getDashboardPending,
+    "dashboard pending",
+  );
 }

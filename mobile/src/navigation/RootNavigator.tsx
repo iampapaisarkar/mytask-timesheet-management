@@ -3,16 +3,17 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Text } from "react-native";
 import { useAuthStore } from "../store/authStore";
 import { useThemeStore } from "../store/themeStore";
-import { LoginScreen } from "../screens/LoginScreen";
-import { HomeScreen } from "../screens/HomeScreen";
-import { OrgHomeScreen } from "../screens/OrgHomeScreen";
-import { TimesheetListScreen } from "../screens/TimesheetListScreen";
-import { TimesheetDetailScreen } from "../screens/TimesheetDetailScreen";
-import { TimesheetDayDetailScreen } from "../screens/TimesheetDayDetailScreen";
-import { TimesheetManagementListScreen } from "../screens/TimesheetManagementListScreen";
-import { EmployeesListScreen } from "../screens/EmployeesListScreen";
-import { SettingsHubScreen } from "../screens/SettingsHubScreen";
-import { ProfileScreen } from "../screens/ProfileScreen";
+import { LoginScreen } from "../features/auth";
+import { HomeScreen } from "../features/home";
+import { OrgHomeScreen } from "../features/organisation";
+import {
+  TimesheetListScreen,
+  TimesheetDetailScreen,
+  TimesheetDayDetailScreen,
+} from "../features/timesheet";
+import { TimesheetManagementListScreen } from "../features/timesheet-management";
+import { EmployeesListScreen } from "../features/employees";
+import { SettingsHubScreen, ProfileScreen } from "../features/settings";
 
 export type RootStackParamList = {
   Login: undefined;

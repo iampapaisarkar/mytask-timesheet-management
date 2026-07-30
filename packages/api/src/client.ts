@@ -217,6 +217,14 @@ export function createApiClient(options: CreateApiClientOptions): AxiosInstance 
         config.headers[ORG_HEADERS.name] = org.name;
       }
     }
+    // Correlation ID for backend audit trails (generated per request if absent)
+    if (!config.headers["X-Request-Id"] && !config.headers["x-request-id"]) {
+      const id =
+        typeof globalThis.crypto?.randomUUID === "function"
+          ? globalThis.crypto.randomUUID()
+          : `mt-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      config.headers["X-Request-Id"] = id;
+    }
     return config;
   });
 

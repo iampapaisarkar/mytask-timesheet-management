@@ -1,19 +1,21 @@
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { spacing } from "@mytask/theme";
+import { useDashboardParallel } from "@mytask/hooks";
 import { ClockInOut } from "../components/ClockInOut";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 
 type Props = NativeStackScreenProps<RootStackParamList, "OrgHome">;
-
-const STATS = [
-  { label: "Completed", value: "128", hint: "+12% week" },
-  { label: "Pending", value: "34", hint: "6 due today" },
-  { label: "Rate", value: "72%", hint: "On track" },
-  { label: "Team", value: "46", hint: "Active" },
-];
 
 const NAV_ITEMS: Array<{
   label: string;
@@ -33,11 +35,54 @@ export function OrgHomeScreen({ navigation, route }: Props) {
   const organisation = useOrganisationStore((s) => s.organisation);
   const { orgCode } = route.params;
   const c = useThemeStore((s) => s.colors);
+  const dashboard = useDashboardParallel(orgCode, Boolean(orgCode));
+  const kpis = dashboard.overview?.kpis;
+  const weekly = dashboard.overview?.weekly_progress ?? [];
+
+  const stats = [
+    {
+      label: "Approved",
+      value: String(kpis?.approved ?? "—"),
+      hint: `${kpis?.approval_rate_pct ?? 0}% rate`,
+    },
+    {
+      label: "Pending",
+      value: kpis
+        ? String((kpis.draft ?? 0) + (kpis.submitted ?? 0))
+        : "—",
+      hint: `${kpis?.submitted ?? 0} submitted`,
+    },
+    {
+      label: "Hours",
+      value:
+        kpis?.worked_hours_month != null
+          ? `${kpis.worked_hours_month}h`
+          : "—",
+      hint: "This month",
+    },
+    {
+      label: "Team",
+      value: String(kpis?.employees ?? "—"),
+      hint: "In scope",
+    },
+  ];
+
+  const maxBar = Math.max(
+    1,
+    ...weekly.map((d) => d.completed + d.pending),
+  );
 
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: c.bg }}
       contentContainerStyle={styles.container}
+      refreshControl={
+        <RefreshControl
+          refreshing={dashboard.isFetching && !dashboard.isLoading}
+          onRefresh={() => void dashboard.refetch()}
+          tintColor={c.primary}
+        />
+      }
     >
       <Text style={[styles.title, { color: c.text }]}>
         {organisation?.name || orgCode}
@@ -48,27 +93,31 @@ export function OrgHomeScreen({ navigation, route }: Props) {
 
       <ClockInOut />
 
-      <View style={styles.grid}>
-        {STATS.map((stat) => (
-          <View
-            key={stat.label}
-            style={[
-              styles.stat,
-              { backgroundColor: c.surface, borderColor: c.border },
-            ]}
-          >
-            <Text style={[styles.statLabel, { color: c.muted }]}>
-              {stat.label}
-            </Text>
-            <Text style={[styles.statValue, { color: c.text }]}>
-              {stat.value}
-            </Text>
-            <Text style={[styles.statHint, { color: c.primary }]}>
-              {stat.hint}
-            </Text>
-          </View>
-        ))}
-      </View>
+      {dashboard.summaryQuery.isLoading && !kpis ? (
+        <ActivityIndicator color={c.primary} style={{ marginVertical: 24 }} />
+      ) : (
+        <View style={styles.grid}>
+          {stats.map((stat) => (
+            <View
+              key={stat.label}
+              style={[
+                styles.stat,
+                { backgroundColor: c.surface, borderColor: c.border },
+              ]}
+            >
+              <Text style={[styles.statLabel, { color: c.muted }]}>
+                {stat.label}
+              </Text>
+              <Text style={[styles.statValue, { color: c.text }]}>
+                {stat.value}
+              </Text>
+              <Text style={[styles.statHint, { color: c.primary }]}>
+                {stat.hint}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
 
       <View
         style={[
@@ -76,22 +125,37 @@ export function OrgHomeScreen({ navigation, route }: Props) {
           { backgroundColor: c.surface, borderColor: c.border },
         ]}
       >
-        <Text style={[styles.cardTitle, { color: c.text }]}>Weekly progress</Text>
-        <View style={styles.bars}>
-          {[62, 78, 54, 88, 70, 40, 28].map((h, i) => (
-            <View key={i} style={styles.barCol}>
-              <View
-                style={[
-                  styles.bar,
-                  { height: h, backgroundColor: c.primary },
-                ]}
-              />
-              <Text style={[styles.barLabel, { color: c.muted }]}>
-                {"MTWTFSS"[i]}
-              </Text>
-            </View>
-          ))}
-        </View>
+        <Text style={[styles.cardTitle, { color: c.text }]}>
+          Weekly progress
+        </Text>
+        {dashboard.graphsQuery.isLoading && weekly.length === 0 ? (
+          <ActivityIndicator color={c.primary} style={{ marginVertical: 24 }} />
+        ) : (
+          <View style={styles.bars}>
+            {(weekly.length
+              ? weekly
+              : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
+                  (day) => ({ day, completed: 0, pending: 0 }),
+                )
+            ).map((row) => {
+              const total = row.completed + row.pending;
+              const h = Math.max(8, Math.round((total / maxBar) * 100));
+              return (
+                <View key={row.day} style={styles.barCol}>
+                  <View
+                    style={[
+                      styles.bar,
+                      { height: h, backgroundColor: c.primary },
+                    ]}
+                  />
+                  <Text style={[styles.barLabel, { color: c.muted }]}>
+                    {row.day[0]}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
       </View>
 
       <Text style={[styles.navHeading, { color: c.text }]}>Go to</Text>
