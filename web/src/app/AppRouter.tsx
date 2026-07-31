@@ -1,6 +1,40 @@
-import { lazy, Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { GuestRoute, OrgAclRoute, ProtectedRoute } from "@/app/guards";
+import {
+  AuthActionsPage,
+  BillingHistoryPage,
+  BillingSuccessPage,
+  CreateOrganisationPage,
+  CustomersPage,
+  EmployeesPage,
+  ForgotPasswordPage,
+  HelpFaqPage,
+  HolidayCalendarsPage,
+  HomePage,
+  JobsPage,
+  LoginPage,
+  NotificationsPage,
+  OrganisationDetailsPage,
+  OrganisationHomePage,
+  OrgInvitationPage,
+  PayrollCalendarsPage,
+  PayoutsPage,
+  PricingPage,
+  PrivacyPage,
+  ProfilePage,
+  ReportsPage,
+  scheduleIdleRoutePrefetch,
+  SettingsPage,
+  SignupPage,
+  SubscriptionPage,
+  SystemLogsPage,
+  TermsPage,
+  TimesheetDetailPage,
+  TimesheetListPage,
+  TimesheetManagementDetailPage,
+  TimesheetManagementListPage,
+} from "@/app/routeModules";
 import { RealtimeProvider } from "@/providers/RealtimeProvider";
 import { WebPushProvider } from "@/providers/WebPushProvider";
 import { AuthLayout } from "@/layouts/AuthLayout";
@@ -8,141 +42,7 @@ import { MainLayout } from "@/layouts/MainLayout";
 import { OrgLayout } from "@/layouts/OrgLayout";
 import { PublicContentLayout } from "@/layouts/PublicContentLayout";
 import { LoadingState } from "@/components/ui/States";
-
-/** Route-level code splitting — auth shell stays eager for fast first paint. */
-const LoginPage = lazy(() =>
-  import("@/features/auth/LoginPage").then((m) => ({ default: m.LoginPage })),
-);
-const SignupPage = lazy(() =>
-  import("@/features/auth/SignupPage").then((m) => ({ default: m.SignupPage })),
-);
-const ForgotPasswordPage = lazy(() =>
-  import("@/features/auth/ForgotPasswordPage").then((m) => ({
-    default: m.ForgotPasswordPage,
-  })),
-);
-const AuthActionsPage = lazy(() =>
-  import("@/features/auth/AuthActionsPage").then((m) => ({
-    default: m.AuthActionsPage,
-  })),
-);
-const OrgInvitationPage = lazy(() =>
-  import("@/features/invitations").then((m) => ({
-    default: m.OrgInvitationPage,
-  })),
-);
-const HomePage = lazy(() =>
-  import("@/features/home/HomePage").then((m) => ({ default: m.HomePage })),
-);
-const OrganisationHomePage = lazy(() =>
-  import("@/features/organisation/OrganisationHomePage").then((m) => ({
-    default: m.OrganisationHomePage,
-  })),
-);
-const CreateOrganisationPage = lazy(() =>
-  import("@/features/organisation/CreateOrganisationPage").then((m) => ({
-    default: m.CreateOrganisationPage,
-  })),
-);
-const TimesheetListPage = lazy(() =>
-  import("@/features/timesheet/TimesheetListPage").then((m) => ({
-    default: m.TimesheetListPage,
-  })),
-);
-const TimesheetDetailPage = lazy(() =>
-  import("@/features/timesheet/TimesheetDetailPage").then((m) => ({
-    default: m.TimesheetDetailPage,
-  })),
-);
-const TimesheetManagementListPage = lazy(() =>
-  import("@/features/timesheet-management/TimesheetManagementListPage").then(
-    (m) => ({ default: m.TimesheetManagementListPage }),
-  ),
-);
-const TimesheetManagementDetailPage = lazy(() =>
-  import("@/features/timesheet-management/TimesheetManagementDetailPage").then(
-    (m) => ({ default: m.TimesheetManagementDetailPage }),
-  ),
-);
-const EmployeesPage = lazy(() =>
-  import("@/features/employees/EmployeesPage").then((m) => ({
-    default: m.EmployeesPage,
-  })),
-);
-const CustomersPage = lazy(() =>
-  import("@/features/customers/CustomersPage").then((m) => ({
-    default: m.CustomersPage,
-  })),
-);
-const JobsPage = lazy(() =>
-  import("@/features/jobs/JobsPage").then((m) => ({ default: m.JobsPage })),
-);
-const SettingsPage = lazy(() =>
-  import("@/features/settings/SettingsPage").then((m) => ({
-    default: m.SettingsPage,
-  })),
-);
-const OrganisationDetailsPage = lazy(() =>
-  import("@/features/settings/OrganisationDetailsPage").then((m) => ({
-    default: m.OrganisationDetailsPage,
-  })),
-);
-const HolidayCalendarsPage = lazy(() =>
-  import("@/features/settings/HolidayCalendarsPage").then((m) => ({
-    default: m.HolidayCalendarsPage,
-  })),
-);
-const PayrollCalendarsPage = lazy(() =>
-  import("@/features/settings/PayrollCalendarsPage").then((m) => ({
-    default: m.PayrollCalendarsPage,
-  })),
-);
-const ProfilePage = lazy(() =>
-  import("@/features/profile/ProfilePage").then((m) => ({
-    default: m.ProfilePage,
-  })),
-);
-const ReportsPage = lazy(() =>
-  import("@/features/reports/ReportsPage").then((m) => ({
-    default: m.ReportsPage,
-  })),
-);
-const PayoutsPage = lazy(() =>
-  import("@/features/payouts/PayoutsPage").then((m) => ({
-    default: m.PayoutsPage,
-  })),
-);
-const SystemLogsPage = lazy(() =>
-  import("@/features/system-logs/SystemLogsPage").then((m) => ({
-    default: m.SystemLogsPage,
-  })),
-);
-const NotificationsPage = lazy(() =>
-  import("@/features/notifications/NotificationsPage").then((m) => ({
-    default: m.NotificationsPage,
-  })),
-);
-const HelpFaqPage = lazy(() =>
-  import("@/features/legal").then((m) => ({ default: m.HelpFaqPage })),
-);
-const PrivacyPage = lazy(() =>
-  import("@/features/legal").then((m) => ({ default: m.PrivacyPage })),
-);
-const TermsPage = lazy(() =>
-  import("@/features/legal").then((m) => ({ default: m.TermsPage })),
-);
-const PricingPage = lazy(() =>
-  import("@/features/billing").then((m) => ({ default: m.PricingPage })),
-);
-const SubscriptionPage = lazy(() =>
-  import("@/features/billing").then((m) => ({ default: m.SubscriptionPage })),
-);
-const BillingHistoryPage = lazy(() =>
-  import("@/features/billing").then((m) => ({ default: m.BillingHistoryPage })),
-);
-const BillingSuccessPage = lazy(() =>
-  import("@/features/billing").then((m) => ({ default: m.BillingSuccessPage })),
-);
+import { useAuthStore } from "@/store/authStore";
 
 function RouteFallback() {
   return (
@@ -152,11 +52,24 @@ function RouteFallback() {
   );
 }
 
+function IdleRoutePrefetch() {
+  const token = useAuthStore((s) => s.token);
+  const hydrated = useAuthStore((s) => s.hydrated);
+
+  useEffect(() => {
+    if (!hydrated || !token) return;
+    scheduleIdleRoutePrefetch();
+  }, [hydrated, token]);
+
+  return null;
+}
+
 export function AppRouter() {
   return (
     <BrowserRouter>
       <RealtimeProvider>
         <WebPushProvider>
+          <IdleRoutePrefetch />
           <Suspense fallback={<RouteFallback />}>
             <Routes>
               <Route element={<AuthLayout />}>

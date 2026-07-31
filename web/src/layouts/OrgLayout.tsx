@@ -16,6 +16,14 @@ import { ErrorState, LoadingState } from "@/components/ui/States";
 import { Button } from "@/components/ui/Button";
 import { useLogout } from "@/hooks/useLogout";
 import {
+  HelpFaqPage,
+  PrivacyPage,
+  ProfilePage,
+  TermsPage,
+  preloadOrgNavKey,
+  scheduleIdleRoutePrefetch,
+} from "@/app/routeModules";
+import {
   Briefcase,
   Building2,
   CalendarDays,
@@ -115,6 +123,12 @@ export function OrgLayout() {
       item.acl.permission as keyof CrudPermission,
     );
   });
+  const navKeys = items.map((item) => item.key).join(",");
+
+  useEffect(() => {
+    if (!organisation || organisation.code !== orgCode) return;
+    scheduleIdleRoutePrefetch(navKeys ? navKeys.split(",") : []);
+  }, [organisation, orgCode, navKeys]);
 
   if (needsSync && bootstrapQuery.isLoading) {
     return (
@@ -217,6 +231,8 @@ export function OrgLayout() {
                 to={to}
                 end={!item.path}
                 title={item.label}
+                onMouseEnter={() => preloadOrgNavKey(item.key)}
+                onFocus={() => preloadOrgNavKey(item.key)}
                 className={({ isActive }) =>
                   clsx(
                     "mt-focus group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition",
@@ -252,6 +268,8 @@ export function OrgLayout() {
           <Link
             to={ROUTES.profile}
             onClick={() => setMobileOpen(false)}
+            onMouseEnter={() => void ProfilePage.preload()}
+            onFocus={() => void ProfilePage.preload()}
             className={clsx(
               "mt-1 block truncate px-3 py-2 text-xs text-white/60 hover:text-white",
               collapsed && "md:hidden",
@@ -263,6 +281,8 @@ export function OrgLayout() {
             to={ROUTES.settingsHelp(orgCode)}
             title="Help & FAQ"
             onClick={() => setMobileOpen(false)}
+            onMouseEnter={() => void HelpFaqPage.preload()}
+            onFocus={() => void HelpFaqPage.preload()}
             className={({ isActive }) =>
               clsx(
                 "mt-focus mt-0.5 flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium transition",
@@ -282,6 +302,8 @@ export function OrgLayout() {
             to={ROUTES.settingsTerms(orgCode)}
             title="Terms & Conditions"
             onClick={() => setMobileOpen(false)}
+            onMouseEnter={() => void TermsPage.preload()}
+            onFocus={() => void TermsPage.preload()}
             className={({ isActive }) =>
               clsx(
                 "mt-focus flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium transition",
@@ -301,6 +323,8 @@ export function OrgLayout() {
             to={ROUTES.settingsPrivacy(orgCode)}
             title="Privacy Policy"
             onClick={() => setMobileOpen(false)}
+            onMouseEnter={() => void PrivacyPage.preload()}
+            onFocus={() => void PrivacyPage.preload()}
             className={({ isActive }) =>
               clsx(
                 "mt-focus flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium transition",

@@ -2,6 +2,7 @@ import { Link, Outlet } from "react-router-dom";
 import { ROUTES } from "@mytask/constants";
 import { displayName } from "@mytask/utils";
 import { LogOut, User } from "lucide-react";
+import { HomePage, ProfilePage } from "@/app/routeModules";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/Button";
 import { OrganisationSwitcher } from "@/components/OrganisationSwitcher";
@@ -16,7 +17,12 @@ export function MainLayout() {
     <div className="min-h-screen bg-page">
       <header className="sticky top-0 z-40 border-b border-border bg-[var(--mt-surface)]/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <Link to={ROUTES.home} className="mt-focus inline-flex items-center gap-2.5">
+          <Link
+            to={ROUTES.home}
+            className="mt-focus inline-flex items-center gap-2.5"
+            onMouseEnter={() => void HomePage.preload()}
+            onFocus={() => void HomePage.preload()}
+          >
             <img
               src="/logo.png"
               alt="myTask"
@@ -31,6 +37,8 @@ export function MainLayout() {
             <ThemeToggle />
             <Link
               to={ROUTES.profile}
+              onMouseEnter={() => void ProfilePage.preload()}
+              onFocus={() => void ProfilePage.preload()}
               className="mt-focus hidden items-center gap-1.5 rounded-xl px-2 py-1.5 text-sm text-[var(--mt-text)] hover:bg-primary-muted sm:inline-flex"
             >
               <User size={16} className="text-primary" />

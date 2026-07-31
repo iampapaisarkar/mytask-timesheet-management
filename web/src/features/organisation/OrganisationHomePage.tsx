@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { lazy, Suspense, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ROUTES, formatMoney } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
@@ -8,20 +8,7 @@ import { useOrganisationStore } from "@/store/organisationStore";
 import { Card, PageHeader } from "@/components/ui/Card";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { getErrorMessage, getOrganisationRoleCode } from "@mytask/utils";
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { preloadOrgNavKey } from "@/app/routeModules";
 import {
   Activity,
   Banknote,
@@ -33,6 +20,12 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
+
+const OrganisationDashboardCharts = lazy(() =>
+  import("./OrganisationDashboardCharts").then((m) => ({
+    default: m.OrganisationDashboardCharts,
+  })),
+);
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "#94A3B8",
@@ -137,6 +130,26 @@ function roleDescription(role?: string | null, source?: string): string {
   return source === "management"
     ? "Management overview of tasks, progress, and payroll"
     : "Overview of your timesheets and activity";
+}
+
+function preloadQuickLink(to: string): void {
+  if (to.includes("/timesheet-management")) {
+    preloadOrgNavKey("timesheetManagement");
+  } else if (to.includes("/timesheet")) {
+    preloadOrgNavKey("timesheet");
+  } else if (to.includes("/payouts")) {
+    preloadOrgNavKey("payouts");
+  } else if (to.includes("/employees")) {
+    preloadOrgNavKey("employees");
+  } else if (to.includes("/reports")) {
+    preloadOrgNavKey("reports");
+  } else if (to.includes("/customers")) {
+    preloadOrgNavKey("customers");
+  } else if (to.includes("/jobs")) {
+    preloadOrgNavKey("jobs");
+  } else if (to.includes("/settings")) {
+    preloadOrgNavKey("settings");
+  }
 }
 
 export function OrganisationHomePage() {
@@ -385,223 +398,26 @@ export function OrganisationHomePage() {
         </div>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <ChartTitle title="Weekly progress" subtitle="Completed vs pending days" />
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={overview.weekly_progress}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--mt-border)" />
-                <XAxis dataKey="day" tick={{ fill: "var(--mt-muted)", fontSize: 12 }} />
-                <YAxis tick={{ fill: "var(--mt-muted)", fontSize: 12 }} />
-                <Tooltip
-                  contentStyle={{
-                    background: "var(--mt-surface)",
-                    border: "1px solid var(--mt-border)",
-                    borderRadius: 12,
-                  }}
-                />
-                <Bar dataKey="completed" fill="#04B6B1" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="pending" fill="#F59E0B" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+      <Suspense
+        fallback={
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card className="h-72 animate-pulse bg-[var(--mt-bg)]">
+              <span className="sr-only">Loading charts…</span>
+            </Card>
+            <Card className="h-72 animate-pulse bg-[var(--mt-bg)]">
+              <span className="sr-only">Loading charts…</span>
+            </Card>
           </div>
-        </Card>
-
-        <Card>
-          <ChartTitle
-            title={canPayout ? "Payroll trend" : "Productivity trend"}
-            subtitle={
-              canPayout
-                ? "Paid amount · last 6 months"
-                : "Approved timesheets · last 6 months"
-            }
-          />
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={
-                  canPayout && (overview.payroll_trend || []).length
-                    ? overview.payroll_trend
-                    : overview.productivity_trend
-                }
-              >
-                <defs>
-                  <linearGradient id="prod" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#04B6B1" stopOpacity={0.4} />
-                    <stop offset="100%" stopColor="#04B6B1" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--mt-border)" />
-                <XAxis dataKey="label" tick={{ fill: "var(--mt-muted)", fontSize: 12 }} />
-                <YAxis tick={{ fill: "var(--mt-muted)", fontSize: 12 }} />
-                <Tooltip
-                  contentStyle={{
-                    background: "var(--mt-surface)",
-                    border: "1px solid var(--mt-border)",
-                    borderRadius: 12,
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#04B6B1"
-                  fill="url(#prod)"
-                  strokeWidth={2}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card>
-          <ChartTitle title="Monthly progress" subtitle="By week (this month)" />
-          <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyChart}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--mt-border)" />
-                <XAxis dataKey="week" tick={{ fill: "var(--mt-muted)", fontSize: 12 }} />
-                <YAxis tick={{ fill: "var(--mt-muted)", fontSize: 12 }} />
-                <Tooltip
-                  contentStyle={{
-                    background: "var(--mt-surface)",
-                    border: "1px solid var(--mt-border)",
-                    borderRadius: 12,
-                  }}
-                />
-                <Bar dataKey="progress" fill="#0F766E" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-
-        <Card>
-          <ChartTitle
-            title="Timesheet status"
-            subtitle={
-              statusDonut.length
-                ? "Count by status (live)"
-                : "No timesheet data yet"
-            }
-          />
-          <div className="h-56">
-            {statusDonut.length ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={statusDonut}
-                    dataKey="value"
-                    nameKey="name"
-                    innerRadius={48}
-                    outerRadius={72}
-                    paddingAngle={3}
-                  >
-                    {statusDonut.map((entry) => (
-                      <Cell key={entry.name} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      background: "var(--mt-surface)",
-                      border: "1px solid var(--mt-border)",
-                      borderRadius: 12,
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-full items-center justify-center text-sm text-muted">
-                No status data to chart
-              </div>
-            )}
-          </div>
-          <div className="mt-2 flex flex-wrap justify-center gap-3 text-xs text-muted">
-            {statusDonut.map((c) => (
-              <span key={c.name} className="inline-flex items-center gap-1.5">
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ background: c.color }}
-                />
-                {c.name} ({c.value})
-              </span>
-            ))}
-          </div>
-        </Card>
-
-        <Card>
-          <ChartTitle
-            title={canPayout ? "Payout status" : "Team activity"}
-            subtitle={canPayout ? "Distribution (live)" : "Timesheet volume"}
-          />
-          <div className="h-56">
-            {canPayout && payoutDonut.length ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={payoutDonut}
-                    dataKey="value"
-                    nameKey="name"
-                    innerRadius={48}
-                    outerRadius={72}
-                    paddingAngle={3}
-                  >
-                    {payoutDonut.map((entry) => (
-                      <Cell key={entry.name} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      background: "var(--mt-surface)",
-                      border: "1px solid var(--mt-border)",
-                      borderRadius: 12,
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={overview.team_activity}
-                  layout="vertical"
-                  margin={{ left: 16 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--mt-border)" />
-                  <XAxis type="number" tick={{ fill: "var(--mt-muted)", fontSize: 12 }} />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    width={80}
-                    tick={{ fill: "var(--mt-muted)", fontSize: 12 }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: "var(--mt-surface)",
-                      border: "1px solid var(--mt-border)",
-                      borderRadius: 12,
-                    }}
-                  />
-                  <Bar dataKey="count" fill="#04B6B1" radius={[0, 6, 6, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-          {canPayout && payoutDonut.length ? (
-            <div className="mt-2 flex flex-wrap justify-center gap-3 text-xs text-muted">
-              {payoutDonut.map((c) => (
-                <span key={c.name} className="inline-flex items-center gap-1.5">
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{ background: c.color }}
-                  />
-                  {c.name} ({c.value})
-                </span>
-              ))}
-            </div>
-          ) : null}
-        </Card>
-      </div>
+        }
+      >
+        <OrganisationDashboardCharts
+          overview={overview}
+          canPayout={canPayout}
+          monthlyChart={monthlyChart}
+          statusDonut={statusDonut}
+          payoutDonut={payoutDonut}
+        />
+      </Suspense>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-1">
@@ -641,6 +457,8 @@ export function OrganisationHomePage() {
               <Link
                 key={item.to}
                 to={item.to}
+                onMouseEnter={() => preloadQuickLink(item.to)}
+                onFocus={() => preloadQuickLink(item.to)}
                 className="mt-focus rounded-xl border border-border bg-[var(--mt-bg)] px-4 py-4 text-sm font-semibold text-[var(--mt-text)] transition hover:border-primary hover:text-primary"
               >
                 {item.label}
