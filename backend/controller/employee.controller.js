@@ -438,6 +438,24 @@ export async function invite(req, res, next) {
     }
 
     const employee = employeeResponse.toJSON();
+    const selfEmployeeId = organisation?.employee?.id ?? null;
+    const employeeIdNum = Number(employee?.details?.id ?? id);
+    const roleCode =
+      employee?.details?.role?.code ||
+      employee?.details?.user?.user_organisations_role?.[0]?.role?.code ||
+      null;
+
+    if (
+      (selfEmployeeId != null && employeeIdNum === Number(selfEmployeeId)) ||
+      roleCode === "owner" ||
+      Number(employee?.details?.user?.id) === Number(user.id)
+    ) {
+      return res.status(400).json({
+        message:
+          "You cannot invite the organisation owner or your own employee profile.",
+      });
+    }
+
     await employeeService.inviteEmployee(
       user,
       orgName,

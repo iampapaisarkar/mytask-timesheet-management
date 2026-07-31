@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- Employee list no longer shows **Invite** on the organisation creator’s self-employee row (`is_you` / owner); invite API also rejects self/owner invites
+
+### Fixed
+
 - **System Logs → External** logs Firebase Auth Admin `verifyIdToken` on real Admin SDK calls (login + request auth cache miss), with organisation attribution — not only FCM
 - **System Logs → External** now receives org-scoped rows: FCM passes organisation/user (or resolves from recipient membership); Firebase Auth Admin + Identity Toolkit password-reset/verification calls are logged via `storeExternalApiCallLog`
 

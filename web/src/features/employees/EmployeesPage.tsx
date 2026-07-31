@@ -22,7 +22,24 @@ function invitationStatusCode(row: Row): string | undefined {
   );
 }
 
+function employeeRoleCode(row: Row): string | undefined {
+  const details = row.details as
+    | { role?: { code?: string }; is_you?: boolean }
+    | undefined;
+  return (
+    details?.role?.code ||
+    (
+      row.role as { code?: string } | undefined
+    )?.code
+  );
+}
+
 function shouldShowInvite(row: Row): boolean {
+  const details = row.details as { is_you?: boolean } | undefined;
+  // Org creator / current user's self employee — already a member, never invite
+  if (details?.is_you) return false;
+  const roleCode = employeeRoleCode(row);
+  if (roleCode === "owner") return false;
   const code = invitationStatusCode(row);
   if (code === "accept") return false;
   return true;
