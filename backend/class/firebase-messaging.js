@@ -8,7 +8,13 @@ import { resolveAuditOrganisation } from "../service/audit/audit-context.service
 
 const { FcmConnections, Notifications, NotificationStatus } = models;
 
-function logFcm(result, { success, error, durationMs, feature, user, organisation }) {
+/** FCM errors that mean the stored device token should be removed. */
+const STALE_TOKEN_CODES = new Set([
+  "messaging/registration-token-not-registered",
+  "messaging/invalid-registration-token",
+]);
+
+function logFcm(result, { success, error, durationMs, feature, user, organisation, friendlyMessage }) {
   void externalApiLogService
     .storeExternalApiCallLog(
       user || null,
@@ -26,6 +32,7 @@ function logFcm(result, { success, error, durationMs, feature, user, organisatio
         error,
         durationMs,
         statusCode: success ? 200 : 500,
+        friendlyMessage: friendlyMessage || null,
       },
     )
     .catch(() => {});
@@ -41,6 +48,92 @@ async function resolveFcmAuditContext(context = {}, userIds = []) {
     organisation = await resolveAuditOrganisation(organisation, seedUserId);
   }
   return { user, organisation };
+}
+
+function fcmErrorCode(response) {
+  return (
+    response?.error?.code ||
+    response?.error?.errorInfo?.code ||
+    null
+  );
+}
+
+/**
+ * Delete stale FCM tokens that Firebase rejected as unregistered/invalid.
+ * Returns how many rows were removed.
+ */
+async function pruneStaleFcmTokens(tokens = [], responses = []) {
+  const stale = [];
+  responses.forEach((response, index) => {
+    if (response?.success) return;
+    const code = fcmErrorCode(response);
+    if (code && STALE_TOKEN_CODES.has(code) && tokens[index]) {
+      stale.push(tokens[index]);
+    }
+  });
+  if (!stale.length) return 0;
+  return FcmConnections.destroy({
+    where: { token: { [Op.in]: [...new Set(stale)] } },
+  });
+}
+
+/**
+ * Multicast is a success when at least one token delivered.
+ * All-stale tokens (after prune) is also not a hard API failure — push path worked,
+ * devices were simply gone.
+ */
+function summarizeMulticastResult(result, prunedCount = 0) {
+  const successCount = Number(result?.successCount) || 0;
+  const failureCount = Number(result?.failureCount) || 0;
+  const success = successCount > 0 || failureCount === 0;
+  let message = null;
+  if (successCount > 0 && failureCount > 0) {
+    message = `Delivered to ${successCount} device(s); ${failureCount} stale/invalid token(s)${
+      prunedCount ? ` (removed ${prunedCount})` : ""
+    }.`;
+  } else if (successCount === 0 && failureCount > 0) {
+    message = `No devices delivered; ${failureCount} stale/invalid token(s)${
+      prunedCount ? " removed" : ""
+    }.`;
+  }
+  return {
+    success,
+    // Only mark System Logs as failed when Firebase rejected the request entirely
+    // or every token failed for a non-stale reason with zero deliveries.
+    logSuccess: success || prunedCount === failureCount,
+    errorMessage: message,
+  };
+}
+
+async function handleMulticastResult(result, tokens, startedAt, feature, audit) {
+  const prunedCount = await pruneStaleFcmTokens(tokens, result?.responses || []);
+  const summary = summarizeMulticastResult(result, prunedCount);
+  if (result?.failureCount > 0) {
+    for (const r of result.responses || []) {
+      if (r.error) {
+        console.error("FCM notification error:", r.error.code, r.error.message);
+      }
+    }
+  }
+  logFcm(result, {
+    success: summary.logSuccess,
+    durationMs: Date.now() - startedAt,
+    feature,
+    friendlyMessage: summary.errorMessage
+      ? summary.errorMessage
+      : summary.logSuccess
+        ? "Firebase Cloud Messaging delivered successfully."
+        : null,
+    error: summary.logSuccess
+      ? null
+      : {
+          message:
+            summary.errorMessage ||
+            `${result?.failureCount || 0} FCM token(s) failed`,
+        },
+    ...audit,
+  });
+  return summary;
 }
 
 export const FirebaseMessaging = {
@@ -88,14 +181,9 @@ export const FirebaseMessaging = {
       admin
         .messaging()
         .sendEachForMulticast(payload)
-        .then((result) => {
-          logFcm(result, {
-            success: true,
-            durationMs: Date.now() - startedAt,
-            feature: "Push Data Message",
-            ...audit,
-          });
-        })
+        .then((result) =>
+          handleMulticastResult(result, tokens, startedAt, "Push Data Message", audit),
+        )
         .catch((err) => {
           console.error("FCM data message error:", err.message);
           logFcm(null, {
@@ -207,29 +295,15 @@ export const FirebaseMessaging = {
         admin
           .messaging()
           .sendEachForMulticast(payload)
-          .then((result) => {
-            const ok = !result.failureCount;
-            if (result.failureCount > 0) {
-              for (const r of result.responses) {
-                if (r.error) {
-                  console.error(
-                    "FCM notification error:",
-                    r.error.code,
-                    r.error.message,
-                  );
-                }
-              }
-            }
-            logFcm(result, {
-              success: ok,
-              durationMs: Date.now() - startedAt,
-              feature: "Send Notification",
-              error: ok
-                ? null
-                : { message: `${result.failureCount} FCM token(s) failed` },
-              ...recipientAudit,
-            });
-          })
+          .then((result) =>
+            handleMulticastResult(
+              result,
+              tokens,
+              startedAt,
+              "Send Notification",
+              recipientAudit,
+            ),
+          )
           .catch((err) => {
             console.error("FCM notification error:", err.message);
             logFcm(null, {

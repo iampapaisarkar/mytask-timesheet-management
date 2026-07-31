@@ -70,6 +70,7 @@ async function storeExternalApiCallLog(
         options.technicalMessage ||
         summarizeError(options.error) ||
         (success ? null : summarizeError(response)),
+      friendly_message: options.friendlyMessage || null,
       request_id: requestId,
       correlation_id: correlationId,
       request_meta: {

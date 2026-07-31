@@ -9,6 +9,7 @@
 ### Fixed
 
 - Notifications list API `pagination.total_rows` now reflects the full count (was incorrectly the current page length)
+- FCM System Logs: partial multicast success (some stale `NotRegistered` tokens) is no longer logged as a hard failure; invalid tokens are pruned from `fcm_connections`
 
 ### Changed
 
