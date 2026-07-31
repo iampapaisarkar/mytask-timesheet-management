@@ -770,6 +770,10 @@ async function sendEmailAndNotification(user, organisation, timesheet, type) {
       sendToNotificationUserIds.push(employee?.details?.user?.id);
     } else if (type === "reject") {
       subject = `Timesheet Rejected (${timesheet.code}) - ${organisation.name}`;
+      const rejectReason = String(timesheet.reject_reason || "").trim();
+      bodyMessage = rejectReason
+        ? `Timesheet ${timesheet.code} has been rejected. Reason: ${rejectReason}`
+        : `Timesheet ${timesheet.code} has been rejected.`;
       timesheetURLEmail = `${process.env.CLIENT_URL}/org/${organisation.code}/timesheet/${timesheet.id}/details?tab=rejected`;
       timesheetURLAppNotification = `/org/${organisation.code}/timesheet/${timesheet.id}/details?tab=rejected`;
 
@@ -815,7 +819,12 @@ async function sendEmailAndNotification(user, organisation, timesheet, type) {
       },
       reject: {
         subject: `Timesheet Rejected (${timesheet.code}) - ${organisation.name}`,
-        body: `A timesheet has been rejected.`,
+        body: (() => {
+          const rejectReason = String(timesheet.reject_reason || "").trim();
+          return rejectReason
+            ? `A timesheet has been rejected. Reason: ${rejectReason}`
+            : `A timesheet has been rejected.`;
+        })(),
         email_url: `${process.env.CLIENT_URL}/org/${organisation.code}/timesheet-management/${timesheet.id}/details?tab=rejected`,
         app_url: `/org/${organisation.code}/timesheet-management/${timesheet.id}/details?tab=rejected`,
       },

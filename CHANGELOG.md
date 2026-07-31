@@ -2,6 +2,10 @@
 
 ## 2026-07-31
 
+### Fixed
+
+- Reject timesheet email/push body was empty because `bodyMessage` was never set for the `reject` notification type; it now includes the rejection reason when present.
+
 ### Changed
 
 - Timesheet status transitions (**submit / approve / reject / revert**) require non-empty **remarks**; Cancel on the remarks dialog never calls the status API. Web management detail no longer shows an always-editable Actions remarks field when no action is available — existing approval/reject remarks render as read-only text.
