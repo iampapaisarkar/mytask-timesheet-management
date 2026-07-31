@@ -10,6 +10,7 @@ const {
   TimesheetDayTasks,
   TimesheetStatus,
   Jobs,
+  Customers,
   Employees,
   EmployeeWages,
   Users,
@@ -67,9 +68,17 @@ export async function loadApprovedTimesheetForReport({
       {
         model: Jobs,
         as: "jobs",
-        attributes: ["id", "name"],
+        attributes: ["id", "name", "customer_id"],
         through: { attributes: [] },
         required: false,
+        include: [
+          {
+            model: Customers,
+            as: "customer",
+            attributes: ["id", "name", "contact_email"],
+            required: false,
+          },
+        ],
       },
       {
         model: TimesheetDays,
@@ -264,6 +273,11 @@ export async function buildApprovedTimesheetReport({
     generated_at: moment().toISOString(),
     type: "approved_timesheet",
     currency,
+    organisation: {
+      id: organisation.id,
+      name: organisation.name,
+      code: organisation.code,
+    },
     employee: {
       employee_id: Number(employeeId),
       name: employeeName,
@@ -274,13 +288,25 @@ export async function buildApprovedTimesheetReport({
       timesheet_id: plain.id,
       code: plain.code,
       status: plain.status || null,
+      approval_reason: plain.approval_reason || null,
+      reject_reason: plain.reject_reason || null,
       period: plain.period_range || {
         start: plain.period_start_date,
         end: plain.period_end_date,
       },
       period_start_date: plain.period_start_date,
       period_end_date: plain.period_end_date,
-      jobs: (plain.jobs || []).map((j) => ({ id: j.id, name: j.name })),
+      jobs: (plain.jobs || []).map((j) => ({
+        id: j.id,
+        name: j.name,
+        customer: j.customer
+          ? {
+              id: j.customer.id,
+              name: j.customer.name,
+              email: j.customer.contact_email || null,
+            }
+          : null,
+      })),
     },
     days: dayRows,
     totals,

@@ -13,6 +13,7 @@ import {
 import {
   writeReportPdf,
   reportPdfStoragePath,
+  REPORT_PDF_VERSION,
 } from "./report-pdf.service.js";
 import { enqueueGenerateReport } from "../queue-jobs/generate-report.job.js";
 import { enqueueSendNotification } from "../queue-jobs/send-notification.job.js";
@@ -261,11 +262,12 @@ export async function getReportResult({ organisation, user, id }) {
   return withCorrectedCurrency(parseResult(row), organisation.id);
 }
 
-async function ensureReportPdf(request, payload, { force = false } = {}) {
+async function ensureReportPdf(request, payload, { force = false, meta = {} } = {}) {
   if (
     !force &&
     request.artifact_path &&
-    fs.existsSync(request.artifact_path)
+    fs.existsSync(request.artifact_path) &&
+    String(request.artifact_path).includes(`-${REPORT_PDF_VERSION}.pdf`)
   ) {
     return request.artifact_path;
   }
@@ -273,10 +275,14 @@ async function ensureReportPdf(request, payload, { force = false } = {}) {
     request.organisation_id,
     request.id,
   );
+  const pdfMeta = Object.keys(meta).length
+    ? meta
+    : await resolveReportPdfMeta(request);
   await writeReportPdf({
     report: payload,
     outputPath,
     title: request.name || "Timesheet Pay Report",
+    meta: pdfMeta,
   });
   await request.update({
     artifact_path: outputPath,
@@ -284,6 +290,30 @@ async function ensureReportPdf(request, payload, { force = false } = {}) {
     updated_at: moment().utc().format(),
   });
   return outputPath;
+}
+
+async function resolveReportPdfMeta(request) {
+  const [organisation, requester] = await Promise.all([
+    Organisations.findByPk(request.organisation_id, {
+      attributes: ["id", "name", "code"],
+    }),
+    Users.findByPk(request.requested_by, {
+      attributes: ["id", "first_name", "last_name", "middle_name", "email"],
+    }),
+  ]);
+  const userPlain = requester?.toJSON ? requester.toJSON() : requester;
+  const generatedBy =
+    userPlain?.full_name ||
+    [userPlain?.first_name, userPlain?.last_name].filter(Boolean).join(" ") ||
+    userPlain?.email ||
+    "System";
+  return {
+    organisationName: organisation?.name || null,
+    organisationCode: organisation?.code || null,
+    generatedBy,
+    generatedByEmail: userPlain?.email || null,
+    generatedAt: moment().toISOString(),
+  };
 }
 
 /**
@@ -450,19 +480,38 @@ export async function emailReportPdf({
 
   const title = pdf.request?.name || "Timesheet Pay Report";
   const result = pdf.request?.result || null;
-  const summaryHtml = buildReportEmailSummary(result);
+  const generatedBy =
+    [user.first_name, user.last_name].filter(Boolean).join(" ") ||
+    user.full_name ||
+    user.email ||
+    "User";
+  const emailBody = buildReportEmailBody({
+    result,
+    title,
+    generatedBy,
+    generatedAt: result?.generated_at || new Date().toISOString(),
+  });
+  const periodLabel = formatReportPeriod(result);
+  const subject = periodLabel
+    ? `Timesheet Report - ${periodLabel}`
+    : `Timesheet Report - ${title}`;
+  const clientBase = String(process.env.CLIENT_URL || "").replace(/\/$/, "");
+  const buttonUrl = clientBase
+    ? `${clientBase}/org/${organisation.code}/reports?request=${id}`
+    : `/org/${organisation.code}/reports?request=${id}`;
 
   await enqueueSendEmail({
     user,
     organisation,
     userEmails: [to],
     message: {
-      subject: `Report: ${title}`,
-      template: "timesheet.html",
+      subject,
+      template: "report.html",
+      feature: "Reports",
       variables: {
-        title: "Timesheet report",
-        message: `${summaryHtml}<br/><br/>A PDF copy of this report is attached.`,
-        button_url: `/org/${organisation.code}/reports?request=${id}`,
+        title: "Timesheet report ready",
+        message: emailBody,
+        button_url: buttonUrl,
         button_label: "Open in myTask",
       },
       attachments: [
@@ -479,19 +528,54 @@ export async function emailReportPdf({
   return { emailed_to: to };
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function formatReportPeriod(result) {
+  if (!result?.timesheet) return "";
+  const start = result.timesheet.period_start_date;
+  const end = result.timesheet.period_end_date;
+  if (!start || !end) return "";
+  const startM = moment(start);
+  const endM = moment(end);
+  if (!startM.isValid() || !endM.isValid()) return `${start} - ${end}`;
+  if (startM.isSame(endM, "month")) {
+    return startM.format("MMMM YYYY");
+  }
+  return `${startM.format("DD MMM YYYY")} - ${endM.format("DD MMM YYYY")}`;
+}
+
+function formatReportPeriodRange(result) {
+  if (!result?.timesheet) return "—";
+  const start = result.timesheet.period_start_date;
+  const end = result.timesheet.period_end_date;
+  if (!start || !end) return "—";
+  const startM = moment(start);
+  const endM = moment(end);
+  if (!startM.isValid() || !endM.isValid()) return `${start} - ${end}`;
+  return `${startM.format("DD MMM YYYY")} - ${endM.format("DD MMM YYYY")}`;
+}
+
 function moneyLabel(amount, currency) {
   const num = Number(amount);
   if (Number.isNaN(num)) return "—";
   const code = String(currency || "AUD").toUpperCase();
   const prefix =
     code === "INR"
-      ? "₹INR"
+      ? "₹"
       : code === "GBP"
-        ? "£GBP"
+        ? "£"
         : code === "EUR"
-          ? "€EUR"
-          : `$${code}`;
-  return `${prefix} ${num.toFixed(2)}`;
+          ? "€"
+          : code === "AUD"
+            ? "A$"
+            : `$${code} `;
+  return `${prefix}${num.toFixed(2)}`;
 }
 
 function hoursLabel(hours) {
@@ -503,34 +587,41 @@ function hoursLabel(hours) {
   return `${text}h`;
 }
 
-function buildReportEmailSummary(result) {
-  if (!result) {
-    return "Your timesheet pay report is ready. See the attached PDF for full details.";
-  }
-  const currency = result.currency || result.pay_cycle?.currency || "AUD";
-  const emp = result.employee?.name || "Employee";
-  const period = result.timesheet
-    ? `${result.timesheet.period_start_date || "?"} → ${result.timesheet.period_end_date || "?"}`
-    : "—";
-  const days = Array.isArray(result.days) ? result.days : [];
-  const rows = days
-    .map(
-      (d) =>
-        `<tr><td style="padding:4px 8px;">${String(d.date || "").slice(0, 10)}</td><td style="padding:4px 8px;">${hoursLabel(d.working_hours)}</td><td style="padding:4px 8px;">${moneyLabel(d.amount, currency)}</td></tr>`,
-    )
-    .join("");
+function buildReportEmailBody({ result, title, generatedBy, generatedAt }) {
+  const reportName = title || "Monthly Timesheet Report";
+  const period = formatReportPeriodRange(result);
+  const when = moment(generatedAt).isValid()
+    ? moment(generatedAt).format("DD MMM YYYY, HH:mm")
+    : String(generatedAt || "—");
+  const emp = result?.employee?.name || "—";
+  const currency = result?.currency || result?.pay_cycle?.currency || "AUD";
+  const totals = result?.totals || {};
+  const pay = result?.pay_cycle || {};
+  const jobs = (result?.timesheet?.jobs || [])
+    .map((j) => j.name)
+    .filter(Boolean)
+    .join(", ");
 
   return `
-    <p><strong>${emp}</strong></p>
-    <p>Pay period: ${period}</p>
-    <p>Working: ${hoursLabel(result.totals?.working_hours)} · Break: ${hoursLabel(result.totals?.break_hours)} · Travel: ${hoursLabel(result.totals?.travel_hours)}</p>
-    <p>Pay cycle total: <strong>${moneyLabel(result.pay_cycle?.total_amount ?? result.totals?.amount, currency)}</strong> · ${result.pay_cycle?.paid_label || "Not paid"}</p>
-    ${
-      rows
-        ? `<table style="border-collapse:collapse;margin-top:8px;"><thead><tr><th align="left" style="padding:4px 8px;">Day</th><th align="left" style="padding:4px 8px;">Work</th><th align="left" style="padding:4px 8px;">Amount</th></tr></thead><tbody>${rows}</tbody></table>`
-        : ""
-    }
-  `;
+    <div style="margin:0 0 12px 0;">Hello,</div>
+    <div style="margin:0 0 14px 0;">
+      Please find the attached report generated from the Timesheet Management System.
+    </div>
+    <div style="margin:0 0 8px 0;font-weight:700;color:#0F172A;">Report Details:</div>
+    <div style="margin:0 0 4px 0;">• Report Name: ${escapeHtml(reportName)}</div>
+    <div style="margin:0 0 4px 0;">• Report Period: ${escapeHtml(period)}</div>
+    <div style="margin:0 0 4px 0;">• Employee: ${escapeHtml(emp)}</div>
+    ${jobs ? `<div style="margin:0 0 4px 0;">• Jobs: ${escapeHtml(jobs)}</div>` : ""}
+    <div style="margin:0 0 4px 0;">• Working hours: ${escapeHtml(hoursLabel(totals.working_hours))}</div>
+    <div style="margin:0 0 4px 0;">• Pay total: ${escapeHtml(moneyLabel(pay.total_amount ?? totals.amount, currency))} (${escapeHtml(pay.paid_label || "Not paid")})</div>
+    <div style="margin:0 0 4px 0;">• Generated By: ${escapeHtml(generatedBy)}</div>
+    <div style="margin:0 0 14px 0;">• Generated On: ${escapeHtml(when)}</div>
+    <div style="margin:0 0 14px 0;">
+      This report contains employee timesheets, work hours, approval status, customer and job information, along with summary statistics.
+    </div>
+    <div style="margin:0 0 14px 0;">Please review the attached PDF.</div>
+    <div style="margin:0;">Regards,<br/>Timesheet Management System</div>
+  `.trim();
 }
 
 async function notifyReportReady(request) {
