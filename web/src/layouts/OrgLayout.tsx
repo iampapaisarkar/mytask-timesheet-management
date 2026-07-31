@@ -30,6 +30,7 @@ import {
   Settings,
   ScrollText,
   FileText,
+  Shield,
   Users,
   Wallet,
   X,
@@ -294,6 +295,25 @@ export function OrgLayout() {
             <FileText size={16} className="shrink-0" />
             <span className={clsx("truncate", collapsed && "md:hidden")}>
               Terms & Conditions
+            </span>
+          </NavLink>
+          <NavLink
+            to={ROUTES.settingsPrivacy(orgCode)}
+            title="Privacy Policy"
+            onClick={() => setMobileOpen(false)}
+            className={({ isActive }) =>
+              clsx(
+                "mt-focus flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium transition",
+                collapsed && "md:justify-center md:px-2",
+                isActive
+                  ? "bg-white/15 text-white"
+                  : "text-white/60 hover:bg-white/10 hover:text-white",
+              )
+            }
+          >
+            <Shield size={16} className="shrink-0" />
+            <span className={clsx("truncate", collapsed && "md:hidden")}>
+              Privacy Policy
             </span>
           </NavLink>
         </div>

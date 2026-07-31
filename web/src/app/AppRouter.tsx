@@ -340,6 +340,7 @@ export function AppRouter() {
                   </Route>
                   <Route path="settings/help" element={<HelpFaqPage />} />
                   <Route path="settings/terms" element={<TermsPage />} />
+                  <Route path="settings/privacy" element={<PrivacyPage />} />
 
                   <Route
                     element={

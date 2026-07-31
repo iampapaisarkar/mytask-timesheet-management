@@ -53,6 +53,7 @@ export const ROUTES = {
     `/org/${orgCode}/settings/payroll-calendars`,
   settingsHelp: (orgCode: string) => `/org/${orgCode}/settings/help`,
   settingsTerms: (orgCode: string) => `/org/${orgCode}/settings/terms`,
+  settingsPrivacy: (orgCode: string) => `/org/${orgCode}/settings/privacy`,
   employees: (orgCode: string) => `/org/${orgCode}/employees`,
   customers: (orgCode: string) => `/org/${orgCode}/customers`,
   jobs: (orgCode: string) => `/org/${orgCode}/jobs`,
