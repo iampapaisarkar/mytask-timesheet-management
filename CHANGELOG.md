@@ -2,6 +2,10 @@
 
 ## 2026-07-31
 
+### Changed
+
+- **Subscription expiry / payment failure:** daily cron + 6h Stripe sync; payment failure and unpaid/canceled immediately move the user to **Free** (Pro features disabled). Billing lifecycle emails always send (even on Free) with the end reason. Subscription UI shows `end_reason_message` + Resubscribe CTA.
+
 ### Added
 
 - **Stripe subscription system (Test Mode ready):** user-owned Free/Pro plans, Checkout + Customer Portal, signed webhooks, billing history, usage counters, plan-limit middleware on org/employee/customer/job/timesheet/report/system-logs, BullMQ subscription worker (expiry reminders, webhook cleanup), web Pricing/Subscription/Billing pages, mobile Pricing/Subscription/Billing screens. See `docs/STRIPE_SUBSCRIPTIONS.md`.

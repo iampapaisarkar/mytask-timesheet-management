@@ -33,7 +33,7 @@
 | Enterprise API architecture | ✅ Done | 2026-07-31 | Split dashboard APIs; middleware suite; parallel RQ; lazy web routes; layered dashboard service |
 | Enterprise System Logs & Audit | ✅ Done | 2026-07-31 | Internal/external/email audit tables; async queue; middleware; System Logs UI; retention |
 | Server-side list pagination (10/page) | ✅ Done | 2026-07-31 | All org tables (employees, customers, jobs, timesheets, payouts, calendars, system logs) use page size 10 + Previous/Next |
-| Stripe subscription system | ✅ Done | 2026-07-31 | Free/Pro; Checkout; webhooks; usage limits; web+mobile billing UI; `docs/STRIPE_SUBSCRIPTIONS.md` |
+| Stripe subscription system | ✅ Done | 2026-07-31 | Free/Pro; Checkout; webhooks; usage limits; daily expiry cron + 6h Stripe sync; payment-fail → Free + reason emails; web+mobile billing UI; `docs/STRIPE_SUBSCRIPTIONS.md` |
 
 ## Vue ↔ Web ↔ Mobile gap matrix
 

@@ -164,6 +164,30 @@ export function SubscriptionScreen() {
         </View>
       ) : null}
 
+      {!data.is_pro && data.end_reason_message ? (
+        <View
+          style={[
+            styles.card,
+            { backgroundColor: "#FEE2E2", borderColor: "#EF4444" },
+          ]}
+        >
+          <Text style={{ color: "#991B1B", fontWeight: "700" }}>
+            {data.end_reason === "payment_failed" || data.end_reason === "unpaid"
+              ? "Pro disabled — payment issue"
+              : "Moved to Free plan"}
+          </Text>
+          <Text style={{ color: "#991B1B", marginTop: 6, lineHeight: 20 }}>
+            {data.end_reason_message}
+          </Text>
+          <TouchableOpacity
+            style={[styles.btn, { backgroundColor: c.primary, marginTop: 12 }]}
+            onPress={() => navigation.navigate("Pricing")}
+          >
+            <Text style={styles.btnText}>Resubscribe to Pro</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
       <View
         style={[
           styles.card,

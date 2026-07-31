@@ -107,6 +107,22 @@ export function SubscriptionPage() {
         </Card>
       ) : null}
 
+      {!data.is_pro && data.end_reason_message ? (
+        <Card className="border-negative/40 bg-negative/5">
+          <h3 className="font-semibold text-[var(--mt-text)]">
+            {data.end_reason === "payment_failed" || data.end_reason === "unpaid"
+              ? "Pro disabled — payment issue"
+              : "Moved to Free plan"}
+          </h3>
+          <p className="mt-1 text-sm text-muted">{data.end_reason_message}</p>
+          <div className="mt-3">
+            <Link to={ROUTES.pricing}>
+              <Button>Resubscribe to Pro</Button>
+            </Link>
+          </div>
+        </Card>
+      ) : null}
+
       <Card className="flex flex-col gap-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>

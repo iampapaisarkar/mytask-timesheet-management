@@ -24,10 +24,10 @@ export const BILLING_INTERVALS = Object.freeze({
   NONE: "none",
 });
 
+/** Statuses that grant Pro feature access. past_due / unpaid do NOT. */
 export const ACTIVE_SUBSCRIPTION_STATUSES = Object.freeze([
   "active",
   "trialing",
-  "past_due",
 ]);
 
 export const SUBSCRIPTION_NOTIFICATION_TYPES = Object.freeze({
@@ -41,6 +41,39 @@ export const SUBSCRIPTION_NOTIFICATION_TYPES = Object.freeze({
   PLAN_RENEWED: "plan_renewed",
   PLAN_CANCELLED: "plan_cancelled",
 });
+
+/** Machine reasons stored on subscription.metadata.end_reason after downgrade. */
+export const SUBSCRIPTION_END_REASONS = Object.freeze({
+  PERIOD_ENDED: "period_ended",
+  SUBSCRIPTION_DELETED: "subscription_deleted",
+  PAYMENT_FAILED: "payment_failed",
+  CANCELLED_IMMEDIATE: "cancelled_immediate",
+  UNPAID: "unpaid",
+  EXPIRED: "expired",
+});
+
+export const SUBSCRIPTION_END_REASON_MESSAGES = Object.freeze({
+  period_ended:
+    "Your Pro billing period ended. You are now on the Free plan. Your data is preserved.",
+  subscription_deleted:
+    "Your Pro subscription ended in Stripe. You are now on the Free plan. Your data is preserved.",
+  payment_failed:
+    "Payment failed, so Pro features were disabled and you were moved to Free. Update your payment method and resubscribe to restore Pro.",
+  cancelled_immediate:
+    "You cancelled Pro. You are now on the Free plan. Your data is preserved.",
+  unpaid:
+    "An invoice went unpaid, so you were moved to Free. Update billing and resubscribe to restore Pro.",
+  expired:
+    "Your Pro subscription expired. You are now on the Free plan. Your data is preserved.",
+});
+
+export function endReasonMessage(reason) {
+  if (!reason) return null;
+  return (
+    SUBSCRIPTION_END_REASON_MESSAGES[reason] ||
+    `Your Pro subscription ended (${String(reason).replace(/_/g, " ")}). You are now on Free.`
+  );
+}
 
 export function getStripeConfig() {
   return {

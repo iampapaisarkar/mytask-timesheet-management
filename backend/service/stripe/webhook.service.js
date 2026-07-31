@@ -183,6 +183,9 @@ async function processStripeEvent(event) {
           type: SUBSCRIPTION_NOTIFICATION_TYPES.EXPIRED,
           title: "Subscription ended",
           body: "Your Pro subscription has ended. You are now on the Free plan. Your data is preserved.",
+          forceEmail: true,
+          metadata: { reason: "subscription_deleted" },
+          immediate: true,
         });
       }
       break;
@@ -246,19 +249,20 @@ async function processStripeEvent(event) {
         status: "failed",
         failureMessage: obj.last_finalization_error?.message || "Payment failed",
       });
-      if (sub) {
-        await sub.update({
-          payment_status: "failed",
-          status: "past_due",
-          updated_at: nowUtc(),
-        });
-      }
+      // Immediately revoke Pro features and move to Free
+      await billingService.downgradeToFree(userId, "payment_failed");
       await enqueueSubscriptionNotify({
         userId,
         subscriptionId: sub?.id,
         type: SUBSCRIPTION_NOTIFICATION_TYPES.PAYMENT_FAILED,
-        title: "Payment failed",
-        body: "We could not process your subscription payment. Please update your payment method.",
+        title: "Payment failed — moved to Free",
+        body: "We could not process your subscription payment. Pro features are disabled and you are on the Free plan. Update your payment method and resubscribe to restore Pro. Your data is preserved.",
+        forceEmail: true,
+        metadata: {
+          reason: "payment_failed",
+          stripe_invoice_id: obj.id || null,
+        },
+        immediate: true,
       });
       break;
     }

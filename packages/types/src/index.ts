@@ -369,6 +369,10 @@ export type SubscriptionView = {
   currency?: string;
   price_label?: string;
   is_pro: boolean;
+  /** Why the user was moved off Pro (payment_failed, period_ended, …). */
+  end_reason?: string | null;
+  /** Human-readable explanation shown in billing UI. */
+  end_reason_message?: string | null;
   plan: PlanSummary;
   usage?: {
     plan_code: string;

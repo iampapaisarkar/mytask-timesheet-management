@@ -5,8 +5,10 @@ import { getStripe } from "./stripe.client.js";
 import {
   assertStripeConfigured,
   BILLING_INTERVALS,
+  endReasonMessage,
   getStripeConfig,
   PLAN_CODES,
+  SUBSCRIPTION_END_REASONS,
 } from "../../config/subscription.config.js";
 import subscriptionService from "../subscription/subscription.service.js";
 import { enqueueSubscriptionNotify } from "../../queue-jobs/subscription-notify.job.js";
@@ -264,10 +266,15 @@ export async function syncCurrentUserFromStripe(user) {
     limit: 10,
   });
   const active = list.data.find((s) =>
-    ["active", "trialing", "past_due"].includes(s.status),
+    ["active", "trialing"].includes(s.status),
+  );
+  const problematic = list.data.find((s) =>
+    ["past_due", "unpaid", "canceled", "incomplete_expired"].includes(s.status),
   );
   if (active) {
     await syncSubscriptionFromStripe(active);
+  } else if (problematic) {
+    await syncSubscriptionFromStripe(problematic);
   } else {
     await subscriptionService.ensureFreeSubscription(user.id);
   }
@@ -330,14 +337,25 @@ export async function cancelSubscription(user, { immediate = false } = {}) {
       : "Subscription set to cancel at period end",
   });
 
+  if (immediate) {
+    await downgradeToFree(user.id, SUBSCRIPTION_END_REASONS.CANCELLED_IMMEDIATE);
+  }
+
   await enqueueSubscriptionNotify({
     userId: user.id,
     subscriptionId: ctx.subscription.id,
     type: "plan_cancelled",
-    title: "Subscription cancelled",
+    title: immediate ? "Subscription cancelled" : "Cancellation scheduled",
     body: immediate
-      ? "Your Pro subscription has been cancelled."
-      : "Your Pro subscription will end at the current billing period.",
+      ? endReasonMessage(SUBSCRIPTION_END_REASONS.CANCELLED_IMMEDIATE)
+      : "Your Pro subscription will end at the current billing period. You keep Pro until then.",
+    forceEmail: true,
+    metadata: {
+      reason: immediate
+        ? SUBSCRIPTION_END_REASONS.CANCELLED_IMMEDIATE
+        : "cancel_at_period_end",
+    },
+    immediate: true,
   });
 
   return subscriptionService.serializeSubscriptionForApi(user.id);
@@ -741,9 +759,7 @@ async function syncSubscriptionForUser(userId, stripeSubscription) {
     });
   }
 
-  const isActive = ["active", "trialing", "past_due"].includes(
-    stripeSubscription.status,
-  );
+  const isActive = ["active", "trialing"].includes(stripeSubscription.status);
   await subscriptionService.syncSystemLogsAccess(
     userId,
     isActive ? PLAN_CODES.PRO : PLAN_CODES.FREE,
@@ -768,43 +784,103 @@ async function syncSubscriptionForUser(userId, stripeSubscription) {
     });
   }
 
-  // When cancelled/expired, restore Free
-  if (
-    ["canceled", "unpaid", "incomplete_expired", "paused"].includes(
+  // Payment failure / unpaid / canceled → Free limits immediately
+  if (stripeSubscription.status === "past_due") {
+    await downgradeToFree(userId, SUBSCRIPTION_END_REASONS.PAYMENT_FAILED);
+  } else if (stripeSubscription.status === "unpaid") {
+    await downgradeToFree(userId, SUBSCRIPTION_END_REASONS.UNPAID);
+  } else if (
+    ["canceled", "incomplete_expired", "paused"].includes(
       stripeSubscription.status,
-    ) ||
-    (stripeSubscription.status === "canceled" && stripeSubscription.ended_at)
+    )
   ) {
-    await subscriptionService.ensureFreeSubscription(userId);
-    await subscriptionService.syncSystemLogsAccess(userId, PLAN_CODES.FREE, false);
+    await downgradeToFree(
+      userId,
+      stripeSubscription.cancel_at_period_end
+        ? SUBSCRIPTION_END_REASONS.PERIOD_ENDED
+        : SUBSCRIPTION_END_REASONS.SUBSCRIPTION_DELETED,
+    );
   }
 
   return local;
 }
 
 export async function downgradeToFree(userId, reason = "expired") {
-  const ctx = await subscriptionService.getUserPlanContext(userId);
-  if (ctx.planCode === PLAN_CODES.FREE) return ctx.subscription;
-
-  await ctx.subscription.update({
-    status: "expired",
-    ended_at: nowUtc(),
-    updated_at: nowUtc(),
+  const freePlan = await subscriptionService.getPlanByCode(PLAN_CODES.FREE);
+  const proRow = await Subscriptions.findOne({
+    where: {
+      user_id: userId,
+      deleted_at: null,
+      plan_id: { [Op.ne]: freePlan.id },
+      status: {
+        [Op.in]: [
+          "active",
+          "trialing",
+          "past_due",
+          "unpaid",
+          "canceled",
+          "incomplete",
+          "paused",
+        ],
+      },
+    },
+    include: [{ model: Plans, as: "plan", required: false }],
+    order: [["id", "DESC"]],
   });
 
-  await subscriptionService.recordSubscriptionHistory({
-    subscriptionId: ctx.subscription.id,
-    userId,
-    fromPlanId: ctx.plan.id,
-    toPlanId: null,
-    eventType: reason,
-    previousStatus: ctx.subscription.status,
-    newStatus: "expired",
-    notes: `Downgraded to Free (${reason}). Data preserved; Free limits enforced.`,
-  });
+  if (proRow) {
+    const previousStatus = proRow.status;
+    await proRow.update({
+      status: "expired",
+      ended_at: nowUtc(),
+      payment_status:
+        reason === SUBSCRIPTION_END_REASONS.PAYMENT_FAILED ||
+        reason === SUBSCRIPTION_END_REASONS.UNPAID
+          ? "failed"
+          : proRow.payment_status,
+      metadata: {
+        ...(proRow.metadata || {}),
+        end_reason: reason,
+        end_reason_message: endReasonMessage(reason),
+      },
+      updated_at: nowUtc(),
+    });
+
+    await subscriptionService.recordSubscriptionHistory({
+      subscriptionId: proRow.id,
+      userId,
+      fromPlanId: proRow.plan_id,
+      toPlanId: freePlan.id,
+      eventType: reason,
+      previousStatus,
+      newStatus: "expired",
+      notes: `Downgraded to Free (${reason}). Data preserved; Free limits enforced.`,
+    });
+  }
 
   await subscriptionService.syncSystemLogsAccess(userId, PLAN_CODES.FREE, false);
-  return subscriptionService.ensureFreeSubscription(userId);
+  const freeSub = await subscriptionService.ensureFreeSubscription(userId);
+  const reasonMeta = {
+    end_reason: reason,
+    end_reason_message: endReasonMessage(reason),
+    previous_plan: PLAN_CODES.PRO,
+    downgraded_at: nowUtc(),
+  };
+  if (freeSub?.id) {
+    await Subscriptions.update(
+      {
+        metadata: {
+          ...(freeSub.metadata && typeof freeSub.metadata === "object"
+            ? freeSub.metadata
+            : {}),
+          ...reasonMeta,
+        },
+        updated_at: nowUtc(),
+      },
+      { where: { id: freeSub.id } },
+    );
+  }
+  return subscriptionService.getActiveSubscription(userId);
 }
 
 export default {

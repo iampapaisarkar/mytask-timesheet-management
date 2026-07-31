@@ -539,6 +539,15 @@ export async function serializeSubscriptionForApi(userId) {
   const periodEnd = plain.current_period_end || null;
   const periodStart = plain.current_period_start || null;
 
+  let meta = plain.metadata || null;
+  if (typeof meta === "string") {
+    try {
+      meta = JSON.parse(meta);
+    } catch {
+      meta = null;
+    }
+  }
+
   let daysUntilPeriodEnd = null;
   if (periodEnd) {
     const end = moment.utc(periodEnd);
@@ -556,6 +565,13 @@ export async function serializeSubscriptionForApi(userId) {
           : plain.billing_interval === "month"
             ? 999
             : 0;
+
+  const endReason = meta?.end_reason || null;
+  const endReasonMessage =
+    meta?.end_reason_message ||
+    (endReason
+      ? `Moved to Free: ${String(endReason).replace(/_/g, " ")}`
+      : null);
 
   return {
     id: plain.id,
@@ -591,6 +607,8 @@ export async function serializeSubscriptionForApi(userId) {
           ? "Yearly"
           : "None",
     is_pro: ctx.isPro,
+    end_reason: endReason,
+    end_reason_message: endReasonMessage,
     plan,
     usage,
   };

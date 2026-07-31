@@ -98,13 +98,32 @@ Backfill Free for existing users (optional one-liner via API): each user gets Fr
 
 ## Workers / cron
 
-BullMQ `subscriptionQueue` + `subscription.worker.js`:
+BullMQ `subscriptionQueue` + `subscription.worker.js` (started with `RUN_WORKERS=true`):
 
-- `subscription-notify`
-- `expiry-reminders` (7 / 3 / 1 day + expired → Free)
-- `webhook-cleanup` (90-day log retention)
+| Job | Schedule | Behaviour |
+|-----|----------|-----------|
+| `expiry-reminders` | Daily (boot + every 24h) | Email + in-app at **7 / 3 / 1** days before scheduled cancel; when `current_period_end` passes → **downgrade to Free** + email with reason |
+| `sync-status` | Every 6h | Pull Stripe subscription status; `past_due` / `unpaid` / canceled → Free + notify |
+| `subscription-notify` | On demand | In-app + email (billing lifecycle emails always send, even on Free) |
+| `webhook-cleanup` | Weekly | Prune webhook logs older than 90 days |
 
-Also registered under `backend/jobs/` for `npm run jobs:*`.
+Also under `backend/jobs/` for `npm run jobs:*`:
+- `subscriptionExpiryCheck.js`
+- `subscriptionStatusSync.js`
+- `webhookCleanup.js`
+
+### Expiry / payment failure → Free
+
+| Event | Action |
+|-------|--------|
+| Period ended (`cancel_at_period_end`) | Downgrade to Free; email + in-app with reason |
+| `invoice.payment_failed` webhook | **Immediate** Free limits; email explains payment failure |
+| Stripe `past_due` / `unpaid` / `canceled` | Downgrade + reason on subscription UI |
+| `customer.subscription.deleted` | Free + “subscription ended” email |
+
+Pro features (`system_logs`, higher quotas, etc.) use **owner’s** active/trialing plan only — `past_due` no longer grants Pro.
+
+API `GET /subscriptions/current` includes `end_reason` + `end_reason_message` for the billing UI banner.
 
 ## Confirm after Checkout (important for local)
 

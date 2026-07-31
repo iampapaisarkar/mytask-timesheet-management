@@ -39,6 +39,19 @@ setInterval(() => {
     );
 }, SUB_REMINDER_MS);
 
+/** Stripe status reconciliation — every 6 hours (webhook safety net). */
+const SUB_SYNC_MS = 6 * 60 * 60 * 1000;
+setTimeout(() => {
+  void subscriptionQueue
+    .add("sync-status", {}, { jobId: `sync-${Date.now()}` })
+    .catch((err) => console.error("subscription sync:", err?.message || err));
+}, 60_000);
+setInterval(() => {
+  void subscriptionQueue
+    .add("sync-status", {}, { removeOnComplete: true })
+    .catch((err) => console.error("subscription sync:", err?.message || err));
+}, SUB_SYNC_MS);
+
 /** Weekly webhook log cleanup */
 const WEBHOOK_CLEANUP_MS = 7 * 24 * 60 * 60 * 1000;
 setInterval(() => {
