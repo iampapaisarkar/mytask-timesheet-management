@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   useEmployees,
   useJobs,
@@ -11,6 +11,9 @@ import { CreateTimesheetDialog } from "./CreateTimesheetDialog";
 
 const selectClass =
   "mt-focus rounded-xl border border-border bg-[var(--mt-surface)] px-3 py-2 text-sm text-[var(--mt-text)] outline-none focus:border-primary";
+
+const inputClass =
+  "mt-focus min-w-[12rem] flex-1 rounded-xl border border-border bg-[var(--mt-surface)] px-3 py-2 text-sm text-[var(--mt-text)] outline-none focus:border-primary";
 
 type EmployeeRow = {
   details?: { id?: number; full_name?: string; email?: string };
@@ -28,7 +31,18 @@ export function TimesheetManagementListPage() {
   const [employeeId, setEmployeeId] = useState("");
   const [jobId, setJobId] = useState("");
   const [statusCode, setStatusCode] = useState("");
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
 
   const listParams = useMemo(() => {
     const params: Record<string, unknown> = {
@@ -39,8 +53,9 @@ export function TimesheetManagementListPage() {
     if (employeeId) params.employee_id = employeeId;
     if (jobId) params.job_id = jobId;
     if (statusCode) params.status_code = statusCode;
+    if (debouncedSearch) params.search = debouncedSearch;
     return params;
-  }, [employeeId, jobId, statusCode, page]);
+  }, [employeeId, jobId, statusCode, page, debouncedSearch]);
 
   const query = useTimesheetManagement(listParams);
   const employeesQuery = useEmployees({ rows_per_page: 200 });
@@ -51,7 +66,17 @@ export function TimesheetManagementListPage() {
 
   return (
     <>
-      <div className="mb-3 flex flex-wrap gap-2">
+      <div className="mb-3 flex flex-wrap items-end gap-2">
+        <label className="flex min-w-[14rem] flex-1 flex-col gap-1 text-sm">
+          <span className="font-medium text-muted">Search by code</span>
+          <input
+            className={inputClass}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Timesheet code"
+            aria-label="Search by timesheet code"
+          />
+        </label>
         <select
           className={selectClass}
           value={employeeId}
@@ -129,9 +154,9 @@ export function TimesheetManagementListPage() {
             key: "jobs",
             label: "Jobs",
             accessor: (row) => {
-              const jobs = row.jobs as Array<{ name?: string }> | undefined;
-              if (Array.isArray(jobs) && jobs.length) {
-                return jobs.map((j) => j.name).filter(Boolean).join(", ");
+              const jobsCol = row.jobs as Array<{ name?: string }> | undefined;
+              if (Array.isArray(jobsCol) && jobsCol.length) {
+                return jobsCol.map((j) => j.name).filter(Boolean).join(", ");
               }
               return (row.job as { name?: string } | undefined)?.name;
             },

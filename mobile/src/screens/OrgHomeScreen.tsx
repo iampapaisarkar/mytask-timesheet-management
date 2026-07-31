@@ -10,6 +10,7 @@ import {
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { spacing } from "@mytask/theme";
 import { useDashboardParallel } from "@mytask/hooks";
+import { can, getOrganisationAcl } from "@mytask/services";
 import { ClockInOut } from "../components/ClockInOut";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
@@ -17,27 +18,39 @@ import type { RootStackParamList } from "../navigation/RootNavigator";
 
 type Props = NativeStackScreenProps<RootStackParamList, "OrgHome">;
 
-const NAV_ITEMS: Array<{
-  label: string;
-  route:
-    | "Timesheets"
-    | "TimesheetManagementList"
-    | "EmployeesList"
-    | "SettingsHub";
-}> = [
-  { label: "My Timesheets", route: "Timesheets" },
-  { label: "Timesheet Management", route: "TimesheetManagementList" },
-  { label: "Employees", route: "EmployeesList" },
-  { label: "Settings", route: "SettingsHub" },
-];
+type NavRoute =
+  | "Timesheets"
+  | "TimesheetManagementList"
+  | "EmployeesList"
+  | "CustomersList"
+  | "JobsList"
+  | "SettingsHub";
 
 export function OrgHomeScreen({ navigation, route }: Props) {
   const organisation = useOrganisationStore((s) => s.organisation);
   const { orgCode } = route.params;
   const c = useThemeStore((s) => s.colors);
+  const acl = getOrganisationAcl(organisation?.role || organisation?.role_code);
   const dashboard = useDashboardParallel(orgCode, Boolean(orgCode));
   const kpis = dashboard.overview?.kpis;
   const weekly = dashboard.overview?.weekly_progress ?? [];
+
+  const navItems: Array<{ label: string; route: NavRoute }> = [
+    { label: "My Timesheets", route: "Timesheets" },
+    ...(can(acl, "timesheetManagement", "list")
+      ? [{ label: "Timesheet Management", route: "TimesheetManagementList" as const }]
+      : []),
+    ...(can(acl, "employee", "list")
+      ? [{ label: "Employees", route: "EmployeesList" as const }]
+      : []),
+    ...(can(acl, "customer", "list")
+      ? [{ label: "Customers", route: "CustomersList" as const }]
+      : []),
+    ...(can(acl, "job", "list")
+      ? [{ label: "Jobs", route: "JobsList" as const }]
+      : []),
+    { label: "Settings", route: "SettingsHub" },
+  ];
 
   const stats = [
     {
@@ -159,7 +172,7 @@ export function OrgHomeScreen({ navigation, route }: Props) {
       </View>
 
       <Text style={[styles.navHeading, { color: c.text }]}>Go to</Text>
-      {NAV_ITEMS.map((item) => (
+      {navItems.map((item) => (
         <TouchableOpacity
           key={item.route}
           style={[styles.navBtn, { backgroundColor: c.primary }]}

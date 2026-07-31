@@ -68,18 +68,23 @@ export async function list(req, res, next) {
         : `+${code}`;
     }
     if (search && search.trim() !== "") {
+      const q = `%${search.trim()}%`;
       whereCondition = {
         ...whereCondition,
         [Op.or]: [
-          { preferred_name: { [Op.like]: `%${search}%` } },
-          { phone_number: { [Op.like]: `%${search}%` } },
-          { phone_country_iso: { [Op.like]: `%${search}%` } },
-          { phone_country_code: { [Op.like]: `%${search}%` } },
-
-          { "$user.name$": { [Op.like]: `%${search}%` } },
-          { "$user.email$": { [Op.like]: `%${search}%` } },
-
-          { "$invitation.email$": { [Op.like]: `%${search}%` } },
+          { preferred_name: { [Op.like]: q } },
+          { phone_number: { [Op.like]: q } },
+          { "$user.first_name$": { [Op.like]: q } },
+          { "$user.middle_name$": { [Op.like]: q } },
+          { "$user.last_name$": { [Op.like]: q } },
+          { "$user.email$": { [Op.like]: q } },
+          { "$invitation.email$": { [Op.like]: q } },
+          { "$address.formatted_address$": { [Op.like]: q } },
+          { "$address.address_1$": { [Op.like]: q } },
+          { "$address.address_line_1$": { [Op.like]: q } },
+          { "$address.city$": { [Op.like]: q } },
+          { "$address.postcode$": { [Op.like]: q } },
+          { "$address.postal_code$": { [Op.like]: q } },
         ],
       };
     }

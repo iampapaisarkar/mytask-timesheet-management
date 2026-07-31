@@ -2,6 +2,16 @@
 
 ## 2026-07-31
 
+### Added
+
+- Mobile list search/filters: timesheet code search (My Sheets + Management), employee name/email/address search, Customers + Jobs screens with search, Jobs customer filter; shared `SearchBar` + debounced queries
+- Web list search: My Sheets + Timesheet Management (code), Customers (name/email), Jobs (name + customer filter), Employees (name/email/address)
+- Jobs list API supports `customer_id` filter; employee `search` includes address fields
+
+### Changed
+
+- Web Employees: replaced country-code filters with a single name/email/address search box
+
 ### Fixed
 
 - Employee list no longer shows **Invite** on the organisation creator’s self-employee row (`is_you` / owner); invite API also rejects self/owner invites

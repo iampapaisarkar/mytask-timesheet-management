@@ -16,8 +16,14 @@ import { buildAddressRow } from "../utils/address.utils.js";
 
 export async function list(req, res, next) {
   const { user, organisation } = req.body;
-  let { rows_per_page, page_number, sort_by, sort_direction, search } =
-    req.query;
+  let {
+    rows_per_page,
+    page_number,
+    sort_by,
+    sort_direction,
+    search,
+    customer_id,
+  } = req.query;
   if (!organisation.acl.job.list) {
     return res.status(403).json({
       message: "Access denied: You are not authorized to access this action.",
@@ -34,15 +40,23 @@ export async function list(req, res, next) {
       organisation_id: organisation.id,
     };
 
+    if (customer_id != null && String(customer_id).trim() !== "") {
+      const cid = Number(customer_id);
+      if (Number.isFinite(cid) && cid > 0) {
+        whereCondition.customer_id = cid;
+      }
+    }
+
     if (search && search.trim() !== "") {
+      const q = `%${search.trim()}%`;
       whereCondition = {
         ...whereCondition,
         [Op.or]: [
-          { name: { [Op.like]: `%${search}%` } },
-          { site_contact_name: { [Op.like]: `%${search}%` } },
-          { site_contact_email: { [Op.like]: `%${search}%` } },
-          { site_contact_phone_number: { [Op.like]: `%${search}%` } },
-          { address: { [Op.like]: `%${search}%` } },
+          { name: { [Op.like]: q } },
+          { site_contact_name: { [Op.like]: q } },
+          { site_contact_email: { [Op.like]: q } },
+          { site_contact_phone_number: { [Op.like]: q } },
+          { address: { [Op.like]: q } },
         ],
       };
     }

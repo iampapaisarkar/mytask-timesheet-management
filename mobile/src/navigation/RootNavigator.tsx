@@ -13,6 +13,8 @@ import {
 } from "../features/timesheet";
 import { TimesheetManagementListScreen } from "../features/timesheet-management";
 import { EmployeesListScreen } from "../features/employees";
+import { CustomersListScreen } from "../features/customers";
+import { JobsListScreen } from "../features/jobs";
 import { SettingsHubScreen, ProfileScreen } from "../features/settings";
 
 export type RootStackParamList = {
@@ -28,6 +30,8 @@ export type RootStackParamList = {
   };
   TimesheetManagementList: { orgCode: string };
   EmployeesList: { orgCode: string };
+  CustomersList: { orgCode: string };
+  JobsList: { orgCode: string };
   SettingsHub: { orgCode: string };
 };
 
@@ -152,6 +156,16 @@ export function RootNavigator() {
             name="EmployeesList"
             component={EmployeesListScreen}
             options={{ title: "Employees" }}
+          />
+          <Stack.Screen
+            name="CustomersList"
+            component={CustomersListScreen}
+            options={{ title: "Customers" }}
+          />
+          <Stack.Screen
+            name="JobsList"
+            component={JobsListScreen}
+            options={{ title: "Jobs" }}
           />
           <Stack.Screen
             name="SettingsHub"

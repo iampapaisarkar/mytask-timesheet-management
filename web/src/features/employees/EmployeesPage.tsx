@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useEmployees } from "@mytask/hooks";
 import { DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
-import { formatPhoneDisplay, listCountryIsos } from "@mytask/utils";
+import { formatPhoneDisplay } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
 import { ResourceListPage, getRowId, type Row } from "@/features/shared/ResourceListPage";
 import { useOrganisationStore } from "@/store/organisationStore";
@@ -28,15 +28,12 @@ function employeeRoleCode(row: Row): string | undefined {
     | undefined;
   return (
     details?.role?.code ||
-    (
-      row.role as { code?: string } | undefined
-    )?.code
+    (row.role as { code?: string } | undefined)?.code
   );
 }
 
 function shouldShowInvite(row: Row): boolean {
   const details = row.details as { is_you?: boolean } | undefined;
-  // Org creator / current user's self employee — already a member, never invite
   if (details?.is_you) return false;
   const roleCode = employeeRoleCode(row);
   if (roleCode === "owner") return false;
@@ -45,25 +42,34 @@ function shouldShowInvite(row: Row): boolean {
   return true;
 }
 
-const selectClass =
-  "mt-focus rounded-xl border border-border bg-[var(--mt-surface)] px-3 py-2 text-sm text-[var(--mt-text)] outline-none focus:border-primary";
+const inputClass =
+  "mt-focus w-full max-w-md rounded-xl border border-border bg-[var(--mt-surface)] px-3 py-2 text-sm text-[var(--mt-text)] outline-none focus:border-primary";
 
 export function EmployeesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<EmployeeListRow | null>(null);
-  const [countryIso, setCountryIso] = useState("");
-  const [countryCode, setCountryCode] = useState("");
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const role = useOrganisationStore((s) => s.organisation?.role);
   const acl = getOrganisationAcl(role);
   const canCreate = can(acl, "employee", "create");
   const canEdit = can(acl, "employee", "edit");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
+
   const query = useEmployees({
     rows_per_page: DEFAULT_LIST_PAGE_SIZE,
     page_number: page,
     sort_by: "id",
-    ...(countryIso ? { phone_country_iso: countryIso } : {}),
-    ...(countryCode ? { phone_country_code: countryCode } : {}),
+    ...(debouncedSearch ? { search: debouncedSearch } : {}),
   });
 
   function openEdit(row: Row) {
@@ -74,50 +80,18 @@ export function EmployeesPage() {
 
   return (
     <>
-      <div className="mb-3 flex flex-wrap items-end gap-3">
+      <div className="mb-3">
         <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-muted">Filter by country</span>
-          <select
-            className={selectClass}
-            value={countryIso}
-            onChange={(e) => {
-              setCountryIso(e.target.value);
-              setPage(1);
-            }}
-          >
-            <option value="">All countries</option>
-            {listCountryIsos().map((iso) => (
-              <option key={iso} value={iso}>
-                {iso}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-muted">Country code</span>
+          <span className="font-medium text-muted">
+            Search name, email, or address
+          </span>
           <input
-            className={selectClass}
-            placeholder="+91"
-            value={countryCode}
-            onChange={(e) => {
-              setCountryCode(e.target.value);
-              setPage(1);
-            }}
+            className={inputClass}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="e.g. Jane, jane@…, street"
           />
         </label>
-        {(countryIso || countryCode) && (
-          <Button
-            variant="secondary"
-            className="px-3 py-2 text-sm"
-            onClick={() => {
-              setCountryIso("");
-              setCountryCode("");
-              setPage(1);
-            }}
-          >
-            Clear filters
-          </Button>
-        )}
       </div>
       <ResourceListPage
         title="Employees"
@@ -159,13 +133,6 @@ export function EmployeesPage() {
             accessor: (row) =>
               (row.details as { role?: { name?: string } } | undefined)?.role
                 ?.name,
-          },
-          {
-            key: "country",
-            label: "Country",
-            accessor: (row) =>
-              (row.details as { phone_country_iso?: string } | undefined)
-                ?.phone_country_iso || "—",
           },
           {
             key: "phone",

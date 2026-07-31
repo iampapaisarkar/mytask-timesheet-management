@@ -8,43 +8,28 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useEmployees } from "@mytask/hooks";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { useCustomers } from "@mytask/hooks";
 import { DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
 import { spacing } from "@mytask/theme";
-import { formatPhoneDisplay, listPagination, listRows } from "@mytask/utils";
+import { listPagination, listRows } from "@mytask/utils";
 import { ListPager } from "../components/ListPager";
 import { SearchBar } from "../components/SearchBar";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
+import type { RootStackParamList } from "../navigation/RootNavigator";
 import { useThemeStore } from "../store/themeStore";
 
-type EmployeeRow = {
+type Props = NativeStackScreenProps<RootStackParamList, "CustomersList">;
+
+type CustomerRow = {
   id?: number | string;
-  details?: {
-    id?: number;
-    full_name?: string;
-    email?: string;
-    phone_number?: string;
-    phone_country_iso?: string;
-    role?: { name?: string };
-    address?: {
-      formatted_address?: string;
-      address_1?: string;
-      city?: string;
-    };
-  };
+  name?: string;
+  contact_email?: string;
+  contact_phone_number?: string;
+  abn?: string;
 };
 
-function addressLabel(details: EmployeeRow["details"]) {
-  const a = details?.address;
-  if (!a) return null;
-  return (
-    a.formatted_address ||
-    [a.address_1, a.city].filter(Boolean).join(", ") ||
-    null
-  );
-}
-
-export function EmployeesListScreen() {
+export function CustomersListScreen(_props: Props) {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search.trim(), 400);
@@ -54,13 +39,13 @@ export function EmployeesListScreen() {
     setPage(1);
   }, [debouncedSearch]);
 
-  const { data, isLoading, isError, isFetching, refetch } = useEmployees({
+  const { data, isLoading, isError, isFetching, refetch } = useCustomers({
     rows_per_page: DEFAULT_LIST_PAGE_SIZE,
     page_number: page,
     sort_by: "id",
     ...(debouncedSearch ? { search: debouncedSearch } : {}),
   });
-  const rows = listRows<EmployeeRow>(data);
+  const rows = listRows<CustomerRow>(data);
   const pagination = listPagination(data);
   const totalPages = Math.max(1, Number(pagination?.total_pages) || 1);
   const currentPage = Number(pagination?.page_number) || page;
@@ -68,7 +53,7 @@ export function EmployeesListScreen() {
   if (isError && !data) {
     return (
       <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <Text style={{ color: c.text }}>Failed to load employees</Text>
+        <Text style={{ color: c.text }}>Failed to load customers</Text>
         <TouchableOpacity onPress={() => void refetch()}>
           <Text style={[styles.link, { color: c.primary }]}>Try again</Text>
         </TouchableOpacity>
@@ -82,7 +67,7 @@ export function EmployeesListScreen() {
         <SearchBar
           value={search}
           onChangeText={setSearch}
-          placeholder="Search name, email, or address"
+          placeholder="Search name or email"
         />
       </View>
       {isLoading && !data ? (
@@ -93,9 +78,7 @@ export function EmployeesListScreen() {
         <FlatList
           contentContainerStyle={{ padding: spacing.md, paddingTop: 0 }}
           data={rows}
-          keyExtractor={(item, index) =>
-            String(item.details?.id ?? item.id ?? index)
-          }
+          keyExtractor={(item, index) => String(item.id ?? index)}
           refreshControl={
             <RefreshControl
               refreshing={isFetching && !isLoading}
@@ -105,7 +88,9 @@ export function EmployeesListScreen() {
           }
           ListEmptyComponent={
             <Text style={[styles.empty, { color: c.muted }]}>
-              {debouncedSearch ? "No employees match your search" : "No employees"}
+              {debouncedSearch
+                ? "No customers match your search"
+                : "No customers"}
             </Text>
           }
           ListFooterComponent={
@@ -118,39 +103,24 @@ export function EmployeesListScreen() {
               onNext={() => setPage(Math.min(totalPages, currentPage + 1))}
             />
           }
-          renderItem={({ item }) => {
-            const details = item.details;
-            const address = addressLabel(details);
-            return (
-              <View
-                style={[
-                  styles.card,
-                  { backgroundColor: c.surface, borderColor: c.border },
-                ]}
-              >
-                <Text style={[styles.name, { color: c.text }]}>
-                  {details?.full_name || `Employee #${details?.id ?? item.id}`}
-                </Text>
-                <Text style={{ color: c.muted }}>
-                  {details?.email || "—"}
-                  {details?.role?.name ? ` · ${details.role.name}` : ""}
-                </Text>
-                {details?.phone_number ? (
-                  <Text style={[styles.meta, { color: c.muted }]}>
-                    {formatPhoneDisplay(
-                      details.phone_number,
-                      details.phone_country_iso,
-                    )}
-                  </Text>
-                ) : null}
-                {address ? (
-                  <Text style={[styles.meta, { color: c.muted }]} numberOfLines={2}>
-                    {address}
-                  </Text>
-                ) : null}
-              </View>
-            );
-          }}
+          renderItem={({ item }) => (
+            <View
+              style={[
+                styles.card,
+                { backgroundColor: c.surface, borderColor: c.border },
+              ]}
+            >
+              <Text style={[styles.name, { color: c.text }]}>
+                {item.name || `Customer #${item.id}`}
+              </Text>
+              <Text style={{ color: c.muted }}>
+                {item.contact_email || "—"}
+              </Text>
+              {item.abn ? (
+                <Text style={[styles.meta, { color: c.muted }]}>ABN {item.abn}</Text>
+              ) : null}
+            </View>
+          )}
         />
       )}
     </View>

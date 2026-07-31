@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCustomers } from "@mytask/hooks";
 import { DEFAULT_LIST_PAGE_SIZE, formatMoney } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
@@ -11,22 +11,50 @@ import {
   type CustomerRow,
 } from "./CreateCustomerDialog";
 
+const inputClass =
+  "mt-focus w-full max-w-md rounded-xl border border-border bg-[var(--mt-surface)] px-3 py-2 text-sm text-[var(--mt-text)] outline-none focus:border-primary";
+
 export function CustomersPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CustomerRow | null>(null);
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const role = useOrganisationStore((s) => s.organisation?.role);
   const acl = getOrganisationAcl(role);
   const canCreate = can(acl, "customer", "create");
   const canEdit = can(acl, "customer", "edit");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
+
   const query = useCustomers({
     rows_per_page: DEFAULT_LIST_PAGE_SIZE,
     page_number: page,
     sort_by: "id",
+    ...(debouncedSearch ? { search: debouncedSearch } : {}),
   });
 
   return (
     <>
+      <div className="mb-3">
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-muted">Search name or email</span>
+          <input
+            className={inputClass}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Customer name or email"
+            aria-label="Search customers"
+          />
+        </label>
+      </div>
       <ResourceListPage
         title="Customers"
         query={query}
