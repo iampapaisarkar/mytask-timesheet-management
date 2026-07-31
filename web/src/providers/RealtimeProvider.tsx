@@ -28,7 +28,6 @@ function socketBaseUrl(): string {
 export function RealtimeProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const token = useAuthStore((s) => s.token);
   const userId = useAuthStore((s) => s.user?.id ?? null);
   const organisationId = useOrganisationStore((s) => s.organisation?.id ?? null);
 
@@ -53,14 +52,19 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   }, [queryClient, navigate]);
 
   useEffect(() => {
-    if (token && userId) {
+    if (userId) {
       connectRealtime();
       setRealtimeOrganisation(organisationId);
       void sharedOfflineQueue.flush();
     } else {
       disconnectRealtime();
     }
-  }, [token, userId, organisationId]);
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    setRealtimeOrganisation(organisationId);
+  }, [userId, organisationId]);
 
   useEffect(() => {
     const onOnline = () => {

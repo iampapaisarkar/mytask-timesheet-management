@@ -14,9 +14,8 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
 
     const unsubToken = sharedAuthTokenManager.onTokenUpdated((token) => {
       // Mirror only — never clear session here (null can fire during rotation).
-      if (token) {
-        useAuthStore.getState().setTokenMirror(token);
-      }
+      if (!token) return;
+      useAuthStore.getState().setTokenMirror(token);
       void getSocketManager().updateAuthToken();
     });
 

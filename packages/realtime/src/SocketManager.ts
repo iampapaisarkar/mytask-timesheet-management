@@ -27,6 +27,8 @@ export class SocketManager {
   private options: SocketManagerOptions | null = null;
   private status: ConnectionStatus = "idle";
   private activeOrgId: number | null = null;
+  /** Last auth token applied to the socket handshake (skip no-op reconnects). */
+  private lastAuthToken: string | null = null;
   private readonly statusListeners = new Set<StatusListener>();
   private readonly envelopeListeners = new Set<EnvelopeListener>();
   private domainHandlersBound = false;
@@ -89,11 +91,18 @@ export class SocketManager {
   }
 
   /**
-   * After Firebase ID token rotation: update handshake auth and reconnect if live.
+   * After Firebase ID token rotation: update handshake auth and reconnect only
+   * when the token actually changed. Same-token updates must not disconnect —
+   * that caused infinite connect/disconnect loops.
    */
   async updateAuthToken(): Promise<void> {
     const token = await this.resolveToken();
     if (!this.socket || !token) return;
+    if (token === this.lastAuthToken) {
+      this.socket.auth = this.buildAuth(token);
+      return;
+    }
+    this.lastAuthToken = token;
     this.socket.auth = this.buildAuth(token);
     if (this.socket.connected) {
       this.socket.disconnect();
@@ -114,6 +123,7 @@ export class SocketManager {
     }
 
     if (this.socket && !this.socket.connected) {
+      this.lastAuthToken = token;
       this.socket.auth = this.buildAuth(token);
       this.setStatus("reconnecting");
       this.socket.connect();
@@ -121,6 +131,7 @@ export class SocketManager {
     }
 
     this.setStatus("connecting");
+    this.lastAuthToken = token;
     this.socket = io(this.options!.url, {
       path: this.options!.path ?? "/socket.io",
       transports: this.options!.transports ?? ["websocket", "polling"],
@@ -140,6 +151,7 @@ export class SocketManager {
 
   disconnect(): void {
     this.activeOrgId = null;
+    this.lastAuthToken = null;
     if (this.socket) {
       this.socket.removeAllListeners();
       this.socket.disconnect();
@@ -202,11 +214,12 @@ export class SocketManager {
 
     this.socket.on("connect", () => {
       this.setStatus("connected");
-      void this.resolveToken().then((token) => {
-        if (token && this.socket) {
-          this.socket.auth = this.buildAuth(token);
-        }
-      });
+      // Refresh auth payload from cache only — do not call getValidIdToken here.
+      // That path can emit token updates and hard-reconnect in a tight loop.
+      const cached = this.lastAuthToken;
+      if (cached && this.socket) {
+        this.socket.auth = this.buildAuth(cached);
+      }
       this.syncOrganisationRoom();
     });
 
@@ -221,6 +234,7 @@ export class SocketManager {
     this.socket.io.on("reconnect_attempt", () => {
       void this.resolveToken().then((token) => {
         if (token && this.socket) {
+          this.lastAuthToken = token;
           this.socket.auth = this.buildAuth(token);
         }
       });

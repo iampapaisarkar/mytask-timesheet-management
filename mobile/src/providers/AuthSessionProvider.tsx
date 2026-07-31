@@ -14,9 +14,8 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
     const adapter = createMobileFirebaseAuthAdapter();
 
     const unsubToken = sharedAuthTokenManager.onTokenUpdated((token) => {
-      if (token) {
-        void useAuthStore.getState().setTokenMirror(token);
-      }
+      if (!token) return;
+      void useAuthStore.getState().setTokenMirror(token);
       void getSocketManager().updateAuthToken();
     });
 

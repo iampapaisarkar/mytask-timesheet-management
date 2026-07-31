@@ -44,6 +44,7 @@ export class AuthTokenManager {
     });
 
     this.unsubIdToken = adapter.subscribeIdToken((token, user) => {
+      if (token === this.memoryToken) return;
       this.memoryToken = token;
       this.emit(token, user);
     });
@@ -134,9 +135,19 @@ export class AuthTokenManager {
 
   private async runRefresh(force: boolean): Promise<string | null> {
     if (!this.adapter) return null;
-    const token = await this.adapter.getIdToken(force);
+    // When near expiry, force Firebase to mint a new token; otherwise
+    // getIdToken(false) often returns the same JWT and we used to re-emit
+    // it, which triggered Socket.IO disconnect/reconnect loops.
+    const shouldForce =
+      force ||
+      (this.memoryToken != null &&
+        isTokenExpiringSoon(this.memoryToken, REFRESH_SKEW_SECONDS));
+    const previous = this.memoryToken;
+    const token = await this.adapter.getIdToken(shouldForce);
     this.memoryToken = token;
-    this.emit(token, this.adapter.getCurrentUser());
+    if (token !== previous) {
+      this.emit(token, this.adapter.getCurrentUser());
+    }
     return token;
   }
 
