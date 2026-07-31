@@ -3,7 +3,7 @@ import fs from "fs"; // Use fs.promises for async file operations
 
 // Extract values from command-line arguments
 const modelName = process.argv[2];
-const dbName = "mysheet";
+const dbName = "db";
 
 if (!modelName) {
   console.log("Please provide a model name.");

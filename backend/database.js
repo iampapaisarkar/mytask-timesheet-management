@@ -20,5 +20,4 @@ export const db = new Sequelize(
   },
 );
 
-/** @deprecated use db */
-export const mysheet = db;
+export default db;

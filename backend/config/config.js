@@ -2,10 +2,8 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const environment = process.env.NODE_ENV || "development";
-
 export function getDatabaseConfig() {
-  const defaultDbName = environment === "production" ? "mysheet" : "mysheet";
+  const defaultDbName = "mytask";
   // Support both Laravel-style env vars and generic ones
   const username = process.env.DB_USER || process.env.DB_USERNAME;
   const database =

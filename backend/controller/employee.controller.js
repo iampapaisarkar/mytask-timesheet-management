@@ -525,7 +525,7 @@ export async function searchUserByEmail(req, res, next) {
 
     let formattedEmployee;
     {
-      // Fetch from mysheet system
+      // Fetch from myTask system
       let systemEmployee = await Users.findOne({
         where: {
           email: email,
