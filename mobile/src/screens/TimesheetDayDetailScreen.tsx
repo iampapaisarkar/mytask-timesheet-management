@@ -47,7 +47,6 @@ type DayPayload = {
   remarks?: string | null;
   tasks?: DayTask[];
   tracking_logs?: TrackingLogs;
-  status?: { code?: string; name?: string };
 };
 
 const SHEET_COLORS: Record<TimelineTaskType, string> = {

@@ -2,6 +2,10 @@
 
 ## 2026-07-31
 
+### Removed
+
+- Unused **timesheet day status** (lookup table + UI column). Day rows never had a real `status_id`; the days table Status always showed "—". Editing permissions continue to use **timesheet-level** status (`timesheet_status`).
+
 ### Added
 
 - Mobile list search/filters: timesheet code search (My Sheets + Management), employee name/email/address search, Customers + Jobs screens with search, Jobs customer filter; shared `SearchBar` + debounced queries

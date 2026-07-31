@@ -15,7 +15,6 @@ type TimesheetDay = {
   id?: number;
   date?: string;
   day_name?: string;
-  status?: { name?: string; code?: string };
   total_hours?: number | string;
   is_public_holiday?: boolean;
   tasks?: Array<{ total_hours?: number | string }>;
@@ -195,7 +194,6 @@ export function TimesheetDetailPage() {
                   <th className="px-3 py-2 font-medium">Date</th>
                   <th className="px-3 py-2 font-medium">Day</th>
                   <th className="px-3 py-2 font-medium">Hours</th>
-                  <th className="px-3 py-2 font-medium">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -211,9 +209,6 @@ export function TimesheetDetailPage() {
                         (day.is_public_holiday ? "Holiday" : "—")}
                     </td>
                     <td className="px-3 py-2">{day.total_hours ?? "—"}</td>
-                    <td className="px-3 py-2">
-                      {day.status?.name || day.status?.code || "—"}
-                    </td>
                   </tr>
                 ))}
               </tbody>

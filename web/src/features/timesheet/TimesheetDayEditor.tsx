@@ -53,7 +53,6 @@ type DayPayload = {
   tasks?: DayTask[];
   tracking_logs?: TrackingLogs;
   permissions?: { can_save?: boolean };
-  status?: { code?: string; name?: string };
   timesheet_job?: { id?: number; name?: string } | null;
   timesheet_jobs?: Array<{ id?: number; name?: string }> | null;
 };
@@ -500,9 +499,6 @@ export function TimesheetDayEditor({
               onChange={(e) => setIsPublicHoliday(e.target.checked)}
             />
             Public holiday
-            {day?.status?.name ? (
-              <span className="text-muted">· {day.status.name}</span>
-            ) : null}
           </label>
           <div className="flex gap-2">
             <Button variant="secondary" onClick={onClose}>

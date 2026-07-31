@@ -168,7 +168,6 @@ export const schema = buildSchema(`
     total_hours: String
     approval_reason: String
     reject_reason: String
-    status_id: Int
     created_at: Date
     created_by: Int
     updated_at: Date

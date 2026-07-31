@@ -20,7 +20,6 @@ type TimesheetDay = {
   id?: number;
   date?: string;
   day_name?: string;
-  status?: { name?: string; code?: string };
   total_hours?: number | string;
   is_public_holiday?: boolean;
 };
@@ -150,8 +149,7 @@ export function TimesheetDetailScreen({ navigation, route }: Props) {
               {item.day_name ? ` · ${item.day_name}` : ""}
             </Text>
             <Text style={{ color: c.muted }}>
-              {item.total_hours != null ? `${item.total_hours} hrs` : "—"} ·{" "}
-              {item.status?.name || item.status?.code || "—"}
+              {item.total_hours != null ? `${item.total_hours} hrs` : "—"}
               {item.is_public_holiday ? " · Holiday" : ""}
             </Text>
           </TouchableOpacity>

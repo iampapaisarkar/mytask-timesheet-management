@@ -4,7 +4,7 @@ Located in `service/`:
 
 - `organisation.service.js`
 - `employee.service.js`
-- `timsheet.service.js` / `timsheetService.js` (legacy naming)
+- `timsheet.service.js`
 - `timesheet-activity.service.js`
 - `timesheet-rate.service.js` / `timesheetRateService.js`
 - `award-rate.service.js`
