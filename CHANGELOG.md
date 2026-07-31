@@ -2,6 +2,10 @@
 
 ## 2026-07-31
 
+### Changed
+
+- Timesheet status transitions (**submit / approve / reject / revert**) require non-empty **remarks**; Cancel on the remarks dialog never calls the status API. Web management detail no longer shows an always-editable Actions remarks field when no action is available — existing approval/reject remarks render as read-only text.
+
 ### Removed
 
 - Unused **timesheet day status** (lookup table + UI column). Day rows never had a real `status_id`; the days table Status always showed "—". Editing permissions continue to use **timesheet-level** status (`timesheet_status`).

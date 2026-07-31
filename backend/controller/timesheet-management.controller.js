@@ -21,6 +21,7 @@ import {
   emitTimesheetUpdated,
   emitDashboardUpdated,
 } from "../service/realtime.service.js";
+import { requireTimesheetRemarks } from "../utils/timesheet-remarks.js";
 
 export async function list(req, res, next) {
   const { user, organisation } = req.body;
@@ -695,13 +696,14 @@ export async function save(req, res, next) {
 }
 
 export async function submitForApproval(req, res, next) {
-  const { user, organisation, employee_id } = req.body;
+  const { user, organisation, employee_id, remarks } = req.body;
   const timesheetId = req?.params?.id;
   if (!organisation.acl.timesheetManagement.edit) {
     return res.status(403).json({
       message: "Access denied: You are not authorized to access this action.",
     });
   }
+  if (requireTimesheetRemarks(remarks, res) == null) return;
   try {
     let timesheet = await Timesheets.findOne({
       where: {
@@ -785,6 +787,8 @@ export async function approve(req, res, next) {
       message: "Access denied: You are not authorized to access this action.",
     });
   }
+  const approvalRemarks = requireTimesheetRemarks(remarks, res);
+  if (approvalRemarks == null) return;
   try {
     let timesheet = await Timesheets.findOne({
       where: {
@@ -840,7 +844,7 @@ export async function approve(req, res, next) {
     });
 
     timesheet.status_id = timesheetApprovedStatus?.id;
-    timesheet.approval_reason = remarks;
+    timesheet.approval_reason = approvalRemarks;
     timesheet.reject_reason = null;
 
     timesheet.save();
@@ -884,6 +888,8 @@ export async function reject(req, res, next) {
       message: "Access denied: You are not authorized to access this action.",
     });
   }
+  const rejectRemarks = requireTimesheetRemarks(remarks, res);
+  if (rejectRemarks == null) return;
   try {
     let timesheet = await Timesheets.findOne({
       where: {
@@ -939,7 +945,7 @@ export async function reject(req, res, next) {
 
     timesheet.status_id = timesheetRejectedStatus?.id;
     timesheet.approval_reason = null;
-    timesheet.reject_reason = remarks;
+    timesheet.reject_reason = rejectRemarks;
 
     timesheet.save();
 
@@ -975,13 +981,14 @@ export async function reject(req, res, next) {
 }
 
 export async function revert(req, res, next) {
-  const { user, organisation, employee_id } = req.body;
+  const { user, organisation, employee_id, remarks } = req.body;
   const timesheetId = req?.params?.id;
   if (!organisation.acl.timesheetManagement.edit) {
     return res.status(403).json({
       message: "Access denied: You are not authorized to access this action.",
     });
   }
+  if (requireTimesheetRemarks(remarks, res) == null) return;
   try {
     let timesheet = await Timesheets.findOne({
       where: {

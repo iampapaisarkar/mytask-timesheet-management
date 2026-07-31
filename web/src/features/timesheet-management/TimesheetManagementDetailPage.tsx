@@ -11,10 +11,13 @@ import { ROUTES } from "@mytask/constants";
 import { formatTimesheetLabel, getErrorMessage } from "@mytask/utils";
 import { Card, PageHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { TextInput } from "@/components/ui/TextInput";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { useToastStore } from "@/store/toastStore";
 import { TimesheetDayEditor } from "@/features/timesheet/TimesheetDayEditor";
+import {
+  RemarksConfirmDialog,
+  type TimesheetStatusAction,
+} from "@/features/timesheet/RemarksConfirmDialog";
 
 type TimesheetDay = {
   id?: number;
@@ -33,6 +36,8 @@ type TimesheetDetail = {
   job?: { id?: number; name?: string } | null;
   jobs?: Array<{ id?: number; name?: string }> | null;
   days?: TimesheetDay[];
+  approval_reason?: string | null;
+  reject_reason?: string | null;
   permissions?: {
     can_submit?: boolean;
     can_approve?: boolean;
@@ -50,8 +55,9 @@ type TimesheetDetail = {
 export function TimesheetManagementDetailPage() {
   const { orgCode = "", id = "" } = useParams();
   const toast = useToastStore();
-  const [reason, setReason] = useState("");
   const [selectedDayId, setSelectedDayId] = useState<number | null>(null);
+  const [pendingAction, setPendingAction] =
+    useState<TimesheetStatusAction | null>(null);
   const query = useTimesheetManagementItem(id);
   const submit = useSubmitTimesheetManagement();
   const approve = useApproveTimesheet();
@@ -66,56 +72,43 @@ export function TimesheetManagementDetailPage() {
   const employeeId = data?.employee?.details?.id ?? data?.employee?.id;
   const perms = data?.permissions;
 
-  async function run(action: "submit" | "approve" | "reject" | "revert") {
+  const canAct = Boolean(
+    perms?.can_submit ||
+      perms?.can_approve ||
+      perms?.can_reject ||
+      perms?.can_revert_to_draft,
+  );
+
+  const existingRemarks =
+    (data?.reject_reason || data?.approval_reason || "").trim() || null;
+  const existingRemarksLabel = data?.reject_reason
+    ? "Reject remarks"
+    : data?.approval_reason
+      ? "Approval remarks"
+      : "Remarks";
+
+  async function confirmAction(remarks: string) {
+    if (!pendingAction) return;
     if (employeeId == null) {
       toast.error("Missing employee", "Employee id required for this action");
       return;
     }
+    const action = pendingAction;
     try {
       if (action === "submit") {
-        window.prompt("Optional remarks for submit:");
-        await submit.mutateAsync({ id, employeeId });
+        await submit.mutateAsync({ id, employeeId, remarks });
         toast.success("Submitted");
-      }
-      if (action === "approve") {
-        const approvalReason =
-          reason.trim() ||
-          window.prompt("Optional approval remarks:") ||
-          "";
-        await approve.mutateAsync({
-          id,
-          employeeId,
-          reason: approvalReason,
-        });
+      } else if (action === "approve") {
+        await approve.mutateAsync({ id, employeeId, reason: remarks });
         toast.success("Approved");
-      }
-      if (action === "reject") {
-        const rejectReason =
-          reason.trim() || window.prompt("Reject reason (required):") || "";
-        if (!rejectReason.trim()) {
-          toast.warning("Reason required", "Please enter a reject reason");
-          return;
-        }
-        await reject.mutateAsync({
-          id,
-          employeeId,
-          reason: rejectReason,
-        });
+      } else if (action === "reject") {
+        await reject.mutateAsync({ id, employeeId, reason: remarks });
         toast.success("Rejected");
-      }
-      if (action === "revert") {
-        const revertReason =
-          reason.trim() ||
-          window.prompt("Optional revert remarks:") ||
-          "";
-        await revert.mutateAsync({
-          id,
-          employeeId,
-          remarks: revertReason,
-        });
+      } else if (action === "revert") {
+        await revert.mutateAsync({ id, employeeId, remarks });
         toast.success("Reverted", "Timesheet returned to draft");
       }
-      setReason("");
+      setPendingAction(null);
       void query.refetch();
     } catch (err) {
       toast.error("Action failed", getErrorMessage(err));
@@ -188,44 +181,67 @@ export function TimesheetManagementDetailPage() {
         </Card>
       </div>
 
-      <Card className="flex flex-col gap-3">
-        <h2 className="text-base font-semibold">Actions</h2>
-        <TextInput
-          label="Remarks (approve / reject / revert)"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-        />
-        <div className="flex flex-wrap gap-2">
-          {perms?.can_submit ? (
-            <Button loading={busy} onClick={() => void run("submit")}>
-              Submit for approval
-            </Button>
+      {canAct || existingRemarks ? (
+        <Card className="flex flex-col gap-3">
+          <h2 className="text-base font-semibold">Actions</h2>
+          {existingRemarks ? (
+            <div>
+              <p className="text-xs font-medium uppercase text-muted">
+                {existingRemarksLabel}
+              </p>
+              <p className="mt-1 whitespace-pre-wrap text-sm text-[var(--mt-text)]">
+                {existingRemarks}
+              </p>
+            </div>
           ) : null}
-          {perms?.can_approve ? (
-            <Button loading={busy} onClick={() => void run("approve")}>
-              Approve
-            </Button>
-          ) : null}
-          {perms?.can_reject ? (
-            <Button
-              variant="danger"
-              loading={busy}
-              onClick={() => void run("reject")}
-            >
-              Reject
-            </Button>
-          ) : null}
-          {perms?.can_revert_to_draft ? (
-            <Button
-              variant="secondary"
-              loading={busy}
-              onClick={() => void run("revert")}
-            >
-              Revert to draft
-            </Button>
-          ) : null}
-        </div>
-      </Card>
+          {canAct ? (
+            <div className="flex flex-wrap gap-2">
+              {perms?.can_submit ? (
+                <Button
+                  loading={busy}
+                  disabled={busy}
+                  onClick={() => setPendingAction("submit")}
+                >
+                  Submit for approval
+                </Button>
+              ) : null}
+              {perms?.can_approve ? (
+                <Button
+                  loading={busy}
+                  disabled={busy}
+                  onClick={() => setPendingAction("approve")}
+                >
+                  Approve
+                </Button>
+              ) : null}
+              {perms?.can_reject ? (
+                <Button
+                  variant="danger"
+                  loading={busy}
+                  disabled={busy}
+                  onClick={() => setPendingAction("reject")}
+                >
+                  Reject
+                </Button>
+              ) : null}
+              {perms?.can_revert_to_draft ? (
+                <Button
+                  variant="secondary"
+                  loading={busy}
+                  disabled={busy}
+                  onClick={() => setPendingAction("revert")}
+                >
+                  Revert to draft
+                </Button>
+              ) : null}
+            </div>
+          ) : (
+            <p className="text-sm text-muted">
+              No status actions are available for this timesheet.
+            </p>
+          )}
+        </Card>
+      ) : null}
 
       <Card>
         <h2 className="mb-3 text-base font-semibold">Days</h2>
@@ -270,6 +286,14 @@ export function TimesheetManagementDetailPage() {
         open={selectedDayId != null}
         onClose={() => setSelectedDayId(null)}
         onSaved={() => void query.refetch()}
+      />
+
+      <RemarksConfirmDialog
+        open={pendingAction != null}
+        action={pendingAction}
+        loading={busy}
+        onClose={() => setPendingAction(null)}
+        onConfirm={confirmAction}
       />
     </div>
   );

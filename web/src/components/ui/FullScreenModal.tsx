@@ -34,6 +34,8 @@ export function FullScreenModal({
 }: FullScreenModalProps) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
@@ -41,15 +43,22 @@ export function FullScreenModal({
     document.body.style.overflow = "hidden";
 
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onCloseRef.current();
     }
     window.addEventListener("keydown", onKey);
 
+    // Focus once when the dialog opens — prefer form fields so typing
+    // is not stolen by the header Close button on parent re-renders.
     const t = window.setTimeout(() => {
-      const focusable = panelRef.current?.querySelector<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      const root = panelRef.current;
+      if (!root) return;
+      const preferred = root.querySelector<HTMLElement>(
+        'input:not([disabled]):not([type="hidden"]), textarea:not([disabled]), select:not([disabled])',
       );
-      focusable?.focus();
+      const fallback = root.querySelector<HTMLElement>(
+        'button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+      );
+      (preferred ?? fallback)?.focus();
     }, 50);
 
     return () => {
@@ -57,7 +66,7 @@ export function FullScreenModal({
       window.removeEventListener("keydown", onKey);
       window.clearTimeout(t);
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { useToastStore } from "@/store/toastStore";
 import { TimesheetDayEditor } from "@/features/timesheet/TimesheetDayEditor";
+import { RemarksConfirmDialog } from "@/features/timesheet/RemarksConfirmDialog";
 
 type TimesheetDay = {
   id?: number;
@@ -30,6 +31,8 @@ type TimesheetDetail = {
   job?: { id?: number; name?: string } | null;
   jobs?: Array<{ id?: number; name?: string }> | null;
   days?: TimesheetDay[];
+  approval_reason?: string | null;
+  reject_reason?: string | null;
   permissions?: {
     can_submit?: boolean;
     can_approve?: boolean;
@@ -45,6 +48,7 @@ export function TimesheetDetailPage() {
   const toast = useToastStore();
   const submit = useSubmitTimesheet();
   const [selectedDayId, setSelectedDayId] = useState<number | null>(null);
+  const [submitOpen, setSubmitOpen] = useState(false);
 
   const query = useQuery({
     queryKey: ["timesheets", id] as const,
@@ -70,11 +74,11 @@ export function TimesheetDetailPage() {
     });
   }, [data?.days]);
 
-  async function handleSubmit() {
-    window.prompt("Optional remarks for submit:");
+  async function confirmSubmit(remarks: string) {
     try {
-      await submit.mutateAsync(id);
+      await submit.mutateAsync({ id, remarks });
       toast.success("Submitted", "Timesheet submitted for approval");
+      setSubmitOpen(false);
       void query.refetch();
     } catch (err) {
       toast.error("Submit failed", getErrorMessage(err));
@@ -108,6 +112,13 @@ export function TimesheetDetailPage() {
   }
 
   const perms = data.permissions;
+  const existingRemarks =
+    (data.reject_reason || data.approval_reason || "").trim() || null;
+  const existingRemarksLabel = data.reject_reason
+    ? "Reject remarks"
+    : data.approval_reason
+      ? "Approval remarks"
+      : "Remarks";
 
   return (
     <div className="mt-fade-in flex flex-col gap-4">
@@ -134,7 +145,8 @@ export function TimesheetDetailPage() {
             {perms?.can_submit ? (
               <Button
                 loading={submit.isPending}
-                onClick={() => void handleSubmit()}
+                disabled={submit.isPending}
+                onClick={() => setSubmitOpen(true)}
               >
                 Submit for approval
               </Button>
@@ -175,6 +187,17 @@ export function TimesheetDetailPage() {
           </p>
         </Card>
       </div>
+
+      {existingRemarks && !perms?.can_submit ? (
+        <Card>
+          <h2 className="mb-2 text-base font-semibold text-[var(--mt-text)]">
+            {existingRemarksLabel}
+          </h2>
+          <p className="whitespace-pre-wrap text-sm text-[var(--mt-text)]">
+            {existingRemarks}
+          </p>
+        </Card>
+      ) : null}
 
       <Card>
         <h2 className="mb-3 text-base font-semibold text-[var(--mt-text)]">
@@ -224,6 +247,14 @@ export function TimesheetDetailPage() {
         open={selectedDayId != null}
         onClose={() => setSelectedDayId(null)}
         onSaved={() => void query.refetch()}
+      />
+
+      <RemarksConfirmDialog
+        open={submitOpen}
+        action="submit"
+        loading={submit.isPending}
+        onClose={() => setSubmitOpen(false)}
+        onConfirm={confirmSubmit}
       />
     </div>
   );

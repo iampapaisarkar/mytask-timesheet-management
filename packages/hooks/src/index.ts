@@ -413,11 +413,21 @@ export function useTimesheetManagementItem(
 export function useSubmitTimesheet() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string | number) => {
-      const res = await timesheetsApi.submitForApproval(id);
+    mutationFn: async (
+      idOrVars: string | number | { id: string | number; remarks: string },
+    ) => {
+      const id =
+        typeof idOrVars === "object" ? idOrVars.id : idOrVars;
+      const remarks =
+        typeof idOrVars === "object" ? idOrVars.remarks : undefined;
+      const res = await timesheetsApi.submitForApproval(
+        id,
+        remarks != null ? { remarks } : {},
+      );
       return res.data;
     },
-    onSuccess: (_data, id) => {
+    onSuccess: (_data, idOrVars) => {
+      const id = typeof idOrVars === "object" ? idOrVars.id : idOrVars;
       void qc.invalidateQueries({ queryKey: queryKeys.timesheet(id) });
       void qc.invalidateQueries({ queryKey: ["timesheets"] });
     },
@@ -430,12 +440,15 @@ export function useSubmitTimesheetManagement() {
     mutationFn: async ({
       id,
       employeeId,
+      remarks,
     }: {
       id: string | number;
       employeeId: string | number;
+      remarks: string;
     }) => {
       const res = await timesheetManagementApi.submitForApproval(id, {
         employee_id: employeeId,
+        remarks,
       });
       return res.data;
     },
@@ -458,11 +471,11 @@ export function useApproveTimesheet() {
     }: {
       id: string | number;
       employeeId: string | number;
-      reason?: string;
+      reason: string;
     }) => {
       const res = await timesheetManagementApi.approve(id, {
         employee_id: employeeId,
-        remarks: reason || "",
+        remarks: reason,
       });
       return res.data;
     },
@@ -485,11 +498,11 @@ export function useRejectTimesheet() {
     }: {
       id: string | number;
       employeeId: string | number;
-      reason?: string;
+      reason: string;
     }) => {
       const res = await timesheetManagementApi.reject(id, {
         employee_id: employeeId,
-        remarks: reason || "",
+        remarks: reason,
       });
       return res.data;
     },
@@ -512,11 +525,11 @@ export function useRevertTimesheet() {
     }: {
       id: string | number;
       employeeId: string | number;
-      remarks?: string;
+      remarks: string;
     }) => {
       const res = await timesheetManagementApi.revert(id, {
         employee_id: employeeId,
-        remarks: remarks || "",
+        remarks,
       });
       return res.data;
     },
