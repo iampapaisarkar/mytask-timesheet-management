@@ -7,6 +7,7 @@ import {
   bootstrapRealtime,
   connectRealtime,
   disconnectRealtime,
+  getSocketManager,
   setRealtimeOrganisation,
   sharedOfflineQueue,
 } from "@mytask/realtime";
@@ -52,19 +53,41 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   }, [queryClient, navigate]);
 
   useEffect(() => {
-    if (userId) {
-      connectRealtime();
-      setRealtimeOrganisation(organisationId);
-      void sharedOfflineQueue.flush();
-    } else {
+    if (!userId) {
       disconnectRealtime();
+      return;
     }
+
+    let cancelled = false;
+    void sharedAuthTokenManager.getValidIdToken().then((token) => {
+      if (cancelled || !token) return;
+      if (!useAuthStore.getState().user?.id) return;
+      connectRealtime();
+      setRealtimeOrganisation(
+        useOrganisationStore.getState().organisation?.id ?? null,
+      );
+      void sharedOfflineQueue.flush();
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
   useEffect(() => {
     if (!userId) return;
     setRealtimeOrganisation(organisationId);
   }, [userId, organisationId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    // Token often arrives after userId on cold start / re-login — retry connect.
+    return sharedAuthTokenManager.onTokenUpdated((token) => {
+      if (!token || !useAuthStore.getState().user?.id) return;
+      connectRealtime();
+      void getSocketManager().updateAuthToken();
+    });
+  }, [userId]);
 
   useEffect(() => {
     const onOnline = () => {

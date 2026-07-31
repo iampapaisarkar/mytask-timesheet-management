@@ -97,7 +97,12 @@ export class SocketManager {
    */
   async updateAuthToken(): Promise<void> {
     const token = await this.resolveToken();
-    if (!this.socket || !token) return;
+    if (!token) return;
+    // First token after a connect() that raced ahead of Firebase — open socket now.
+    if (!this.socket) {
+      this.connect();
+      return;
+    }
     if (token === this.lastAuthToken) {
       this.socket.auth = this.buildAuth(token);
       return;

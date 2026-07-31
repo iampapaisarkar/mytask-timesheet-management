@@ -24,12 +24,16 @@ export type RealtimeBootstrapOptions = {
 let unsubscribeStatus: (() => void) | null = null;
 let unsubscribeEvents: (() => void) | null = null;
 let bootstrapped = false;
+/** Kept across logout so login can re-wire without remounting RealtimeProvider. */
+let lastOptions: RealtimeBootstrapOptions | null = null;
 
 /**
  * Configure singleton socket + wire domain sync into Query + Zustand stores.
  * Safe to call once at app boot; connectRealtime() when authenticated.
+ * Also safe to call again after teardownRealtime() (e.g. re-login).
  */
 export function bootstrapRealtime(options: RealtimeBootstrapOptions): void {
+  lastOptions = options;
   const manager = getSocketManager();
   manager.configure({
     url: options.url,
@@ -54,7 +58,12 @@ export function bootstrapRealtime(options: RealtimeBootstrapOptions): void {
 }
 
 export function connectRealtime(): void {
-  if (!bootstrapped) return;
+  // Logout calls teardownRealtime() which clears bootstrapped while the
+  // provider stays mounted — re-apply last options so login can connect.
+  if (!bootstrapped) {
+    if (!lastOptions) return;
+    bootstrapRealtime(lastOptions);
+  }
   getSocketManager().connect();
 }
 
@@ -75,4 +84,5 @@ export function teardownRealtime(): void {
   unsubscribeEvents = null;
   resetRealtimeClientState();
   bootstrapped = false;
+  // Keep lastOptions so the next connectRealtime() can re-bootstrap.
 }

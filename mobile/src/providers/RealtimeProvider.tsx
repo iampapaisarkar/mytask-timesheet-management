@@ -81,19 +81,39 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   }, [queryClient]);
 
   useEffect(() => {
-    if (userId) {
-      connectRealtime();
-      setRealtimeOrganisation(organisationId);
-      void sharedOfflineQueue.flush();
-    } else {
+    if (!userId) {
       disconnectRealtime();
+      return;
     }
+
+    let cancelled = false;
+    void sharedAuthTokenManager.getValidIdToken().then((token) => {
+      if (cancelled || !token) return;
+      if (!useAuthStore.getState().user?.id) return;
+      connectRealtime();
+      setRealtimeOrganisation(
+        useOrganisationStore.getState().organisation?.id ?? null,
+      );
+      void sharedOfflineQueue.flush();
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
   useEffect(() => {
     if (!userId) return;
     setRealtimeOrganisation(organisationId);
   }, [userId, organisationId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    return sharedAuthTokenManager.onTokenUpdated((token) => {
+      if (!token || !useAuthStore.getState().user?.id) return;
+      connectRealtime();
+    });
+  }, [userId]);
 
   useEffect(() => {
     const onChange = (state: AppStateStatus) => {
