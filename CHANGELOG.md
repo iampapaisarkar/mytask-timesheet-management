@@ -4,7 +4,16 @@
 
 ### Added
 
+- **Stripe subscription system (Test Mode ready):** user-owned Free/Pro plans, Checkout + Customer Portal, signed webhooks, billing history, usage counters, plan-limit middleware on org/employee/customer/job/timesheet/report/system-logs, BullMQ subscription worker (expiry reminders, webhook cleanup), web Pricing/Subscription/Billing pages, mobile Pricing/Subscription/Billing screens. See `docs/STRIPE_SUBSCRIPTIONS.md`.
+
+### API
+
+- New `/api/subscriptions/*` routes (plans, current, usage, checkout, portal, cancel, billing-history, webhook). Signup auto-assigns Free. Org create hard-cap replaced by plan limits (Free 1 / Pro 5).
+
+### Added
+
 - Notifications **See more** opens a paginated notifications table (`/org/:orgCode/notifications`); bell preview shows the latest 10. Web mobile viewport uses a full-screen notifications sheet; mobile app has a full-screen Notifications list.
+
 
 ### Fixed
 

@@ -131,6 +131,18 @@ const PrivacyPage = lazy(() =>
 const TermsPage = lazy(() =>
   import("@/features/legal").then((m) => ({ default: m.TermsPage })),
 );
+const PricingPage = lazy(() =>
+  import("@/features/billing").then((m) => ({ default: m.PricingPage })),
+);
+const SubscriptionPage = lazy(() =>
+  import("@/features/billing").then((m) => ({ default: m.SubscriptionPage })),
+);
+const BillingHistoryPage = lazy(() =>
+  import("@/features/billing").then((m) => ({ default: m.BillingHistoryPage })),
+);
+const BillingSuccessPage = lazy(() =>
+  import("@/features/billing").then((m) => ({ default: m.BillingSuccessPage })),
+);
 
 function RouteFallback() {
   return (
@@ -156,6 +168,7 @@ export function AppRouter() {
                 <Route path="/help" element={<HelpFaqPage />} />
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/pricing" element={<PricingPage />} />
               </Route>
 
               <Route element={<GuestRoute />}>
@@ -173,6 +186,12 @@ export function AppRouter() {
                 <Route element={<MainLayout />}>
                   <Route path="/" element={<HomePage />} />
                   <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/subscription" element={<SubscriptionPage />} />
+                  <Route path="/billing" element={<BillingHistoryPage />} />
+                  <Route
+                    path="/billing/success"
+                    element={<BillingSuccessPage />}
+                  />
                   <Route
                     path="/organisations/create"
                     element={<CreateOrganisationPage />}

@@ -58,6 +58,27 @@ app.use(requestLogger);
 app.use(rateLimiter);
 app.use(requestAudit);
 app.use(compression());
+
+/**
+ * Stripe webhooks require the raw body for signature verification.
+ * Must be registered before JSON body parsing.
+ */
+app.post(
+  "/api/subscriptions/webhook",
+  bodyParser.raw({ type: "application/json" }),
+  async (req, res, next) => {
+    try {
+      req.rawBody = req.body;
+      const { stripeWebhook } = await import(
+        "./controller/subscription.controller.js"
+      );
+      return stripeWebhook(req, res);
+    } catch (err) {
+      return next(err);
+    }
+  },
+);
+
 app.use(bodyParser.json({ limit: "10mb" }));
 app.use(bodyParser.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cors(buildCorsOptions()));

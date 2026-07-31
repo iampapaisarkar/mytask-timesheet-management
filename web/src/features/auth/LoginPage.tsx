@@ -17,6 +17,7 @@ export function LoginPage() {
   const [searchParams] = useSearchParams();
   const invitationToken =
     searchParams.get("token") || searchParams.get("invitation_token") || "";
+  const redirectTo = searchParams.get("redirect") || "";
   const setSession = useAuthStore((s) => s.setSession);
   const toast = useToastStore();
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +51,8 @@ export function LoginPage() {
           `${ROUTES.orgInvitation}?token=${encodeURIComponent(invitationToken)}`,
           { replace: true },
         );
+      } else if (redirectTo && redirectTo.startsWith("/")) {
+        navigate(redirectTo, { replace: true });
       } else {
         navigate(ROUTES.home);
       }
@@ -98,13 +101,27 @@ export function LoginPage() {
           to={
             invitationToken
               ? `${ROUTES.signup}?token=${encodeURIComponent(invitationToken)}`
-              : ROUTES.signup
+              : redirectTo
+                ? `${ROUTES.signup}?redirect=${encodeURIComponent(redirectTo)}`
+                : ROUTES.signup
           }
           className="font-medium text-primary"
         >
           Signup
         </Link>
       </div>
+      <Link
+        to={
+          redirectTo
+            ? `${ROUTES.pricing}?redirect=${encodeURIComponent(redirectTo)}`
+            : ROUTES.pricing
+        }
+        className="w-full"
+      >
+        <Button type="button" variant="secondary" className="w-full">
+          See Pricing
+        </Button>
+      </Link>
     </div>
   );
 }

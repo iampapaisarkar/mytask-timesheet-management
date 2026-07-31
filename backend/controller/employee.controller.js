@@ -219,6 +219,17 @@ export async function create(req, res, next) {
     );
     await assertOrganisationSetupComplete(organisation.id);
 
+    const { default: subscriptionService } = await import(
+      "../service/subscription/subscription.service.js"
+    );
+    const ownerUserId =
+      (await subscriptionService.resolveOrgOwnerUserId(organisation.id, {
+        transaction,
+      })) || user.id;
+    await subscriptionService.checkCreateEmployee(ownerUserId, organisation.id, {
+      transaction,
+    });
+
     const employee = await employeeService.createOrUpdateEmployeeDetails(
       user,
       organisation,

@@ -242,6 +242,19 @@ export async function signup(req, res, next) {
     // 3. Commit the database changes
     await transaction.commit();
 
+    /** Assign Free plan (idempotent). Outside main txn so signup never fails on billing seed issues. */
+    try {
+      const { default: subscriptionService } = await import(
+        "../service/subscription/subscription.service.js"
+      );
+      await subscriptionService.ensureFreeSubscription(authUserId);
+    } catch (subErr) {
+      console.error(
+        "Free subscription assign failed (signup continues):",
+        subErr?.message || subErr,
+      );
+    }
+
     /** * Post-Transaction: External Services (Firebase, Email)
      **/
     try {

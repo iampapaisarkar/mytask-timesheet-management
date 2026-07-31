@@ -158,3 +158,9 @@ export const createOrganisationSchema = z
 export type CreateOrganisationFormValues = z.infer<
   typeof createOrganisationSchema
 >;
+
+export const checkoutSchema = z.object({
+  billing_interval: z.enum(["month", "year"]),
+});
+
+export type CheckoutFormValues = z.infer<typeof checkoutSchema>;

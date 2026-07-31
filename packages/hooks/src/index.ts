@@ -12,6 +12,7 @@ import {
   payoutsApi,
   systemLogsApi,
   notificationsApi,
+  subscriptionApi,
 } from "@mytask/api";
 import type {
   DashboardGraphsView,
@@ -23,6 +24,9 @@ import type {
   HomeBootstrapView,
   ListParams,
   OrgBootstrapView,
+  PlansCatalogueResponse,
+  SubscriptionView,
+  BillingHistoryItem,
   TimesheetDayEditorView,
 } from "@mytask/types";
 import {
@@ -100,6 +104,13 @@ export const queryKeys = {
       ["screens", "dashboard", "recent", orgCode] as const,
     dashboardPending: (orgCode: string) =>
       ["screens", "dashboard", "pending", orgCode] as const,
+  },
+  subscription: {
+    plans: ["subscription", "plans"] as const,
+    current: ["subscription", "current"] as const,
+    usage: ["subscription", "usage"] as const,
+    billing: (params?: ListParams) =>
+      ["subscription", "billing", params] as const,
   },
 };
 
@@ -968,6 +979,90 @@ export function useLogoutMutation() {
     mutationFn: () => authApi.logout(),
     onSettled: () => {
       qc.clear();
+    },
+  });
+}
+
+export function usePlansCatalogue(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.subscription.plans,
+    queryFn: async ({ signal }) => {
+      const res = await subscriptionApi.listPlans({ signal });
+      return res.data.data as PlansCatalogueResponse;
+    },
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useCurrentSubscription(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.subscription.current,
+    queryFn: async ({ signal }) => {
+      const res = await subscriptionApi.current({ signal });
+      return res.data.data as SubscriptionView;
+    },
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useSubscriptionUsage(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.subscription.usage,
+    queryFn: async ({ signal }) => {
+      const res = await subscriptionApi.usage({ signal });
+      return res.data.data;
+    },
+    enabled,
+  });
+}
+
+export function useBillingHistory(params: ListParams = {}, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.subscription.billing(params),
+    queryFn: async ({ signal }) => {
+      const res = await subscriptionApi.billingHistory(params, { signal });
+      return {
+        data: (Array.isArray(res.data.data) ? res.data.data : []) as BillingHistoryItem[],
+        pagination: extractPagination(res.data),
+      };
+    },
+    enabled,
+  });
+}
+
+export function useCreateCheckout() {
+  return useMutation({
+    mutationFn: async (payload: {
+      billing_interval: "month" | "year";
+      success_url?: string;
+      cancel_url?: string;
+    }) => {
+      const res = await subscriptionApi.checkout(payload);
+      return res.data.data;
+    },
+  });
+}
+
+export function useBillingPortal() {
+  return useMutation({
+    mutationFn: async (payload: { return_url?: string } = {}) => {
+      const res = await subscriptionApi.portal(payload);
+      return res.data.data;
+    },
+  });
+}
+
+export function useCancelSubscription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { immediate?: boolean } = {}) => {
+      const res = await subscriptionApi.cancel(payload);
+      return res.data.data as SubscriptionView;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["subscription"] });
     },
   });
 }

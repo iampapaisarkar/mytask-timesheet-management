@@ -19,10 +19,13 @@ import { getErrorMessage, getTimezone } from "@mytask/utils";
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useAuthStore } from "../store/authStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 import { ENV } from "../config/env";
+import type { RootStackParamList } from "../navigation/RootNavigator";
 
 function getFirebaseAuth() {
   const config = {
@@ -38,6 +41,8 @@ function getFirebaseAuth() {
 }
 
 export function LoginScreen() {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const setSession = useAuthStore((s) => s.setSession);
   const c = useThemeStore((s) => s.colors);
   const toggleTheme = useThemeStore((s) => s.toggle);
@@ -160,6 +165,21 @@ export function LoginScreen() {
           <Text style={styles.buttonText}>
             {loading ? "Please wait…" : "Login"}
           </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.button,
+            {
+              backgroundColor: c.surface,
+              borderWidth: 1,
+              borderColor: c.border,
+              marginTop: spacing.md,
+            },
+          ]}
+          onPress={() => navigation.navigate("Pricing")}
+        >
+          <Text style={[styles.buttonText, { color: c.text }]}>See Pricing</Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>

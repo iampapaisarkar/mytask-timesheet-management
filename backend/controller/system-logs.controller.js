@@ -1,9 +1,29 @@
 import systemLogsService from "../service/audit/system-logs.service.js";
+import subscriptionService from "../service/subscription/subscription.service.js";
+import { FEATURE_KEYS } from "../config/subscription.config.js";
 
 function deny(res) {
   return res.status(403).json({
     message: "Access denied: You are not authorized to access this action.",
   });
+}
+
+async function assertPlanAllowsSystemLogs(user, res) {
+  try {
+    await subscriptionService.assertBooleanFeature(
+      user.id,
+      FEATURE_KEYS.SYSTEM_LOGS,
+    );
+    return true;
+  } catch (err) {
+    res.status(err.statusCode || 403).json({
+      message:
+        err.message ||
+        "System Logs are available on the Pro plan. Upgrade to unlock.",
+      code: err.code || "PLAN_FEATURE_DISABLED",
+    });
+    return false;
+  }
 }
 
 function assertList(organisation, res) {
@@ -25,6 +45,7 @@ function assertView(organisation, res) {
 export async function listInternal(req, res) {
   const { user, organisation } = req.body;
   if (!assertList(organisation, res)) return;
+  if (!(await assertPlanAllowsSystemLogs(user, res))) return;
   try {
     const result = await systemLogsService.listInternalLogs(
       user,
@@ -48,6 +69,7 @@ export async function listInternal(req, res) {
 export async function listExternal(req, res) {
   const { user, organisation } = req.body;
   if (!assertList(organisation, res)) return;
+  if (!(await assertPlanAllowsSystemLogs(user, res))) return;
   try {
     const result = await systemLogsService.listExternalLogs(
       user,
@@ -71,6 +93,7 @@ export async function listExternal(req, res) {
 export async function listEmail(req, res) {
   const { user, organisation } = req.body;
   if (!assertList(organisation, res)) return;
+  if (!(await assertPlanAllowsSystemLogs(user, res))) return;
   try {
     const result = await systemLogsService.listEmailLogs(
       user,
@@ -94,6 +117,7 @@ export async function listEmail(req, res) {
 export async function summary(req, res) {
   const { user, organisation } = req.body;
   if (!assertList(organisation, res)) return;
+  if (!(await assertPlanAllowsSystemLogs(user, res))) return;
   try {
     const result = await systemLogsService.getAuditSummary(
       user,
@@ -113,6 +137,7 @@ export async function summary(req, res) {
 export async function getDetail(req, res) {
   const { user, organisation } = req.body;
   if (!assertView(organisation, res)) return;
+  if (!(await assertPlanAllowsSystemLogs(user, res))) return;
   const type = String(req.params.type || "internal");
   const id = req.params.id;
   if (!["internal", "external", "email"].includes(type)) {
@@ -141,6 +166,7 @@ export async function getDetail(req, res) {
 export async function exportCsv(req, res) {
   const { user, organisation } = req.body;
   if (!assertList(organisation, res)) return;
+  if (!(await assertPlanAllowsSystemLogs(user, res))) return;
   const type = String(req.query.type || "internal");
   try {
     let result;

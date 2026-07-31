@@ -122,6 +122,14 @@ export async function createReportRequest({
 
   await assertEmployeesInScope(organisation, [employeeId]);
 
+  const { default: subscriptionService } = await import(
+    "./subscription/subscription.service.js"
+  );
+  const ownerUserId =
+    (await subscriptionService.resolveOrgOwnerUserId(organisation.id)) ||
+    user.id;
+  await subscriptionService.checkGenerateReport(ownerUserId, organisation.id);
+
   const approved = await loadApprovedTimesheetForReport({
     organisationId: organisation.id,
     employeeId,
@@ -166,6 +174,15 @@ export async function createReportRequest({
     organisationCode: organisation.code,
     requestedBy: user.id,
   });
+
+  try {
+    await subscriptionService.recordReportGenerated(
+      ownerUserId,
+      organisation.id,
+    );
+  } catch (usageErr) {
+    console.error("report usage counter failed:", usageErr?.message || usageErr);
+  }
 
   emitReportUpdated(
     organisation.id,

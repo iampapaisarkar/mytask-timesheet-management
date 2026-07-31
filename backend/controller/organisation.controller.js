@@ -130,9 +130,21 @@ export async function create(req, res, next) {
   let transaction;
   try {
     const ownOrganisations = await Auth.getOwnOrganisations(user.id);
-    if (ownOrganisations.length === 3) {
+    const { default: subscriptionService } = await import(
+      "../service/subscription/subscription.service.js"
+    );
+    try {
+      await subscriptionService.checkCreateOrganisation(user.id);
+    } catch (limitErr) {
+      return res.status(limitErr.statusCode || 403).json({
+        message: limitErr.message,
+        code: limitErr.code || "PLAN_LIMIT_REACHED",
+      });
+    }
+    // Legacy hard-cap retained as safety net aligned with Free plan
+    if (ownOrganisations.length >= 5) {
       return res.status(501).json({
-        message: "Can't create more than 3 organisations",
+        message: "Can't create more organisations on your current plan",
       });
     }
 

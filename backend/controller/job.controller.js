@@ -139,6 +139,23 @@ export async function create(req, res, next) {
         message: "Customer is required!",
       });
     }
+
+    const { default: subscriptionService } = await import(
+      "../service/subscription/subscription.service.js"
+    );
+    const ownerUserId =
+      (await subscriptionService.resolveOrgOwnerUserId(organisation.id)) ||
+      user.id;
+    const customerId = typeof customer === "object" ? customer.id : customer;
+    try {
+      await subscriptionService.checkCreateJob(ownerUserId, customerId);
+    } catch (limitErr) {
+      return res.status(limitErr.statusCode || 403).json({
+        message: limitErr.message,
+        code: limitErr.code || "PLAN_LIMIT_REACHED",
+      });
+    }
+
     if (!address?.address_1 && !address?.address_line_1 && !address?.formatted_address && !address?.street_address && !address?.street) {
       return res.status(400).json({
         message: "Please select an address from Google Places suggestions.",

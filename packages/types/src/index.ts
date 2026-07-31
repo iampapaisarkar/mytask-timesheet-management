@@ -306,3 +306,88 @@ export type DashboardPendingView = {
   quick_links_hint: DashboardOverviewView["quick_links_hint"];
 };
 
+/** Stripe subscription / plan types (user-owned). */
+export type PlanCode = "free" | "pro";
+export type BillingInterval = "month" | "year" | "none";
+
+export type PlanFeaturesMap = {
+  organisations?: number;
+  employees_per_org?: number;
+  customers?: number;
+  jobs_per_customer?: number;
+  timesheets_per_employee_month?: number;
+  reports_per_day?: number;
+  email_notifications?: boolean;
+  system_logs?: boolean;
+  [key: string]: number | boolean | undefined;
+};
+
+export type PlanPrice = {
+  id: number;
+  billing_interval: BillingInterval;
+  amount_cents: number;
+  currency: string;
+  stripe_price_id?: string | null;
+};
+
+export type PlanSummary = {
+  id: number;
+  code: PlanCode | string;
+  name: string;
+  description?: string | null;
+  is_free: boolean;
+  features: PlanFeaturesMap;
+  prices: PlanPrice[];
+};
+
+export type SubscriptionUsageBucket = {
+  used: number;
+  limit: number | null;
+  remaining: number | null;
+};
+
+export type SubscriptionView = {
+  id: number | string;
+  status: string;
+  billing_interval: BillingInterval;
+  payment_status: string;
+  cancel_at_period_end: boolean;
+  current_period_start?: string | null;
+  current_period_end?: string | null;
+  canceled_at?: string | null;
+  ended_at?: string | null;
+  stripe_subscription_id?: string | null;
+  is_pro: boolean;
+  plan: PlanSummary;
+  usage?: {
+    plan_code: string;
+    features: PlanFeaturesMap;
+    usage: {
+      organisations: SubscriptionUsageBucket;
+      reports_today: SubscriptionUsageBucket;
+    };
+  };
+};
+
+export type BillingHistoryItem = {
+  id: number | string;
+  invoice_number?: string | null;
+  plan?: { id: number; code: string; name: string } | null;
+  amount_cents: number;
+  currency: string;
+  status: string;
+  payment_method?: string | null;
+  invoice_pdf_url?: string | null;
+  hosted_invoice_url?: string | null;
+  paid_at?: string | null;
+  period_start?: string | null;
+  period_end?: string | null;
+  created_at?: string | null;
+};
+
+export type PlansCatalogueResponse = {
+  plans: PlanSummary[];
+  current_subscription: SubscriptionView | null;
+};
+
+

@@ -25,12 +25,18 @@ export function ProtectedRoute() {
 export function GuestRoute() {
   const token = useAuthStore((s) => s.token);
   const hydrated = useAuthStore((s) => s.hydrated);
+  const location = useLocation();
 
   if (!hydrated) {
     return <div className="flex min-h-screen items-center justify-center">Loading…</div>;
   }
 
   if (token) {
+    const params = new URLSearchParams(location.search);
+    const redirect = params.get("redirect");
+    if (redirect && redirect.startsWith("/")) {
+      return <Navigate to={redirect} replace />;
+    }
     return <Navigate to={ROUTES.home} replace />;
   }
 

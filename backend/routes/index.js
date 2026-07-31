@@ -18,6 +18,7 @@ import Report from "./report/index.js";
 import screens from "./screens/index.js";
 import payout from "./payout/index.js";
 import systemLogs from "./system-logs/index.js";
+import subscription from "./subscription/index.js";
 import { SocketIO } from "#socketio";
 import { NodeMailer } from "#nodemailer";
 import { FirebaseMessaging } from "#firebasemessaging";
@@ -27,6 +28,7 @@ const { Users } = models;
 
 // Public routes
 router.use("/auth", Auth);
+router.use("/subscriptions", subscription);
 
 router.use("/organisations", TokenValidate, organisation);
 router.use("/timesheets", TokenValidate, OrganisationValidate, timesheet);

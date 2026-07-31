@@ -104,6 +104,21 @@ export async function create(req, res, next) {
     );
     await assertOrganisationSetupComplete(organisation.id);
 
+    const { default: subscriptionService } = await import(
+      "../service/subscription/subscription.service.js"
+    );
+    const ownerUserId =
+      (await subscriptionService.resolveOrgOwnerUserId(organisation.id)) ||
+      user.id;
+    try {
+      await subscriptionService.checkCreateCustomer(ownerUserId, organisation.id);
+    } catch (limitErr) {
+      return res.status(limitErr.statusCode || 403).json({
+        message: limitErr.message,
+        code: limitErr.code || "PLAN_LIMIT_REACHED",
+      });
+    }
+
     if (!name) {
       return res.status(501).json({
         message: "Name is required!",

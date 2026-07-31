@@ -17,6 +17,11 @@ import { CustomersListScreen } from "../features/customers";
 import { JobsListScreen } from "../features/jobs";
 import { SettingsHubScreen, ProfileScreen } from "../features/settings";
 import { NotificationsListScreen } from "../features/notifications";
+import {
+  PricingScreen,
+  SubscriptionScreen,
+  BillingHistoryScreen,
+} from "../features/billing";
 
 export type RootStackParamList = {
   Login: undefined;
@@ -35,6 +40,9 @@ export type RootStackParamList = {
   JobsList: { orgCode: string };
   NotificationsList: { orgCode: string };
   SettingsHub: { orgCode: string };
+  Pricing: undefined;
+  Subscription: undefined;
+  BillingHistory: undefined;
 };
 
 export type MainTabParamList = {
@@ -112,11 +120,18 @@ export function RootNavigator() {
       }}
     >
       {!token ? (
-        <Stack.Screen
-          name="Login"
-          component={LoginScreen}
-          options={{ headerShown: false }}
-        />
+        <>
+          <Stack.Screen
+            name="Login"
+            component={LoginScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Pricing"
+            component={PricingScreen}
+            options={{ title: "Pricing" }}
+          />
+        </>
       ) : (
         <>
           <Stack.Screen
@@ -182,6 +197,21 @@ export function RootNavigator() {
             name="SettingsHub"
             component={SettingsHubScreen}
             options={{ title: "Settings" }}
+          />
+          <Stack.Screen
+            name="Pricing"
+            component={PricingScreen}
+            options={{ title: "Pricing" }}
+          />
+          <Stack.Screen
+            name="Subscription"
+            component={SubscriptionScreen}
+            options={{ title: "Subscription" }}
+          />
+          <Stack.Screen
+            name="BillingHistory"
+            component={BillingHistoryScreen}
+            options={{ title: "Billing history" }}
           />
         </>
       )}

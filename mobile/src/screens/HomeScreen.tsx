@@ -53,6 +53,18 @@ export function HomeScreen() {
       <Text style={[styles.sub, { color: c.muted }]}>
         Select an organisation to continue
       </Text>
+      <TouchableOpacity
+        style={[
+          styles.upgrade,
+          { backgroundColor: c.primary + "22", borderColor: c.primary },
+        ]}
+        onPress={() => navigation.navigate("Pricing")}
+      >
+        <Text style={{ color: c.primary, fontWeight: "700" }}>Upgrade Plan</Text>
+        <Text style={{ color: c.muted, marginTop: 2, fontSize: 12 }}>
+          Unlock Pro limits and features
+        </Text>
+      </TouchableOpacity>
       <FlatList
         data={organisations}
         keyExtractor={(item) => String(item.id)}
@@ -110,4 +122,10 @@ const styles = StyleSheet.create({
   code: { marginTop: 4, fontSize: 12 },
   empty: { textAlign: "center", marginTop: 40 },
   link: { fontWeight: "700", marginTop: 8 },
+  upgrade: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
 });

@@ -1,4 +1,6 @@
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useQueryClient } from "@tanstack/react-query";
 import { authApi } from "@mytask/api";
 import { spacing } from "@mytask/theme";
@@ -7,8 +9,11 @@ import { useAuthStore } from "../store/authStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 import { resetAllStores } from "../store/resetAllStores";
+import type { RootStackParamList } from "../navigation/RootNavigator";
 
 export function ProfileScreen() {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const user = useAuthStore((s) => s.user);
   const c = useThemeStore((s) => s.colors);
   const mode = useThemeStore((s) => s.mode);
@@ -42,6 +47,22 @@ export function ProfileScreen() {
           {user?.email || "Account"}
         </Text>
       </View>
+
+      <TouchableOpacity
+        style={[styles.row, { backgroundColor: c.surface, borderColor: c.border }]}
+        onPress={() => navigation.navigate("Subscription")}
+      >
+        <Text style={[styles.rowText, { color: c.text }]}>Subscription</Text>
+        <Text style={{ color: c.primary, fontWeight: "700" }}>Manage</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.row, { backgroundColor: c.surface, borderColor: c.border }]}
+        onPress={() => navigation.navigate("Pricing")}
+      >
+        <Text style={[styles.rowText, { color: c.text }]}>Upgrade Plan</Text>
+        <Text style={{ color: c.primary, fontWeight: "700" }}>Pricing</Text>
+      </TouchableOpacity>
 
       <TouchableOpacity
         style={[styles.row, { backgroundColor: c.surface, borderColor: c.border }]}

@@ -48,6 +48,21 @@ import OrganisationAddress from "./organisationAddress.js";
 import Payouts from "./payouts.js";
 import PayoutEvents from "./payoutEvents.js";
 import ReportRequests from "./reportRequests.js";
+import Plans from "./plans.js";
+import PlanPrices from "./planPrices.js";
+import PlanFeatures from "./planFeatures.js";
+import FeatureLimits from "./featureLimits.js";
+import StripeCustomers from "./stripeCustomers.js";
+import Subscriptions from "./subscriptions.js";
+import SubscriptionHistory from "./subscriptionHistory.js";
+import BillingHistory from "./billingHistory.js";
+import InvoiceHistory from "./invoiceHistory.js";
+import PaymentAttempts from "./paymentAttempts.js";
+import StripeEvents from "./stripeEvents.js";
+import WebhookLogs from "./webhookLogs.js";
+import UsageCounters from "./usageCounters.js";
+import SubscriptionNotifications from "./subscriptionNotifications.js";
+import SystemLogsAccess from "./systemLogsAccess.js";
 
 const models = {
   Users,
@@ -99,6 +114,21 @@ const models = {
   Payouts,
   PayoutEvents,
   ReportRequests,
+  Plans,
+  PlanPrices,
+  PlanFeatures,
+  FeatureLimits,
+  StripeCustomers,
+  Subscriptions,
+  SubscriptionHistory,
+  BillingHistory,
+  InvoiceHistory,
+  PaymentAttempts,
+  StripeEvents,
+  WebhookLogs,
+  UsageCounters,
+  SubscriptionNotifications,
+  SystemLogsAccess,
 };
 
 Object.values(models).forEach((model) => {

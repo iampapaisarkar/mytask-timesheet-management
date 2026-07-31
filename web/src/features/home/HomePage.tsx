@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, PageHeader } from "@/components/ui/Card";
 import { useOrganisationStore } from "@/store/organisationStore";
 import { useToastStore } from "@/store/toastStore";
-import { ArrowRight, Building2, Mail, Plus } from "lucide-react";
+import { ArrowRight, Building2, Mail, Plus, Sparkles } from "lucide-react";
 
 export function HomePage() {
   const qc = useQueryClient();
@@ -159,6 +159,20 @@ export function HomePage() {
     return (
       <div className="flex flex-col gap-6">
         {invitationsSection}
+        <Card className="flex flex-col gap-3 border-primary/30 bg-primary-muted/40 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-sm font-semibold text-primary">
+              <Sparkles size={16} />
+              Upgrade Plan
+            </div>
+            <p className="mt-1 text-sm text-muted">
+              Unlock more organisations, higher limits, and Pro features.
+            </p>
+          </div>
+          <Link to={ROUTES.pricing}>
+            <Button variant="primary">See pricing</Button>
+          </Link>
+        </Card>
         <EmptyState
           title="No organisations yet"
           description="Create an organisation to start managing timesheets, or accept an invitation."
@@ -181,12 +195,20 @@ export function HomePage() {
         title="Your organisations"
         description="Select an organisation to continue"
         actions={
-          <Link to={ROUTES.createOrganisation}>
-            <Button>
-              <Plus size={16} />
-              Create organisation
-            </Button>
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link to={ROUTES.pricing}>
+              <Button variant="soft">
+                <Sparkles size={16} />
+                Upgrade Plan
+              </Button>
+            </Link>
+            <Link to={ROUTES.createOrganisation}>
+              <Button>
+                <Plus size={16} />
+                Create organisation
+              </Button>
+            </Link>
+          </div>
         }
       />
       {invitationsSection}

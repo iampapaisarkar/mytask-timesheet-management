@@ -440,6 +440,28 @@ export async function create(req, res, next) {
     );
     await assertOrganisationSetupComplete(organisation.id);
 
+    const { default: subscriptionService } = await import(
+      "../service/subscription/subscription.service.js"
+    );
+    const ownerUserId =
+      (await subscriptionService.resolveOrgOwnerUserId(organisation.id, {
+        transaction,
+      })) || user.id;
+    try {
+      await subscriptionService.checkGenerateTimesheet(
+        ownerUserId,
+        organisation.id,
+        employee.id,
+        { transaction },
+      );
+    } catch (limitErr) {
+      await transaction.rollback();
+      return res.status(limitErr.statusCode || 403).json({
+        message: limitErr.message,
+        code: limitErr.code || "PLAN_LIMIT_REACHED",
+      });
+    }
+
     const employeeJson = await Employees.scope("defaultScope").findOne({
       where: {
         organisation_id: organisation.id,
@@ -560,6 +582,19 @@ export async function create(req, res, next) {
     }
 
     await transaction.commit();
+
+    try {
+      await subscriptionService.recordTimesheetGenerated(
+        ownerUserId,
+        organisation.id,
+        employee.id,
+      );
+    } catch (usageErr) {
+      console.error(
+        "timesheet usage counter failed:",
+        usageErr?.message || usageErr,
+      );
+    }
 
     try {
       await timsheetService.sendEmailAndNotification(

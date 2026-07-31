@@ -34,3 +34,4 @@ export {
   systemLogsApi,
 } from "./resources.api";
 export { screensApi } from "./screens.api";
+export { subscriptionApi } from "./subscription.api";
