@@ -1,4 +1,5 @@
 import { Worker } from "bullmq";
+import { getRedisOptions } from "../functions/redis-config.js";
 import IORedis from "ioredis";
 import path from "path";
 import csv from "csv-parser";
@@ -19,8 +20,7 @@ import moment from "moment";
 import axios from "axios";
 
 const connection = new IORedis({
-  host: "127.0.0.1",
-  port: 6379,
+  ...getRedisOptions({ lazyConnect: false }),
   maxRetriesPerRequest: null,
 });
 

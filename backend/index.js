@@ -14,6 +14,7 @@ import requestLogger from "./middleware/request-logger.js";
 import rateLimiter from "./middleware/rate-limiter.js";
 import requestAudit from "./middleware/request-audit.js";
 import errorHandler from "./middleware/error-handler.js";
+import { isRedisDisabled } from "./functions/redis-config.js";
 
 dotenv.config();
 
@@ -22,7 +23,7 @@ const server = createServer(app);
 
 const io = setIO(server);
 
-const hostPort = process.env.APP_HOST_PORT || 8080;
+const hostPort = Number(process.env.PORT || process.env.APP_HOST_PORT || 8080);
 
 /** Restrict CORS in production when CORS_ORIGINS is set (comma-separated). */
 function buildCorsOptions() {
@@ -45,9 +46,53 @@ function buildCorsOptions() {
   return { origin: "*", optionsSuccessStatus: 200 };
 }
 
-admin.initializeApp({
-  credential: admin.credential.cert("./serviceAccountKey.json"),
-});
+/**
+ * Firebase Admin credentials for local file or Cloud Run env.
+ * Prefer FIREBASE_SERVICE_ACCOUNT_BASE64 (no commas in --set-env-vars).
+ */
+function initFirebaseAdmin() {
+  if (admin.apps.length) return;
+
+  const b64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
+  if (b64) {
+    const parsed = JSON.parse(Buffer.from(b64, "base64").toString("utf8"));
+    admin.initializeApp({ credential: admin.credential.cert(parsed) });
+    console.info("Firebase Admin initialized from FIREBASE_SERVICE_ACCOUNT_BASE64");
+    return;
+  }
+
+  const rawJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (rawJson) {
+    const parsed = JSON.parse(rawJson);
+    admin.initializeApp({ credential: admin.credential.cert(parsed) });
+    console.info("Firebase Admin initialized from FIREBASE_SERVICE_ACCOUNT_JSON");
+    return;
+  }
+
+  const keyPath =
+    process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+    process.env.FIREBASE_SERVICE_ACCOUNT_PATH ||
+    "./serviceAccountKey.json";
+
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert(keyPath),
+    });
+    console.info(`Firebase Admin initialized from ${keyPath}`);
+    return;
+  } catch (err) {
+    console.warn(
+      `Firebase file credential failed (${err?.message || err}); trying applicationDefault()`,
+    );
+  }
+
+  admin.initializeApp({
+    credential: admin.credential.applicationDefault(),
+  });
+  console.info("Firebase Admin initialized from applicationDefault()");
+}
+
+initFirebaseAdmin();
 
 app.set("view engine", "ejs");
 app.set("trust proxy", 1);
@@ -180,10 +225,16 @@ if (process.env.START_SERVER !== "false") {
   });
 }
 
-if (process.env.RUN_WORKERS !== "false") {
+const redisOkForWorkers = !isRedisDisabled();
+
+if (process.env.RUN_WORKERS !== "false" && redisOkForWorkers) {
   import("./workers.js")
     .then(() => console.log("Workers bootstrapped"))
     .catch((err) => console.error("Worker failed", err));
+} else if (process.env.RUN_WORKERS !== "false") {
+  console.warn(
+    "Workers skipped: Redis not reachable (set Memorystore REDIS_HOST + VPC_CONNECTOR on Cloud Run).",
+  );
 }
 
 export { app, io };

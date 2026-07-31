@@ -1,5 +1,4 @@
 import { Worker } from "bullmq";
-import IORedis from "ioredis";
 import redis from "../functions/ioredisService.js";
 import models from "../models/index.js";
 const { Users } = models;

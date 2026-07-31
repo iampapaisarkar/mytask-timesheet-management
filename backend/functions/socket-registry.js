@@ -2,6 +2,7 @@
 import { Server } from "socket.io";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { pubClient, subClient } from "./redis-registry.js";
+import { isRedisDisabled } from "./redis-config.js";
 import Auth from "#auth";
 import models from "../models/index.js";
 
@@ -48,7 +49,15 @@ export const setIO = (server) => {
     transports: ["websocket", "polling"],
   });
 
-  io.adapter(createAdapter(pubClient, subClient));
+  const redisDisabled = isRedisDisabled();
+
+  if (redisDisabled) {
+    console.warn(
+      "Socket.IO Redis adapter skipped (set REDIS_HOST to Memorystore IP + VPC connector on Cloud Run).",
+    );
+  } else {
+    io.adapter(createAdapter(pubClient, subClient));
+  }
 
   io.use(async (socket, next) => {
     try {

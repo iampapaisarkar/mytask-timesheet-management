@@ -1,90 +1,11 @@
-#!/bin/bash
-
-# Prompt for environment
-echo "Select the environment:"
-echo "1 - Development"
-echo "2 - Production"
-read -p "Enter your choice (1 or 2): " CHOICE
-
-# Default service account to restore later
-RESTORE_SERVICE_ACCOUNT="serviceAccountKey-dev.json"
-
-case $CHOICE in
-    1)
-        # TAG="dev"
-        # MYSHEET_API_URL="//api-dev.mysheet.com.au"
-        # ENV_FILE=".env.development"
-        # SERVICE_ACCOUNT_SOURCE="serviceAccountKey-dev.json"
-        # SERVICE_NAME="mysheet-api-dev"
-        echo "Development build is not configured yet."
-        exit 1
-        ;;
-    2)
-        TAG="prod"
-        MYSHEET_API_URL="//api.mysheet.com.au"
-        ENV_FILE=".env.production"
-        SERVICE_ACCOUNT_SOURCE="serviceAccountKey-prod.json"
-        SERVICE_NAME="mysheet-api-prod"
-        ;;
-    *)
-        echo "Invalid choice. Please enter '1' or '2'."
-        exit 1
-        ;;
-esac
-
-# Check required files
-for file in "$ENV_FILE" ".env.local" "$SERVICE_ACCOUNT_SOURCE"; do
-    if [ ! -f "$file" ]; then
-        echo "Error: $file does not exist."
-        exit 1
-    fi
-done
-
-PROJECT_ID="mysheet-prod"
-
-echo "🔹 Using project: $PROJECT_ID"
-gcloud config set project $PROJECT_ID
-
-# Backup .env
-cp .env .env.local
-
-# -------------------------------
-# Copy Google service account key
-# -------------------------------
-echo "Using service account: $SERVICE_ACCOUNT_SOURCE"
-cp "$SERVICE_ACCOUNT_SOURCE" serviceAccountKey.json
-
-# Copy env file
-cp "$ENV_FILE" .env
-echo "Using $ENV_FILE for deployment."
-
-# Run Cloud Build
-echo "Running gcloud builds for mysheet-prod with tag $TAG"
-
-gcloud builds submit \
-  --config="cloudbuild.yaml" \
-  --project="mysheet-prod" \
-  --substitutions=_TAG_NAME=$TAG,_MYSHEET_API_URL=$MYSHEET_API_URL,_SERVICE_NAME=$SERVICE_NAME
-
-BUILD_STATUS=$?
-
-# -------------------------------
-# Restore files
-# -------------------------------
-echo "Restoring local environment files..."
-
-cp .env.local .env
-cp "$RESTORE_SERVICE_ACCOUNT" serviceAccountKey.json
-
-if [ $BUILD_STATUS -eq 0 ]; then
-    echo "------------------------------------------"
-    echo "Build completed successfully."
-    echo "------------------------------------------"
-else
-    echo "------------------------------------------"
-    echo "Build failed."
-    echo "------------------------------------------"
-    exit 1
-fi
-
-echo "Deployment completed. Local files restored."
+#!/usr/bin/env bash
+# Legacy mysheet-prod / Australia Cloud Build entrypoint — removed.
+# Use the myTask Cloud Run container deploy script instead:
+#
+#   cp .env.cloudrun.example .env.cloudrun   # once
+#   ./deploy-cloud-run.sh
+#
+# See docs/DEPLOY_CLOUD_RUN.md
+echo "This legacy ./deploy script targeted mysheet-prod (Australia)."
+echo "Use: ./deploy-cloud-run.sh"
+exit 1

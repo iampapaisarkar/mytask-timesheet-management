@@ -1,13 +1,5 @@
-import Redis from "ioredis";
+import { createRedisClient } from "./redis-config.js";
 
-const redis = new Redis({
-  host: "127.0.0.1",
-  port: 6379,
-  maxRetriesPerRequest: null,
-  lazyConnect: false,
-});
-
-redis.on("connect", () => console.log("Redis Connected"));
-redis.on("error", (err) => console.error("Redis Error:", err));
+const redis = createRedisClient();
 
 export default redis;
