@@ -447,7 +447,7 @@ export function ReportsPage() {
                   </div>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-5">
                   <div className="rounded-xl border border-border px-3 py-2">
                     <p className="text-xs uppercase tracking-wide text-muted">
                       Working

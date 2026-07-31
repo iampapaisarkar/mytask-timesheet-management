@@ -12,8 +12,8 @@ import { OrganisationSwitcher } from "@/components/OrganisationSwitcher";
 import { NotificationsBell } from "@/features/notifications";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useSidebarStore } from "@/store/sidebarStore";
+import { useThemeStore } from "@/store/themeStore";
 import { ErrorState, LoadingState } from "@/components/ui/States";
-import { Button } from "@/components/ui/Button";
 import { useLogout } from "@/hooks/useLogout";
 import {
   HelpFaqPage,
@@ -35,10 +35,12 @@ import {
   Home,
   LogOut,
   Menu,
+  Moon,
   Settings,
   ScrollText,
   FileText,
   Shield,
+  Sun,
   Users,
   Wallet,
   X,
@@ -70,6 +72,8 @@ export function OrgLayout() {
   const setMobileOpen = useSidebarStore((s) => s.setMobileOpen);
   const toggleMobile = useSidebarStore((s) => s.toggleMobile);
   const handleLogout = useLogout();
+  const themeMode = useThemeStore((s) => s.mode);
+  const toggleTheme = useThemeStore((s) => s.toggle);
 
   const needsSync = !organisation || organisation.code !== orgCode;
 
@@ -235,7 +239,7 @@ export function OrgLayout() {
                 onFocus={() => preloadOrgNavKey(item.key)}
                 className={({ isActive }) =>
                   clsx(
-                    "mt-focus group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition",
+                    "mt-focus group relative flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition",
                     collapsed && "md:justify-center md:px-2",
                     isActive
                       ? "bg-primary text-white shadow-lg shadow-primary/25"
@@ -285,7 +289,7 @@ export function OrgLayout() {
             onFocus={() => void HelpFaqPage.preload()}
             className={({ isActive }) =>
               clsx(
-                "mt-focus mt-0.5 flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium transition",
+                "mt-focus mt-0.5 flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium transition",
                 collapsed && "md:justify-center md:px-2",
                 isActive
                   ? "bg-white/15 text-white"
@@ -306,7 +310,7 @@ export function OrgLayout() {
             onFocus={() => void TermsPage.preload()}
             className={({ isActive }) =>
               clsx(
-                "mt-focus flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium transition",
+                "mt-focus flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium transition",
                 collapsed && "md:justify-center md:px-2",
                 isActive
                   ? "bg-white/15 text-white"
@@ -327,7 +331,7 @@ export function OrgLayout() {
             onFocus={() => void PrivacyPage.preload()}
             className={({ isActive }) =>
               clsx(
-                "mt-focus flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium transition",
+                "mt-focus flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium transition",
                 collapsed && "md:justify-center md:px-2",
                 isActive
                   ? "bg-white/15 text-white"
@@ -340,50 +344,68 @@ export function OrgLayout() {
               Privacy Policy
             </span>
           </NavLink>
+
+          {/* Mobile-only: theme + logout live in the drawer so the top bar stays clean */}
+          <div className="mt-2 flex flex-col gap-1 border-t border-white/10 pt-2 md:hidden">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="mt-focus flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium text-white/70 hover:bg-white/10 hover:text-white"
+            >
+              {themeMode === "dark" ? (
+                <Sun size={16} className="shrink-0" />
+              ) : (
+                <Moon size={16} className="shrink-0" />
+              )}
+              <span>{themeMode === "dark" ? "Light mode" : "Dark mode"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleLogout()}
+              className="mt-focus flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium text-white/70 hover:bg-white/10 hover:text-white"
+            >
+              <LogOut size={16} className="shrink-0" />
+              <span>Logout</span>
+            </button>
+          </div>
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-border bg-[var(--mt-surface)]/90 px-3 py-3 backdrop-blur-md sm:px-6">
-          <div className="flex min-w-0 items-center gap-2">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-[var(--mt-surface)]/90 px-3 backdrop-blur-md sm:h-auto sm:gap-3 sm:px-6 sm:py-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             <button
               type="button"
               onClick={toggleMobile}
-              className="mt-focus inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border bg-[var(--mt-surface)] text-[var(--mt-text)] hover:border-primary md:hidden"
+              className="mt-focus inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-[var(--mt-surface)] text-[var(--mt-text)] hover:border-primary md:hidden"
               aria-label="Open menu"
               aria-expanded={mobileOpen}
               aria-controls="org-sidebar"
             >
               <Menu size={18} />
             </button>
-            <h1 className="truncate text-base font-semibold text-[var(--mt-text)]">
+            <h1 className="min-w-0 truncate text-sm font-semibold text-[var(--mt-text)] sm:text-base lg:text-lg">
               {organisation?.name || "Organisation"}
             </h1>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <NotificationsBell />
             <OrganisationSwitcher />
-            <ThemeToggle />
-            <Button
-              variant="ghost"
-              onClick={() => void handleLogout()}
-              aria-label="Logout"
-              className="hidden sm:inline-flex"
-            >
-              <LogOut size={16} />
-              <span className="hidden lg:inline">Logout</span>
-            </Button>
-            <button
-              type="button"
-              onClick={() => void handleLogout()}
-              className="mt-focus inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-[var(--mt-surface)] text-[var(--mt-text)] hover:border-primary sm:hidden"
-              aria-label="Logout"
-            >
-              <LogOut size={16} />
-            </button>
+            <div className="hidden items-center gap-2 md:flex">
+              <ThemeToggle />
+              <button
+                type="button"
+                onClick={() => void handleLogout()}
+                aria-label="Logout"
+                className="mt-focus inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-[var(--mt-surface)] px-3 text-sm font-medium text-[var(--mt-text)] hover:border-primary"
+              >
+                <LogOut size={16} />
+                <span className="hidden lg:inline">Logout</span>
+              </button>
+            </div>
           </div>
         </header>
-        <main className="flex-1 p-4 sm:p-6">
+        <main className="min-w-0 flex-1 overflow-x-clip p-3 sm:p-6">
           <Outlet />
         </main>
       </div>

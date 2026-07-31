@@ -5,10 +5,10 @@ import { listRows } from "@mytask/utils";
 import { ResourceListPage } from "@/features/shared/ResourceListPage";
 
 const selectClass =
-  "mt-focus rounded-xl border border-border bg-[var(--mt-surface)] px-3 py-2 text-sm text-[var(--mt-text)] outline-none focus:border-primary";
+  "mt-focus w-full rounded-xl border border-border bg-[var(--mt-surface)] px-3 py-2.5 text-sm text-[var(--mt-text)] outline-none focus:border-primary sm:w-auto";
 
 const inputClass =
-  "mt-focus min-w-[12rem] flex-1 rounded-xl border border-border bg-[var(--mt-surface)] px-3 py-2 text-sm text-[var(--mt-text)] outline-none focus:border-primary";
+  "mt-focus w-full min-w-0 rounded-xl border border-border bg-[var(--mt-surface)] px-3 py-2.5 text-sm text-[var(--mt-text)] outline-none focus:border-primary sm:min-w-[12rem] sm:flex-1";
 
 type JobRow = {
   id?: number;
@@ -51,7 +51,7 @@ export function TimesheetListPage() {
   return (
     <>
       <div className="mb-3 flex flex-wrap items-end gap-2">
-        <label className="flex min-w-[14rem] flex-1 flex-col gap-1 text-sm">
+        <label className="flex w-full min-w-0 flex-1 flex-col gap-1 text-sm sm:min-w-[14rem]">
           <span className="font-medium text-muted">Search by code</span>
           <input
             className={inputClass}

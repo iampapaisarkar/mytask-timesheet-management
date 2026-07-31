@@ -322,7 +322,7 @@ export function NotificationsBell() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="mt-focus relative inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-[var(--mt-surface)] text-[var(--mt-text)] hover:border-primary"
+        className="mt-focus relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-[var(--mt-surface)] text-[var(--mt-text)] hover:border-primary"
         aria-label="Notifications"
         aria-expanded={open}
         aria-haspopup="menu"

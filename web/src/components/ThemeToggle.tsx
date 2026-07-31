@@ -17,7 +17,7 @@ export function ThemeToggle({
       type="button"
       onClick={toggle}
       className={clsx(
-        "mt-focus inline-flex h-9 w-9 items-center justify-center rounded-xl border transition",
+        "mt-focus inline-flex h-11 w-11 items-center justify-center rounded-xl border transition",
         lightOnDark
           ? "border-white/15 bg-white/10 text-white hover:bg-white/15"
           : "border-border bg-[var(--mt-surface)] text-[var(--mt-text)] hover:border-primary",

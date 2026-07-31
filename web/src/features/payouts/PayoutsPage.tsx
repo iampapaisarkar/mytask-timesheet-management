@@ -381,7 +381,66 @@ export function PayoutsPage() {
               No approved timesheets waiting for payout
             </p>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+              <div className="flex flex-col gap-3 md:hidden">
+                {eligible.map((row) => (
+                  <div
+                    key={row.id}
+                    className="rounded-xl border border-border p-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-[var(--mt-text)]">
+                          {row.code || "—"}
+                        </p>
+                        <p className="text-sm text-muted">
+                          {employeeName(row.employee)}
+                        </p>
+                        <p className="mt-1 text-xs text-muted">
+                          {periodLabel(row)}
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-xs text-muted">
+                        {row.status?.name || row.status?.code || "Approved"}
+                      </span>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button
+                        variant="ghost"
+                        className="min-h-10 flex-1 px-2.5 py-1.5 text-xs sm:flex-none"
+                        disabled={createMutation.isPending}
+                        onClick={() => {
+                          if (row.id == null) return;
+                          void runAction("Draft payout created", () =>
+                            createMutation.mutateAsync({
+                              timesheet_id: row.id!,
+                              as_draft: true,
+                            }),
+                          );
+                        }}
+                      >
+                        Save draft
+                      </Button>
+                      <Button
+                        variant="soft"
+                        className="min-h-10 flex-1 px-2.5 py-1.5 text-xs sm:flex-none"
+                        disabled={createMutation.isPending}
+                        onClick={() => {
+                          if (row.id == null) return;
+                          void runAction("Payout created", () =>
+                            createMutation.mutateAsync({
+                              timesheet_id: row.id!,
+                            }),
+                          );
+                        }}
+                      >
+                        Create payout
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden overflow-x-auto md:block">
               <table className="w-full min-w-[640px] border-collapse text-left text-sm">
                 <thead>
                   <tr className="border-b border-border text-muted">
@@ -445,7 +504,8 @@ export function PayoutsPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+              </div>
+            </>
           )}
         </Card>
       ) : null}
@@ -569,7 +629,64 @@ export function PayoutsPage() {
         {payouts.length === 0 ? (
           <p className="text-sm text-muted">No payouts match these filters</p>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+            <div className="flex flex-col gap-3 md:hidden">
+              {payouts.map((row) => {
+                const currency =
+                  row.currency || row.employee?.wage?.currency;
+                return (
+                  <div
+                    key={row.id}
+                    className="rounded-xl border border-border p-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <button
+                        type="button"
+                        className="min-w-0 text-left font-semibold text-primary hover:underline"
+                        onClick={() => setSelectedId(row.id ?? null)}
+                      >
+                        {row.payout_number || `#${row.id}`}
+                        <span className="mt-0.5 block text-xs font-normal text-muted">
+                          {row.timesheet?.code || "—"} ·{" "}
+                          {employeeName(row.employee)}
+                        </span>
+                      </button>
+                      <span
+                        className={`inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadgeClass(row.status)}`}
+                      >
+                        {statusLabel(row.status)}
+                      </span>
+                    </div>
+                    <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <dt className="text-[11px] uppercase text-muted">
+                          Period
+                        </dt>
+                        <dd className="break-words">{periodLabel(row)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-[11px] uppercase text-muted">
+                          Hours
+                        </dt>
+                        <dd>
+                          {row.worked_hours != null
+                            ? `${Number(row.worked_hours).toFixed(2)}h`
+                            : "—"}
+                        </dd>
+                      </div>
+                      <div className="col-span-2">
+                        <dt className="text-[11px] uppercase text-muted">Net</dt>
+                        <dd className="font-medium">
+                          {formatAmount(row.net_amount ?? row.amount, currency)}
+                        </dd>
+                      </div>
+                    </dl>
+                    <div className="mt-3">{actionsFor(row)}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[960px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-border text-muted">
@@ -630,17 +747,19 @@ export function PayoutsPage() {
                 })}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
         {payouts.length > 0 || totalRows > 0 ? (
-          <div className="mt-4 flex items-center justify-between gap-3 text-sm text-muted">
-            <span>
+          <div className="mt-4 flex flex-col gap-3 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-center sm:text-left">
               {totalRows} total · page {currentPage} of {totalPages}
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center gap-2 sm:justify-end">
               <Button
                 type="button"
                 variant="secondary"
+                className="min-h-11 flex-1 sm:flex-none"
                 disabled={currentPage <= 1 || payoutsQuery.isFetching}
                 onClick={() => setPage(Math.max(1, currentPage - 1))}
               >
@@ -649,6 +768,7 @@ export function PayoutsPage() {
               <Button
                 type="button"
                 variant="secondary"
+                className="min-h-11 flex-1 sm:flex-none"
                 disabled={currentPage >= totalPages || payoutsQuery.isFetching}
                 onClick={() =>
                   setPage(Math.min(totalPages, currentPage + 1))
@@ -784,11 +904,11 @@ export function PayoutsPage() {
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex gap-3 border-b border-border/60 py-1.5">
-      <dt className="w-40 shrink-0 text-xs uppercase tracking-wide text-muted">
+    <div className="flex flex-col gap-0.5 border-b border-border/60 py-2 sm:flex-row sm:gap-3 sm:py-1.5">
+      <dt className="shrink-0 text-xs uppercase tracking-wide text-muted sm:w-40">
         {label}
       </dt>
-      <dd className="min-w-0 flex-1">{value}</dd>
+      <dd className="min-w-0 flex-1 break-words">{value}</dd>
     </div>
   );
 }

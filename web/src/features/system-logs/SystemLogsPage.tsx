@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   useSystemLogsEmail,
   useSystemLogsExternal,
@@ -88,23 +88,32 @@ function DetailDrawer({
   row: Record<string, unknown> | null;
   tab: TabKey;
 }) {
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
   if (!open || !row) return null;
   const success = Boolean(row.success);
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40">
       <button
         type="button"
-        className="flex-1 cursor-default"
+        className="hidden flex-1 cursor-default sm:block"
         aria-label="Close drawer"
         onClick={onClose}
       />
-      <aside className="flex h-full w-full max-w-xl flex-col border-l border-[var(--mt-border)] bg-[var(--mt-surface)] shadow-xl">
+      <aside className="flex h-full w-full max-w-xl flex-col border-l border-[var(--mt-border)] bg-[var(--mt-surface)] shadow-xl pb-[env(safe-area-inset-bottom)] sm:w-[min(100%,36rem)]">
         <div className="flex items-start justify-between gap-3 border-b border-[var(--mt-border)] p-4">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs uppercase tracking-wide text-muted">
               {tab} log #{String(row.id)}
             </p>
-            <h2 className="mt-1 text-lg font-semibold text-[var(--mt-text)]">
+            <h2 className="mt-1 break-words text-lg font-semibold text-[var(--mt-text)]">
               {String(row.friendly_message || row.feature || "Log detail")}
             </h2>
             <div className="mt-2">
@@ -114,7 +123,8 @@ function DetailDrawer({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-muted hover:bg-[var(--mt-bg)]"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg p-2 text-muted hover:bg-[var(--mt-bg)]"
+            aria-label="Close"
           >
             <X size={18} />
           </button>
@@ -130,7 +140,7 @@ function DetailDrawer({
           </section>
           <section>
             <h3 className="mb-2 font-semibold text-[var(--mt-text)]">General</h3>
-            <dl className="grid grid-cols-2 gap-2">
+            <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {(tab === "email"
                 ? [
                     ["Feature", row.feature],
@@ -275,7 +285,7 @@ export function SystemLogsPage() {
           onRetry={() => void summaryQuery.refetch()}
         />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-3 grid-cols-2 xl:grid-cols-5">
           <MetricCard
             label="Internal success"
             value={`${internal.success_pct ?? 100}%`}
@@ -406,7 +416,45 @@ export function SystemLogsPage() {
             <p>No logs found for this filter.</p>
           </div>
         ) : (
-          <div className="overflow-auto rounded-xl border border-[var(--mt-border)]">
+          <>
+            <div className="flex flex-col gap-2 md:hidden">
+              {rows.map((row) => {
+                const when =
+                  row.started_at ||
+                  row.executed_at ||
+                  row.sent_at ||
+                  row.created_at;
+                return (
+                  <button
+                    key={String(row.id)}
+                    type="button"
+                    className="rounded-xl border border-[var(--mt-border)] p-3 text-left transition hover:border-primary/40"
+                    onClick={() => setSelected(row)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-[var(--mt-text)]">
+                          {String(row.feature || "—")}
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted">
+                          {when ? formatDisplayDateTime(String(when)) : "—"}
+                        </p>
+                      </div>
+                      <StatusBadge success={Boolean(row.success)} />
+                    </div>
+                    <p className="mt-2 truncate text-sm text-muted">
+                      {tab === "email"
+                        ? String(row.recipient || "—")
+                        : String(row.endpoint || row.api_name || "—")}
+                    </p>
+                    <p className="mt-1 line-clamp-2 text-xs text-muted">
+                      {String(row.friendly_message || (row.success ? "OK" : "Failed"))}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="hidden overflow-auto rounded-xl border border-[var(--mt-border)] md:block">
             <table className="min-w-full text-left text-sm">
               <thead className="sticky top-0 bg-[var(--mt-bg)] text-xs uppercase tracking-wide text-muted">
                 <tr>
@@ -462,11 +510,12 @@ export function SystemLogsPage() {
                 })}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
 
-        <div className="flex items-center justify-between text-sm text-muted">
-          <span>{pagination.total_rows ?? 0} rows</span>
+        <div className="flex flex-col gap-3 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
+          <span className="text-center sm:text-left">{pagination.total_rows ?? 0} rows</span>
           <div className="flex items-center gap-2">
             <Button
               variant="secondary"

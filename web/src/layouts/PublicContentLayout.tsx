@@ -5,9 +5,9 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 /** Wide public layout for Help / Terms / Privacy (auth + logged-out). */
 export function PublicContentLayout() {
   return (
-    <div className="min-h-screen bg-page">
+    <div className="min-h-screen overflow-x-clip bg-page">
       <header className="sticky top-0 z-30 border-b border-border bg-[var(--mt-surface)]/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <Link to={ROUTES.home} className="mt-focus inline-flex items-center gap-2.5">
             <img
               src="/logo.png"
@@ -18,15 +18,24 @@ export function PublicContentLayout() {
               myTask
             </span>
           </Link>
-          <div className="flex items-center gap-3">
-            <nav className="hidden items-center gap-3 text-xs font-medium text-muted sm:flex">
-              <Link to={ROUTES.help} className="hover:text-primary">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <nav className="flex items-center gap-1 text-xs font-medium text-muted sm:gap-3">
+              <Link
+                to={ROUTES.help}
+                className="inline-flex min-h-10 items-center rounded-lg px-2 hover:text-primary"
+              >
                 Help
               </Link>
-              <Link to={ROUTES.terms} className="hover:text-primary">
+              <Link
+                to={ROUTES.terms}
+                className="inline-flex min-h-10 items-center rounded-lg px-2 hover:text-primary"
+              >
                 Terms
               </Link>
-              <Link to={ROUTES.privacy} className="hover:text-primary">
+              <Link
+                to={ROUTES.privacy}
+                className="inline-flex min-h-10 items-center rounded-lg px-2 hover:text-primary"
+              >
                 Privacy
               </Link>
             </nav>
@@ -34,7 +43,7 @@ export function PublicContentLayout() {
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
         <Outlet />
       </main>
     </div>

@@ -266,14 +266,14 @@ export function PricingPage() {
         />
       </div>
 
-      <Card className="overflow-x-auto">
+      <Card className="overflow-x-auto p-4 sm:p-5">
         <h2 className="mb-4 text-lg font-semibold text-[var(--mt-text)]">
           Feature comparison
         </h2>
         {!freePlan && !proPlan ? (
           <EmptyState title="No plans configured" description="Ask an admin to seed plans." />
         ) : (
-          <table className="w-full min-w-[480px] text-left text-sm">
+          <table className="w-full min-w-[320px] text-left text-sm sm:min-w-[480px]">
             <thead>
               <tr className="border-b border-border text-muted">
                 <th className="py-2 pr-4 font-medium">Feature</th>

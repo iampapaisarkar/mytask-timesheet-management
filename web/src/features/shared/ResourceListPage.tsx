@@ -54,6 +54,14 @@ export function getRowId(row: Row, index: number): string | number {
   return index;
 }
 
+function cellValue(row: Row, col: ColumnDef): string {
+  const raw =
+    typeof col.accessor === "function"
+      ? col.accessor(row)
+      : getByPath(row, col.accessor || col.key);
+  return formatCell(raw);
+}
+
 export function ResourceListPage({
   title,
   query,
@@ -105,14 +113,21 @@ export function ResourceListPage({
     }
   }
 
+  const showActions = Boolean(rowActions || detailPath);
+
   return (
     <div className="mt-fade-in flex flex-col gap-4">
       <PageHeader
         title={title}
         actions={
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             {createLabel ? (
-              <Button type="button" onClick={onCreate} disabled={!onCreate}>
+              <Button
+                type="button"
+                onClick={onCreate}
+                disabled={!onCreate}
+                className="min-h-11 w-full sm:w-auto"
+              >
                 {createLabel}
               </Button>
             ) : null}
@@ -136,96 +151,176 @@ export function ResourceListPage({
           }
         />
       ) : (
-        <div className="mt-card overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-border bg-[var(--mt-bg)] text-muted">
-              <tr>
-                {columns.map((col) => (
-                  <th key={col.key} className="px-4 py-3 font-medium">
-                    {col.label}
-                  </th>
-                ))}
-                {rowActions || detailPath ? (
-                  <th className="px-4 py-3 font-medium">Actions</th>
-                ) : null}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, idx) => {
-                const id = getRowId(row, idx);
-                const canOpen = Boolean(onRowClick || detailPath);
-                return (
-                  <tr
-                    key={String(id)}
-                    className={`border-b border-border last:border-0 transition hover:bg-primary-muted/40 ${
-                      canOpen ? "cursor-pointer" : ""
-                    }`}
-                    onClick={
-                      canOpen ? () => handleRowActivate(row, idx) : undefined
+        <>
+          {/* Mobile: stacked cards */}
+          <div className="flex flex-col gap-3 md:hidden">
+            {rows.map((row, idx) => {
+              const id = getRowId(row, idx);
+              const canOpen = Boolean(onRowClick || detailPath);
+              const primary = columns[0] ? cellValue(row, columns[0]) : String(id);
+              const rest = columns.slice(1);
+              return (
+                <div
+                  key={String(id)}
+                  role={canOpen ? "button" : undefined}
+                  tabIndex={canOpen ? 0 : undefined}
+                  onClick={
+                    canOpen ? () => handleRowActivate(row, idx) : undefined
+                  }
+                  onKeyDown={(e) => {
+                    if (!canOpen) return;
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleRowActivate(row, idx);
                     }
-                  >
-                    {columns.map((col, colIdx) => {
-                      const raw =
-                        typeof col.accessor === "function"
-                          ? col.accessor(row)
-                          : getByPath(row, col.accessor || col.key);
-                      const text = formatCell(raw);
-                      if (detailPath && colIdx === 0) {
-                        return (
-                          <td key={col.key} className="px-4 py-3">
-                            <Link
-                              to={detailPath(orgCode, id)}
-                              className="font-medium text-primary hover:underline"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {text}
-                            </Link>
-                          </td>
-                        );
-                      }
-                      return (
-                        <td
-                          key={col.key}
-                          className="px-4 py-3 text-[var(--mt-text)]"
+                  }}
+                  className={`mt-card p-4 transition ${
+                    canOpen
+                      ? "cursor-pointer hover:border-primary/40 active:bg-primary-muted/30"
+                      : ""
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      {detailPath ? (
+                        <Link
+                          to={detailPath(orgCode, id)}
+                          className="block truncate text-base font-semibold text-primary hover:underline"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          {text}
-                        </td>
-                      );
-                    })}
-                    {rowActions || detailPath ? (
-                      <td
-                        className="px-4 py-3"
+                          {primary}
+                        </Link>
+                      ) : (
+                        <p className="truncate text-base font-semibold text-[var(--mt-text)]">
+                          {primary}
+                        </p>
+                      )}
+                    </div>
+                    {showActions ? (
+                      <div
+                        className="flex shrink-0 items-center gap-2"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <div className="flex items-center gap-3">
-                          {rowActions ? rowActions(row) : null}
-                          {detailPath ? (
-                            <Link
-                              to={detailPath(orgCode, id)}
-                              className="text-sm font-medium text-primary hover:underline"
-                            >
-                              Open
-                            </Link>
-                          ) : null}
-                        </div>
-                      </td>
+                        {rowActions ? rowActions(row) : null}
+                        {detailPath ? (
+                          <Link
+                            to={detailPath(orgCode, id)}
+                            className="inline-flex min-h-10 items-center rounded-xl px-2 text-sm font-medium text-primary hover:underline"
+                          >
+                            Open
+                          </Link>
+                        ) : null}
+                      </div>
                     ) : null}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                  </div>
+                  {rest.length ? (
+                    <dl className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {rest.map((col) => (
+                        <div key={col.key} className="min-w-0">
+                          <dt className="text-[11px] font-medium uppercase tracking-wide text-muted">
+                            {col.label}
+                          </dt>
+                          <dd className="mt-0.5 break-words text-sm text-[var(--mt-text)]">
+                            {cellValue(row, col)}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop: table */}
+          <div className="mt-card hidden overflow-x-auto md:block">
+            <table className="min-w-full text-left text-sm">
+              <thead className="border-b border-border bg-[var(--mt-bg)] text-muted">
+                <tr>
+                  {columns.map((col) => (
+                    <th key={col.key} className="px-4 py-3 font-medium">
+                      {col.label}
+                    </th>
+                  ))}
+                  {showActions ? (
+                    <th className="px-4 py-3 font-medium">Actions</th>
+                  ) : null}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, idx) => {
+                  const id = getRowId(row, idx);
+                  const canOpen = Boolean(onRowClick || detailPath);
+                  return (
+                    <tr
+                      key={String(id)}
+                      className={`border-b border-border last:border-0 transition hover:bg-primary-muted/40 ${
+                        canOpen ? "cursor-pointer" : ""
+                      }`}
+                      onClick={
+                        canOpen ? () => handleRowActivate(row, idx) : undefined
+                      }
+                    >
+                      {columns.map((col, colIdx) => {
+                        const text = cellValue(row, col);
+                        if (detailPath && colIdx === 0) {
+                          return (
+                            <td key={col.key} className="px-4 py-3">
+                              <Link
+                                to={detailPath(orgCode, id)}
+                                className="font-medium text-primary hover:underline"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {text}
+                              </Link>
+                            </td>
+                          );
+                        }
+                        return (
+                          <td
+                            key={col.key}
+                            className="px-4 py-3 text-[var(--mt-text)]"
+                          >
+                            {text}
+                          </td>
+                        );
+                      })}
+                      {showActions ? (
+                        <td
+                          className="px-4 py-3"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex items-center gap-3">
+                            {rowActions ? rowActions(row) : null}
+                            {detailPath ? (
+                              <Link
+                                to={detailPath(orgCode, id)}
+                                className="text-sm font-medium text-primary hover:underline"
+                              >
+                                Open
+                              </Link>
+                            ) : null}
+                          </div>
+                        </td>
+                      ) : null}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
       {onPageChange && (rows.length > 0 || totalRows > 0) ? (
-        <div className="flex items-center justify-between gap-3 text-sm text-muted">
-          <span>
+        <div className="flex flex-col gap-3 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
+          <span className="text-center sm:text-left">
             {totalRows} total · page {currentPage} of {totalPages}
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center gap-2 sm:justify-end">
             <Button
               type="button"
               variant="secondary"
+              className="min-h-11 flex-1 sm:flex-none"
               disabled={currentPage <= 1 || query.isFetching}
               onClick={() => onPageChange(Math.max(1, currentPage - 1))}
             >
@@ -234,6 +329,7 @@ export function ResourceListPage({
             <Button
               type="button"
               variant="secondary"
+              className="min-h-11 flex-1 sm:flex-none"
               disabled={currentPage >= totalPages || query.isFetching}
               onClick={() =>
                 onPageChange(Math.min(totalPages, currentPage + 1))

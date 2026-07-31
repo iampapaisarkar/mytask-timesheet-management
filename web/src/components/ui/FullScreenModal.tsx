@@ -127,7 +127,7 @@ export function FullScreenModal({
     );
 
   return createPortal(
-    <div className="mt-fullscreen-root fixed inset-0 z-[70] flex">
+    <div className="mt-fullscreen-root fixed inset-0 z-[70] flex pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
       <button
         type="button"
         className="absolute inset-0 cursor-default bg-black/50 backdrop-blur-[3px]"

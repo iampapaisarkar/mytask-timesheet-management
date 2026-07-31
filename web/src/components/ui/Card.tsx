@@ -33,16 +33,16 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="mt-fade-in mb-6 flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-[var(--mt-text)]">
+    <div className="mt-fade-in mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-4">
+      <div className="min-w-0">
+        <h1 className="text-xl font-bold tracking-tight text-[var(--mt-text)] sm:text-2xl">
           {title}
         </h1>
         {description ? (
           <p className="mt-1 text-sm text-muted">{description}</p>
         ) : null}
       </div>
-      {actions}
+      {actions ? <div className="flex w-full flex-wrap gap-2 sm:w-auto">{actions}</div> : null}
     </div>
   );
 }

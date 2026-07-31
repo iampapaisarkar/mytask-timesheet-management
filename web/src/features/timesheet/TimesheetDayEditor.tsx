@@ -427,15 +427,15 @@ export function TimesheetDayEditor({
       variant="workspace"
       closeOnBackdrop={false}
       header={
-        <div className="flex w-full flex-wrap items-center gap-3 border-b border-border px-4 py-3 sm:gap-6 sm:px-6">
-          <div className="min-w-[8rem]">
-            <p className="text-xl font-bold tracking-tight text-[var(--mt-text)] sm:text-2xl">
+        <div className="flex w-full flex-wrap items-center gap-2 border-b border-border px-3 py-3 sm:gap-6 sm:px-6">
+          <div className="min-w-0 flex-1 basis-[10rem]">
+            <p className="truncate text-lg font-bold tracking-tight text-[var(--mt-text)] sm:text-2xl">
               {dayQuery.isLoading ? "…" : title}
             </p>
-            <p className="text-sm text-muted">{subtitle}</p>
+            <p className="truncate text-sm text-muted">{subtitle}</p>
           </div>
 
-          <div className="flex flex-1 flex-wrap items-center justify-center gap-2 sm:gap-3">
+          <div className="flex w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:flex-1 sm:justify-center sm:gap-3">
             <SummaryBadge
               icon="work"
               label={formatMinutesAsHm(totals.working)}
@@ -527,7 +527,7 @@ export function TimesheetDayEditor({
       ) : (
         <div className="flex h-full min-h-0 flex-col lg:flex-row">
           {/* Sheets column */}
-          <aside className="flex max-h-[42vh] w-full shrink-0 flex-col border-b border-border lg:max-h-none lg:w-[300px] lg:border-r lg:border-b-0 xl:w-[340px]">
+          <aside className="flex max-h-[min(42vh,20rem)] w-full shrink-0 flex-col border-b border-border lg:max-h-none lg:w-[280px] lg:border-r lg:border-b-0 xl:w-[340px]">
             <div className="flex items-center justify-between px-4 py-3">
               <h3 className="text-sm font-medium text-muted">Sheets</h3>
               {canSave ? (

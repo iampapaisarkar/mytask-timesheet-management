@@ -376,7 +376,7 @@ export function OrganisationHomePage() {
       </div>
 
       {canPayout && !isStaff ? (
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatCard
             icon={<Wallet className="text-primary" size={20} />}
             label="Pending payouts"

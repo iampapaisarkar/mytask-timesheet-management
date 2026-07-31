@@ -49,12 +49,17 @@ body,
   min-height: 100%;
 }
 
+html {
+  overflow-x: clip;
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);
   background: var(--mt-bg);
   color: var(--mt-text);
   -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
 }
 
 * {

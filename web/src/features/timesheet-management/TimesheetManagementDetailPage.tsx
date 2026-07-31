@@ -251,7 +251,28 @@ export function TimesheetManagementDetailPage() {
         {!days.length ? (
           <p className="text-sm text-muted">No days loaded for this timesheet.</p>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+            <div className="flex flex-col gap-2 md:hidden">
+              {days.map((day) => (
+                <button
+                  key={String(day.id ?? day.date)}
+                  type="button"
+                  className="flex min-h-14 items-center justify-between gap-3 rounded-xl border border-border px-3 py-3 text-left transition hover:border-primary/40"
+                  onClick={() => day.id != null && setSelectedDayId(day.id)}
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium text-[var(--mt-text)]">
+                      {day.date || "—"}
+                    </p>
+                    <p className="text-xs text-muted">{day.day_name || "—"}</p>
+                  </div>
+                  <span className="shrink-0 text-sm font-semibold text-primary">
+                    {day.total_hours ?? "—"}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
             <table className="min-w-full text-left text-sm">
               <thead className="border-b border-border text-muted">
                 <tr>
@@ -274,7 +295,8 @@ export function TimesheetManagementDetailPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
       </Card>
 

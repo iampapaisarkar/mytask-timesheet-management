@@ -7,7 +7,7 @@ import { getOrganisationRoleCode } from "@mytask/utils";
 import type { OrganisationMembership } from "@mytask/types";
 import { HomePage, OrganisationHomePage } from "@/app/routeModules";
 import { useOrganisationStore } from "@/store/organisationStore";
-import { ChevronDown, Home } from "lucide-react";
+import { ChevronDown, Home, Building2 } from "lucide-react";
 import { clsx } from "clsx";
 
 function asOrgs(data: unknown): OrganisationMembership[] {
@@ -73,16 +73,18 @@ export function OrganisationSwitcher() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="mt-focus inline-flex max-w-[220px] items-center gap-2 rounded-xl border border-border bg-[var(--mt-surface)] px-3 py-2 text-sm font-medium text-[var(--mt-text)] hover:border-primary"
+        className="mt-focus inline-flex h-10 max-w-[7.5rem] items-center gap-1 rounded-xl border border-border bg-[var(--mt-surface)] px-2 text-xs font-medium text-[var(--mt-text)] hover:border-primary sm:max-w-[10rem] sm:gap-1.5 sm:px-2.5 sm:text-sm md:max-w-[14rem] lg:max-w-[220px] lg:px-3"
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-label={`Organisation: ${label}`}
       >
+        <Building2 size={14} className="hidden shrink-0 text-primary min-[380px]:inline" />
         <span className="truncate">{label}</span>
         <ChevronDown size={14} className="shrink-0 text-muted" />
       </button>
       {open ? (
-        <div className="absolute right-0 z-40 mt-2 w-72 overflow-hidden rounded-2xl border border-border bg-[var(--mt-surface)] shadow-lg">
-          <div className="max-h-72 overflow-y-auto p-2">
+        <div className="absolute right-0 z-40 mt-2 w-[min(18rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-border bg-[var(--mt-surface)] shadow-lg">
+          <div className="max-h-[min(18rem,50vh)] overflow-y-auto p-2">
             {isLoading ? (
               <p className="px-3 py-2 text-sm text-muted">Loading…</p>
             ) : organisations.length === 0 ? (
