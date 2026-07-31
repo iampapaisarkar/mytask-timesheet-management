@@ -47,8 +47,7 @@ function buildCorsOptions() {
 }
 
 /**
- * Firebase Admin credentials for local file or Cloud Run env.
- * Prefer FIREBASE_SERVICE_ACCOUNT_BASE64 (no commas in --set-env-vars).
+ * Firebase Admin credentials from env or local serviceAccountKey.json.
  */
 function initFirebaseAdmin() {
   if (admin.apps.length) return;
@@ -233,7 +232,7 @@ if (process.env.RUN_WORKERS !== "false" && redisOkForWorkers) {
     .catch((err) => console.error("Worker failed", err));
 } else if (process.env.RUN_WORKERS !== "false") {
   console.warn(
-    "Workers skipped: Redis not reachable (set Memorystore REDIS_HOST + VPC_CONNECTOR on Cloud Run).",
+    "Workers skipped: Redis disabled or unavailable (set REDIS_HOST / unset REDIS_DISABLED).",
   );
 }
 

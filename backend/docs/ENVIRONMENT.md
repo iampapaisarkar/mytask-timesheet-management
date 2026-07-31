@@ -19,7 +19,3 @@ STRIPE_PRICE_PRO_MONTHLY= STRIPE_PRICE_PRO_YEARLY= STRIPE_PRODUCT_PRO=
 ```
 
 Stripe setup: [`docs/STRIPE_SUBSCRIPTIONS.md`](../../docs/STRIPE_SUBSCRIPTIONS.md).
-
-Cloud Run container deploy: [`docs/DEPLOY_CLOUD_RUN.md`](./DEPLOY_CLOUD_RUN.md) (`./deploy-cloud-run.sh`).
-
-Memorystore Redis + VPC connector: [`docs/DEPLOY_REDIS_MEMORYSTORE.md`](./DEPLOY_REDIS_MEMORYSTORE.md).

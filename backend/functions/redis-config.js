@@ -1,27 +1,17 @@
 import Redis from "ioredis";
 
 /**
- * Shared Redis / BullMQ connection options for local + Google Memorystore.
- *
- * Memorystore (GCP): set REDIS_HOST to the instance private IP and attach
- * Cloud Run to the same VPC via VPC_CONNECTOR (see docs/DEPLOY_REDIS_MEMORYSTORE.md).
+ * Shared Redis / BullMQ connection options (local Redis by default).
  */
 export function isRedisLocalHost(host = process.env.REDIS_HOST) {
   return !host || host === "127.0.0.1" || host === "localhost";
 }
 
 export function isRedisDisabled() {
-  if (
+  return (
     process.env.REDIS_DISABLED === "true" ||
     process.env.REDIS_DISABLED === "1"
-  ) {
-    return true;
-  }
-  // Cloud Run sets K_SERVICE — localhost Redis is unreachable there
-  if (process.env.K_SERVICE && isRedisLocalHost(process.env.REDIS_HOST)) {
-    return true;
-  }
-  return false;
+  );
 }
 
 export function getRedisOptions(overrides = {}) {
@@ -44,7 +34,6 @@ export function getRedisOptions(overrides = {}) {
     options.password = password;
   }
 
-  // Memorystore usually has AUTH off; Upstash/others may need TLS.
   if (useTls) {
     options.tls = {};
   }

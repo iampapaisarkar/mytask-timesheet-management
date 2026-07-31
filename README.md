@@ -338,8 +338,7 @@ Auth flow: Firebase email/password on the client → ID token → `POST /api/aut
 
 ## Product URLs (reference)
 
-- Client (legacy prod hostname): `https://app.mysheet.au/`
-- API (legacy example): `https://api.mysheet.com.au/api`
-- Dev API seen in old build: `https://mysheetserver.iampapaisarkar.com/api`
+- Client Server: `https://mytaskapp.iampapaisarkar.com/`
+- Dev API : `https://mytaskapi.iampapaisarkar.com.au/api`
 
 > Product branding is **myTask**. Legacy hostnames above are infrastructure / historical references from the original deployment.

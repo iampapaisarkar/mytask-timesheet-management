@@ -51,7 +51,6 @@ Thumbs.db
 .env.local
 .env.development
 .env.production
-.env.cloudrun
 
 
 # Generated report PDFs

@@ -53,7 +53,7 @@ export const setIO = (server) => {
 
   if (redisDisabled) {
     console.warn(
-      "Socket.IO Redis adapter skipped (set REDIS_HOST to Memorystore IP + VPC connector on Cloud Run).",
+      "Socket.IO Redis adapter skipped (set REDIS_HOST to a reachable Redis instance).",
     );
   } else {
     io.adapter(createAdapter(pubClient, subClient));
