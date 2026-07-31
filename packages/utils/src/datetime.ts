@@ -107,3 +107,66 @@ export function formatMinutesAsDisplayTime(mins: number): string {
     `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`,
   );
 }
+
+function toValidDate(value: string | number | Date | null | undefined): Date | null {
+  if (value == null || value === "") return null;
+  const d = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * Absolute datetime for UI: "31/07/2026, 10:50:10 AM"
+ */
+export function formatDisplayDateTime(
+  value: string | number | Date | null | undefined,
+  options?: { includeSeconds?: boolean },
+): string {
+  const d = toValidDate(value);
+  if (!d) return "—";
+
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  const time = formatDisplayTime(
+    `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`,
+    { includeSeconds: options?.includeSeconds !== false },
+  );
+  return `${dd}/${mm}/${yyyy}, ${time}`;
+}
+
+/**
+ * Relative time for feeds: "just now", "5 minutes ago", "2 hours ago".
+ * Falls back to {@link formatDisplayDateTime} for older than 7 days.
+ */
+export function formatTimeAgo(
+  value: string | number | Date | null | undefined,
+  options?: { now?: Date | number },
+): string {
+  const d = toValidDate(value);
+  if (!d) return "—";
+
+  const nowMs =
+    options?.now == null
+      ? Date.now()
+      : options.now instanceof Date
+        ? options.now.getTime()
+        : Number(options.now);
+  const diffMs = Math.max(0, nowMs - d.getTime());
+  const seconds = Math.floor(diffMs / 1000);
+
+  if (seconds < 45) return "just now";
+  if (seconds < 90) return "1 minute ago";
+
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 45) return `${minutes} minutes ago`;
+  if (minutes < 90) return "1 hour ago";
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hours ago`;
+  if (hours < 42) return "1 day ago";
+
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days} days ago`;
+
+  return formatDisplayDateTime(d);
+}

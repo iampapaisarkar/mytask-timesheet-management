@@ -11,7 +11,7 @@ import type { ListParams } from "@mytask/types";
 import { Card, PageHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ErrorState, LoadingState } from "@/components/ui/States";
-import { getErrorMessage } from "@mytask/utils";
+import { getErrorMessage, formatDisplayDateTime } from "@mytask/utils";
 import {
   Activity,
   AlertTriangle,
@@ -431,7 +431,7 @@ export function SystemLogsPage() {
                       onClick={() => setSelected(row)}
                     >
                       <td className="whitespace-nowrap px-3 py-2 text-[var(--mt-text)]">
-                        {when ? new Date(String(when)).toLocaleString() : "—"}
+                        {when ? formatDisplayDateTime(String(when)) : "—"}
                       </td>
                       <td className="px-3 py-2 text-[var(--mt-text)]">
                         {String(row.feature || "—")}

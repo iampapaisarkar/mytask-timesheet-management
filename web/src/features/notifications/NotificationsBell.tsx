@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { notificationsApi } from "@mytask/api";
 import { resolveNotificationPath } from "@mytask/services";
-import { getErrorMessage } from "@mytask/utils";
+import { getErrorMessage, formatTimeAgo, formatDisplayDateTime } from "@mytask/utils";
 import { useSocketStore } from "@mytask/realtime";
 import type { AppNotification } from "@mytask/types";
 import { useOrganisationStore } from "@/store/organisationStore";
@@ -218,8 +218,11 @@ export function NotificationsBell() {
                           </span>
                         ) : null}
                         {item.sent_at ? (
-                          <span className="text-[10px] text-muted">
-                            {new Date(item.sent_at).toLocaleString()}
+                          <span
+                            className="text-[10px] text-muted"
+                            title={formatDisplayDateTime(item.sent_at)}
+                          >
+                            {formatTimeAgo(item.sent_at)}
                           </span>
                         ) : null}
                       </button>
