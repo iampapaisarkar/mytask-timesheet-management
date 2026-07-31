@@ -241,8 +241,8 @@ npx react-native run-ios --simulator="iPhone 16"
 npx react-native run-ios --device
 ```
 
-You can also open `mobile/ios/MySheetMobile.xcworkspace` in Xcode and press Run.
-(Xcode project folder name remains `MySheetMobile` for native tooling stability; display name and bundle ID are **myTask** / `com.mytask.app`.)
+You can also open `mobile/ios/MyTaskMobile.xcworkspace` in Xcode (after `pod install`) and press Run.
+(Xcode project / scheme name is **MyTaskMobile**; display name and bundle ID are **myTask** / `com.mytask.app`.)
 
 ### 4.5 Run on Android (Emulator or device)
 

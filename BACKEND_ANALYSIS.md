@@ -55,4 +55,4 @@ Present under `graphql/` but **disabled** (`setupGraphQL` commented out). Rebuil
 3. Expect `{ data, info }` style responses.
 4. HTTP 401 → force re-auth / refresh Firebase token and retry login session.
 5. Socket.IO URL typically same host as API without `/api` suffix.
-6. FCM web config embedded in service worker (dev project `mysheet---dev`).
+6. FCM web config embedded in service worker (Firebase project `mytask-72398`).

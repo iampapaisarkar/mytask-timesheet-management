@@ -59,7 +59,7 @@ See `ROUTE_ANALYSIS.md` and `COMPONENT_ANALYSIS.md`.
 
 ## API base in build
 
-Hardcoded/dev URL observed: `https://mysheetserver.iampapaisarkar.com/api`
+Hardcoded/dev URL observed historically: `https://mytaskapi.iampapaisarkar.com.au/api` (configure via `VITE_API_BASE_URL` / mobile env).
 
 ## Limitations
 
