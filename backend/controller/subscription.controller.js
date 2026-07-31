@@ -89,6 +89,39 @@ export async function createCheckout(req, res) {
   }
 }
 
+export async function confirmCheckout(req, res) {
+  try {
+    const { user, session_id } = req.body;
+    const data = await billingService.confirmCheckoutSession(user, session_id);
+    return res.status(200).json({
+      data,
+      message: "Subscription confirmed",
+    });
+  } catch (err) {
+    console.error("confirmCheckout:", err);
+    return res.status(err.statusCode || 500).json({
+      message: err.message || "Unable to confirm checkout",
+      code: err.code,
+    });
+  }
+}
+
+export async function syncFromStripe(req, res) {
+  try {
+    const { user } = req.body;
+    const data = await billingService.syncCurrentUserFromStripe(user);
+    return res.status(200).json({
+      data,
+      message: "Subscription synced from Stripe",
+    });
+  } catch (err) {
+    console.error("syncFromStripe:", err);
+    return res.status(err.statusCode || 500).json({
+      message: err.message || "Unable to sync subscription",
+    });
+  }
+}
+
 export async function createPortal(req, res) {
   try {
     const { user, return_url } = req.body;

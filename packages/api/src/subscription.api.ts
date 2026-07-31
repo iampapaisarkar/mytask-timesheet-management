@@ -81,4 +81,21 @@ export const subscriptionApi = {
       req(options),
     );
   },
+  confirmCheckout(
+    payload: { session_id: string },
+    options?: RequestOptions,
+  ) {
+    return getApiClient().post<ApiResponse<unknown>>(
+      "/subscriptions/confirm-checkout",
+      payload,
+      req(options),
+    );
+  },
+  sync(options?: RequestOptions) {
+    return getApiClient().post<ApiResponse<unknown>>(
+      "/subscriptions/sync",
+      {},
+      req(options),
+    );
+  },
 };

@@ -10,8 +10,10 @@ import {
 } from "../../config/subscription.config.js";
 import subscriptionService from "../subscription/subscription.service.js";
 import { enqueueSubscriptionNotify } from "../../queue-jobs/subscription-notify.job.js";
+import { enqueueSendEmail } from "../../queue-jobs/send-email.job.js";
 
 const {
+  Users,
   StripeCustomers,
   Subscriptions,
   PlanPrices,
@@ -56,12 +58,45 @@ export async function getOrCreateStripeCustomer(user, { transaction } = {}) {
   );
 }
 
+function isValidStripePriceId(id) {
+  return (
+    typeof id === "string" &&
+    /^price_[A-Za-z0-9]+$/.test(id) &&
+    !id.includes("...")
+  );
+}
+
+/**
+ * Prefer live env price IDs over DB (migration may have seeded placeholders).
+ */
 function resolvePriceId(planPrice, interval) {
-  if (planPrice?.stripe_price_id) return planPrice.stripe_price_id;
   const cfg = getStripeConfig();
-  if (interval === BILLING_INTERVALS.MONTH) return cfg.priceProMonthly;
-  if (interval === BILLING_INTERVALS.YEAR) return cfg.priceProYearly;
+  const fromEnv =
+    interval === BILLING_INTERVALS.MONTH
+      ? cfg.priceProMonthly
+      : interval === BILLING_INTERVALS.YEAR
+        ? cfg.priceProYearly
+        : "";
+  if (isValidStripePriceId(fromEnv)) return fromEnv;
+  if (isValidStripePriceId(planPrice?.stripe_price_id)) {
+    return planPrice.stripe_price_id;
+  }
   return "";
+}
+
+async function syncPlanPriceFromEnv(planPrice, interval) {
+  if (!planPrice?.id) return;
+  const fromEnv = resolvePriceId(null, interval);
+  if (!fromEnv || planPrice.stripe_price_id === fromEnv) return;
+  const cfg = getStripeConfig();
+  await PlanPrices.update(
+    {
+      stripe_price_id: fromEnv,
+      stripe_product_id: cfg.productPro || planPrice.stripe_product_id,
+      updated_at: nowUtc(),
+    },
+    { where: { id: planPrice.id } },
+  );
 }
 
 export async function createCheckoutSession(user, { interval, successUrl, cancelUrl }) {
@@ -86,10 +121,11 @@ export async function createCheckoutSession(user, { interval, successUrl, cancel
   const planPrice = (proPlan.prices || []).find(
     (p) => p.billing_interval === interval,
   );
+  await syncPlanPriceFromEnv(planPrice, interval);
   const priceId = resolvePriceId(planPrice, interval);
   if (!priceId) {
     const err = new Error(
-      `Stripe price for Pro ${interval}ly is not configured. Set STRIPE_PRICE_PRO_${interval === "month" ? "MONTHLY" : "YEARLY"}.`,
+      `Stripe price for Pro ${interval}ly is not configured. Set a real Price ID in STRIPE_PRICE_PRO_${interval === "month" ? "MONTHLY" : "YEARLY"} (from Product catalog → price → Price ID). Do not use the placeholder price_...`,
     );
     err.statusCode = 503;
     throw err;
@@ -129,6 +165,114 @@ export async function createCheckoutSession(user, { interval, successUrl, cancel
     checkout_url: session.url,
     session_id: session.id,
   };
+}
+
+/**
+ * Confirm Checkout Session and sync subscription (works even if webhooks are delayed).
+ */
+export async function confirmCheckoutSession(user, sessionId) {
+  assertStripeConfigured();
+  if (!sessionId) {
+    const err = new Error("session_id is required");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const stripe = getStripe();
+  const session = await stripe.checkout.sessions.retrieve(sessionId, {
+    expand: ["subscription"],
+  });
+
+  const sessionUserId = Number(
+    session.client_reference_id || session.metadata?.user_id || 0,
+  );
+  if (sessionUserId && sessionUserId !== Number(user.id)) {
+    const err = new Error("Checkout session does not belong to this user");
+    err.statusCode = 403;
+    throw err;
+  }
+
+  if (session.mode !== "subscription") {
+    const err = new Error("Checkout session is not a subscription");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  let stripeSubscription = session.subscription;
+  if (typeof stripeSubscription === "string") {
+    stripeSubscription = await stripe.subscriptions.retrieve(stripeSubscription);
+  }
+  if (!stripeSubscription) {
+    // Fallback: latest active sub for this Stripe customer
+    const customerId =
+      typeof session.customer === "string"
+        ? session.customer
+        : session.customer?.id;
+    if (customerId) {
+      const list = await stripe.subscriptions.list({
+        customer: customerId,
+        status: "active",
+        limit: 1,
+      });
+      stripeSubscription = list.data[0] || null;
+    }
+  }
+
+  if (!stripeSubscription) {
+    const err = new Error(
+      "Subscription not ready yet. Refresh in a moment, or ensure Stripe webhooks are forwarding.",
+    );
+    err.statusCode = 409;
+    err.code = "SUBSCRIPTION_PENDING";
+    throw err;
+  }
+
+  // Ensure metadata has user_id for sync
+  if (!stripeSubscription.metadata?.user_id) {
+    stripeSubscription.metadata = {
+      ...(stripeSubscription.metadata || {}),
+      user_id: String(user.id),
+      billing_interval:
+        stripeSubscription.metadata?.billing_interval ||
+        session.metadata?.billing_interval ||
+        "month",
+    };
+  }
+
+  await syncSubscriptionFromStripe(stripeSubscription);
+  await syncInvoicesForUser(user.id, { sendEmail: true });
+  return subscriptionService.serializeSubscriptionForApi(user.id);
+}
+
+/**
+ * Pull latest Stripe subscription for the user and sync locally.
+ */
+export async function syncCurrentUserFromStripe(user) {
+  assertStripeConfigured();
+  const stripeCustomer = await StripeCustomers.findOne({
+    where: { user_id: user.id, deleted_at: null },
+  });
+  if (!stripeCustomer) {
+    await subscriptionService.ensureFreeSubscription(user.id);
+    return subscriptionService.serializeSubscriptionForApi(user.id);
+  }
+
+  const stripe = getStripe();
+  const list = await stripe.subscriptions.list({
+    customer: stripeCustomer.stripe_customer_id,
+    status: "all",
+    limit: 10,
+  });
+  const active = list.data.find((s) =>
+    ["active", "trialing", "past_due"].includes(s.status),
+  );
+  if (active) {
+    await syncSubscriptionFromStripe(active);
+  } else {
+    await subscriptionService.ensureFreeSubscription(user.id);
+  }
+  await syncInvoicesForUser(user.id, { sendEmail: true });
+  return subscriptionService.serializeSubscriptionForApi(user.id);
 }
 
 export async function createBillingPortalSession(user, { returnUrl } = {}) {
@@ -242,18 +386,24 @@ export async function listBillingHistory(userId, { page = 1, limit = 20 } = {}) 
   };
 }
 
-export async function upsertBillingFromInvoice(invoice, userId, subscriptionId) {
+export async function upsertBillingFromInvoice(invoice, userId, subscriptionId, options = {}) {
+  const { sendEmail = false } = options;
   const paidAt = invoice.status_transitions?.paid_at
     ? moment.unix(invoice.status_transitions.paid_at).utc().format()
     : invoice.status === "paid"
       ? nowUtc()
       : null;
 
-  const [row] = await BillingHistory.findOrCreate({
+  const proPlan = await subscriptionService.getPlanByCode(PLAN_CODES.PRO);
+  const lineDesc = invoice.lines?.data?.[0]?.description || "";
+  const intervalGuess = /year/i.test(lineDesc) ? "year" : "month";
+
+  const [row, created] = await BillingHistory.findOrCreate({
     where: { stripe_invoice_id: invoice.id },
     defaults: {
       user_id: userId,
       subscription_id: subscriptionId || null,
+      plan_id: proPlan?.id || null,
       invoice_number: invoice.number || null,
       stripe_payment_intent_id:
         typeof invoice.payment_intent === "string"
@@ -272,14 +422,22 @@ export async function upsertBillingFromInvoice(invoice, userId, subscriptionId) 
         ? moment.unix(invoice.period_end).utc().format()
         : null,
       paid_at: paidAt,
+      metadata: {
+        line_description: lineDesc || null,
+        billing_interval: intervalGuess,
+        email_sent: false,
+      },
       created_at: nowUtc(),
       updated_at: nowUtc(),
     },
   });
 
-  if (!row.isNewRecord) {
+  if (!created) {
     await row.update({
       status: invoice.status || row.status,
+      plan_id: row.plan_id || proPlan?.id || null,
+      subscription_id: subscriptionId || row.subscription_id,
+      invoice_number: invoice.number || row.invoice_number,
       amount_cents: invoice.amount_paid ?? invoice.total ?? row.amount_cents,
       invoice_pdf_url: invoice.invoice_pdf || row.invoice_pdf_url,
       hosted_invoice_url: invoice.hosted_invoice_url || row.hosted_invoice_url,
@@ -299,8 +457,137 @@ export async function upsertBillingFromInvoice(invoice, userId, subscriptionId) 
     },
   });
 
+  const meta = row.metadata && typeof row.metadata === "object" ? row.metadata : {};
+  if (sendEmail && invoice.status === "paid" && !meta.email_sent) {
+    try {
+      await sendInvoiceReceiptEmail(userId, invoice, row);
+      await row.update({
+        metadata: { ...meta, email_sent: true, email_sent_at: nowUtc() },
+        updated_at: nowUtc(),
+      });
+    } catch (err) {
+      console.error("invoice email failed:", err?.message || err);
+    }
+  }
+
   return row;
 }
+
+async function sendInvoiceReceiptEmail(userId, invoice, billingRow) {
+  const user = await Users.findByPk(userId);
+  if (!user?.email) return;
+
+  const amount = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: (invoice.currency || "usd").toUpperCase(),
+  }).format((invoice.amount_paid ?? invoice.total ?? 0) / 100);
+
+  const paidOn = invoice.status_transitions?.paid_at
+    ? moment.unix(invoice.status_transitions.paid_at).utc().format("ll")
+    : billingRow.paid_at
+      ? moment(billingRow.paid_at).utc().format("ll")
+      : moment().utc().format("ll");
+
+  const periodStart = invoice.lines?.data?.[0]?.period?.start
+    ? moment.unix(invoice.lines.data[0].period.start).utc().format("ll")
+    : invoice.period_start
+      ? moment.unix(invoice.period_start).utc().format("ll")
+      : "—";
+  const periodEnd = invoice.lines?.data?.[0]?.period?.end
+    ? moment.unix(invoice.lines.data[0].period.end).utc().format("ll")
+    : invoice.period_end
+      ? moment.unix(invoice.period_end).utc().format("ll")
+      : "—";
+
+  const lineDesc =
+    invoice.lines?.data?.[0]?.description || "myTask Pro subscription";
+  const billingCycle = /year/i.test(lineDesc) ? "Yearly" : "Monthly";
+  const appName = process.env.APP_NAME || "myTask";
+  const downloadUrl =
+    invoice.invoice_pdf ||
+    invoice.hosted_invoice_url ||
+    `${process.env.CLIENT_URL || ""}/billing`;
+
+  const attachments = [];
+  if (invoice.invoice_pdf) {
+    try {
+      const pdfRes = await fetch(invoice.invoice_pdf);
+      if (pdfRes.ok) {
+        const buf = Buffer.from(await pdfRes.arrayBuffer());
+        attachments.push({
+          filename: `${invoice.number || "invoice"}.pdf`,
+          content: buf,
+          contentType: "application/pdf",
+        });
+      }
+    } catch (err) {
+      console.error("invoice pdf attach failed:", err?.message || err);
+    }
+  }
+
+  await enqueueSendEmail({
+    user,
+    organisation: null,
+    userEmails: [user.email],
+    message: {
+      subject: `${appName} invoice ${invoice.number || ""}`.trim(),
+      template: "invoice-receipt.html",
+      feature: "Billing",
+      variables: {
+        title: "Payment receipt",
+        message: `Thanks for your payment. Your ${appName} Pro subscription invoice is ready.`,
+        invoice_number: invoice.number || billingRow.invoice_number || "—",
+        plan_name: "Pro",
+        billing_cycle: billingCycle,
+        amount_paid: amount,
+        invoice_status: (invoice.status || "paid").toUpperCase(),
+        paid_on: paidOn,
+        period_label: `${periodStart} → ${periodEnd}`,
+        button_url: downloadUrl,
+        button_label: invoice.invoice_pdf ? "Download invoice PDF" : "View invoice",
+      },
+      attachments,
+    },
+    immediate: true,
+  });
+}
+
+/**
+ * Pull invoices from Stripe for a user and upsert billing history.
+ */
+export async function syncInvoicesForUser(userId, { sendEmail = false } = {}) {
+  assertStripeConfigured();
+  const stripeCustomer = await StripeCustomers.findOne({
+    where: { user_id: userId, deleted_at: null },
+  });
+  if (!stripeCustomer) return { synced: 0 };
+
+  const stripe = getStripe();
+  const invoices = await stripe.invoices.list({
+    customer: stripeCustomer.stripe_customer_id,
+    limit: 50,
+  });
+
+  const localSub = await Subscriptions.findOne({
+    where: { user_id: userId },
+    order: [["id", "DESC"]],
+  });
+
+  let synced = 0;
+  for (const invoice of invoices.data) {
+    await upsertBillingFromInvoice(invoice, userId, localSub?.id || null, {
+      sendEmail:
+        sendEmail &&
+        invoice.status === "paid" &&
+        (invoice.billing_reason === "subscription_create" ||
+          invoice.billing_reason === "subscription_cycle" ||
+          invoice.billing_reason === "subscription_update"),
+    });
+    synced += 1;
+  }
+  return { synced };
+}
+
 
 export async function recordPaymentAttempt({
   userId,
@@ -395,6 +682,19 @@ async function syncSubscriptionForUser(userId, stripeSubscription) {
     }
   }
 
+  // Stripe API 2025+: period dates live on subscription items (not top-level).
+  const primaryItem = stripeSubscription.items?.data?.[0];
+  const periodStartUnix =
+    stripeSubscription.current_period_start ||
+    primaryItem?.current_period_start ||
+    stripeSubscription.billing_cycle_anchor ||
+    null;
+  const periodEndUnix =
+    stripeSubscription.current_period_end ||
+    primaryItem?.current_period_end ||
+    stripeSubscription.cancel_at ||
+    null;
+
   const payload = {
     user_id: userId,
     plan_id: proPlan.id,
@@ -406,11 +706,11 @@ async function syncSubscriptionForUser(userId, stripeSubscription) {
       typeof stripeSubscription.customer === "string"
         ? stripeSubscription.customer
         : stripeSubscription.customer?.id || null,
-    current_period_start: stripeSubscription.current_period_start
-      ? moment.unix(stripeSubscription.current_period_start).utc().format()
+    current_period_start: periodStartUnix
+      ? moment.unix(periodStartUnix).utc().format()
       : null,
-    current_period_end: stripeSubscription.current_period_end
-      ? moment.unix(stripeSubscription.current_period_end).utc().format()
+    current_period_end: periodEndUnix
+      ? moment.unix(periodEndUnix).utc().format()
       : null,
     cancel_at_period_end: Boolean(stripeSubscription.cancel_at_period_end),
     canceled_at: stripeSubscription.canceled_at
@@ -517,4 +817,7 @@ export default {
   recordPaymentAttempt,
   syncSubscriptionFromStripe,
   downgradeToFree,
+  confirmCheckoutSession,
+  syncCurrentUserFromStripe,
+  syncInvoicesForUser,
 };

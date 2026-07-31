@@ -350,13 +350,24 @@ export type SubscriptionView = {
   id: number | string;
   status: string;
   billing_interval: BillingInterval;
+  billing_interval_label?: string;
   payment_status: string;
   cancel_at_period_end: boolean;
   current_period_start?: string | null;
   current_period_end?: string | null;
+  /** Next renewal charge date when Pro and not scheduled to cancel. */
+  next_billing_date?: string | null;
+  /** Date Pro access ends when cancel_at_period_end is true. */
+  access_ends_at?: string | null;
+  days_until_period_end?: number | null;
   canceled_at?: string | null;
   ended_at?: string | null;
+  trial_end?: string | null;
   stripe_subscription_id?: string | null;
+  stripe_customer_id?: string | null;
+  amount_cents?: number;
+  currency?: string;
+  price_label?: string;
   is_pro: boolean;
   plan: PlanSummary;
   usage?: {

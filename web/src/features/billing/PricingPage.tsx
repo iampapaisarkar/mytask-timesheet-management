@@ -127,8 +127,8 @@ export function PricingPage() {
       ) : null}
 
       {current ? (
-        <Card className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+        <Card className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1">
             <div className="text-xs font-semibold uppercase tracking-wide text-primary">
               Current plan
             </div>
@@ -136,25 +136,62 @@ export function PricingPage() {
               {current.plan?.name || "Free"}
               {current.is_pro ? (
                 <span className="ml-2 rounded-full bg-primary-muted px-2 py-0.5 text-xs font-semibold text-primary">
-                  Active
+                  {current.cancel_at_period_end ? "Cancelling" : "Active"}
                 </span>
               ) : null}
             </div>
-            {current.current_period_end ? (
-              <p className="mt-1 text-sm text-muted">
-                {current.cancel_at_period_end ? "Ends" : "Renews"}{" "}
-                {new Date(current.current_period_end).toLocaleDateString()}
-                {current.billing_interval !== "none"
-                  ? ` · billed ${current.billing_interval}ly`
+            <p className="text-sm text-muted">
+              {current.price_label || "$0"}
+              {current.billing_interval !== "none"
+                ? ` · ${current.billing_interval_label || current.billing_interval}`
+                : " · no billing"}
+              {" · "}
+              Status: {current.status}
+            </p>
+            {current.is_pro && current.cancel_at_period_end ? (
+              <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                Cancels on{" "}
+                {new Date(
+                  String(current.access_ends_at || current.current_period_end),
+                ).toLocaleDateString(undefined, {
+                  weekday: "short",
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })}
+                {current.days_until_period_end != null
+                  ? ` · ${current.days_until_period_end} day(s) of Pro left`
+                  : null}
+              </p>
+            ) : current.is_pro && current.current_period_end ? (
+              <p className="text-sm font-medium text-[var(--mt-text)]">
+                Next billing{" "}
+                {new Date(
+                  String(current.next_billing_date || current.current_period_end),
+                ).toLocaleDateString(undefined, {
+                  weekday: "short",
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })}
+                {current.days_until_period_end != null
+                  ? ` · in ${current.days_until_period_end} day(s)`
                   : null}
               </p>
             ) : (
-              <p className="mt-1 text-sm text-muted">No payment required</p>
+              <p className="text-sm text-muted">No payment required</p>
             )}
+            {current.current_period_start && current.current_period_end ? (
+              <p className="text-xs text-muted">
+                Current period:{" "}
+                {new Date(current.current_period_start).toLocaleDateString()} –{" "}
+                {new Date(current.current_period_end).toLocaleDateString()}
+              </p>
+            ) : null}
           </div>
           <div className="flex flex-wrap gap-2">
             <Link to={ROUTES.subscription}>
-              <Button variant="secondary">Manage subscription</Button>
+              <Button variant="secondary">Full details</Button>
             </Link>
             <Link to={ROUTES.billingHistory}>
               <Button variant="ghost">Billing history</Button>
@@ -265,8 +302,17 @@ export function PricingPage() {
         <Card className="border-negative/30 bg-negative/5">
           <h3 className="font-semibold text-[var(--mt-text)]">Cancel Pro?</h3>
           <p className="mt-1 text-sm text-muted">
-            You keep Pro until the end of the billing period. Afterwards Free
-            limits apply; your data is preserved.
+            You keep Pro until the end of the current billing period
+            {current?.current_period_end
+              ? ` (${new Date(current.current_period_end).toLocaleDateString(undefined, {
+                  weekday: "short",
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })})`
+              : ""}
+            . After that Free limits apply; your data is preserved. No further
+            charges after the cancel date.
           </p>
           <div className="mt-4 flex gap-2">
             <Button variant="danger" loading={cancelSub.isPending} onClick={() => void onCancel()}>

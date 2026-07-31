@@ -106,6 +106,16 @@ BullMQ `subscriptionQueue` + `subscription.worker.js`:
 
 Also registered under `backend/jobs/` for `npm run jobs:*`.
 
+## Confirm after Checkout (important for local)
+
+Webhooks need `stripe listen` running. If it is not running, the success page now calls:
+
+`POST /api/subscriptions/confirm-checkout` with `{ session_id }`
+
+You can also force a sync anytime:
+
+`POST /api/subscriptions/sync`
+
 ## Clients
 
 - **Web:** `/pricing`, `/subscription`, `/billing`, `/billing/success`; Login **See Pricing**; Home **Upgrade Plan**

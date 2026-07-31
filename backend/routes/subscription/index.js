@@ -13,6 +13,8 @@ router.get("/usage", TokenValidate, controller.getUsage);
 router.get("/feature-limits", TokenValidate, controller.getFeatureLimits);
 router.get("/billing-history", TokenValidate, controller.billingHistory);
 router.post("/checkout", TokenValidate, controller.createCheckout);
+router.post("/confirm-checkout", TokenValidate, controller.confirmCheckout);
+router.post("/sync", TokenValidate, controller.syncFromStripe);
 router.post("/portal", TokenValidate, controller.createPortal);
 router.post("/cancel", TokenValidate, controller.cancelSubscription);
 

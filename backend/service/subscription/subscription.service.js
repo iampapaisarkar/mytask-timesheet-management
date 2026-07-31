@@ -533,18 +533,63 @@ export async function serializeSubscriptionForApi(userId) {
   const sub = ctx.subscription;
   const plan = serializePlan(ctx.plan);
   const usage = await buildUsageSnapshot(userId);
+  const plain = sub.get ? sub.get({ plain: true }) : sub;
+  const planPrice = plain.plan_price || null;
+  const cancelAtPeriodEnd = Boolean(plain.cancel_at_period_end);
+  const periodEnd = plain.current_period_end || null;
+  const periodStart = plain.current_period_start || null;
+
+  let daysUntilPeriodEnd = null;
+  if (periodEnd) {
+    const end = moment.utc(periodEnd);
+    const now = moment.utc();
+    daysUntilPeriodEnd = Math.max(0, end.diff(now, "days"));
+  }
+
+  const amountCents =
+    planPrice?.amount_cents != null
+      ? Number(planPrice.amount_cents)
+      : plan.is_free
+        ? 0
+        : plain.billing_interval === "year"
+          ? 9999
+          : plain.billing_interval === "month"
+            ? 999
+            : 0;
 
   return {
-    id: sub.id,
-    status: sub.status,
-    billing_interval: sub.billing_interval,
-    payment_status: sub.payment_status,
-    cancel_at_period_end: Boolean(sub.cancel_at_period_end),
-    current_period_start: sub.current_period_start,
-    current_period_end: sub.current_period_end,
-    canceled_at: sub.canceled_at,
-    ended_at: sub.ended_at,
-    stripe_subscription_id: sub.stripe_subscription_id,
+    id: plain.id,
+    status: plain.status,
+    billing_interval: plain.billing_interval,
+    payment_status: plain.payment_status,
+    cancel_at_period_end: cancelAtPeriodEnd,
+    current_period_start: periodStart,
+    current_period_end: periodEnd,
+    /** Next renewal charge date (when not cancelling). */
+    next_billing_date: cancelAtPeriodEnd || !ctx.isPro ? null : periodEnd,
+    /** Date Pro access ends (when cancellation is scheduled). */
+    access_ends_at: cancelAtPeriodEnd ? periodEnd : null,
+    days_until_period_end: daysUntilPeriodEnd,
+    canceled_at: plain.canceled_at,
+    ended_at: plain.ended_at,
+    trial_end: plain.trial_end || null,
+    stripe_subscription_id: plain.stripe_subscription_id,
+    stripe_customer_id: plain.stripe_customer_id || null,
+    amount_cents: amountCents,
+    currency: planPrice?.currency || "usd",
+    price_label:
+      amountCents === 0
+        ? "$0"
+        : new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: (planPrice?.currency || "usd").toUpperCase(),
+          }).format(amountCents / 100),
+    billing_interval_label:
+      plain.billing_interval === "month"
+        ? "Monthly"
+        : plain.billing_interval === "year"
+          ? "Yearly"
+          : "None",
     is_pro: ctx.isPro,
     plan,
     usage,

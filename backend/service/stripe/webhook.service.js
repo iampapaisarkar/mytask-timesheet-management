@@ -202,7 +202,9 @@ async function processStripeEvent(event) {
               : obj.subscription?.id || null,
         },
       });
-      await billingService.upsertBillingFromInvoice(obj, userId, sub?.id);
+      await billingService.upsertBillingFromInvoice(obj, userId, sub?.id, {
+        sendEmail: true,
+      });
       await billingService.recordPaymentAttempt({
         userId,
         subscriptionId: sub?.id,

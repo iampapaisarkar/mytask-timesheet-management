@@ -1067,5 +1067,31 @@ export function useCancelSubscription() {
   });
 }
 
+export function useConfirmCheckout() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (sessionId: string) => {
+      const res = await subscriptionApi.confirmCheckout({ session_id: sessionId });
+      return res.data.data as SubscriptionView;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["subscription"] });
+    },
+  });
+}
+
+export function useSyncSubscription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const res = await subscriptionApi.sync();
+      return res.data.data as SubscriptionView;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["subscription"] });
+    },
+  });
+}
+
 export { createAppQueryClient } from "./queryClient";
 export { useQuery, useMutation, useQueryClient };
