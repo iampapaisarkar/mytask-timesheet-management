@@ -1,3 +1,9 @@
 # Web Deployment
 
-Static Vite build. Set `VITE_API_BASE_URL` and Firebase env vars. Host on CDN/NGINX; proxy API separately.
+Static Vite SPA → **Firebase Hosting** (same GCP project as Cloud Run API).
+
+See [`DEPLOY_HOSTING.md`](./DEPLOY_HOSTING.md) and run:
+
+```bash
+cd web && ./deploy-hosting.sh
+```

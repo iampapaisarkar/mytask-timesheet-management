@@ -37,3 +37,7 @@ mobile/*.jsbundle
 # IDE
 .idea/
 *.iml
+
+# Firebase Hosting cache
+web/.firebase/
+web/dist/
