@@ -11,6 +11,7 @@ import {
   screensApi,
   payoutsApi,
   systemLogsApi,
+  notificationsApi,
 } from "@mytask/api";
 import type {
   DashboardGraphsView,
@@ -62,7 +63,9 @@ export const queryKeys = {
   jobs: (params?: ListParams) => ["jobs", params] as const,
   system: (path: string) => ["system", path] as const,
   notifications: ["notifications"] as const,
-  notificationsList: ["notifications", "list"] as const,
+  notificationsPreview: ["notifications", "preview"] as const,
+  notificationsList: (params?: ListParams) =>
+    ["notifications", "list", params] as const,
   holidayCalendars: ["holiday-calendars"] as const,
   payrollCalendars: ["payroll-calendars"] as const,
   payouts: (params?: ListParams) => ["payouts", params] as const,
@@ -112,7 +115,7 @@ function seedOrgBootstrapCaches(
     queryKeys.organisations(ORG_LIST_SEED_PARAMS),
     data.organisations,
   );
-  qc.setQueryData(queryKeys.notificationsList, {
+  qc.setQueryData(queryKeys.notificationsPreview, {
     data: data.notifications.items,
     unread_count: data.notifications.unread_count,
   });
@@ -718,6 +721,51 @@ export function useCustomers(params: ListParams = {}, enabled = true) {
       return toPaginatedList(res);
     },
     enabled,
+  });
+}
+
+export function useNotifications(params: ListParams = {}, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.notificationsList(params),
+    queryFn: async ({ signal }) => {
+      const res = await notificationsApi.list(params, { signal });
+      const list = toPaginatedList(res);
+      const unread =
+        res.data && typeof res.data === "object" && "unread_count" in res.data
+          ? Number((res.data as { unread_count?: number }).unread_count)
+          : undefined;
+      return {
+        ...list,
+        unread_count: Number.isFinite(unread) ? unread : undefined,
+      };
+    },
+    enabled,
+  });
+}
+
+export function useMarkNotificationAsRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string | number) => {
+      const res = await notificationsApi.markAs(id, "read");
+      return res.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.notifications });
+    },
+  });
+}
+
+export function useMarkAllNotificationsAsRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const res = await notificationsApi.markAllAs("read");
+      return res.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.notifications });
+    },
   });
 }
 

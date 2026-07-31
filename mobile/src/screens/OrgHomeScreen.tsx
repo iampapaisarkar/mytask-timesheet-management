@@ -24,6 +24,7 @@ type NavRoute =
   | "EmployeesList"
   | "CustomersList"
   | "JobsList"
+  | "NotificationsList"
   | "SettingsHub";
 
 export function OrgHomeScreen({ navigation, route }: Props) {
@@ -49,6 +50,7 @@ export function OrgHomeScreen({ navigation, route }: Props) {
     ...(can(acl, "job", "list")
       ? [{ label: "Jobs", route: "JobsList" as const }]
       : []),
+    { label: "Notifications", route: "NotificationsList" },
     { label: "Settings", route: "SettingsHub" },
   ];
 

@@ -52,6 +52,7 @@ export const ROUTES = {
   employees: (orgCode: string) => `/org/${orgCode}/employees`,
   customers: (orgCode: string) => `/org/${orgCode}/customers`,
   jobs: (orgCode: string) => `/org/${orgCode}/jobs`,
+  notifications: (orgCode: string) => `/org/${orgCode}/notifications`,
 } as const;
 
 export const ORG_NAV = [

@@ -16,6 +16,7 @@ import { EmployeesListScreen } from "../features/employees";
 import { CustomersListScreen } from "../features/customers";
 import { JobsListScreen } from "../features/jobs";
 import { SettingsHubScreen, ProfileScreen } from "../features/settings";
+import { NotificationsListScreen } from "../features/notifications";
 
 export type RootStackParamList = {
   Login: undefined;
@@ -32,6 +33,7 @@ export type RootStackParamList = {
   EmployeesList: { orgCode: string };
   CustomersList: { orgCode: string };
   JobsList: { orgCode: string };
+  NotificationsList: { orgCode: string };
   SettingsHub: { orgCode: string };
 };
 
@@ -166,6 +168,15 @@ export function RootNavigator() {
             name="JobsList"
             component={JobsListScreen}
             options={{ title: "Jobs" }}
+          />
+          <Stack.Screen
+            name="NotificationsList"
+            component={NotificationsListScreen}
+            options={{
+              title: "Notifications",
+              presentation: "fullScreenModal",
+              animation: "slide_from_bottom",
+            }}
           />
           <Stack.Screen
             name="SettingsHub"

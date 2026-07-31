@@ -54,7 +54,7 @@ export const EVENT_QUERY_INVALIDATIONS: Record<
 
   [SOCKET_EVENTS.NOTIFICATION_CREATED]: [
     queryKeys.notifications,
-    queryKeys.notificationsList,
+    queryKeys.notificationsPreview,
   ],
 
   [SOCKET_EVENTS.DASHBOARD_UPDATED]: [["screens", "dashboard"], ["screens", "home"]],
@@ -86,10 +86,10 @@ export function applyRealtimeEnvelopeToQueryClient(
     const previous = queryClient.getQueryData<{
       data?: unknown[];
       unread_count?: number;
-    }>(queryKeys.notificationsList);
+    }>(queryKeys.notificationsPreview);
     if (previous && Array.isArray(previous.data)) {
-      queryClient.setQueryData(queryKeys.notificationsList, {
-        data: [envelope.data, ...previous.data],
+      queryClient.setQueryData(queryKeys.notificationsPreview, {
+        data: [envelope.data, ...previous.data].slice(0, 10),
         unread_count: (previous.unread_count ?? 0) + 1,
       });
     }

@@ -1,4 +1,3 @@
-import { fn, col, literal, Op } from "sequelize";
 import models from "../models/index.js";
 const { Notifications, NotificationStatus } = models;
 import { FirebaseMessaging } from "#firebasemessaging";
@@ -14,54 +13,42 @@ export async function notifications(req, res, next) {
     const sortBy = sort_by || "id";
     const sortDirection = sort_direction || "asc";
 
-    const { count, rows: notifications } = await Notifications.findAndCountAll({
-      attributes: ["id", "title", "body", "url", "sent_at"],
-      where: {
-        user_id: user.id,
-      },
-      include: [
-        {
-          model: NotificationStatus,
-          as: "status",
-          attributes: ["id", "name", "code"],
-          on: {
-            id: { [Op.eq]: col("Notifications.status_id") },
-          },
-          required: true,
-        },
-      ],
-      offset: offset,
-      limit: rowsPerPage,
-      raw: false,
-      nest: true,
-      subQuery: false,
-      order: [["sent_at", "desc"]],
-    });
+    const where = { user_id: user.id };
+    const statusInclude = {
+      model: NotificationStatus,
+      as: "status",
+      attributes: ["id", "name", "code"],
+      required: true,
+    };
 
-    const unreadCount = await Notifications.count({
-      where: {
-        user_id: user.id,
-      },
-      include: [
-        {
-          model: NotificationStatus,
-          as: "status",
-          on: {
-            id: { [Op.eq]: col("Notifications.status_id") },
+    const [totalRows, notifications, unreadCount] = await Promise.all([
+      Notifications.count({ where }),
+      Notifications.findAll({
+        attributes: ["id", "title", "body", "url", "sent_at"],
+        where,
+        include: [statusInclude],
+        offset,
+        limit: rowsPerPage,
+        nest: true,
+        order: [["sent_at", "desc"]],
+      }),
+      Notifications.count({
+        where,
+        include: [
+          {
+            model: NotificationStatus,
+            as: "status",
+            required: true,
+            where: { code: "unread" },
           },
-          required: true,
-          where: {
-            code: "unread",
-          },
-        },
-      ],
-    });
+        ],
+      }),
+    ]);
 
-    // Build pagination metadata
-    const total_pages = Math.ceil(count / rows_per_page);
+    const total_pages = Math.max(1, Math.ceil(totalRows / rowsPerPage) || 1);
 
     const pagination = {
-      total_rows: notifications.length,
+      total_rows: totalRows,
       rows_per_page: rowsPerPage,
       page_number: pageNumber,
       total_pages,

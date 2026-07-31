@@ -2,6 +2,14 @@
 
 ## 2026-07-31
 
+### Added
+
+- Notifications **See more** opens a paginated notifications table (`/org/:orgCode/notifications`); bell preview shows the latest 10. Web mobile viewport uses a full-screen notifications sheet; mobile app has a full-screen Notifications list.
+
+### Fixed
+
+- Notifications list API `pagination.total_rows` now reflects the full count (was incorrectly the current page length)
+
 ### Changed
 
 - Reports PDF redesigned for client/executive sharing: branded header, summary cards, richer details (employee, jobs, customers, status, approval remarks, pay breakdown), professional daily table with repeating headers, and page footers (`Page X of Y`)

@@ -117,6 +117,11 @@ const SystemLogsPage = lazy(() =>
     default: m.SystemLogsPage,
   })),
 );
+const NotificationsPage = lazy(() =>
+  import("@/features/notifications/NotificationsPage").then((m) => ({
+    default: m.NotificationsPage,
+  })),
+);
 const HelpFaqPage = lazy(() =>
   import("@/features/legal").then((m) => ({ default: m.HelpFaqPage })),
 );
@@ -335,6 +340,7 @@ export function AppRouter() {
                   >
                     <Route path="customers" element={<CustomersPage />} />
                   </Route>
+                  <Route path="notifications" element={<NotificationsPage />} />
                   <Route
                     element={
                       <OrgAclRoute acl={{ action: "job", permission: "list" }} />
