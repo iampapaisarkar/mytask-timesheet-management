@@ -187,7 +187,10 @@ export function MoreScreen({ route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: spacing.lg },
+  container: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+  },
   group: { marginBottom: spacing.md },
   iconWrap: {
     width: 40,

@@ -565,7 +565,10 @@ export function OrgHomeScreen({ route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: spacing.lg },
+  container: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+  },
   roleLine: {
     fontSize: typography.sizes.sm,
     fontWeight: "500",
