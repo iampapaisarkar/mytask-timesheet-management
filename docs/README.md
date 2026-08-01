@@ -33,7 +33,8 @@ Index of monorepo documentation. For run instructions, see the root [README.md](
 - [mobile/docs](../mobile/docs/)
 - [international-phone.md](international-phone.md) — global E.164 phone support
 - [global-address.md](global-address.md) — Google Places worldwide addresses
-
+- [GOOGLE_SIGN_IN.md](GOOGLE_SIGN_IN.md) — Firebase Google Sign-In (web + Android + iOS)
+- [AUTH_ARCHITECTURE.md](AUTH_ARCHITECTURE.md) — Firebase + TokenManager auth
 ## Cursor rules
 
 - Root: `.cursor/rules/`

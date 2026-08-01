@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-08-01
+
+### Added
+
+- **Firebase Google Sign-In (web + Android + iOS):** reusable `services/firebase` auth modules; web popup with redirect fallback; native `@react-native-google-signin/google-signin` → Firebase credential; RN Auth persistence via `getReactNativePersistence`; logout clears Firebase (+ Google on native). See `docs/GOOGLE_SIGN_IN.md`.
+
+### API
+
+- `POST /api/auth/login` links the Firebase UID into `firebase_providers` (supports Google provider UIDs for `TokenValidate`). Unknown emails return `404` / `AUTH_USER_NOT_FOUND` with a clear sign-up message.
+
 ## 2026-07-31
 
 ### Changed

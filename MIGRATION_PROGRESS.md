@@ -34,6 +34,7 @@
 | Enterprise System Logs & Audit | ✅ Done | 2026-07-31 | Internal/external/email audit tables; async queue; middleware; System Logs UI; retention |
 | Server-side list pagination (10/page) | ✅ Done | 2026-07-31 | All org tables (employees, customers, jobs, timesheets, payouts, calendars, system logs) use page size 10 + Previous/Next |
 | Stripe subscription system | ✅ Done | 2026-07-31 | Free/Pro; Checkout; webhooks; usage limits; daily expiry cron + 6h Stripe sync; payment-fail → Free + reason emails; web+mobile billing UI; `docs/STRIPE_SUBSCRIPTIONS.md` |
+| Firebase Google Sign-In (web + mobile) | ✅ Done | 2026-08-01 | Web popup/redirect; native Google Sign-In; Firebase persistence; see `docs/GOOGLE_SIGN_IN.md` |
 
 ## Vue ↔ Web ↔ Mobile gap matrix
 

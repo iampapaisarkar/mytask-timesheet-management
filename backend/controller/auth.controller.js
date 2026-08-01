@@ -55,6 +55,40 @@ export async function login(req, res, next) {
       let authAttemptResponse = await Auth.attempt(email);
 
       if (authAttemptResponse.success) {
+        // Link Firebase UID (e.g. google.com) so TokenValidate can resolve the user.
+        const decoded = tokenVerifyResponse.decoded || {};
+        const firebaseUid = decoded.uid || tokenVerifyResponse.data?.users?.[0]?.localId;
+        const signInProvider =
+          decoded.firebase?.sign_in_provider || "password";
+        if (firebaseUid) {
+          const existingProvider = await FirebaseProviders.findOne({
+            where: { uid: firebaseUid },
+          });
+          if (!existingProvider) {
+            await FirebaseProviders.create({
+              user_id: authAttemptResponse.user.id,
+              provider_id: signInProvider,
+              uid: firebaseUid,
+              photo_url: decoded.picture || null,
+            });
+          } else if (
+            Number(existingProvider.user_id) !==
+            Number(authAttemptResponse.user.id)
+          ) {
+            return res.status(401).json({
+              code: "AUTH_PROVIDER_CONFLICT",
+              message:
+                "This Google account is already linked to a different myTask user.",
+            });
+          }
+
+          // Keep primary firebase_user_id in sync for legacy lookups.
+          await Users.update(
+            { firebase_user_id: firebaseUid },
+            { where: { id: authAttemptResponse.user.id } },
+          ).catch(() => undefined);
+        }
+
         let sessionCreationResponse = await Auth.createSession(
           authAttemptResponse.user.id,
           token,
@@ -90,8 +124,10 @@ export async function login(req, res, next) {
           });
         }
       } else {
-        return res.status(501).json({
-          message: authAttemptResponse.message,
+        return res.status(404).json({
+          code: "AUTH_USER_NOT_FOUND",
+          message:
+            "No myTask account found for this email. Please sign up first, then use Google Sign-In.",
         });
       }
     } else {

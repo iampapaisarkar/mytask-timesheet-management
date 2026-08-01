@@ -1,43 +1,47 @@
-import { initializeApp, getApps } from "firebase/app";
 import {
-  getAuth,
   onAuthStateChanged,
   onIdTokenChanged,
-  signOut,
   type User,
 } from "firebase/auth";
 import type { AuthAdapter, AuthUserRef } from "@mytask/auth";
-import { ENV } from "../config/env";
-
-function getFirebaseAuth() {
-  const config = {
-    apiKey: ENV.FIREBASE_API_KEY,
-    authDomain: ENV.FIREBASE_AUTH_DOMAIN,
-    projectId: ENV.FIREBASE_PROJECT_ID,
-    storageBucket: ENV.FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: ENV.FIREBASE_MESSAGING_SENDER_ID,
-    appId: ENV.FIREBASE_APP_ID,
-  };
-  const app = getApps().length ? getApps()[0]! : initializeApp(config);
-  return getAuth(app);
-}
+import {
+  getFirebaseAuth,
+  initFirebase,
+  signOutUser,
+} from "../services/firebase";
+import { isFirebaseConfigured } from "../config/env";
 
 function toRef(user: User | null): AuthUserRef | null {
   if (!user) return null;
   return { uid: user.uid, email: user.email };
 }
 
-/** Firebase Auth adapter for React Native (JS SDK). */
+function ensureAuth() {
+  if (!isFirebaseConfigured()) {
+    throw new Error(
+      "Firebase is not configured. Set FIREBASE_* values in mobile/src/config/env.ts.",
+    );
+  }
+  return initFirebase();
+}
+
+/** Firebase Auth adapter for React Native (JS SDK + RN persistence). */
 export function createMobileFirebaseAuthAdapter(): AuthAdapter {
   return {
-    getCurrentUser: () => toRef(getFirebaseAuth().currentUser),
+    getCurrentUser: () => {
+      try {
+        return toRef(ensureAuth().currentUser);
+      } catch {
+        return null;
+      }
+    },
     getIdToken: async (forceRefresh = false) => {
-      const user = getFirebaseAuth().currentUser;
+      const user = ensureAuth().currentUser;
       if (!user) return null;
       return user.getIdToken(forceRefresh);
     },
     subscribeIdToken: (listener) => {
-      const auth = getFirebaseAuth();
+      const auth = ensureAuth();
       return onIdTokenChanged(auth, async (user) => {
         if (!user) {
           listener(null, null);
@@ -52,13 +56,13 @@ export function createMobileFirebaseAuthAdapter(): AuthAdapter {
       });
     },
     subscribeAuthState: (listener) => {
-      const auth = getFirebaseAuth();
+      const auth = ensureAuth();
       return onAuthStateChanged(auth, (user) => {
         listener(toRef(user));
       });
     },
     signOut: async () => {
-      await signOut(getFirebaseAuth());
+      await signOutUser();
     },
   };
 }

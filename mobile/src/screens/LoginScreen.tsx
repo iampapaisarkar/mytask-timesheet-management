@@ -1,4 +1,5 @@
 import {
+  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -16,29 +17,20 @@ import { loginSchema, type LoginFormValues } from "@mytask/validation";
 import { authApi } from "@mytask/api";
 import { spacing } from "@mytask/theme";
 import { getErrorMessage, getTimezone } from "@mytask/utils";
-import { initializeApp, getApps } from "firebase/app";
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useAuthStore } from "../store/authStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
-import { ENV } from "../config/env";
+import {
+  AuthCancelledError,
+  isAuthCancelled,
+  signInWithEmail,
+  signInWithGoogle,
+} from "../services/firebase";
+import { isFirebaseConfigured, isGoogleSignInConfigured } from "../config/env";
 import type { RootStackParamList } from "../navigation/RootNavigator";
-
-function getFirebaseAuth() {
-  const config = {
-    apiKey: ENV.FIREBASE_API_KEY,
-    authDomain: ENV.FIREBASE_AUTH_DOMAIN,
-    projectId: ENV.FIREBASE_PROJECT_ID,
-    storageBucket: ENV.FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: ENV.FIREBASE_MESSAGING_SENDER_ID,
-    appId: ENV.FIREBASE_APP_ID,
-  };
-  const app = getApps().length ? getApps()[0]! : initializeApp(config);
-  return getAuth(app);
-}
 
 export function LoginScreen() {
   const navigation =
@@ -50,32 +42,68 @@ export function LoginScreen() {
   const toast = useToastStore();
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { control, handleSubmit } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
   });
 
+  const busy = loading || googleLoading;
+  const googleEnabled = isFirebaseConfigured() && isGoogleSignInConfigured();
+
+  async function completeBackendLogin(email: string, token: string) {
+    useAuthStore.setState({ token });
+    const response = await authApi.login({
+      email,
+      platform: Platform.OS,
+      timezone: getTimezone(),
+    });
+    await setSession(token, response.data.data);
+  }
+
   async function onSubmit(values: LoginFormValues) {
+    setError(null);
     setLoading(true);
     try {
-      const credential = await signInWithEmailAndPassword(
-        getFirebaseAuth(),
-        values.email,
-        values.password,
-      );
+      const credential = await signInWithEmail(values.email, values.password);
       const token = await credential.user.getIdToken();
-      useAuthStore.setState({ token });
-      const response = await authApi.login({
-        email: values.email,
-        platform: Platform.OS,
-        timezone: getTimezone(),
-      });
-      await setSession(token, response.data.data);
+      await completeBackendLogin(values.email, token);
       toast.success("Welcome back", "You are signed in to myTask");
     } catch (err) {
-      toast.error("Login failed", getErrorMessage(err));
+      const message = getErrorMessage(err, "Unable to login. Please try again.");
+      setError(message);
+      toast.error("Login failed", message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function onGoogleSignIn() {
+    setError(null);
+    setGoogleLoading(true);
+    try {
+      const credential = await signInWithGoogle();
+      const email = credential.user.email;
+      if (!email) {
+        throw new Error("Google did not return an email for this account.");
+      }
+      const token = await credential.user.getIdToken();
+      await completeBackendLogin(email, token);
+      toast.success("Welcome back", "You are signed in to myTask");
+    } catch (err) {
+      if (err instanceof AuthCancelledError || isAuthCancelled(err)) {
+        setError("Sign-in was cancelled.");
+        return;
+      }
+      const message = getErrorMessage(
+        err,
+        "Unable to sign in with Google. Please try again.",
+      );
+      setError(message);
+      toast.error("Google Sign-In failed", message);
+    } finally {
+      setGoogleLoading(false);
     }
   }
 
@@ -107,6 +135,39 @@ export function LoginScreen() {
           Track work, manage teams, stay in sync.
         </Text>
 
+        {googleEnabled ? (
+          <TouchableOpacity
+            style={[
+              styles.googleButton,
+              {
+                backgroundColor: c.surface,
+                borderColor: c.border,
+                opacity: busy ? 0.7 : 1,
+              },
+            ]}
+            onPress={() => void onGoogleSignIn()}
+            disabled={busy}
+          >
+            {googleLoading ? (
+              <ActivityIndicator color={c.primary} />
+            ) : (
+              <Text style={[styles.googleButtonText, { color: c.text }]}>
+                Continue with Google
+              </Text>
+            )}
+          </TouchableOpacity>
+        ) : null}
+
+        {googleEnabled ? (
+          <View style={styles.dividerRow}>
+            <View style={[styles.divider, { backgroundColor: c.border }]} />
+            <Text style={[styles.dividerText, { color: c.muted }]}>
+              or continue with email
+            </Text>
+            <View style={[styles.divider, { backgroundColor: c.border }]} />
+          </View>
+        ) : null}
+
         <Controller
           control={control}
           name="email"
@@ -123,6 +184,7 @@ export function LoginScreen() {
                 value={value}
                 onChangeText={onChange}
                 placeholderTextColor={c.muted}
+                editable={!busy}
               />
               {fieldState.error ? (
                 <Text style={[styles.error, { color: c.negative }]}>
@@ -147,6 +209,7 @@ export function LoginScreen() {
                 value={value}
                 onChangeText={onChange}
                 placeholderTextColor={c.muted}
+                editable={!busy}
               />
               {fieldState.error ? (
                 <Text style={[styles.error, { color: c.negative }]}>
@@ -157,14 +220,20 @@ export function LoginScreen() {
           )}
         />
 
+        {error ? (
+          <Text style={[styles.errorBanner, { color: c.negative }]}>{error}</Text>
+        ) : null}
+
         <TouchableOpacity
-          style={[styles.button, { backgroundColor: c.primary, opacity: loading ? 0.7 : 1 }]}
+          style={[styles.button, { backgroundColor: c.primary, opacity: busy ? 0.7 : 1 }]}
           onPress={handleSubmit(onSubmit)}
-          disabled={loading}
+          disabled={busy}
         >
-          <Text style={styles.buttonText}>
-            {loading ? "Please wait…" : "Login"}
-          </Text>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Login</Text>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -175,9 +244,11 @@ export function LoginScreen() {
               borderWidth: 1,
               borderColor: c.border,
               marginTop: spacing.md,
+              opacity: busy ? 0.7 : 1,
             },
           ]}
           onPress={() => navigation.navigate("Pricing")}
+          disabled={busy}
         >
           <Text style={[styles.buttonText, { color: c.text }]}>See Pricing</Text>
         </TouchableOpacity>
@@ -205,6 +276,22 @@ const styles = StyleSheet.create({
   brand: { fontSize: 28, fontWeight: "700" },
   title: { fontSize: 22, fontWeight: "700", marginTop: spacing.sm },
   subtitle: { marginTop: 6, marginBottom: spacing.lg, fontSize: 14 },
+  googleButton: {
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingVertical: 15,
+    alignItems: "center",
+    marginBottom: spacing.md,
+  },
+  googleButtonText: { fontWeight: "700", fontSize: 15 },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: spacing.md,
+  },
+  divider: { flex: 1, height: StyleSheet.hairlineWidth },
+  dividerText: { fontSize: 12 },
   field: { marginBottom: spacing.md },
   label: { marginBottom: 6, fontWeight: "600", fontSize: 13 },
   input: {
@@ -215,6 +302,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   error: { marginTop: 4, fontSize: 12 },
+  errorBanner: { marginBottom: spacing.sm, fontSize: 13 },
   button: {
     borderRadius: 14,
     paddingVertical: 15,

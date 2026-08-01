@@ -16,6 +16,9 @@ const config = {
       path.resolve(workspaceRoot, 'node_modules'),
     ],
     disableHierarchicalLookup: true,
+    // Prefer package "react-native" / exports conditions so firebase/auth
+    // resolves to the RN build (includes getReactNativePersistence).
+    unstable_enablePackageExports: true,
   },
 };
 

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { authApi } from "@mytask/api";
 import { ROUTES } from "@mytask/constants";
-import { firebaseLogout } from "@/lib/firebase";
+import { signOutUser } from "@/services/firebase";
 import { unregisterWebPush } from "@/lib/webPush";
 import { useToastStore } from "@/store/toastStore";
 import { resetAllStores } from "@/store/resetAllStores";
@@ -11,6 +11,7 @@ import { resetAllStores } from "@/store/resetAllStores";
 /**
  * Single logout action used by MainLayout and OrgLayout.
  * Clears auth, org, query cache, sockets, FCM, and storage.
+ * Firebase Auth persistence + Google session are cleared via signOutUser().
  */
 export function useLogout() {
   const navigate = useNavigate();
@@ -29,7 +30,7 @@ export function useLogout() {
       // ignore
     }
     try {
-      await firebaseLogout();
+      await signOutUser();
     } catch {
       // ignore
     }

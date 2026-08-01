@@ -8,7 +8,11 @@ import { useOrganisationStore } from "@/store/organisationStore";
 import { useThemeStore } from "@/store/themeStore";
 import { useSidebarStore } from "@/store/sidebarStore";
 import { resetAllStores } from "@/store/resetAllStores";
-import { initFirebase, isFirebaseConfigured, firebaseLogout } from "@/lib/firebase";
+import {
+  initFirebase,
+  isFirebaseConfigured,
+  signOutUser,
+} from "@/services/firebase";
 import { createWebFirebaseAuthAdapter } from "@/lib/firebaseAuthAdapter";
 import { AuthSessionProvider } from "@/providers/AuthSessionProvider";
 import { ToastViewport } from "@/components/ui/ToastViewport";
@@ -42,7 +46,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
           refreshToken: sharedAuthTokenManager.createRefreshToken(),
           getOrganisation: () => useOrganisationStore.getState().organisation,
           onUnauthorized: () => {
-            void firebaseLogout().catch(() => undefined);
+            void signOutUser().catch(() => undefined);
             void resetAllStores(queryClient);
           },
         });

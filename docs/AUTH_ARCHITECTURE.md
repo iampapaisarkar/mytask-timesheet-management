@@ -13,7 +13,7 @@ Firebase Authentication is the source of truth for identity.
 ## Client flow
 
 ```
-Firebase Auth SDK
+Firebase Auth SDK  (email/password or Google)
       │
       ▼
 AuthTokenManager (single-flight getValidIdToken)
@@ -22,6 +22,8 @@ AuthTokenManager (single-flight getValidIdToken)
       ├── Socket.IO handshake / reconnect auth
       └── Auth store (profile + last known token mirror)
 ```
+
+Google Sign-In details: [`docs/GOOGLE_SIGN_IN.md`](./GOOGLE_SIGN_IN.md).
 
 ### Token manager guarantees
 

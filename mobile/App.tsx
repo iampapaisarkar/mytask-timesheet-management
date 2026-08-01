@@ -16,9 +16,9 @@ import { useOrganisationStore } from './src/store/organisationStore';
 import { useThemeStore } from './src/store/themeStore';
 import { ToastViewport } from './src/components/ToastViewport';
 import { resetAllStores } from './src/store/resetAllStores';
-import { createMobileFirebaseAuthAdapter, getFirebaseAuth } from './src/lib/firebaseAuthAdapter';
-import { ENV } from './src/config/env';
-import { signOut } from 'firebase/auth';
+import { createMobileFirebaseAuthAdapter } from './src/lib/firebaseAuthAdapter';
+import { signOutUser } from './src/services/firebase';
+import { ENV, isFirebaseConfigured } from './src/config/env';
 
 export const queryClient = createAppQueryClient();
 
@@ -31,6 +31,25 @@ function App() {
     let cancelled = false;
 
     void (async () => {
+      await Promise.all([
+        useAuthStore.getState().hydrate(),
+        useOrganisationStore.getState().hydrate(),
+        useThemeStore.getState().hydrate(),
+      ]);
+
+      if (!isFirebaseConfigured()) {
+        createApiClient({
+          baseURL: ENV.API_BASE_URL,
+          getToken: async () => null,
+          getOrganisation: () => useOrganisationStore.getState().organisation,
+          onUnauthorized: () => {
+            void resetAllStores(queryClient);
+          },
+        });
+        if (!cancelled) setReady(true);
+        return;
+      }
+
       const adapter = createMobileFirebaseAuthAdapter();
       sharedAuthTokenManager.configure(adapter);
       createApiClient({
@@ -39,17 +58,12 @@ function App() {
         refreshToken: sharedAuthTokenManager.createRefreshToken(),
         getOrganisation: () => useOrganisationStore.getState().organisation,
         onUnauthorized: () => {
-          void signOut(getFirebaseAuth()).catch(() => undefined);
+          void signOutUser().catch(() => undefined);
           void resetAllStores(queryClient);
         },
       });
 
-      await Promise.all([
-        useAuthStore.getState().hydrate(),
-        useOrganisationStore.getState().hydrate(),
-        useThemeStore.getState().hydrate(),
-      ]);
-
+      // Firebase RN persistence restores the user before waitUntilReady resolves.
       await sharedAuthTokenManager.waitUntilReady();
       if (cancelled) return;
 

@@ -9,6 +9,7 @@ import { useAuthStore } from "../store/authStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 import { resetAllStores } from "../store/resetAllStores";
+import { signOutUser } from "../services/firebase";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 
 export function ProfileScreen() {
@@ -34,6 +35,11 @@ export function ProfileScreen() {
       await authApi.logout();
     } catch {
       // still clear local session
+    }
+    try {
+      await signOutUser();
+    } catch {
+      // ignore — still wipe local state
     }
     await resetAllStores(queryClient);
     toast.info("Signed out");

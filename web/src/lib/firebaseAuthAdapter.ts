@@ -4,7 +4,7 @@ import {
   type User,
 } from "firebase/auth";
 import type { AuthAdapter, AuthUserRef } from "@mytask/auth";
-import { getFirebaseAuth, firebaseLogout } from "./firebase";
+import { getFirebaseAuth, signOutUser } from "@/services/firebase";
 
 function toRef(user: User | null): AuthUserRef | null {
   if (!user) return null;
@@ -42,7 +42,7 @@ export function createWebFirebaseAuthAdapter(): AuthAdapter {
       });
     },
     signOut: async () => {
-      await firebaseLogout();
+      await signOutUser();
     },
   };
 }
