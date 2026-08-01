@@ -140,40 +140,50 @@ export function TimesheetListScreen({ route }: Props) {
 
   const hasFilters = Boolean(debouncedSearch || filter !== "all" || jobId);
 
+  const listHeader = (
+    <View style={styles.header}>
+      <ScreenHeader
+        title="Timesheets"
+        subtitle="Track periods, jobs, and approval status"
+      />
+      <SearchBar
+        value={search}
+        onChangeText={setSearch}
+        placeholder="Search by timesheet code"
+      />
+      <MobileSelect
+        label="Filter by job"
+        value={jobId}
+        onChange={setJobId}
+        options={jobOptions}
+        searchable
+        placeholder="All jobs"
+      />
+      <FilterChips
+        value={filter}
+        onChange={setFilter}
+        options={[...TIMESHEET_STATUS_FILTER_OPTIONS]}
+      />
+    </View>
+  );
+
   return (
     <View style={[styles.flex, { backgroundColor: c.bg }]}>
-      <View style={styles.header}>
-        <ScreenHeader
-          title="Timesheets"
-          subtitle="Track periods, jobs, and approval status"
-        />
-        <SearchBar
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search by timesheet code"
-        />
-        <MobileSelect
-          label="Filter by job"
-          value={jobId}
-          onChange={setJobId}
-          options={jobOptions}
-          searchable
-          placeholder="All jobs"
-        />
-        <FilterChips
-          value={filter}
-          onChange={setFilter}
-          options={[...TIMESHEET_STATUS_FILTER_OPTIONS]}
-        />
-      </View>
       {isLoading && !data ? (
-        <SkeletonList rows={6} />
+        <View style={styles.flex}>
+          {listHeader}
+          <SkeletonList rows={6} />
+        </View>
       ) : (
         <FlatList
-          contentContainerStyle={[styles.list, { paddingBottom: tabScrollInset }]}
+          contentContainerStyle={[
+            styles.list,
+            { paddingBottom: tabScrollInset },
+          ]}
           data={rows}
           keyExtractor={(item, index) => String(item.id ?? index)}
           showsHorizontalScrollIndicator={false}
+          ListHeaderComponent={listHeader}
           refreshControl={
             <RefreshControl
               refreshing={isFetching && !isLoading}
@@ -206,7 +216,7 @@ export function TimesheetListScreen({ route }: Props) {
             />
           }
           renderItem={({ item }) => {
-            const jobs = jobLabel(item);
+            const jobsLabel = jobLabel(item);
             return (
               <Card
                 style={styles.card}
@@ -236,14 +246,14 @@ export function TimesheetListScreen({ route }: Props) {
                 <Text style={[styles.period, { color: c.muted }]}>
                   {item.period_range || "—"}
                 </Text>
-                {jobs ? (
+                {jobsLabel ? (
                   <View style={styles.metaRow}>
                     <BriefcaseIcon color={c.subtle} size={14} />
                     <Text
                       style={[styles.meta, { color: c.muted }]}
                       numberOfLines={1}
                     >
-                      {jobs}
+                      {jobsLabel}
                     </Text>
                   </View>
                 ) : (
@@ -265,14 +275,16 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
     gap: spacing.sm,
   },
   list: {
-    padding: spacing.md,
-    paddingTop: spacing.sm,
+    flexGrow: 1,
+    paddingBottom: spacing.md,
   },
   card: {
     marginBottom: spacing.sm,
+    marginHorizontal: spacing.md,
   },
   cardTop: {
     flexDirection: "row",

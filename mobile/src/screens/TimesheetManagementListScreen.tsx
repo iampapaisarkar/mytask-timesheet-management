@@ -263,53 +263,71 @@ export function TimesheetManagementListScreen({ route }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <View style={styles.header}>
-        <ScreenHeader
-          title="Manage timesheets"
-          subtitle="Review, submit, and action employee timesheets"
-        />
-        <SearchBar
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search by timesheet code"
-        />
-        <MobileSelect
-          label="Filter by employee"
-          value={filterEmployeeId}
-          onChange={setFilterEmployeeId}
-          options={filterEmployeeOptions}
-          searchable
-          placeholder="All employees"
-        />
-        <MobileSelect
-          label="Filter by job"
-          value={filterJobId}
-          onChange={setFilterJobId}
-          options={filterJobOptions}
-          searchable
-          placeholder="All jobs"
-        />
-        <FilterChips
-          value={filter}
-          onChange={setFilter}
-          options={[...TIMESHEET_STATUS_FILTER_OPTIONS]}
-        />
-        {canCreate ? (
-          <Button
-            title="Create timesheet"
-            onPress={openCreate}
-            size="md"
-          />
-        ) : null}
-      </View>
       {isLoading && !data ? (
-        <SkeletonList rows={6} />
+        <View style={styles.flex}>
+          <View style={styles.header}>
+            <ScreenHeader
+              title="Manage timesheets"
+              subtitle="Review, submit, and action employee timesheets"
+            />
+            <SearchBar
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search by timesheet code"
+            />
+          </View>
+          <SkeletonList rows={6} />
+        </View>
       ) : (
         <FlatList
-          contentContainerStyle={[styles.list, { paddingBottom: tabScrollInset }]}
+          contentContainerStyle={[
+            styles.list,
+            { paddingBottom: tabScrollInset },
+          ]}
           data={rows}
           keyExtractor={(item, index) => String(item.id ?? index)}
           showsHorizontalScrollIndicator={false}
+          ListHeaderComponent={
+            <View style={styles.header}>
+              <ScreenHeader
+                title="Manage timesheets"
+                subtitle="Review, submit, and action employee timesheets"
+              />
+              <SearchBar
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Search by timesheet code"
+              />
+              <MobileSelect
+                label="Filter by employee"
+                value={filterEmployeeId}
+                onChange={setFilterEmployeeId}
+                options={filterEmployeeOptions}
+                searchable
+                placeholder="All employees"
+              />
+              <MobileSelect
+                label="Filter by job"
+                value={filterJobId}
+                onChange={setFilterJobId}
+                options={filterJobOptions}
+                searchable
+                placeholder="All jobs"
+              />
+              <FilterChips
+                value={filter}
+                onChange={setFilter}
+                options={[...TIMESHEET_STATUS_FILTER_OPTIONS]}
+              />
+              {canCreate ? (
+                <Button
+                  title="Create timesheet"
+                  onPress={openCreate}
+                  size="md"
+                />
+              ) : null}
+            </View>
+          }
           refreshControl={
             <RefreshControl
               refreshing={isFetching && !isLoading}
@@ -324,12 +342,18 @@ export function TimesheetManagementListScreen({ route }: Props) {
             <EmptyState
               icon={<SheetsIcon color={c.primary} size={28} />}
               title={
-                debouncedSearch || filter !== "all"
+                debouncedSearch ||
+                filter !== "all" ||
+                filterEmployeeId ||
+                filterJobId
                   ? "No matching timesheets"
                   : "No managed timesheets"
               }
               description={
-                debouncedSearch || filter !== "all"
+                debouncedSearch ||
+                filter !== "all" ||
+                filterEmployeeId ||
+                filterJobId
                   ? "Try a different search or clear filters."
                   : "Timesheets you create or manage will appear here."
               }
@@ -503,13 +527,17 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
     gap: spacing.sm,
   },
   list: {
-    padding: spacing.md,
-    paddingTop: spacing.sm,
+    flexGrow: 1,
+    paddingBottom: spacing.md,
   },
-  card: { marginBottom: spacing.sm },
+  card: {
+    marginBottom: spacing.sm,
+    marginHorizontal: spacing.md,
+  },
   cardTop: {
     flexDirection: "row",
     alignItems: "center",
