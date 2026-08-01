@@ -86,3 +86,21 @@ cd mobile/ios && pod install
 ```
 
 Installed native Google Sign-In pods include `RNGoogleSignin` / `GoogleSignIn`.
+
+## Google Maps (required on iOS + Android)
+
+The app uses **Google Maps only** (`PROVIDER_GOOGLE`) — not Apple Maps.
+
+1. Enable **Maps SDK for iOS** and **Maps SDK for Android** in Google Cloud Console.
+2. Create a Maps API key and set it in three places:
+   - `mobile/src/config/env.local.ts` → `GOOGLE_MAPS_API_KEY`
+   - `mobile/ios/MyTaskMobile/Info.plist` → `GMSApiKey`
+   - `mobile/android/app/src/main/res/values/strings.xml` → `google_maps_api_key`
+3. Re-run pods so the Google Maps subspec is linked:
+
+```bash
+cd mobile/ios && pod install
+```
+
+`AppDelegate.swift` calls `GMSServices.provideAPIKey` from `GMSApiKey`.
+Maps use a minimal custom style (`mobile/src/components/mapStyle.ts`).

@@ -65,6 +65,12 @@ export function HomeScreen() {
           Unlock Pro limits and features
         </Text>
       </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.createOrg, { backgroundColor: c.primary }]}
+        onPress={() => navigation.navigate("CreateOrganisation")}
+      >
+        <Text style={styles.createOrgText}>Create organisation</Text>
+      </TouchableOpacity>
       <FlatList
         data={organisations}
         keyExtractor={(item) => String(item.id)}
@@ -126,6 +132,13 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     padding: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  createOrg: {
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
     marginBottom: spacing.md,
   },
+  createOrgText: { color: "#fff", fontWeight: "700", fontSize: 15 },
 });

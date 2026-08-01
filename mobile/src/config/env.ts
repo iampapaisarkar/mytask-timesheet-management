@@ -20,6 +20,7 @@ const defaults: MobileEnv = {
   FIREBASE_APP_ID: "",
   GOOGLE_WEB_CLIENT_ID: "",
   GOOGLE_IOS_CLIENT_ID: "",
+  GOOGLE_MAPS_API_KEY: "",
   STRIPE_PUBLISHABLE_KEY: "",
 };
 

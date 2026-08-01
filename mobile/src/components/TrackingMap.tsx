@@ -1,6 +1,7 @@
 import { Fragment, useMemo, type ComponentType, type ReactNode } from "react";
 import {
   NativeModules,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,6 +11,7 @@ import {
 } from "react-native";
 import { spacing } from "@mytask/theme";
 import { useThemeStore } from "../store/themeStore";
+import { MINIMAL_MAP_STYLE } from "./mapStyle";
 
 export type TrackingPoint = {
   latitude?: number | string | null;
@@ -74,6 +76,14 @@ function flattenTrackingLogs(logs?: TrackingLogs | null): FlatPoint[] {
 type MapsModule = {
   default: ComponentType<{
     style?: StyleProp<ViewStyle>;
+    provider?: string;
+    customMapStyle?: readonly unknown[];
+    mapType?: string;
+    showsPointsOfInterest?: boolean;
+    showsBuildings?: boolean;
+    showsTraffic?: boolean;
+    showsCompass?: boolean;
+    toolbarEnabled?: boolean;
     initialRegion?: {
       latitude: number;
       longitude: number;
@@ -87,16 +97,17 @@ type MapsModule = {
     pinColor?: string;
     title?: string;
     description?: string;
+    tracksViewChanges?: boolean;
   }>;
   Polyline: ComponentType<{
     coordinates: Array<{ latitude: number; longitude: number }>;
     strokeColor?: string;
     strokeWidth?: number;
   }>;
+  PROVIDER_GOOGLE?: string;
 };
 
 function loadMapsModule(): MapsModule | null {
-  // Package may be installed while native linking (pods / rebuild) is pending.
   const linked = Boolean(
     NativeModules.AirMapsModule ||
       NativeModules.RNMapsAirModule ||
@@ -166,6 +177,9 @@ export function TrackingMap({
   const MapView = mapsModule?.default;
   const Marker = mapsModule?.Marker;
   const Polyline = mapsModule?.Polyline;
+  const provider =
+    mapsModule?.PROVIDER_GOOGLE ??
+    (Platform.OS === "android" ? "google" : "google");
   const canRenderMap = Boolean(MapView && Marker && points.length > 0);
 
   if (!canRenderMap || !MapView || !Marker) {
@@ -212,6 +226,14 @@ export function TrackingMap({
     >
       <MapView
         style={StyleSheet.absoluteFill}
+        provider={provider}
+        customMapStyle={MINIMAL_MAP_STYLE}
+        mapType="standard"
+        showsPointsOfInterest={false}
+        showsBuildings={false}
+        showsTraffic={false}
+        showsCompass={false}
+        toolbarEnabled={false}
         initialRegion={{
           latitude: first.lat,
           longitude: first.lng,
@@ -246,6 +268,7 @@ export function TrackingMap({
                   pinColor={TYPE_COLORS[type]}
                   title={p.label || type}
                   description={`${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`}
+                  tracksViewChanges={false}
                 />
               ))}
             </Fragment>

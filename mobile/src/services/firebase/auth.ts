@@ -1,6 +1,8 @@
 import {
   GoogleAuthProvider,
+  createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithCredential,
   signInWithEmailAndPassword,
   signOut,
@@ -43,6 +45,17 @@ export async function signInWithEmail(
   password: string,
 ): Promise<UserCredential> {
   return signInWithEmailAndPassword(getFirebaseAuth(), email, password);
+}
+
+export async function signUpWithEmail(
+  email: string,
+  password: string,
+): Promise<UserCredential> {
+  return createUserWithEmailAndPassword(getFirebaseAuth(), email, password);
+}
+
+export async function sendPasswordReset(email: string): Promise<void> {
+  await sendPasswordResetEmail(getFirebaseAuth(), email);
 }
 
 /**

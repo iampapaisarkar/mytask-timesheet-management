@@ -35,26 +35,29 @@
 | Server-side list pagination (10/page) | ✅ Done | 2026-07-31 | All org tables (employees, customers, jobs, timesheets, payouts, calendars, system logs) use page size 10 + Previous/Next |
 | Stripe subscription system | ✅ Done | 2026-07-31 | Free/Pro; Checkout; webhooks; usage limits; daily expiry cron + 6h Stripe sync; payment-fail → Free + reason emails; web+mobile billing UI; `docs/STRIPE_SUBSCRIPTIONS.md` |
 | Firebase Google Sign-In (web + mobile) | ✅ Done | 2026-08-01 | Web popup/redirect; native Google Sign-In; Firebase persistence; see `docs/GOOGLE_SIGN_IN.md` |
+| Mobile parity + UX overhaul (phase 1) | ✅ Done | 2026-08-01 | Safe areas / premium tab bar / nav transitions; `@gorhom/bottom-sheet`; Google Maps + minimal style; timesheet day mobile redesign + save; TM detail approve/reject; Reports/Payouts/System logs; auth signup/forgot; settings hubs; create org |
 
 ## Vue ↔ Web ↔ Mobile gap matrix
 
 | Vue route / surface | Web | Mobile | Notes |
 |---------------------|-----|--------|-------|
-| `/` org picker + create | ✅ | ✅ list | |
-| `/org-invitation` | ✅ | — | Token verify + accept |
+| `/` org picker + create | ✅ | ✅ | Create organisation screen |
+| `/org-invitation` | ✅ | — | Token verify + accept (deep link TBD) |
 | Pending invitations inbox | ✅ | — | HomePage |
-| Notifications chrome | ✅ | — | NotificationsBell |
-| Route/action ACL | ✅ | Partial | OrgAclRoute + create gates |
-| `/org/:code` home + charts | ✅ | ✅ shell + nav | Status from live lists |
+| Notifications chrome | ✅ | ✅ | List + deep-link to TM detail |
+| Route/action ACL | ✅ | Partial | OrgHome gates + create gates; stack ACL TBD |
+| `/org/:code` home + charts | ✅ | ✅ | KPIs + weekly bars + ClockInOut |
 | ClockInOut tracking | Notice (correct) | ✅ | BGL + fallback |
-| `timesheet` list/detail/day | ✅ | ✅ | Day editor + map |
-| `timesheet-management` | ✅ | ✅ list | Web has full detail |
-| `reports` | ✅ | — | Approved timesheet pay report + PDF |
-| `payouts` | ✅ | — | Enterprise workflow + history/export |
-| `settings` + CRUD | ✅ | ✅ hub | Mobile hub placeholders |
-| `employees` wizard | ✅ | ✅ list | |
-| `customers` / `jobs` / MG | ✅ | — | GoogleAddress + radius |
-| Timesheet day MapView | ✅ | ✅ | Maps or coordinate fallback |
+| `timesheet` list/detail/day | ✅ | ✅ | Day editor + segmented Sheets/Timeline/Map |
+| `timesheet-management` | ✅ | ✅ | List + detail approve/reject/revert/submit |
+| `reports` | ✅ | ✅ | Pay report request flow |
+| `payouts` | ✅ | ✅ | List + pagination |
+| `settings` + CRUD | ✅ | Partial | Hub + org/holiday/payroll lists; rates TBD |
+| `employees` wizard | ✅ | Partial | List + create sheet; full edit/invite TBD |
+| `customers` / `jobs` / MG | ✅ | Partial | List + create sheets; Places address TBD |
+| Timesheet day MapView | ✅ | ✅ | Google Maps only + minimal custom style |
+| System logs | ✅ | ✅ | Internal/external/email tabs |
+| Signup / forgot password | ✅ | ✅ | Firebase + backend signup |
 | Legacy payroll integration removal | ✅ | 2026-07-30 | Removed runtime and UI integration |
 | BackgroundGeolocation | N/A | ✅ | See `mobile/docs/TRACKING.md` |
 
@@ -62,4 +65,4 @@
 
 ## Current focus
 
-Enterprise payout + role dashboard shipped. Next refinements: full award-rate IF/THEN builder, enable native Transistorsoft autolinking with license, deeper mobile settings CRUD / mobile payouts.
+Mobile parity phase 1 shipped (nav chrome, maps, day editor, TM approvals, reports/payouts/logs, auth onboarding). Remaining: org invitation deep links, pending invitations inbox, employee/customer/job full edit wizards + address picker, settings CRUD write paths, profile edit, FCM push, deeper payout actions.

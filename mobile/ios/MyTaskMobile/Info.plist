@@ -8,6 +8,8 @@
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
 	<string>myTask</string>
+	<key>GMSApiKey</key>
+	<string>AIzaSyBQaAfeSwoVKggmKK8VlHd1us9qPk8qv24</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

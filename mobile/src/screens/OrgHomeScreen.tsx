@@ -24,6 +24,9 @@ type NavRoute =
   | "EmployeesList"
   | "CustomersList"
   | "JobsList"
+  | "Reports"
+  | "Payouts"
+  | "SystemLogs"
   | "NotificationsList"
   | "SettingsHub";
 
@@ -49,6 +52,15 @@ export function OrgHomeScreen({ navigation, route }: Props) {
       : []),
     ...(can(acl, "job", "list")
       ? [{ label: "Jobs", route: "JobsList" as const }]
+      : []),
+    ...(can(acl, "report", "view")
+      ? [{ label: "Reports", route: "Reports" as const }]
+      : []),
+    ...(can(acl, "payout", "list")
+      ? [{ label: "Payouts", route: "Payouts" as const }]
+      : []),
+    ...(can(acl, "systemLog", "list")
+      ? [{ label: "System logs", route: "SystemLogs" as const }]
       : []),
     { label: "Notifications", route: "NotificationsList" },
     { label: "Settings", route: "SettingsHub" },

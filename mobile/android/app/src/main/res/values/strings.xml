@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">myTask</string>
+    <!-- Set your Google Maps SDK key (Maps SDK for Android). Keep in sync with iOS Info.plist GMSApiKey. -->
+    <string name="google_maps_api_key" translatable="false">AIzaSyCTRA5NGDlEMM5v-pZrdddk_xTWN0xgubQ</string>
 </resources>

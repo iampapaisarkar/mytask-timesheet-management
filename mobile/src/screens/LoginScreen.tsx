@@ -237,6 +237,16 @@ export function LoginScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
+          style={styles.linkRow}
+          onPress={() => navigation.navigate("ForgotPassword")}
+          disabled={busy}
+        >
+          <Text style={{ color: c.primary, fontWeight: "600" }}>
+            Forgot password?
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={[
             styles.button,
             {
@@ -251,6 +261,17 @@ export function LoginScreen() {
           disabled={busy}
         >
           <Text style={[styles.buttonText, { color: c.text }]}>See Pricing</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.linkRow}
+          onPress={() => navigation.navigate("Signup")}
+          disabled={busy}
+        >
+          <Text style={{ color: c.muted }}>
+            New to myTask?{" "}
+            <Text style={{ color: c.primary, fontWeight: "700" }}>Sign up</Text>
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -310,4 +331,5 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   buttonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  linkRow: { marginTop: spacing.md, alignItems: "center" },
 });

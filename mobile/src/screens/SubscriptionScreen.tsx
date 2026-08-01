@@ -183,7 +183,7 @@ export function SubscriptionScreen() {
             style={[styles.btn, { backgroundColor: c.primary, marginTop: 12 }]}
             onPress={() => navigation.navigate("Pricing")}
           >
-            <Text style={styles.btnText}>Resubscribe to Pro</Text>
+            <Text style={{ color: "#fff", fontWeight: "700" }}>Resubscribe to Pro</Text>
           </TouchableOpacity>
         </View>
       ) : null}

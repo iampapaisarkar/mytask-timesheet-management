@@ -111,7 +111,10 @@ export function NotificationsListScreen({ navigation, route }: Props) {
       return;
     }
     if (managementMatch) {
-      navigation.navigate("TimesheetManagementList", { orgCode });
+      navigation.navigate("TimesheetManagementDetail", {
+        orgCode,
+        id: managementMatch[1],
+      });
       return;
     }
     toast.info("Opened", item.title || "Notification");

@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import {
   useCreateTimesheetManagement,
   useEmployeePayrollCycles,
@@ -29,8 +30,14 @@ import { spacing } from "@mytask/theme";
 import { ListPager } from "../components/ListPager";
 import { SearchBar } from "../components/SearchBar";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
+import type { RootStackParamList } from "../navigation/RootNavigator";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
+
+type Props = NativeStackScreenProps<
+  RootStackParamList,
+  "TimesheetManagementList"
+>;
 
 type ManagementRow = {
   id?: number | string;
@@ -72,7 +79,8 @@ function jobNames(item: ManagementRow) {
   return item.job?.name || "No jobs";
 }
 
-export function TimesheetManagementListScreen() {
+export function TimesheetManagementListScreen({ navigation, route }: Props) {
+  const { orgCode } = route.params;
   const organisation = useOrganisationStore((s) => s.organisation);
   const role = organisation?.role || organisation?.role_code;
   const acl = getOrganisationAcl(role);
@@ -248,11 +256,19 @@ export function TimesheetManagementListScreen() {
           />
         }
         renderItem={({ item }) => (
-          <View
+          <TouchableOpacity
             style={[
               styles.card,
               { backgroundColor: c.surface, borderColor: c.border },
             ]}
+            disabled={item.id == null}
+            onPress={() => {
+              if (item.id == null) return;
+              navigation.navigate("TimesheetManagementDetail", {
+                orgCode,
+                id: String(item.id),
+              });
+            }}
           >
             <Text style={[styles.id, { color: c.text }]}>
               {formatTimesheetLabel({ code: item.code, id: item.id })}
@@ -269,7 +285,7 @@ export function TimesheetManagementListScreen() {
             <Text style={{ color: c.muted, marginTop: 2 }}>
               {statusLabel(item.status)}
             </Text>
-          </View>
+          </TouchableOpacity>
         )}
       />
       )}

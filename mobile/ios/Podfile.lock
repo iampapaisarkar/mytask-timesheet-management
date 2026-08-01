@@ -10,6 +10,11 @@ PODS:
     - GoogleUtilities/UserDefaults (~> 8.0)
     - PromisesObjC (~> 2.4)
   - FBLazyVector (0.86.2)
+  - Google-Maps-iOS-Utils (6.1.0):
+    - GoogleMaps (~> 9.0)
+  - GoogleMaps (9.4.0):
+    - GoogleMaps/Maps (= 9.4.0)
+  - GoogleMaps/Maps (9.4.0)
   - GoogleSignIn (9.1.0):
     - AppAuth (~> 2.0)
     - AppCheckCore (~> 11.0)
@@ -1477,8 +1482,6 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - react-native-maps (1.26.0):
-    - react-native-maps/Maps (= 1.26.0)
   - react-native-maps/Generated (1.26.0):
     - hermes-engine
     - RCTRequired
@@ -1491,6 +1494,32 @@ PODS:
     - React-graphics
     - React-ImageManager
     - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
+  - react-native-maps/Google (1.26.0):
+    - Google-Maps-iOS-Utils (= 6.1.0)
+    - GoogleMaps (= 9.4.0)
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - react-native-maps/Generated
+    - react-native-maps/Maps
     - React-NativeModulesApple
     - React-RCTFabric
     - React-renderercss
@@ -2363,7 +2392,7 @@ DEPENDENCIES:
   - React-microtasksnativemodule (from `../../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
   - React-mutationobservernativemodule (from `../../node_modules/react-native/ReactCommon/react/nativemodule/mutationobserver`)
   - "react-native-geolocation (from `../../node_modules/@react-native-community/geolocation`)"
-  - react-native-maps (from `../../node_modules/react-native-maps`)
+  - react-native-maps/Google (from `../../node_modules/react-native-maps`)
   - react-native-safe-area-context (from `../../node_modules/react-native-safe-area-context`)
   - React-NativeModulesApple (from `../../node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios`)
   - React-networking (from `../../node_modules/react-native/ReactCommon/react/networking`)
@@ -2413,6 +2442,8 @@ SPEC REPOS:
   trunk:
     - AppAuth
     - AppCheckCore
+    - Google-Maps-iOS-Utils
+    - GoogleMaps
     - GoogleSignIn
     - GoogleUtilities
     - GTMAppAuth
@@ -2596,6 +2627,8 @@ SPEC CHECKSUMS:
   AppAuth: 1c1a8afa7e12f2ec3a294d9882dfa5ab7d3cb063
   AppCheckCore: cc8fd0a3a230ddd401f326489c99990b013f0c4f
   FBLazyVector: 3c3be9a019176b5699455f7f66c5444b78a411c6
+  Google-Maps-iOS-Utils: 0a484b05ed21d88c9f9ebbacb007956edd508a96
+  GoogleMaps: 0608099d4870cac8754bdba9b6953db543432438
   GoogleSignIn: fcee2257188d5eda57a5e2b6a715550ffff9206d
   GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
   GTMAppAuth: 217a876b249c3c585a54fd6f73e6b58c4f5c4238
@@ -2686,6 +2719,6 @@ SPEC CHECKSUMS:
   RNWorklets: bb6f040dd3a46ef34d7e9ca51d4c7d1b804c190c
   Yoga: 9891cfb1c680f64de9c41b09e7453dea33454d2b
 
-PODFILE CHECKSUM: f1fa7308e9ecf759718d4469fedd4f3f56d0daf1
+PODFILE CHECKSUM: c2cdb4b871f08404ce7d12715068ab617e50d61a
 
 COCOAPODS: 1.16.2

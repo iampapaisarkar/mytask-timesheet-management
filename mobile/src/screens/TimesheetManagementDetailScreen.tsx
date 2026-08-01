@@ -9,7 +9,13 @@ import {
   View,
 } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useSubmitTimesheet, useTimesheet } from "@mytask/hooks";
+import {
+  useApproveTimesheet,
+  useRejectTimesheet,
+  useRevertTimesheet,
+  useSubmitTimesheetManagement,
+  useTimesheetManagementItem,
+} from "@mytask/hooks";
 import { spacing } from "@mytask/theme";
 import { formatTimesheetLabel, getErrorMessage } from "@mytask/utils";
 import type { RootStackParamList } from "../navigation/RootNavigator";
@@ -17,14 +23,16 @@ import { FullScreenSheet } from "../components/FullScreenSheet";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 
-type Props = NativeStackScreenProps<RootStackParamList, "TimesheetDetail">;
+type Props = NativeStackScreenProps<
+  RootStackParamList,
+  "TimesheetManagementDetail"
+>;
 
 type TimesheetDay = {
   id?: number;
   date?: string;
   day_name?: string;
   total_hours?: number | string;
-  is_public_holiday?: boolean;
 };
 
 type TimesheetDetail = {
@@ -39,52 +47,99 @@ type TimesheetDetail = {
   days?: TimesheetDay[];
   approval_reason?: string | null;
   reject_reason?: string | null;
-  permissions?: { can_submit?: boolean };
+  permissions?: {
+    can_submit?: boolean;
+    can_approve?: boolean;
+    can_reject?: boolean;
+    can_revert_to_draft?: boolean;
+    can_save?: boolean;
+  };
+  employee?: {
+    id?: number;
+    details?: { id?: number; full_name?: string };
+    user?: { full_name?: string };
+  };
 };
 
-export function TimesheetDetailScreen({ navigation, route }: Props) {
+type StatusAction = "submit" | "approve" | "reject" | "revert";
+
+export function TimesheetManagementDetailScreen({ navigation, route }: Props) {
   const { id, orgCode } = route.params;
-  const query = useTimesheet(id);
-  const submit = useSubmitTimesheet();
+  const query = useTimesheetManagementItem(id);
+  const submit = useSubmitTimesheetManagement();
+  const approve = useApproveTimesheet();
+  const reject = useRejectTimesheet();
+  const revert = useRevertTimesheet();
   const toast = useToastStore();
   const c = useThemeStore((s) => s.colors);
-  const [remarksOpen, setRemarksOpen] = useState(false);
+
+  const [pendingAction, setPendingAction] = useState<StatusAction | null>(null);
   const [remarks, setRemarks] = useState("");
   const [remarksError, setRemarksError] = useState<string | undefined>();
+
   const data = query.data as TimesheetDetail | undefined;
   const days = Array.isArray(data?.days) ? data.days : [];
-  const canSubmit = Boolean(data?.permissions?.can_submit);
+  const perms = data?.permissions;
+  const employeeName =
+    data?.employee?.user?.full_name ||
+    data?.employee?.details?.full_name ||
+    "Employee";
+  const employeeId = data?.employee?.details?.id ?? data?.employee?.id;
+
   const existingRemarks =
     (data?.reject_reason || data?.approval_reason || "").trim() || null;
   const existingRemarksLabel = data?.reject_reason
     ? "Reject remarks"
-    : "Approval remarks";
+    : data?.approval_reason
+      ? "Approval remarks"
+      : "Remarks";
 
-  function openSubmitRemarks() {
+  const actionPending =
+    submit.isPending ||
+    approve.isPending ||
+    reject.isPending ||
+    revert.isPending;
+
+  function openAction(action: StatusAction) {
+    setPendingAction(action);
     setRemarks("");
     setRemarksError(undefined);
-    setRemarksOpen(true);
   }
 
-  function closeSubmitRemarks() {
-    setRemarksOpen(false);
+  function closeAction() {
+    setPendingAction(null);
     setRemarks("");
     setRemarksError(undefined);
   }
 
-  async function confirmSubmit() {
+  async function confirmAction() {
     const trimmed = remarks.trim();
     if (!trimmed) {
       setRemarksError("Remarks are required.");
       return;
     }
+    if (employeeId == null || !pendingAction) {
+      toast.error("Missing employee", "Employee id required for this action");
+      return;
+    }
     try {
-      await submit.mutateAsync({ id, remarks: trimmed });
-      toast.success("Submitted", "Timesheet submitted for approval");
-      closeSubmitRemarks();
+      if (pendingAction === "submit") {
+        await submit.mutateAsync({ id, employeeId, remarks: trimmed });
+        toast.success("Submitted");
+      } else if (pendingAction === "approve") {
+        await approve.mutateAsync({ id, employeeId, reason: trimmed });
+        toast.success("Approved");
+      } else if (pendingAction === "reject") {
+        await reject.mutateAsync({ id, employeeId, reason: trimmed });
+        toast.success("Rejected");
+      } else if (pendingAction === "revert") {
+        await revert.mutateAsync({ id, employeeId, remarks: trimmed });
+        toast.success("Reverted", "Timesheet returned to draft");
+      }
+      closeAction();
       void query.refetch();
     } catch (err) {
-      toast.error("Submit failed", getErrorMessage(err));
+      toast.error("Action failed", getErrorMessage(err));
     }
   }
 
@@ -107,6 +162,15 @@ export function TimesheetDetailScreen({ navigation, route }: Props) {
     );
   }
 
+  const actionTitle =
+    pendingAction === "approve"
+      ? "Approve timesheet"
+      : pendingAction === "reject"
+        ? "Reject timesheet"
+        : pendingAction === "revert"
+          ? "Revert to draft"
+          : "Submit timesheet";
+
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <View style={styles.header}>
@@ -117,21 +181,31 @@ export function TimesheetDetailScreen({ navigation, route }: Props) {
           )}
         </Text>
         <Text style={[styles.meta, { color: c.muted }]}>
-          {data?.period_range ||
-            [data?.period_start_date, data?.period_end_date]
-              .filter(Boolean)
-              .join(" → ") ||
-            "—"}
-          {Array.isArray(data?.jobs) && data.jobs.length
-            ? ` · ${data.jobs.map((j) => j.name).filter(Boolean).join(", ")}`
-            : data?.job?.name
-              ? ` · ${data.job.name}`
+          {employeeName}
+          {data?.period_range
+            ? ` · ${data.period_range}`
+            : [data?.period_start_date, data?.period_end_date]
+                .filter(Boolean)
+                .join(" → ")
+              ? ` · ${[data?.period_start_date, data?.period_end_date]
+                  .filter(Boolean)
+                  .join(" → ")}`
               : ""}
         </Text>
         <Text style={[styles.status, { color: c.primary }]}>
           {data?.status?.name || data?.status?.code || "—"}
         </Text>
-        {existingRemarks && !canSubmit ? (
+        {Array.isArray(data?.jobs) && data.jobs.length ? (
+          <Text style={{ color: c.muted, marginTop: 4, fontSize: 13 }}>
+            {data.jobs.map((j) => j.name).filter(Boolean).join(", ")}
+          </Text>
+        ) : data?.job?.name ? (
+          <Text style={{ color: c.muted, marginTop: 4, fontSize: 13 }}>
+            {data.job.name}
+          </Text>
+        ) : null}
+
+        {existingRemarks ? (
           <View
             style={[
               styles.remarksBox,
@@ -144,18 +218,37 @@ export function TimesheetDetailScreen({ navigation, route }: Props) {
             <Text style={{ color: c.text }}>{existingRemarks}</Text>
           </View>
         ) : null}
-        {canSubmit ? (
-          <TouchableOpacity
-            style={[
-              styles.submit,
-              { backgroundColor: c.primary, opacity: submit.isPending ? 0.7 : 1 },
-            ]}
-            disabled={submit.isPending}
-            onPress={openSubmitRemarks}
-          >
-            <Text style={styles.submitText}>Submit for approval</Text>
-          </TouchableOpacity>
-        ) : null}
+
+        <View style={styles.actions}>
+          {perms?.can_submit ? (
+            <ActionBtn
+              label="Submit"
+              color={c.primary}
+              onPress={() => openAction("submit")}
+            />
+          ) : null}
+          {perms?.can_approve ? (
+            <ActionBtn
+              label="Approve"
+              color={c.positive}
+              onPress={() => openAction("approve")}
+            />
+          ) : null}
+          {perms?.can_reject ? (
+            <ActionBtn
+              label="Reject"
+              color={c.negative}
+              onPress={() => openAction("reject")}
+            />
+          ) : null}
+          {perms?.can_revert_to_draft ? (
+            <ActionBtn
+              label="Revert"
+              color={c.warning}
+              onPress={() => openAction("revert")}
+            />
+          ) : null}
+        </View>
       </View>
 
       <FlatList
@@ -183,7 +276,9 @@ export function TimesheetDetailScreen({ navigation, route }: Props) {
                 orgCode,
                 timesheetId: id,
                 dayId: String(item.id),
-                mode: "self",
+                mode: "management",
+                employeeId:
+                  employeeId != null ? String(employeeId) : undefined,
               });
             }}
           >
@@ -193,22 +288,21 @@ export function TimesheetDetailScreen({ navigation, route }: Props) {
             </Text>
             <Text style={{ color: c.muted }}>
               {item.total_hours != null ? `${item.total_hours} hrs` : "—"}
-              {item.is_public_holiday ? " · Holiday" : ""}
             </Text>
           </TouchableOpacity>
         )}
       />
 
       <FullScreenSheet
-        open={remarksOpen}
-        onClose={closeSubmitRemarks}
-        title="Submit for approval"
+        open={pendingAction != null}
+        onClose={closeAction}
+        title={actionTitle}
         footer={
           <View style={styles.footerRow}>
             <TouchableOpacity
               style={[styles.footerBtn, { borderColor: c.border }]}
-              onPress={closeSubmitRemarks}
-              disabled={submit.isPending}
+              onPress={closeAction}
+              disabled={actionPending}
             >
               <Text style={{ color: c.text, fontWeight: "700" }}>Cancel</Text>
             </TouchableOpacity>
@@ -218,14 +312,14 @@ export function TimesheetDetailScreen({ navigation, route }: Props) {
                 styles.footerPrimary,
                 {
                   backgroundColor: c.primary,
-                  opacity: submit.isPending ? 0.7 : 1,
+                  opacity: actionPending ? 0.7 : 1,
                 },
               ]}
-              disabled={submit.isPending}
-              onPress={() => void confirmSubmit()}
+              disabled={actionPending}
+              onPress={() => void confirmAction()}
             >
               <Text style={styles.submitText}>
-                {submit.isPending ? "Submitting…" : "Submit"}
+                {actionPending ? "Working…" : "Confirm"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -249,17 +343,38 @@ export function TimesheetDetailScreen({ navigation, route }: Props) {
               styles.input,
               {
                 color: c.text,
-                borderColor: remarksError ? "#ef4444" : c.border,
+                borderColor: remarksError ? c.negative : c.border,
                 backgroundColor: c.surface,
               },
             ]}
           />
           {remarksError ? (
-            <Text style={styles.errorText}>{remarksError}</Text>
+            <Text style={{ color: c.negative, marginTop: 8 }}>
+              {remarksError}
+            </Text>
           ) : null}
         </View>
       </FullScreenSheet>
     </View>
+  );
+}
+
+function ActionBtn({
+  label,
+  color,
+  onPress,
+}: {
+  label: string;
+  color: string;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={[styles.actionBtn, { backgroundColor: color }]}
+    >
+      <Text style={styles.submitText}>{label}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -281,11 +396,11 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     marginBottom: 6,
   },
-  submit: {
-    marginTop: spacing.md,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
+  actions: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
+  actionBtn: {
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
   submitText: { color: "#fff", fontWeight: "700" },
   section: {
@@ -311,7 +426,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     textAlignVertical: "top",
   },
-  errorText: { color: "#ef4444", marginTop: 8, fontSize: 13 },
   footerRow: { flexDirection: "row", gap: 10 },
   footerBtn: {
     flex: 1,
