@@ -13,6 +13,8 @@
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		A91F2C3D4E5B678901234567 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = A91F2C3D4E5B678901234568 /* GoogleService-Info.plist */; };
+		43B44EF5796D494E9ACC84EF /* BootSplash.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 1D9A568CE03B4158AA05FD74 /* BootSplash.storyboard */; };
+		81031438969743FEA9D9D2F9 /* Colors.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CC637931F85245ACBE18305C /* Colors.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,6 +29,8 @@
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = MyTaskMobile/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		A91F2C3D4E5B678901234568 /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "MyTaskMobile/GoogleService-Info.plist"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		1D9A568CE03B4158AA05FD74 /* BootSplash.storyboard */ = {isa = PBXFileReference; name = "BootSplash.storyboard"; path = "MyTaskMobile/BootSplash.storyboard"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		CC637931F85245ACBE18305C /* Colors.xcassets */ = {isa = PBXFileReference; name = "Colors.xcassets"; path = "MyTaskMobile/Colors.xcassets"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = folder.assetcatalog; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -50,6 +54,8 @@
 				A91F2C3D4E5B678901234568 /* GoogleService-Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
+				1D9A568CE03B4158AA05FD74 /* BootSplash.storyboard */,
+				CC637931F85245ACBE18305C /* Colors.xcassets */,
 			);
 			name = MyTaskMobile;
 			sourceTree = "<group>";
@@ -165,6 +171,8 @@
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				A91F2C3D4E5B678901234567 /* GoogleService-Info.plist in Resources */,
 				15A60EB784F09413564E977F /* PrivacyInfo.xcprivacy in Resources */,
+				43B44EF5796D494E9ACC84EF /* BootSplash.storyboard in Resources */,
+				81031438969743FEA9D9D2F9 /* Colors.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
