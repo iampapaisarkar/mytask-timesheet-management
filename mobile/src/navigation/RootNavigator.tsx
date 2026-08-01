@@ -7,6 +7,7 @@ import { HeaderIconButton } from "../components/HeaderIconButton";
 import { LoginScreen } from "../features/auth";
 import { SignupScreen } from "../screens/SignupScreen";
 import { ForgotPasswordScreen } from "../screens/ForgotPasswordScreen";
+import { AuthActionsScreen } from "../screens/AuthActionsScreen";
 import { HomeScreen } from "../features/home";
 import { ProfileScreen } from "../features/settings";
 import { NotificationsListScreen } from "../features/notifications";
@@ -18,6 +19,7 @@ import {
   SubscriptionScreen,
   BillingHistoryScreen,
   BillingInvoiceScreen,
+  BillingSuccessScreen,
 } from "../features/billing";
 import { OrgNavigator } from "./OrgNavigator";
 import { nativeBackScreenOptions } from "./standaloneOptions";
@@ -74,6 +76,11 @@ export function RootNavigator() {
             name="ForgotPassword"
             component={ForgotPasswordScreen}
             options={{ title: "Reset password" }}
+          />
+          <Stack.Screen
+            name="AuthActions"
+            component={AuthActionsScreen}
+            options={{ title: "Account" }}
           />
           <Stack.Screen
             name="OrgInvitation"
@@ -147,8 +154,7 @@ export function RootNavigator() {
             component={NotificationsListScreen}
             options={{
               title: "Notifications",
-              presentation: "modal",
-              animation: "slide_from_bottom",
+              animation: "slide_from_right",
               gestureEnabled: true,
             }}
           />
@@ -183,6 +189,11 @@ export function RootNavigator() {
             name="BillingHistory"
             component={BillingHistoryScreen}
             options={{ title: "Billing history" }}
+          />
+          <Stack.Screen
+            name="BillingSuccess"
+            component={BillingSuccessScreen}
+            options={{ title: "Subscription activated" }}
           />
           <Stack.Screen
             name="BillingInvoice"

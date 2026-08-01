@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   RefreshControl,
@@ -7,7 +7,7 @@ import {
   View,
 } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useTimesheets } from "@mytask/hooks";
+import { useJobs, useTimesheets } from "@mytask/hooks";
 import { DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing, typography } from "@mytask/theme";
@@ -17,6 +17,7 @@ import {
   listRows,
 } from "@mytask/utils";
 import { AccessDenied } from "../components/AccessDenied";
+import { MobileSelect } from "../components/MobileSelect";
 import { SearchBar } from "../components/SearchBar";
 import { ListPager } from "../components/ListPager";
 import { SkeletonList } from "../components/Skeleton";
@@ -53,6 +54,12 @@ type TimesheetRow = {
   jobs?: Array<{ id?: number; name?: string }> | null;
 };
 
+type JobRow = {
+  id?: number;
+  name?: string;
+  details?: { id?: number; name?: string };
+};
+
 function jobLabel(item: TimesheetRow) {
   if (Array.isArray(item.jobs) && item.jobs.length) {
     return item.jobs
@@ -72,6 +79,7 @@ export function TimesheetListScreen({ route }: Props) {
   const canList = can(acl, "timesheet", "list");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [jobId, setJobId] = useState("");
   const [filter, setFilter] = useState<TimesheetStatusFilter>("all");
   const debouncedSearch = useDebouncedValue(search.trim(), 400);
   const c = useThemeStore((s) => s.colors);
@@ -80,7 +88,23 @@ export function TimesheetListScreen({ route }: Props) {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, filter]);
+  }, [debouncedSearch, filter, jobId]);
+
+  const jobsQuery = useJobs({ rows_per_page: 200 }, canList);
+  const jobs = listRows<JobRow>(jobsQuery.data);
+  const jobOptions = useMemo(
+    () => [
+      { value: "", label: "All jobs" },
+      ...jobs.map((job) => {
+        const id = String(job.details?.id ?? job.id);
+        return {
+          value: id,
+          label: job.details?.name || job.name || `Job #${id}`,
+        };
+      }),
+    ],
+    [jobs],
+  );
 
   const { data, isLoading, isError, isFetching, refetch } = useTimesheets(
     {
@@ -89,6 +113,7 @@ export function TimesheetListScreen({ route }: Props) {
       sort_by: "id",
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
       ...(statusCode ? { status_code: statusCode } : {}),
+      ...(jobId ? { job_id: jobId } : {}),
     },
     canList,
   );
@@ -113,6 +138,8 @@ export function TimesheetListScreen({ route }: Props) {
     );
   }
 
+  const hasFilters = Boolean(debouncedSearch || filter !== "all" || jobId);
+
   return (
     <View style={[styles.flex, { backgroundColor: c.bg }]}>
       <View style={styles.header}>
@@ -124,6 +151,14 @@ export function TimesheetListScreen({ route }: Props) {
           value={search}
           onChangeText={setSearch}
           placeholder="Search by timesheet code"
+        />
+        <MobileSelect
+          label="Filter by job"
+          value={jobId}
+          onChange={setJobId}
+          options={jobOptions}
+          searchable
+          placeholder="All jobs"
         />
         <FilterChips
           value={filter}
@@ -152,13 +187,9 @@ export function TimesheetListScreen({ route }: Props) {
           ListEmptyComponent={
             <EmptyState
               icon={<SheetsIcon color={c.primary} size={28} />}
-              title={
-                debouncedSearch || filter !== "all"
-                  ? "No matching timesheets"
-                  : "No timesheets yet"
-              }
+              title={hasFilters ? "No matching timesheets" : "No timesheets yet"}
               description={
-                debouncedSearch || filter !== "all"
+                hasFilters
                   ? "Try a different search or clear filters."
                   : "Your timesheet periods will appear here once created."
               }

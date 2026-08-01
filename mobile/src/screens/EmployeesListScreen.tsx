@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { useEmployees } from "@mytask/hooks";
+import { useEmployees, useInviteEmployee } from "@mytask/hooks";
 import { DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing, typography } from "@mytask/theme";
 import {
   formatPhoneDisplay,
+  getErrorMessage,
   listPagination,
   listRows,
 } from "@mytask/utils";
@@ -18,6 +19,7 @@ import { SkeletonList } from "../components/Skeleton";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
+import { useToastStore } from "../store/toastStore";
 import { triggerHaptic } from "../utils/haptics";
 import {
   Avatar,
@@ -43,6 +45,7 @@ type EmployeeRow = {
     phone_country_iso?: string;
     preferred_name?: string;
     middle_name?: string;
+    is_you?: boolean;
     role?: { id?: number | string; name?: string; code?: string };
     address?: {
       formatted_address?: string;
@@ -51,6 +54,8 @@ type EmployeeRow = {
       city?: string;
     };
   };
+  invitation?: { status?: { code?: string } | string | null } | null;
+  role?: { code?: string } | null;
   wage?: {
     start_date?: string;
     employment_type?: { id?: number | string; code?: string; name?: string };
@@ -72,6 +77,30 @@ type EmployeeRow = {
 
 function employeeId(row: EmployeeRow) {
   return row.details?.id ?? row.id ?? null;
+}
+
+function invitationStatusCode(row: EmployeeRow) {
+  const nested = (
+    row.details as { invitation?: { status?: { code?: string } } } | undefined
+  )?.invitation?.status?.code;
+  if (nested) return nested;
+  const status = row.invitation?.status;
+  if (typeof status === "string") return status;
+  return status?.code;
+}
+
+function employeeRoleCode(row: EmployeeRow) {
+  return (
+    row.details?.role?.code ||
+    row.role?.code
+  );
+}
+
+function shouldShowInvite(row: EmployeeRow): boolean {
+  if (row.details?.is_you) return false;
+  if (employeeRoleCode(row) === "owner") return false;
+  if (invitationStatusCode(row) === "accept") return false;
+  return true;
 }
 
 function addressLabel(details: EmployeeRow["details"]) {
@@ -97,6 +126,9 @@ export function EmployeesListScreen() {
   const [editing, setEditing] = useState<EmployeeRow | null>(null);
   const sheetRef = useRef<BottomSheetModal>(null);
   const c = useThemeStore((s) => s.colors);
+  const toast = useToastStore();
+  const inviteMutation = useInviteEmployee();
+  const [invitingId, setInvitingId] = useState<string | number | null>(null);
 
   useEffect(() => {
     setPage(1);
@@ -207,6 +239,8 @@ export function EmployeesListScreen() {
             const details = item.details;
             const address = addressLabel(details);
             const name = details?.full_name || `Employee #${details?.id ?? item.id}`;
+            const id = employeeId(item);
+            const showInvite = shouldShowInvite(item) && id != null;
             return (
               <Card
                 style={styles.card}
@@ -241,6 +275,27 @@ export function EmployeesListScreen() {
                       >
                         {address}
                       </Text>
+                    ) : null}
+                    {showInvite ? (
+                      <Button
+                        title="Invite"
+                        variant="soft"
+                        size="sm"
+                        fullWidth={false}
+                        style={styles.inviteBtn}
+                        loading={invitingId === id && inviteMutation.isPending}
+                        onPress={() => {
+                          if (id == null) return;
+                          setInvitingId(id);
+                          void inviteMutation
+                            .mutateAsync(id)
+                            .then(() => toast.success("Invitation sent"))
+                            .catch((err) =>
+                              toast.error("Invite failed", getErrorMessage(err)),
+                            )
+                            .finally(() => setInvitingId(null));
+                        }}
+                      />
                     ) : null}
                   </View>
                   {canEdit ? <ChevronIcon color={c.subtle} /> : null}
@@ -298,4 +353,5 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   meta: { marginTop: 4, fontSize: typography.sizes.xs },
+  inviteBtn: { alignSelf: "flex-start", marginTop: spacing.sm },
 });

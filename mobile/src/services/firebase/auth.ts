@@ -1,5 +1,7 @@
 import {
   GoogleAuthProvider,
+  applyActionCode as firebaseApplyActionCode,
+  confirmPasswordReset as firebaseConfirmPasswordReset,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
   sendPasswordResetEmail,
@@ -16,6 +18,7 @@ import {
   isSuccessResponse,
   statusCodes,
 } from "@react-native-google-signin/google-signin";
+import { APP_WEB_ORIGIN } from "@mytask/constants";
 import { ENV, isFirebaseConfigured, isGoogleSignInConfigured } from "../../config/env";
 import { getFirebaseAuth } from "./config";
 import { AuthCancelledError, isAuthCancelled, mapAuthError } from "./errors";
@@ -55,7 +58,22 @@ export async function signUpWithEmail(
 }
 
 export async function sendPasswordReset(email: string): Promise<void> {
-  await sendPasswordResetEmail(getFirebaseAuth(), email);
+  const continueUrl = `${APP_WEB_ORIGIN}/auth-actions?email=${encodeURIComponent(email)}`;
+  await sendPasswordResetEmail(getFirebaseAuth(), email, {
+    url: continueUrl,
+    handleCodeInApp: true,
+  });
+}
+
+export async function confirmPasswordReset(
+  oobCode: string,
+  newPassword: string,
+): Promise<void> {
+  await firebaseConfirmPasswordReset(getFirebaseAuth(), oobCode, newPassword);
+}
+
+export async function applyActionCode(oobCode: string): Promise<void> {
+  await firebaseApplyActionCode(getFirebaseAuth(), oobCode);
 }
 
 /**

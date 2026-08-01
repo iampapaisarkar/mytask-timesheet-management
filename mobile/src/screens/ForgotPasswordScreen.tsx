@@ -4,6 +4,7 @@ import {
   forgotPasswordSchema,
   type ForgotPasswordFormValues,
 } from "@mytask/validation";
+import { authApi } from "@mytask/api";
 import { radii, spacing, typography } from "@mytask/theme";
 import { getErrorMessage } from "@mytask/utils";
 import { useNavigation } from "@react-navigation/native";
@@ -35,12 +36,16 @@ export function ForgotPasswordScreen() {
     setError(null);
     setLoading(true);
     try {
-      await sendPasswordReset(values.email);
+      try {
+        await authApi.forgotPassword({ email: values.email });
+      } catch {
+        // Backend may fail if Admin SDK is misconfigured; client Firebase still sends mail.
+        await sendPasswordReset(values.email);
+      }
       setSent(true);
-      toast.success(
-        "Check your email",
-        "We sent a password reset link if that account exists.",
-      );
+      const msg =
+        "If an account exists for that email, password reset instructions have been sent.";
+      toast.success("Check your email", msg);
     } catch (err) {
       const message = getErrorMessage(
         err,

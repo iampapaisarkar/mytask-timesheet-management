@@ -15,7 +15,12 @@ import {
   useCustomers,
   useUpdateCustomer,
 } from "@mytask/hooks";
-import { DEFAULT_CURRENCY, DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
+import {
+  DEFAULT_CURRENCY,
+  DEFAULT_LIST_PAGE_SIZE,
+  SUPPORTED_CURRENCIES,
+  normalizeCurrency,
+} from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing } from "@mytask/theme";
 import {
@@ -36,6 +41,7 @@ import { AccessDenied } from "../components/AccessDenied";
 import { FormTextField } from "../components/FormTextField";
 import { GlobalPhoneInput } from "../components/GlobalPhoneInput";
 import { ListPager } from "../components/ListPager";
+import { MobileSelect } from "../components/MobileSelect";
 import { PlacesAddressInput } from "../components/PlacesAddressInput";
 import { SearchBar } from "../components/SearchBar";
 import { SkeletonList } from "../components/Skeleton";
@@ -87,6 +93,7 @@ type CustomerRow = {
   contact_phone_number?: string | null;
   contact_phone_country_iso?: string | null;
   hourly_rate?: number | string | null;
+  currency?: string | null;
 };
 
 const emptyCustomer: CustomerFormValues = {
@@ -142,7 +149,7 @@ function formFromCustomer(row: CustomerRow): CustomerFormValues {
     contact_phone_country_code: phone.phone_country_code,
     contact_phone_country_iso: phone.phone_country_iso,
     hourly_rate: row.hourly_rate != null ? String(row.hourly_rate) : "",
-    currency: DEFAULT_CURRENCY,
+    currency: normalizeCurrency(row.currency),
   };
 }
 
@@ -235,7 +242,7 @@ export function CustomersListScreen(_props: Props) {
       hourly_rate: values.hourly_rate
         ? Number(String(values.hourly_rate).trim())
         : null,
-      currency: DEFAULT_CURRENCY,
+      currency: normalizeCurrency(values.currency),
     };
     try {
       if (isEdit && editing?.id != null) {
@@ -474,6 +481,23 @@ export function CustomersListScreen(_props: Props) {
           keyboardType="decimal-pad"
           editable={!pending}
           {...fieldChainProps(chain, "hourly_rate")}
+        />
+        <Controller
+          control={form.control}
+          name="currency"
+          render={({ field: { value, onChange } }) => (
+            <MobileSelect
+              label="Currency"
+              value={value || DEFAULT_CURRENCY}
+              onChange={onChange}
+              options={SUPPORTED_CURRENCIES.map((cur) => ({
+                value: cur.code,
+                label: cur.label,
+              }))}
+              searchable
+              disabled={pending}
+            />
+          )}
         />
       </AppBottomSheet>
     </View>

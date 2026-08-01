@@ -71,6 +71,9 @@ export type RootStackParamList = {
   Login: { invitationToken?: string } | undefined;
   Signup: { invitationToken?: string } | undefined;
   ForgotPassword: undefined;
+  AuthActions:
+    | { mode?: string; oobCode?: string; email?: string }
+    | undefined;
   OrgInvitation: { token: string };
   Home: undefined;
   Profile: undefined;
@@ -89,4 +92,5 @@ export type RootStackParamList = {
   Subscription: undefined;
   BillingHistory: undefined;
   BillingInvoice: { id: string };
+  BillingSuccess: { session_id?: string } | undefined;
 };

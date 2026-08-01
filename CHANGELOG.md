@@ -4,6 +4,8 @@
 
 ### Changed
 
+- **Mobile web feature parity:** Organisation details now loads/edits full org profile (email, phone, website, address, reporting currency, timesheet frequency) like web. Customers gain currency picker; employees list gains Invite; timesheet lists gain job/employee filters; payouts gain search + date range; system logs gain search/date/success filters, summary, detail sheet, and CSV export. AuthActions + BillingSuccess screens and notification deep-link routing added; forgot-password uses `authApi` with Firebase fallback.
+
 - **Billing invoices (web + mobile):** Download PDF / View invoice now use **myTask-generated** invoices (PDFKit + branded HTML/detail screens), not Stripe hosted PDF/receipt URLs. Receipt emails attach the myTask PDF and link to `/billing/:id`.
 - **Invoice view parity:** Web and mobile invoice detail screens share the same content model as the PDF (bill-to, period, line description, total) from `GET /billing-history/:id`.
 

@@ -14,7 +14,7 @@ import {
   useNotifications,
 } from "@mytask/hooks";
 import { DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
-import { can, getOrganisationAcl, resolveNotificationPath } from "@mytask/services";
+import { getOrganisationAcl, resolveNotificationPath } from "@mytask/services";
 import { spacing, typography } from "@mytask/theme";
 import type { AppNotification } from "@mytask/types";
 import {
@@ -26,6 +26,7 @@ import {
 } from "@mytask/utils";
 import { ListPager } from "../components/ListPager";
 import { SkeletonList } from "../components/Skeleton";
+import { navigateNotificationPath } from "../navigation/navigateNotificationPath";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
@@ -106,44 +107,31 @@ export function NotificationsListScreen({ navigation, route }: Props) {
       );
       return;
     }
-    // Mobile deep paths are web-style; map common org routes to stack screens when possible.
+
     const path = resolved.path;
-    const timesheetMatch = path.match(/\/timesheet\/(\d+)/);
-    const managementMatch = path.match(/\/timesheet-management\/(\d+)/);
-    if (timesheetMatch) {
-      if (!can(acl, "timesheet", "view")) {
-        toast.warning(
-          "Access denied",
-          "You do not have permission to view this timesheet.",
-        );
-        return;
-      }
-      navigation.navigate("Organisation", {
-        orgCode,
-        screen: "TimesheetDetail",
-        params: { orgCode, id: timesheetMatch[1] },
+    const goesToOrg = /\/org\//.test(path);
+
+    const runNavigate = () =>
+      navigateNotificationPath({
+        navigation,
+        path,
+        acl,
+        onAccessDenied: (message) => toast.warning("Access denied", message),
+        onUnhandled: () =>
+          toast.info("Opened", item.title || "Notification"),
+      });
+
+    // Leave NotificationsList first so the destination is a normal stack
+    // screen, not covered by / presented like the notifications sheet.
+    if (goesToOrg && navigation.canGoBack()) {
+      navigation.goBack();
+      queueMicrotask(() => {
+        runNavigate();
       });
       return;
     }
-    if (managementMatch) {
-      if (
-        !can(acl, "timesheetManagement", "view") &&
-        !can(acl, "timesheetManagement", "list")
-      ) {
-        toast.warning(
-          "Access denied",
-          "You do not have permission to view this timesheet.",
-        );
-        return;
-      }
-      navigation.navigate("Organisation", {
-        orgCode,
-        screen: "TimesheetManagementDetail",
-        params: { orgCode, id: managementMatch[1] },
-      });
-      return;
-    }
-    toast.info("Opened", item.title || "Notification");
+
+    runNavigate();
   }
 
   if (isError && !data) {

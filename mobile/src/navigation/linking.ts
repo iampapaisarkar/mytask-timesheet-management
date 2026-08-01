@@ -33,6 +33,12 @@ const linkingConfig = {
     },
     Pricing: "pricing",
     Subscription: "subscription",
+    BillingSuccess: {
+      path: "billing/success",
+      parse: {
+        session_id: (value: string) => value,
+      },
+    },
     BillingHistory: "billing",
     BillingInvoice: "billing/:id",
     Home: "",
@@ -87,6 +93,14 @@ const linkingConfig = {
     Login: "login",
     Signup: "signup",
     ForgotPassword: "forgot-password",
+    AuthActions: {
+      path: "auth-actions",
+      parse: {
+        mode: (value: string) => value,
+        oobCode: (value: string) => value,
+        email: (value: string) => value,
+      },
+    },
   },
 } as const;
 

@@ -117,6 +117,8 @@ export function TimesheetManagementListScreen({ route }: Props) {
   const sheetRef = useRef<BottomSheetModal>(null);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [filterEmployeeId, setFilterEmployeeId] = useState("");
+  const [filterJobId, setFilterJobId] = useState("");
   const [filter, setFilter] = useState<TimesheetStatusFilter>("all");
   const debouncedSearch = useDebouncedValue(search.trim(), 400);
   const toast = useToastStore();
@@ -134,7 +136,7 @@ export function TimesheetManagementListScreen({ route }: Props) {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, filter]);
+  }, [debouncedSearch, filter, filterEmployeeId, filterJobId]);
 
   const { data, isLoading, isError, isFetching, refetch } =
     useTimesheetManagement(
@@ -144,6 +146,8 @@ export function TimesheetManagementListScreen({ route }: Props) {
         sort_by: "id",
         ...(debouncedSearch ? { search: debouncedSearch } : {}),
         ...(statusCode ? { status_code: statusCode } : {}),
+        ...(filterEmployeeId ? { employee_id: filterEmployeeId } : {}),
+        ...(filterJobId ? { job_id: filterJobId } : {}),
       },
       canList,
     );
@@ -152,9 +156,8 @@ export function TimesheetManagementListScreen({ route }: Props) {
   const totalPages = Math.max(1, Number(pagination?.total_pages) || 1);
   const currentPage = Number(pagination?.page_number) || page;
 
-  const [sheetReady, setSheetReady] = useState(false);
-  const employeesQuery = useEmployees({ rows_per_page: 200 }, sheetReady);
-  const jobsQuery = useJobs({ rows_per_page: 200 }, sheetReady);
+  const employeesQuery = useEmployees({ rows_per_page: 200 }, canList);
+  const jobsQuery = useJobs({ rows_per_page: 200 }, canList);
   const cyclesQuery = useEmployeePayrollCycles(
     employeeId ? Number(employeeId) : undefined,
   );
@@ -182,6 +185,11 @@ export function TimesheetManagementListScreen({ route }: Props) {
     [employees],
   );
 
+  const filterEmployeeOptions = useMemo(
+    () => [{ value: "", label: "All employees" }, ...employeeOptions],
+    [employeeOptions],
+  );
+
   const periodOptions = useMemo(
     () =>
       periods.map((p) => ({
@@ -203,9 +211,13 @@ export function TimesheetManagementListScreen({ route }: Props) {
     [jobs],
   );
 
+  const filterJobOptions = useMemo(
+    () => [{ value: "", label: "All jobs" }, ...jobOptions],
+    [jobOptions],
+  );
+
   function openCreate() {
     form.reset(emptyTimesheet);
-    setSheetReady(true);
     sheetRef.current?.present();
   }
 
@@ -260,6 +272,22 @@ export function TimesheetManagementListScreen({ route }: Props) {
           value={search}
           onChangeText={setSearch}
           placeholder="Search by timesheet code"
+        />
+        <MobileSelect
+          label="Filter by employee"
+          value={filterEmployeeId}
+          onChange={setFilterEmployeeId}
+          options={filterEmployeeOptions}
+          searchable
+          placeholder="All employees"
+        />
+        <MobileSelect
+          label="Filter by job"
+          value={filterJobId}
+          onChange={setFilterJobId}
+          options={filterJobOptions}
+          searchable
+          placeholder="All jobs"
         />
         <FilterChips
           value={filter}
@@ -369,7 +397,6 @@ export function TimesheetManagementListScreen({ route }: Props) {
         title="Create timesheet"
         snapPoints={["75%", "92%"]}
         onDismiss={() => {
-          setSheetReady(false);
           form.reset(emptyTimesheet);
         }}
         footer={

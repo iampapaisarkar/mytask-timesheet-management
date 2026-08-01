@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -28,7 +28,10 @@ import { radii, spacing, typography } from "@mytask/theme";
 import { getErrorMessage, listPagination, listRows } from "@mytask/utils";
 import { AccessDenied } from "../components/AccessDenied";
 import { ListPager } from "../components/ListPager";
+import { MobileSelect } from "../components/MobileSelect";
+import { SearchBar } from "../components/SearchBar";
 import { SkeletonList } from "../components/Skeleton";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import type { OrgStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
@@ -42,6 +45,7 @@ import {
   ErrorState,
   FilterChips,
   StatusBadge,
+  TextField,
   WalletIcon,
 } from "../ui";
 
@@ -123,6 +127,51 @@ const STATUS_FILTERS = [
   { value: "CANCELLED", label: "Cancelled" },
 ];
 
+const RANGE_PRESETS = [
+  { value: "all", label: "All time" },
+  { value: "current_month", label: "Current month" },
+  { value: "last_month", label: "Last month" },
+  { value: "last_3_months", label: "Last 3 months" },
+  { value: "year", label: "This year" },
+  { value: "custom", label: "Custom dates" },
+] as const;
+
+/** Matches web PayoutsPage `rangeToDates` (local copy — not in @mytask/utils). */
+function rangeToDates(preset: string, customFrom: string, customTo: string) {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const iso = (d: Date) =>
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+  if (preset === "current_month") {
+    return {
+      from: iso(new Date(y, m, 1)),
+      to: iso(new Date(y, m + 1, 0)),
+    };
+  }
+  if (preset === "last_month") {
+    return {
+      from: iso(new Date(y, m - 1, 1)),
+      to: iso(new Date(y, m, 0)),
+    };
+  }
+  if (preset === "last_3_months") {
+    return {
+      from: iso(new Date(y, m - 2, 1)),
+      to: iso(new Date(y, m + 1, 0)),
+    };
+  }
+  if (preset === "year") {
+    return { from: `${y}-01-01`, to: `${y}-12-31` };
+  }
+  if (preset === "custom") {
+    return { from: customFrom || undefined, to: customTo || undefined };
+  }
+  return { from: undefined, to: undefined };
+}
+
 export function PayoutsScreen({ navigation, route }: Props) {
   const { orgCode } = route.params;
   const organisation = useOrganisationStore((s) => s.organisation);
@@ -133,16 +182,36 @@ export function PayoutsScreen({ navigation, route }: Props) {
   const canEdit = can(acl, "payout", "edit");
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState("");
+  const [search, setSearch] = useState("");
+  const [range, setRange] = useState("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim(), 300);
   const c = useThemeStore((s) => s.colors);
   const toast = useToastStore();
   const createSheetRef = useRef<BottomSheetModal>(null);
 
-  const listParams = {
-    rows_per_page: DEFAULT_LIST_PAGE_SIZE,
-    page_number: page,
-    sort_by: "id",
-    status: status || undefined,
-  };
+  const dateRange = useMemo(
+    () => rangeToDates(range, customFrom, customTo),
+    [range, customFrom, customTo],
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [status, debouncedSearch, range, customFrom, customTo]);
+
+  const listParams = useMemo(
+    () => ({
+      rows_per_page: DEFAULT_LIST_PAGE_SIZE,
+      page_number: page,
+      sort_by: "id",
+      status: status || undefined,
+      search: debouncedSearch || undefined,
+      from: dateRange.from,
+      to: dateRange.to,
+    }),
+    [status, debouncedSearch, dateRange, page],
+  );
 
   const { data, isLoading, isError, isFetching, refetch } = usePayouts(
     listParams,
@@ -340,12 +409,45 @@ export function PayoutsScreen({ navigation, route }: Props) {
           />
         </View>
 
+        <SearchBar
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Employee, payout #, timesheet code"
+        />
+        <MobileSelect
+          label="Date range"
+          value={range}
+          onChange={setRange}
+          options={[...RANGE_PRESETS]}
+          searchable={false}
+          placeholder="All time"
+        />
+        {range === "custom" ? (
+          <View style={styles.customDates}>
+            <TextField
+              label="From (YYYY-MM-DD)"
+              value={customFrom}
+              onChangeText={setCustomFrom}
+              placeholder="YYYY-MM-DD"
+              autoCapitalize="none"
+              autoCorrect={false}
+              containerStyle={styles.dateField}
+            />
+            <TextField
+              label="To (YYYY-MM-DD)"
+              value={customTo}
+              onChangeText={setCustomTo}
+              placeholder="YYYY-MM-DD"
+              autoCapitalize="none"
+              autoCorrect={false}
+              containerStyle={styles.dateField}
+            />
+          </View>
+        ) : null}
+
         <FilterChips
           value={status}
-          onChange={(next) => {
-            setStatus(next);
-            setPage(1);
-          }}
+          onChange={setStatus}
           options={STATUS_FILTERS}
         />
       </View>
@@ -532,6 +634,11 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   toolbarBtn: { flex: 1 },
+  customDates: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  dateField: { flex: 1, marginBottom: 0 },
   actions: {
     flexDirection: "row",
     flexWrap: "wrap",

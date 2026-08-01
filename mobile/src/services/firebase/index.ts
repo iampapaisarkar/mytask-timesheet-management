@@ -5,6 +5,8 @@ export {
   initFirebase,
 } from "./config";
 export {
+  applyActionCode,
+  confirmPasswordReset,
   getCurrentUser,
   getIdToken,
   onAuthStateChangedListener,
