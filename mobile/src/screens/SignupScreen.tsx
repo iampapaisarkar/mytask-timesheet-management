@@ -16,6 +16,7 @@ import { spacing } from "@mytask/theme";
 import { getErrorMessage, getTimezone } from "@mytask/utils";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { FormKeyboardScroll } from "../components/FormKeyboardScroll";
+import { GlobalPhoneInput } from "../components/GlobalPhoneInput";
 import { useAuthStore } from "../store/authStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
@@ -33,7 +34,13 @@ export function SignupScreen({ navigation, route }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { control, handleSubmit } = useForm<SignupFormValues>({
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
       first_name: "",
@@ -48,6 +55,8 @@ export function SignupScreen({ navigation, route }: Props) {
       confirm_password: "",
     },
   });
+  const phoneCountryCode = watch("phone_country_code");
+  const phoneCountryIso = watch("phone_country_iso");
 
   async function onSubmit(values: SignupFormValues) {
     setError(null);
@@ -104,12 +113,6 @@ export function SignupScreen({ navigation, route }: Props) {
               autoCapitalize: "none",
               keyboardType: "email-address",
             },
-            {
-              name: "phone_number",
-              label: "Phone (E.164, e.g. +61412345678)",
-              autoCapitalize: "none",
-              keyboardType: "phone-pad",
-            },
             { name: "dob", label: "Date of birth (YYYY-MM-DD)", autoCapitalize: "none" },
             { name: "password", label: "Password", secure: true },
             { name: "confirm_password", label: "Confirm password", secure: true },
@@ -150,6 +153,37 @@ export function SignupScreen({ navigation, route }: Props) {
             )}
           />
         ))}
+
+        <Controller
+          control={control}
+          name="phone_number"
+          render={({ field: { value } }) => (
+            <View style={styles.field}>
+              <GlobalPhoneInput
+                label="Phone"
+                value={{
+                  phone_number: value || null,
+                  phone_country_code: phoneCountryCode || null,
+                  phone_country_iso: phoneCountryIso || null,
+                }}
+                onChange={(phone) => {
+                  setValue("phone_number", phone.phone_number || "", {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  });
+                  setValue("phone_country_code", phone.phone_country_code, {
+                    shouldDirty: true,
+                  });
+                  setValue("phone_country_iso", phone.phone_country_iso, {
+                    shouldDirty: true,
+                  });
+                }}
+                required
+                error={errors.phone_number?.message}
+              />
+            </View>
+          )}
+        />
 
         {error ? (
           <Text style={[styles.errorBanner, { color: c.negative }]}>{error}</Text>

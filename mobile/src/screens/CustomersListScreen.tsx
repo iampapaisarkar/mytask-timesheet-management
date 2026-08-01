@@ -27,8 +27,13 @@ import {
   toAddressApiPayload,
   fromAddressRecord,
   type GlobalAddress,
+  type PhoneValue,
 } from "@mytask/utils";
 import { AccessDenied } from "../components/AccessDenied";
+import {
+  GlobalPhoneInput,
+  emptyPhoneValue,
+} from "../components/GlobalPhoneInput";
 import { ListPager } from "../components/ListPager";
 import { PlacesAddressInput } from "../components/PlacesAddressInput";
 import { SearchBar } from "../components/SearchBar";
@@ -74,7 +79,7 @@ type CreateForm = {
   address: GlobalAddress;
   contactName: string;
   contactEmail: string;
-  contactPhone: string;
+  contactPhone: PhoneValue;
   hourlyRate: string;
 };
 
@@ -84,7 +89,7 @@ const emptyForm = (): CreateForm => ({
   address: emptyGlobalAddress(),
   contactName: "",
   contactEmail: "",
-  contactPhone: "",
+  contactPhone: emptyPhoneValue(),
   hourlyRate: "",
 });
 
@@ -113,17 +118,16 @@ function addressFromCustomer(row: CustomerRow): GlobalAddress {
 }
 
 function formFromCustomer(row: CustomerRow): CreateForm {
-  const phone = phoneValueFromE164(
-    row.contact_phone_number,
-    row.contact_phone_country_iso,
-  );
   return {
     name: row.name || "",
     abn: row.abn || "",
     address: addressFromCustomer(row),
     contactName: row.contact_name || "",
     contactEmail: row.contact_email || "",
-    contactPhone: phone.phone_number || row.contact_phone_number || "",
+    contactPhone: phoneValueFromE164(
+      row.contact_phone_number,
+      row.contact_phone_country_iso,
+    ),
     hourlyRate: row.hourly_rate != null ? String(row.hourly_rate) : "",
   };
 }
@@ -187,7 +191,7 @@ export function CustomersListScreen(_props: Props) {
       toast.warning("Name required");
       return;
     }
-    const phone = phoneValueFromE164(form.contactPhone.trim() || null);
+    const phone = form.contactPhone;
     const addressPayload = hasAddressContent(form.address)
       ? toAddressApiPayload(form.address, { includeCoordinates: false })
       : null;
@@ -401,16 +405,11 @@ export function CustomersListScreen(_props: Props) {
           autoCapitalize="none"
           keyboardType="email-address"
         />
-        <Text style={[styles.fieldLabel, { color: c.muted }]}>
-          Contact phone (E.164)
-        </Text>
-        <BottomSheetTextInput
-          style={inputStyle}
+        <GlobalPhoneInput
+          label="Contact phone"
           value={form.contactPhone}
-          onChangeText={(contactPhone) => patchForm({ contactPhone })}
-          placeholder="+61412345678"
-          placeholderTextColor={c.muted}
-          keyboardType="phone-pad"
+          onChange={(contactPhone) => patchForm({ contactPhone })}
+          inBottomSheet
         />
         <Text style={[styles.fieldLabel, { color: c.muted }]}>
           Hourly rate

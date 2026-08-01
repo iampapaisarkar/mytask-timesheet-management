@@ -28,8 +28,13 @@ import {
   toAddressApiPayload,
   fromAddressRecord,
   type GlobalAddress,
+  type PhoneValue,
 } from "@mytask/utils";
 import { AccessDenied } from "../components/AccessDenied";
+import {
+  GlobalPhoneInput,
+  emptyPhoneValue,
+} from "../components/GlobalPhoneInput";
 import { ListPager } from "../components/ListPager";
 import { MobileSelect } from "../components/MobileSelect";
 import { PlacesAddressInput } from "../components/PlacesAddressInput";
@@ -71,7 +76,7 @@ type CreateForm = {
   radius: string;
   siteContactName: string;
   siteContactEmail: string;
-  siteContactPhone: string;
+  siteContactPhone: PhoneValue;
 };
 
 const emptyForm = (): CreateForm => ({
@@ -81,7 +86,7 @@ const emptyForm = (): CreateForm => ({
   radius: "100",
   siteContactName: "",
   siteContactEmail: "",
-  siteContactPhone: "",
+  siteContactPhone: emptyPhoneValue(),
 });
 
 function jobId(row: JobRow): number | string | undefined {
@@ -93,10 +98,6 @@ function jobName(row: JobRow): string {
 }
 
 function formFromJob(row: JobRow): CreateForm {
-  const phone = phoneValueFromE164(
-    row.site_contact_phone_number,
-    row.site_contact_phone_country_iso,
-  );
   return {
     name: jobName(row),
     customerId:
@@ -109,7 +110,10 @@ function formFromJob(row: JobRow): CreateForm {
     radius: row.radius != null ? String(row.radius) : "100",
     siteContactName: row.site_contact_name || "",
     siteContactEmail: row.site_contact_email || "",
-    siteContactPhone: phone.phone_number || row.site_contact_phone_number || "",
+    siteContactPhone: phoneValueFromE164(
+      row.site_contact_phone_number,
+      row.site_contact_phone_country_iso,
+    ),
   };
 }
 
@@ -206,7 +210,7 @@ export function JobsListScreen(_props: Props) {
       toast.warning("Radius required");
       return;
     }
-    const phone = phoneValueFromE164(form.siteContactPhone.trim() || null);
+    const phone = form.siteContactPhone;
     const payload: Record<string, unknown> = {
       name: form.name.trim(),
       customer: { id: Number(form.customerId) },
@@ -436,16 +440,11 @@ export function JobsListScreen(_props: Props) {
           autoCapitalize="none"
           keyboardType="email-address"
         />
-        <Text style={[styles.fieldLabel, { color: c.muted }]}>
-          Site contact phone (E.164)
-        </Text>
-        <BottomSheetTextInput
-          style={inputStyle}
+        <GlobalPhoneInput
+          label="Site contact phone"
           value={form.siteContactPhone}
-          onChangeText={(siteContactPhone) => patchForm({ siteContactPhone })}
-          placeholder="+61412345678"
-          placeholderTextColor={c.muted}
-          keyboardType="phone-pad"
+          onChange={(siteContactPhone) => patchForm({ siteContactPhone })}
+          inBottomSheet
         />
       </AppBottomSheet>
     </View>

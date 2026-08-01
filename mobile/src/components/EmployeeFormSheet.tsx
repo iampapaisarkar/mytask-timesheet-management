@@ -23,11 +23,14 @@ import type { NamedLookup } from "@mytask/types";
 import {
   getErrorMessage,
   hasAddressContent,
+  isValidInternationalPhone,
   normalizeAddress,
   phoneValueFromE164,
   type GlobalAddress,
+  type PhoneValue,
 } from "@mytask/utils";
 import { PlacesAddressInput } from "./PlacesAddressInput";
+import { GlobalPhoneInput, emptyPhoneValue } from "./GlobalPhoneInput";
 import { MobileSelect } from "./MobileSelect";
 import { AppBottomSheet, BottomSheetTextInput, SegmentedControl } from "../ui";
 import { useThemeStore } from "../store/themeStore";
@@ -84,7 +87,7 @@ type FormState = {
   lastName: string;
   preferredName: string;
   dob: string;
-  phone: string;
+  phone: PhoneValue;
   address: GlobalAddress | null;
   roleId: string;
   startDate: string;
@@ -113,7 +116,7 @@ function emptyForm(): FormState {
     lastName: "",
     preferredName: "",
     dob: "",
-    phone: "",
+    phone: emptyPhoneValue(),
     address: null,
     roleId: "",
     startDate: "",
@@ -168,7 +171,7 @@ function formFromEmployee(row: EmployeeSeed): FormState {
     lastName: d?.last_name || "",
     preferredName: d?.preferred_name || "",
     dob: (d?.dob as string) || "",
-    phone: phone.phone_number || d?.phone_number || "",
+    phone,
     address: addressFromUnknown(d?.address),
     roleId: d?.role?.id != null ? String(d.role.id) : "",
     startDate: (w?.start_date as string) || "",
@@ -281,7 +284,7 @@ export function EmployeeFormSheet({
         lastName: String(details.last_name || ""),
         preferredName: String(details.preferred_name || ""),
         dob: String(details.dob || ""),
-        phone: phone.phone_number || String(details.phone_number || ""),
+        phone,
         address: addressFromUnknown(
           details.address as Partial<GlobalAddress> | string | null,
         ),
@@ -341,12 +344,16 @@ export function EmployeeFormSheet({
       toast.warning("Please select or enter an address");
       return false;
     }
-    if (!form.phone.trim()) {
+    if (!form.phone.phone_number) {
       toast.warning("Phone number is required");
       return false;
     }
-    const phone = phoneValueFromE164(form.phone.trim());
-    if (!phone.phone_number) {
+    if (
+      !isValidInternationalPhone(
+        form.phone.phone_number,
+        form.phone.phone_country_iso || undefined,
+      )
+    ) {
       toast.warning("Enter a valid international phone number");
       return false;
     }
@@ -436,7 +443,7 @@ export function EmployeeFormSheet({
 
   async function handleSave() {
     if (!validateDetails() || !validateWage() || !validatePayroll()) return;
-    const phone = phoneValueFromE164(form.phone.trim());
+    const phone = form.phone;
     const role = roles.find((r) => String(r.id) === form.roleId)!;
     const emp = employmentTypes.find(
       (t) => String(t.id) === form.employmentTypeId,
@@ -677,16 +684,12 @@ export function EmployeeFormSheet({
             onChangeText={(dob) => patch({ dob })}
             placeholderTextColor={c.muted}
           />
-          <Text style={[styles.label, { color: c.muted }]}>
-            Phone (E.164)
-          </Text>
-          <BottomSheetTextInput
-            style={inputStyle}
+          <GlobalPhoneInput
+            label="Phone"
             value={form.phone}
-            onChangeText={(phone) => patch({ phone })}
-            keyboardType="phone-pad"
-            placeholder="+61412345678"
-            placeholderTextColor={c.muted}
+            onChange={(phone) => patch({ phone })}
+            required
+            inBottomSheet
           />
           <PlacesAddressInput
             label="Address"

@@ -9,6 +9,7 @@ import {
   BottomSheetBackdrop,
   BottomSheetFooter,
   BottomSheetModal,
+  BottomSheetScrollView,
   BottomSheetTextInput,
   BottomSheetView,
   useBottomSheetModal,
@@ -19,7 +20,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radii, spacing } from "@mytask/theme";
 import { useThemeStore } from "../store/themeStore";
-import { BottomSheetKeyboardAwareScrollView } from "./BottomSheetKeyboardAwareScrollView";
 import { elevation } from "./tokens";
 import { CloseIcon } from "./icons";
 
@@ -52,7 +52,9 @@ export type AppBottomSheetProps = {
 };
 
 /**
- * Form sheet that keeps focused inputs and the Save footer above the keyboard.
+ * Form sheet with reliable vertical scroll + keyboard-safe footer.
+ * Uses gorhom BottomSheetScrollView (not KeyboardAware HOC) so content
+ * always scrolls; keyboardBehavior=extend keeps fields reachable.
  */
 export const AppBottomSheet = forwardRef<
   BottomSheetModal,
@@ -73,7 +75,7 @@ export const AppBottomSheet = forwardRef<
   const c = useThemeStore((s) => s.colors);
   const insets = useSafeAreaInsets();
   const snapPoints = useMemo(
-    () => snapPointsProp ?? ["55%", "92%"],
+    () => snapPointsProp ?? ["70%", "92%"],
     [snapPointsProp],
   );
 
@@ -121,6 +123,7 @@ export const AppBottomSheet = forwardRef<
     <BottomSheetModal
       ref={ref}
       snapPoints={snapPoints}
+      index={0}
       enablePanDownToClose={enablePanDownToClose}
       onDismiss={onDismiss}
       stackBehavior={stackBehavior}
@@ -132,12 +135,13 @@ export const AppBottomSheet = forwardRef<
         { backgroundColor: c.surface },
         elevation.sheet,
       ]}
-      // Extend to max snap when keyboard opens; scroll view keeps focus visible.
       keyboardBehavior="extend"
       keyboardBlurBehavior="restore"
       android_keyboardInputMode="adjustResize"
       topInset={insets.top}
       enableDynamicSizing={false}
+      enableContentPanningGesture
+      enableHandlePanningGesture
       enableBlurKeyboardOnGesture
     >
       <View style={[styles.header, { borderBottomColor: c.border }]}>
@@ -147,24 +151,27 @@ export const AppBottomSheet = forwardRef<
         <SheetCloseButton color={c.muted} />
       </View>
       {scrollable ? (
-        <BottomSheetKeyboardAwareScrollView
+        <BottomSheetScrollView
           style={styles.body}
           contentContainerStyle={[
             styles.bodyContent,
-            { paddingBottom: footerHeight + spacing.lg },
+            { paddingBottom: footerHeight + spacing.xl },
           ]}
           keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator
           showsHorizontalScrollIndicator={false}
-          bottomOffset={footerHeight + 24}
-          extraKeyboardSpace={24}
           bounces
+          nestedScrollEnabled
         >
           {children}
-        </BottomSheetKeyboardAwareScrollView>
+        </BottomSheetScrollView>
       ) : (
         <BottomSheetView
-          style={[styles.body, styles.bodyContent, { paddingBottom: footerHeight }]}
+          style={[
+            styles.body,
+            styles.bodyContent,
+            { paddingBottom: footerHeight },
+          ]}
         >
           {children}
         </BottomSheetView>
@@ -196,6 +203,7 @@ const styles = StyleSheet.create({
   bodyContent: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
+    flexGrow: 1,
   },
   footer: {
     borderTopWidth: StyleSheet.hairlineWidth,

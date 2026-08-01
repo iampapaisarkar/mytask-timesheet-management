@@ -22,6 +22,9 @@ import {
   type ProfileFormValues,
 } from "@mytask/validation";
 import { FormKeyboardScroll } from "../components/FormKeyboardScroll";
+import {
+  GlobalPhoneInput,
+} from "../components/GlobalPhoneInput";
 import { isTracking } from "../services/trackingSession";
 import { useAuthStore } from "../store/authStore";
 import { useThemeStore } from "../store/themeStore";
@@ -64,11 +67,15 @@ export function ProfileScreen() {
     handleSubmit,
     reset,
     setValue,
+    watch,
     formState: { errors, isSubmitting, isDirty },
   } = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: profileDefaults(user),
   });
+
+  const phoneCountryCode = watch("phone_country_code");
+  const phoneCountryIso = watch("phone_country_iso");
 
   useEffect(() => {
     reset(profileDefaults(user));
@@ -221,30 +228,30 @@ export function ProfileScreen() {
         <Controller
           control={control}
           name="phone_number"
-          render={({ field: { onChange, onBlur, value } }) => (
+          render={({ field: { value } }) => (
             <View style={styles.field}>
-              <Text style={[styles.fieldLabel, { color: c.muted }]}>
-                Phone (E.164, e.g. +61412345678)
-              </Text>
-              <TextInput
-                style={inputStyle}
-                value={value || ""}
-                onChangeText={(text) => {
-                  onChange(text);
-                  const parsed = phoneValueFromE164(text);
-                  setValue("phone_country_code", parsed.phone_country_code);
-                  setValue("phone_country_iso", parsed.phone_country_iso);
+              <GlobalPhoneInput
+                label="Phone"
+                value={{
+                  phone_number: value || null,
+                  phone_country_code: phoneCountryCode || null,
+                  phone_country_iso: phoneCountryIso || null,
                 }}
-                onBlur={onBlur}
-                placeholderTextColor={c.muted}
-                keyboardType="phone-pad"
-                autoCapitalize="none"
+                onChange={(phone) => {
+                  setValue("phone_number", phone.phone_number || "", {
+                    shouldDirty: true,
+                  });
+                  setValue(
+                    "phone_country_code",
+                    phone.phone_country_code,
+                    { shouldDirty: true },
+                  );
+                  setValue("phone_country_iso", phone.phone_country_iso, {
+                    shouldDirty: true,
+                  });
+                }}
+                error={errors.phone_number?.message}
               />
-              {errors.phone_number ? (
-                <Text style={[styles.fieldError, { color: c.negative }]}>
-                  {errors.phone_number.message}
-                </Text>
-              ) : null}
             </View>
           )}
         />

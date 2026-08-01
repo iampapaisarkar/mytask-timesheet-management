@@ -8,6 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import {
   emptyPhoneValue,
   formatPhoneDisplay,
@@ -29,6 +30,8 @@ export type GlobalPhoneInputProps = {
   disabled?: boolean;
   error?: string;
   onChange: (value: PhoneValue) => void;
+  /** Prefer BottomSheetTextInput when rendered inside AppBottomSheet. */
+  inBottomSheet?: boolean;
 };
 
 /**
@@ -44,8 +47,10 @@ export function GlobalPhoneInput({
   disabled,
   error,
   onChange,
+  inBottomSheet = false,
 }: GlobalPhoneInputProps) {
   const c = useThemeStore((s) => s.colors);
+  const Input = inBottomSheet ? BottomSheetTextInput : TextInput;
   const [pickerOpen, setPickerOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [touched, setTouched] = useState(false);
@@ -108,16 +113,18 @@ export function GlobalPhoneInput({
   return (
     <View style={styles.wrap}>
       {label ? (
-        <Text style={[styles.label, { color: c.text }]}>
+        <Text style={[styles.label, { color: c.muted }]}>
           {label}
-          {required ? <Text style={{ color: c.negative || "#ef4444" }}> *</Text> : null}
+          {required ? (
+            <Text style={{ color: c.negative || "#ef4444" }}> *</Text>
+          ) : null}
         </Text>
       ) : null}
       <View
         style={[
           styles.row,
           {
-            backgroundColor: c.surface,
+            backgroundColor: c.bg,
             borderColor: localError ? c.negative || "#ef4444" : c.border,
           },
         ]}
@@ -130,9 +137,11 @@ export function GlobalPhoneInput({
           style={styles.countryBtn}
         >
           <Text style={{ fontSize: 18 }}>{countryFlagEmoji(iso)}</Text>
-          <Text style={{ color: c.text, marginLeft: 6 }}>{dial}</Text>
+          <Text style={{ color: c.text, marginLeft: 6, fontWeight: "600" }}>
+            {dial}
+          </Text>
         </Pressable>
-        <TextInput
+        <Input
           editable={!disabled}
           keyboardType="phone-pad"
           value={nationalDisplay}
@@ -165,11 +174,14 @@ export function GlobalPhoneInput({
                 styles.search,
                 { color: c.text, borderColor: c.border, backgroundColor: c.bg },
               ]}
+              autoCorrect={false}
+              autoCapitalize="none"
             />
             <FlatList
               data={countries}
               keyExtractor={(item) => item.iso}
               keyboardShouldPersistTaps="handled"
+              style={{ flexGrow: 0 }}
               renderItem={({ item }) => (
                 <Pressable
                   style={styles.countryRow}
@@ -227,8 +239,12 @@ export function GlobalPhoneDisplay({
 export { emptyPhoneValue };
 
 const styles = StyleSheet.create({
-  wrap: { width: "100%", gap: 6 },
-  label: { fontSize: 14, fontWeight: "600" },
+  wrap: { width: "100%", marginBottom: 4 },
+  label: {
+    fontSize: 13,
+    fontWeight: "600",
+    marginBottom: 6,
+  },
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -244,9 +260,10 @@ const styles = StyleSheet.create({
     borderRightWidth: StyleSheet.hairlineWidth,
     borderRightColor: "#9993",
     marginRight: 8,
+    paddingVertical: 8,
   },
-  input: { flex: 1, paddingVertical: 10, fontSize: 16 },
-  error: { fontSize: 12 },
+  input: { flex: 1, paddingVertical: 12, fontSize: 16, minWidth: 0 },
+  error: { fontSize: 12, marginTop: 4 },
   modalBackdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",

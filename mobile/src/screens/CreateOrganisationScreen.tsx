@@ -28,6 +28,7 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { FormKeyboardScroll } from "../components/FormKeyboardScroll";
+import { GlobalPhoneInput } from "../components/GlobalPhoneInput";
 import { PlacesAddressInput } from "../components/PlacesAddressInput";
 import { useAuthStore } from "../store/authStore";
 import { useOrganisationStore } from "../store/organisationStore";
@@ -47,7 +48,7 @@ export function CreateOrganisationScreen() {
   const [error, setError] = useState<string | null>(null);
   const [address, setAddress] = useState<GlobalAddress>(emptyGlobalAddress());
 
-  const { control, handleSubmit, setValue } =
+  const { control, handleSubmit, setValue, watch } =
     useForm<CreateOrganisationFormValues>({
       resolver: zodResolver(createOrganisationSchema),
       defaultValues: {
@@ -70,6 +71,8 @@ export function CreateOrganisationScreen() {
         postal_code: "",
       },
     });
+  const phoneCountryCode = watch("phone_country_code");
+  const phoneCountryIso = watch("phone_country_iso");
 
   function syncAddressFields(next: GlobalAddress) {
     setAddress(next);
@@ -263,32 +266,31 @@ export function CreateOrganisationScreen() {
         <Controller
           control={control}
           name="phone_number"
-          render={({ field: { onChange, value }, fieldState }) => (
+          render={({ field: { value }, fieldState }) => (
             <View style={styles.field}>
-              <Text style={[styles.label, { color: c.muted }]}>
-                Phone (E.164, e.g. +61412345678)
-              </Text>
-              <TextInput
-                autoCapitalize="none"
-                keyboardType="phone-pad"
-                style={[
-                  styles.input,
-                  {
-                    borderColor: c.border,
-                    backgroundColor: c.surface,
-                    color: c.text,
-                  },
-                ]}
-                value={value}
-                onChangeText={onChange}
-                placeholderTextColor={c.muted}
-                editable={!busy}
+              <GlobalPhoneInput
+                label="Phone"
+                value={{
+                  phone_number: value || null,
+                  phone_country_code: phoneCountryCode || null,
+                  phone_country_iso: phoneCountryIso || null,
+                }}
+                onChange={(phone) => {
+                  setValue("phone_number", phone.phone_number || "", {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  });
+                  setValue("phone_country_code", phone.phone_country_code, {
+                    shouldDirty: true,
+                  });
+                  setValue("phone_country_iso", phone.phone_country_iso, {
+                    shouldDirty: true,
+                  });
+                }}
+                required
+                disabled={busy}
+                error={fieldState.error?.message}
               />
-              {fieldState.error ? (
-                <Text style={[styles.error, { color: c.negative }]}>
-                  {fieldState.error.message}
-                </Text>
-              ) : null}
             </View>
           )}
         />
