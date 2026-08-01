@@ -4,7 +4,7 @@
 
 ### Fixed
 
-- **List pagination totals:** Jobs, Customers, Holiday calendars, and Payroll calendars list APIs now use the Sequelize `count` for `total_rows` / `total_pages` (were incorrectly using the current page length, so Next stayed disabled after a full page of 10).
+- **List pagination totals:** Jobs, Customers, Holiday calendars, and Payroll calendars list APIs now use the Sequelize `count` for `total_rows` / `total_pages` (were incorrectly using the current page length, so Next stayed disabled after a full page of 10). Jobs / Payroll calendars count uses a table-qualified `col` (`Jobs.id` / `PayrollCalendars.id`) to avoid ambiguous `DISTINCT(id)` with joins.
 
 ### Added
 

@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
+import { BottomSheetTextInput } from "../ui/AppBottomSheet";
 import {
   emptyPhoneValue,
   formatPhoneDisplay,

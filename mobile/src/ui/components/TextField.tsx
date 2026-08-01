@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { forwardRef, type ReactNode } from "react";
 import {
   StyleSheet,
   Text,
@@ -6,8 +6,10 @@ import {
   View,
   type StyleProp,
   type TextInputProps,
+  type TextStyle,
   type ViewStyle,
 } from "react-native";
+import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import { radii, spacing, typography } from "@mytask/theme";
 import { useThemeStore } from "../../store/themeStore";
 import { touchTarget } from "../tokens";
@@ -18,19 +20,34 @@ type Props = {
   hint?: string;
   leftAccessory?: ReactNode;
   containerStyle?: StyleProp<ViewStyle>;
-} & TextInputProps;
+  inputStyle?: StyleProp<TextStyle>;
+  /**
+   * Use `"bottomSheet"` inside AppBottomSheet / BottomSheetModal so the sheet
+   * can lift with the keypad (same as Grubly GInput inputType="bottomSheet").
+   */
+  inputType?: "default" | "bottomSheet";
+} & Omit<TextInputProps, "style"> & {
+    style?: StyleProp<TextStyle>;
+  };
 
-export function TextField({
-  label,
-  error,
-  hint,
-  leftAccessory,
-  containerStyle,
-  style,
-  ...rest
-}: Props) {
+export const TextField = forwardRef<TextInput, Props>(function TextField(
+  {
+    label,
+    error,
+    hint,
+    leftAccessory,
+    containerStyle,
+    inputStyle,
+    inputType = "default",
+    style,
+    ...rest
+  },
+  ref,
+) {
   const c = useThemeStore((s) => s.colors);
   const hasError = Boolean(error);
+  const InputComponent =
+    inputType === "bottomSheet" ? BottomSheetTextInput : TextInput;
 
   return (
     <View style={[styles.wrap, containerStyle]}>
@@ -47,9 +64,10 @@ export function TextField({
         ]}
       >
         {leftAccessory}
-        <TextInput
+        <InputComponent
+          ref={ref as never}
           placeholderTextColor={c.subtle}
-          style={[styles.input, { color: c.text }, style]}
+          style={[styles.input, { color: c.text }, inputStyle, style]}
           {...rest}
         />
       </View>
@@ -60,7 +78,9 @@ export function TextField({
       ) : null}
     </View>
   );
-}
+});
+
+TextField.displayName = "TextField";
 
 const styles = StyleSheet.create({
   wrap: { marginBottom: spacing.md },

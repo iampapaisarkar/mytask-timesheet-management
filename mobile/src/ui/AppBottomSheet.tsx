@@ -1,9 +1,4 @@
-import {
-  forwardRef,
-  useCallback,
-  useMemo,
-  type ReactNode,
-} from "react";
+import { forwardRef, useCallback, useMemo, useRef, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import {
   BottomSheetBackdrop,
@@ -11,19 +6,23 @@ import {
   BottomSheetModal,
   BottomSheetScrollView,
   BottomSheetTextInput,
-  BottomSheetView,
   useBottomSheetModal,
   type BottomSheetBackdropProps,
   type BottomSheetFooterProps,
   type BottomSheetModalProps,
 } from "@gorhom/bottom-sheet";
+import { useKeyboardController } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radii, spacing } from "@mytask/theme";
 import { useThemeStore } from "../store/themeStore";
 import { elevation } from "./tokens";
 import { CloseIcon } from "./icons";
 
+/** Use this (or TextField inputType="bottomSheet") for every field in a sheet. */
 export { BottomSheetTextInput };
+
+/** Nested sheets (e.g. MobileSelect) must not re-enable KeyboardProvider early. */
+let openSheetCount = 0;
 
 function SheetCloseButton({ color }: { color: string }) {
   const { dismiss } = useBottomSheetModal();
@@ -44,7 +43,9 @@ export type AppBottomSheetProps = {
   title?: string;
   children: ReactNode;
   snapPoints?: (string | number)[];
+  /** Sticky Save/Create above the keypad. */
   footer?: ReactNode;
+  /** @deprecated Always scrolls; kept for call-site compatibility. */
   scrollable?: boolean;
   onDismiss?: () => void;
   enablePanDownToClose?: boolean;
@@ -52,9 +53,9 @@ export type AppBottomSheetProps = {
 };
 
 /**
- * Form sheet with reliable vertical scroll + keyboard-safe footer.
- * Uses gorhom BottomSheetScrollView (not KeyboardAware HOC) so content
- * always scrolls; keyboardBehavior=extend keeps fields reachable.
+ * Grubly keyboard pattern for form sheets:
+ * interactive + BottomSheetScrollView + BottomSheetTextInput + footer.
+ * Disables KeyboardProvider while open so gorhom receives real keyboard events.
  */
 export const AppBottomSheet = forwardRef<
   BottomSheetModal,
@@ -65,7 +66,6 @@ export const AppBottomSheet = forwardRef<
     children,
     snapPoints: snapPointsProp,
     footer,
-    scrollable = true,
     onDismiss,
     enablePanDownToClose = true,
     stackBehavior = "push",
@@ -74,14 +74,14 @@ export const AppBottomSheet = forwardRef<
 ) {
   const c = useThemeStore((s) => s.colors);
   const insets = useSafeAreaInsets();
+  const { setEnabled: setKeyboardControllerEnabled } = useKeyboardController();
+  const isOpenRef = useRef(false);
+
   const snapPoints = useMemo(
-    () => snapPointsProp ?? ["70%", "92%"],
+    () => snapPointsProp ?? ["75%", "92%"],
     [snapPointsProp],
   );
-
-  const footerHeight = footer
-    ? 72 + Math.max(insets.bottom, spacing.sm)
-    : Math.max(insets.bottom, spacing.md);
+  const initialIndex = Math.max(0, snapPoints.length - 1);
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -119,13 +119,43 @@ export const AppBottomSheet = forwardRef<
     [c.border, c.surface, footer, insets.bottom],
   );
 
+  const setSheetOpen = useCallback(
+    (open: boolean) => {
+      if (open === isOpenRef.current) return;
+      isOpenRef.current = open;
+      if (open) {
+        openSheetCount += 1;
+        setKeyboardControllerEnabled(false);
+      } else {
+        openSheetCount = Math.max(0, openSheetCount - 1);
+        if (openSheetCount === 0) {
+          setKeyboardControllerEnabled(true);
+        }
+      }
+    },
+    [setKeyboardControllerEnabled],
+  );
+
+  const handleChange = useCallback(
+    (index: number) => {
+      setSheetOpen(index >= 0);
+    },
+    [setSheetOpen],
+  );
+
+  const handleDismiss = useCallback(() => {
+    setSheetOpen(false);
+    onDismiss?.();
+  }, [onDismiss, setSheetOpen]);
+
   return (
     <BottomSheetModal
       ref={ref}
       snapPoints={snapPoints}
-      index={0}
+      index={initialIndex}
       enablePanDownToClose={enablePanDownToClose}
-      onDismiss={onDismiss}
+      onDismiss={handleDismiss}
+      onChange={handleChange}
       stackBehavior={stackBehavior}
       backdropComponent={renderBackdrop}
       footerComponent={footer ? renderFooter : undefined}
@@ -135,47 +165,39 @@ export const AppBottomSheet = forwardRef<
         { backgroundColor: c.surface },
         elevation.sheet,
       ]}
-      keyboardBehavior="extend"
+      keyboardBehavior="interactive"
       keyboardBlurBehavior="restore"
       android_keyboardInputMode="adjustResize"
       topInset={insets.top}
       enableDynamicSizing={false}
       enableContentPanningGesture
       enableHandlePanningGesture
-      enableBlurKeyboardOnGesture
     >
-      <View style={[styles.header, { borderBottomColor: c.border }]}>
-        <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>
-          {title || ""}
-        </Text>
-        <SheetCloseButton color={c.muted} />
-      </View>
-      {scrollable ? (
-        <BottomSheetScrollView
-          style={styles.body}
-          contentContainerStyle={[
-            styles.bodyContent,
-            { paddingBottom: footerHeight + spacing.xl },
-          ]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator
-          showsHorizontalScrollIndicator={false}
-          bounces
-          nestedScrollEnabled
-        >
-          {children}
-        </BottomSheetScrollView>
-      ) : (
-        <BottomSheetView
-          style={[
-            styles.body,
-            styles.bodyContent,
-            { paddingBottom: footerHeight },
-          ]}
-        >
-          {children}
-        </BottomSheetView>
-      )}
+      <BottomSheetScrollView
+        enableFooterMarginAdjustment={Boolean(footer)}
+        contentContainerStyle={[
+          styles.bodyContent,
+          {
+            paddingBottom:
+              (footer
+                ? 72 + Math.max(insets.bottom, spacing.sm)
+                : Math.max(insets.bottom, spacing.sm)) + spacing.lg,
+          },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator
+        showsHorizontalScrollIndicator={false}
+        bounces
+        nestedScrollEnabled
+      >
+        <View style={[styles.header, { borderBottomColor: c.border }]}>
+          <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>
+            {title || ""}
+          </Text>
+          <SheetCloseButton color={c.muted} />
+        </View>
+        {children}
+      </BottomSheetScrollView>
     </BottomSheetModal>
   );
 });
@@ -188,8 +210,8 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: spacing.lg,
     paddingBottom: spacing.sm,
+    marginBottom: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   title: { flex: 1, fontSize: 17, fontWeight: "700" },
@@ -199,11 +221,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  body: { flex: 1 },
   bodyContent: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    flexGrow: 1,
+    paddingTop: spacing.sm,
   },
   footer: {
     borderTopWidth: StyleSheet.hairlineWidth,
