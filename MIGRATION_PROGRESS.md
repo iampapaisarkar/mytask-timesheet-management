@@ -36,25 +36,28 @@
 | Stripe subscription system | ✅ Done | 2026-07-31 | Free/Pro; Checkout; webhooks; usage limits; daily expiry cron + 6h Stripe sync; payment-fail → Free + reason emails; web+mobile billing UI; `docs/STRIPE_SUBSCRIPTIONS.md` |
 | Firebase Google Sign-In (web + mobile) | ✅ Done | 2026-08-01 | Web popup/redirect; native Google Sign-In; Firebase persistence; see `docs/GOOGLE_SIGN_IN.md` |
 | Mobile parity + UX overhaul (phase 1) | ✅ Done | 2026-08-01 | Safe areas / premium tab bar / nav transitions; `@gorhom/bottom-sheet`; Google Maps + minimal style; timesheet day mobile redesign + save; TM detail approve/reject; Reports/Payouts/System logs; auth signup/forgot; settings hubs; create org |
+| Mobile parity phase 2 | ✅ Done | 2026-08-01 | Org invitation deep links + pending inbox; Login/Signup invitation_token; payout workflow + eligible create; holiday/payroll calendar create/edit; Places address; employee/customer/job create+edit |
+| Mobile ↔ web feature alignment | ✅ Done | 2026-08-01 | Removed non-web earning rates from mobile settings; Help/Terms/Privacy on main app (web+mobile, shared copy); payout detail; reports history/table/PDF/email; Universal Links host `mytaskapp.iampapaisarkar.dev` |
 
 ## Vue ↔ Web ↔ Mobile gap matrix
 
 | Vue route / surface | Web | Mobile | Notes |
 |---------------------|-----|--------|-------|
 | `/` org picker + create | ✅ | ✅ | Create organisation screen |
-| `/org-invitation` | ✅ | — | Token verify + accept (deep link TBD) |
-| Pending invitations inbox | ✅ | — | HomePage |
+| `/org-invitation` | ✅ | ✅ | Token verify + accept; HTTPS Universal Links + `mytask://` |
+| Pending invitations inbox | ✅ | ✅ | HomeScreen Accept/Reject |
 | Notifications chrome | ✅ | ✅ | List + deep-link to TM detail |
 | Route/action ACL | ✅ | Partial | OrgHome gates + create gates; stack ACL TBD |
 | `/org/:code` home + charts | ✅ | ✅ | KPIs + weekly bars + ClockInOut |
 | ClockInOut tracking | Notice (correct) | ✅ | BGL + fallback |
 | `timesheet` list/detail/day | ✅ | ✅ | Day editor + segmented Sheets/Timeline/Map |
 | `timesheet-management` | ✅ | ✅ | List + detail approve/reject/revert/submit |
-| `reports` | ✅ | ✅ | Pay report request flow |
-| `payouts` | ✅ | ✅ | List + pagination |
-| `settings` + CRUD | ✅ | Partial | Hub + org/holiday/payroll lists; rates TBD |
-| `employees` wizard | ✅ | Partial | List + create sheet; full edit/invite TBD |
-| `customers` / `jobs` / MG | ✅ | Partial | List + create sheets; Places address TBD |
+| `reports` | ✅ | ✅ | History, daily table, PDF share, email |
+| `payouts` | ✅ | ✅ | List tap → detail + audit; workflow + eligible create |
+| `settings` hub | ✅ | ✅ | Org details, holiday, payroll only (matches web) |
+| Help / Terms / Privacy | ✅ | ✅ | Main app routes (not under org settings) |
+| `employees` wizard | ✅ | ✅ | List + create/edit sheets; outbound invite on create |
+| `customers` / `jobs` / MG | ✅ | ✅ | List + create/edit sheets + Places address |
 | Timesheet day MapView | ✅ | ✅ | Google Maps only + minimal custom style |
 | System logs | ✅ | ✅ | Internal/external/email tabs |
 | Signup / forgot password | ✅ | ✅ | Firebase + backend signup |
@@ -63,6 +66,8 @@
 
 **Not in Vue (intentionally omitted):** standalone Live Tracking, Attendance, Schedule pages.
 
+**Not on web Settings (do not add to mobile):** Earning Rates / Earning Rate Rules UI.
+
 ## Current focus
 
-Mobile parity phase 1 shipped (nav chrome, maps, day editor, TM approvals, reports/payouts/logs, auth onboarding). Remaining: org invitation deep links, pending invitations inbox, employee/customer/job full edit wizards + address picker, settings CRUD write paths, profile edit, FCM push, deeper payout actions.
+Mobile ↔ web alignment for settings, legal, payouts detail, reports, and Universal Links. Remaining: FCM push on mobile; payout date-range filters polish.

@@ -251,9 +251,18 @@ export function AppRouter() {
                       element={<PayrollCalendarsPage />}
                     />
                   </Route>
-                  <Route path="settings/help" element={<HelpFaqPage />} />
-                  <Route path="settings/terms" element={<TermsPage />} />
-                  <Route path="settings/privacy" element={<PrivacyPage />} />
+                  <Route
+                    path="settings/help"
+                    element={<Navigate to="/help" replace />}
+                  />
+                  <Route
+                    path="settings/terms"
+                    element={<Navigate to="/terms" replace />}
+                  />
+                  <Route
+                    path="settings/privacy"
+                    element={<Navigate to="/privacy" replace />}
+                  />
 
                   <Route
                     element={

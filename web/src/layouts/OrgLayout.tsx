@@ -281,69 +281,54 @@ export function OrgLayout() {
           >
             {user ? displayName(user) : "Profile"}
           </Link>
-          <NavLink
-            to={ROUTES.settingsHelp(orgCode)}
+          <Link
+            to={ROUTES.help}
             title="Help & FAQ"
             onClick={() => setMobileOpen(false)}
             onMouseEnter={() => void HelpFaqPage.preload()}
             onFocus={() => void HelpFaqPage.preload()}
-            className={({ isActive }) =>
-              clsx(
-                "mt-focus mt-0.5 flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium transition",
-                collapsed && "md:justify-center md:px-2",
-                isActive
-                  ? "bg-white/15 text-white"
-                  : "text-white/60 hover:bg-white/10 hover:text-white",
-              )
-            }
+            className={clsx(
+              "mt-focus mt-0.5 flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium text-white/60 transition hover:bg-white/10 hover:text-white",
+              collapsed && "md:justify-center md:px-2",
+            )}
           >
             <HelpCircle size={16} className="shrink-0" />
             <span className={clsx("truncate", collapsed && "md:hidden")}>
               Help & FAQ
             </span>
-          </NavLink>
-          <NavLink
-            to={ROUTES.settingsTerms(orgCode)}
+          </Link>
+          <Link
+            to={ROUTES.terms}
             title="Terms & Conditions"
             onClick={() => setMobileOpen(false)}
             onMouseEnter={() => void TermsPage.preload()}
             onFocus={() => void TermsPage.preload()}
-            className={({ isActive }) =>
-              clsx(
-                "mt-focus flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium transition",
-                collapsed && "md:justify-center md:px-2",
-                isActive
-                  ? "bg-white/15 text-white"
-                  : "text-white/60 hover:bg-white/10 hover:text-white",
-              )
-            }
+            className={clsx(
+              "mt-focus flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium text-white/60 transition hover:bg-white/10 hover:text-white",
+              collapsed && "md:justify-center md:px-2",
+            )}
           >
             <FileText size={16} className="shrink-0" />
             <span className={clsx("truncate", collapsed && "md:hidden")}>
               Terms & Conditions
             </span>
-          </NavLink>
-          <NavLink
-            to={ROUTES.settingsPrivacy(orgCode)}
+          </Link>
+          <Link
+            to={ROUTES.privacy}
             title="Privacy Policy"
             onClick={() => setMobileOpen(false)}
             onMouseEnter={() => void PrivacyPage.preload()}
             onFocus={() => void PrivacyPage.preload()}
-            className={({ isActive }) =>
-              clsx(
-                "mt-focus flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium transition",
-                collapsed && "md:justify-center md:px-2",
-                isActive
-                  ? "bg-white/15 text-white"
-                  : "text-white/60 hover:bg-white/10 hover:text-white",
-              )
-            }
+            className={clsx(
+              "mt-focus flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium text-white/60 transition hover:bg-white/10 hover:text-white",
+              collapsed && "md:justify-center md:px-2",
+            )}
           >
             <Shield size={16} className="shrink-0" />
             <span className={clsx("truncate", collapsed && "md:hidden")}>
               Privacy Policy
             </span>
-          </NavLink>
+          </Link>
 
           {/* Mobile-only: theme + logout live in the drawer so the top bar stays clean */}
           <div className="mt-2 flex flex-col gap-1 border-t border-white/10 pt-2 md:hidden">

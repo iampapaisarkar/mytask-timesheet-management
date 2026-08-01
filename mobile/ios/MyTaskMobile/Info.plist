@@ -36,6 +36,16 @@
 				<string>com.googleusercontent.apps.1069285546437-ibmdsf73sop9dp8oll6ltspmknrgcit9</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>mytask</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>mytask</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>

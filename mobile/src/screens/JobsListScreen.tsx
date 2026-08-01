@@ -13,7 +13,12 @@ import {
 } from "react-native";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useCreateJob, useCustomers, useJobs } from "@mytask/hooks";
+import {
+  useCreateJob,
+  useCustomers,
+  useJobs,
+  useUpdateJob,
+} from "@mytask/hooks";
 import { DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing } from "@mytask/theme";
@@ -22,8 +27,14 @@ import {
   listPagination,
   listRows,
   phoneValueFromE164,
+  emptyGlobalAddress,
+  hasAddressContent,
+  toAddressApiPayload,
+  fromAddressRecord,
+  type GlobalAddress,
 } from "@mytask/utils";
 import { ListPager } from "../components/ListPager";
+import { PlacesAddressInput } from "../components/PlacesAddressInput";
 import { SearchBar } from "../components/SearchBar";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import type { RootStackParamList } from "../navigation/RootNavigator";
@@ -38,8 +49,14 @@ type JobRow = {
   id?: number | string;
   name?: string;
   details?: { id?: number; name?: string };
-  customer?: { id?: number; name?: string } | null;
-  site_contact_name?: string;
+  customer?: { id?: number | string; name?: string } | null;
+  customer_id?: number | string | null;
+  address?: Record<string, unknown> | null;
+  radius?: number | string | null;
+  site_contact_name?: string | null;
+  site_contact_email?: string | null;
+  site_contact_phone_number?: string | null;
+  site_contact_phone_country_iso?: string | null;
 };
 
 type CustomerRow = {
@@ -50,9 +67,7 @@ type CustomerRow = {
 type CreateForm = {
   name: string;
   customerId: string;
-  address: string;
-  latitude: string;
-  longitude: string;
+  address: GlobalAddress;
   radius: string;
   siteContactName: string;
   siteContactEmail: string;
@@ -62,14 +77,41 @@ type CreateForm = {
 const emptyForm = (): CreateForm => ({
   name: "",
   customerId: "",
-  address: "",
-  latitude: "",
-  longitude: "",
+  address: emptyGlobalAddress(),
   radius: "100",
   siteContactName: "",
   siteContactEmail: "",
   siteContactPhone: "",
 });
+
+function jobId(row: JobRow): number | string | undefined {
+  return row.details?.id ?? row.id;
+}
+
+function jobName(row: JobRow): string {
+  return row.details?.name || row.name || "";
+}
+
+function formFromJob(row: JobRow): CreateForm {
+  const phone = phoneValueFromE164(
+    row.site_contact_phone_number,
+    row.site_contact_phone_country_iso,
+  );
+  return {
+    name: jobName(row),
+    customerId:
+      row.customer?.id != null
+        ? String(row.customer.id)
+        : row.customer_id != null
+          ? String(row.customer_id)
+          : "",
+    address: fromAddressRecord(row.address || null),
+    radius: row.radius != null ? String(row.radius) : "100",
+    siteContactName: row.site_contact_name || "",
+    siteContactEmail: row.site_contact_email || "",
+    siteContactPhone: phone.phone_number || row.site_contact_phone_number || "",
+  };
+}
 
 export function JobsListScreen(_props: Props) {
   const [page, setPage] = useState(1);
@@ -77,16 +119,21 @@ export function JobsListScreen(_props: Props) {
   const [customerId, setCustomerId] = useState<string>("");
   const [filterOpen, setFilterOpen] = useState(false);
   const [form, setForm] = useState<CreateForm>(emptyForm);
+  const [editing, setEditing] = useState<JobRow | null>(null);
   const [customerPickerOpen, setCustomerPickerOpen] = useState(false);
-  const createSheetRef = useRef<BottomSheetModal>(null);
+  const sheetRef = useRef<BottomSheetModal>(null);
   const debouncedSearch = useDebouncedValue(search.trim(), 400);
   const organisation = useOrganisationStore((s) => s.organisation);
   const role = organisation?.role || organisation?.role_code;
   const acl = getOrganisationAcl(role);
   const canCreate = can(acl, "job", "create");
+  const canEdit = can(acl, "job", "edit");
   const c = useThemeStore((s) => s.colors);
   const toast = useToastStore();
   const createMutation = useCreateJob();
+  const updateMutation = useUpdateJob();
+  const editingId = editing ? jobId(editing) : undefined;
+  const isEdit = editingId != null;
 
   useEffect(() => {
     setPage(1);
@@ -120,11 +167,19 @@ export function JobsListScreen(_props: Props) {
   }, []);
 
   function openCreate() {
+    setEditing(null);
     setForm(emptyForm());
-    createSheetRef.current?.present();
+    sheetRef.current?.present();
   }
 
-  async function handleCreate() {
+  function openEdit(row: JobRow) {
+    if (!canEdit || jobId(row) == null) return;
+    setEditing(row);
+    setForm(formFromJob(row));
+    sheetRef.current?.present();
+  }
+
+  async function handleSubmit() {
     if (!form.name.trim()) {
       toast.warning("Name required");
       return;
@@ -133,19 +188,12 @@ export function JobsListScreen(_props: Props) {
       toast.warning("Customer required");
       return;
     }
-    const addressLine = form.address.trim();
-    if (!addressLine) {
+    if (!hasAddressContent(form.address)) {
       toast.warning("Address required");
       return;
     }
-    const lat = Number(form.latitude);
-    const lng = Number(form.longitude);
-    if (!form.latitude.trim() || Number.isNaN(lat)) {
-      toast.warning("Latitude required");
-      return;
-    }
-    if (!form.longitude.trim() || Number.isNaN(lng)) {
-      toast.warning("Longitude required");
+    if (form.address.latitude == null || form.address.longitude == null) {
+      toast.warning("Select an address with coordinates");
       return;
     }
     if (!form.radius.trim()) {
@@ -156,14 +204,7 @@ export function JobsListScreen(_props: Props) {
     const payload: Record<string, unknown> = {
       name: form.name.trim(),
       customer: { id: Number(form.customerId) },
-      address: {
-        address_1: addressLine,
-        address_line_1: addressLine,
-        formatted_address: addressLine,
-        street: addressLine,
-        latitude: lat,
-        longitude: lng,
-      },
+      address: toAddressApiPayload(form.address, { includeCoordinates: true }),
       radius: Number(form.radius),
       site_contact_name: form.siteContactName.trim() || null,
       site_contact_email: form.siteContactEmail.trim() || null,
@@ -172,12 +213,21 @@ export function JobsListScreen(_props: Props) {
       site_contact_phone_country_iso: phone.phone_country_iso,
     };
     try {
-      await createMutation.mutateAsync(payload);
-      toast.success("Job created");
-      createSheetRef.current?.dismiss();
+      if (isEdit && editingId != null) {
+        await updateMutation.mutateAsync({ id: editingId, payload });
+        toast.success("Job updated");
+      } else {
+        await createMutation.mutateAsync(payload);
+        toast.success("Job created");
+      }
+      sheetRef.current?.dismiss();
       setForm(emptyForm());
+      setEditing(null);
     } catch (err) {
-      toast.error("Create failed", getErrorMessage(err));
+      toast.error(
+        isEdit ? "Update failed" : "Create failed",
+        getErrorMessage(err),
+      );
     }
   }
 
@@ -192,7 +242,7 @@ export function JobsListScreen(_props: Props) {
     );
   }
 
-  const pending = createMutation.isPending;
+  const pending = createMutation.isPending || updateMutation.isPending;
   const inputStyle = [
     styles.input,
     { borderColor: c.border, backgroundColor: c.bg, color: c.text },
@@ -274,13 +324,15 @@ export function JobsListScreen(_props: Props) {
             />
           }
           renderItem={({ item }) => {
-            const name = item.details?.name || item.name || `Job #${item.id}`;
+            const name = jobName(item) || `Job #${jobId(item) ?? ""}`;
             return (
-              <View
+              <TouchableOpacity
                 style={[
                   styles.card,
                   { backgroundColor: c.surface, borderColor: c.border },
                 ]}
+                disabled={!canEdit}
+                onPress={() => openEdit(item)}
               >
                 <Text style={[styles.name, { color: c.text }]}>{name}</Text>
                 <Text style={{ color: c.muted }}>
@@ -289,16 +341,30 @@ export function JobsListScreen(_props: Props) {
                     ? ` · ${item.site_contact_name}`
                     : ""}
                 </Text>
-              </View>
+                {canEdit ? (
+                  <Text
+                    style={{
+                      color: c.primary,
+                      marginTop: 8,
+                      fontWeight: "600",
+                    }}
+                  >
+                    Edit
+                  </Text>
+                ) : null}
+              </TouchableOpacity>
             );
           }}
         />
       )}
 
       <AppBottomSheet
-        ref={createSheetRef}
-        title="Create job"
+        ref={sheetRef}
+        title={isEdit ? "Edit job" : "Create job"}
         snapPoints={["75%", "92%"]}
+        onDismiss={() => {
+          setEditing(null);
+        }}
         footer={
           <TouchableOpacity
             style={[
@@ -306,10 +372,16 @@ export function JobsListScreen(_props: Props) {
               { backgroundColor: c.primary, opacity: pending ? 0.6 : 1 },
             ]}
             disabled={pending}
-            onPress={() => void handleCreate()}
+            onPress={() => void handleSubmit()}
           >
             <Text style={styles.createBtnText}>
-              {pending ? "Creating…" : "Create"}
+              {pending
+                ? isEdit
+                  ? "Saving…"
+                  : "Creating…"
+                : isEdit
+                  ? "Save"
+                  : "Create"}
             </Text>
           </TouchableOpacity>
         }
@@ -334,36 +406,11 @@ export function JobsListScreen(_props: Props) {
             {formCustomer?.name || "Select customer"}
           </Text>
         </TouchableOpacity>
-        <Text style={[styles.fieldLabel, { color: c.muted }]}>
-          Site address *
-        </Text>
-        <BottomSheetTextInput
-          style={inputStyle}
+        <PlacesAddressInput
           value={form.address}
-          onChangeText={(address) => patchForm({ address })}
-          placeholderTextColor={c.muted}
-        />
-        <Text style={[styles.fieldLabel, { color: c.muted }]}>
-          Latitude *
-        </Text>
-        <BottomSheetTextInput
-          style={inputStyle}
-          value={form.latitude}
-          onChangeText={(latitude) => patchForm({ latitude })}
-          placeholder="-33.8688"
-          placeholderTextColor={c.muted}
-          keyboardType="decimal-pad"
-        />
-        <Text style={[styles.fieldLabel, { color: c.muted }]}>
-          Longitude *
-        </Text>
-        <BottomSheetTextInput
-          style={inputStyle}
-          value={form.longitude}
-          onChangeText={(longitude) => patchForm({ longitude })}
-          placeholder="151.2093"
-          placeholderTextColor={c.muted}
-          keyboardType="decimal-pad"
+          onChange={(address) => patchForm({ address })}
+          label="Site address *"
+          requireCoordinates
         />
         <Text style={[styles.fieldLabel, { color: c.muted }]}>
           Geofence radius (m) *

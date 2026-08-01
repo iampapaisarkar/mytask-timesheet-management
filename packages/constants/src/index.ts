@@ -51,9 +51,6 @@ export const ROUTES = {
     `/org/${orgCode}/settings/holiday-calendars`,
   payrollCalendars: (orgCode: string) =>
     `/org/${orgCode}/settings/payroll-calendars`,
-  settingsHelp: (orgCode: string) => `/org/${orgCode}/settings/help`,
-  settingsTerms: (orgCode: string) => `/org/${orgCode}/settings/terms`,
-  settingsPrivacy: (orgCode: string) => `/org/${orgCode}/settings/privacy`,
   employees: (orgCode: string) => `/org/${orgCode}/employees`,
   customers: (orgCode: string) => `/org/${orgCode}/customers`,
   jobs: (orgCode: string) => `/org/${orgCode}/jobs`,
@@ -283,3 +280,12 @@ export function formatHours(
     : String(Number(num.toFixed(2)));
   return `${text}h`;
 }
+
+export {
+  APP_WEB_HOST,
+  APP_WEB_ORIGIN,
+  FAQ_SECTIONS,
+  TERMS_SECTIONS,
+  PRIVACY_SECTIONS,
+} from "./legalContent";
+export type { FaqItem, FaqSection, LegalSection } from "./legalContent";

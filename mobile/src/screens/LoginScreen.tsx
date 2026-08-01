@@ -18,8 +18,7 @@ import { authApi } from "@mytask/api";
 import { spacing } from "@mytask/theme";
 import { getErrorMessage, getTimezone } from "@mytask/utils";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useAuthStore } from "../store/authStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
@@ -31,10 +30,12 @@ import {
 } from "../services/firebase";
 import { isFirebaseConfigured, isGoogleSignInConfigured } from "../config/env";
 import type { RootStackParamList } from "../navigation/RootNavigator";
+import { setPendingOrgInvitationToken } from "../navigation/navigationRef";
 
-export function LoginScreen() {
-  const navigation =
-    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+type Props = NativeStackScreenProps<RootStackParamList, "Login">;
+
+export function LoginScreen({ navigation, route }: Props) {
+  const invitationToken = route.params?.invitationToken?.trim() || "";
   const setSession = useAuthStore((s) => s.setSession);
   const c = useThemeStore((s) => s.colors);
   const toggleTheme = useThemeStore((s) => s.toggle);
@@ -58,7 +59,11 @@ export function LoginScreen() {
       email,
       platform: Platform.OS,
       timezone: getTimezone(),
+      ...(invitationToken ? { invitation_token: invitationToken } : {}),
     });
+    if (invitationToken) {
+      setPendingOrgInvitationToken(invitationToken);
+    }
     await setSession(token, response.data.data);
   }
 
@@ -132,7 +137,9 @@ export function LoginScreen() {
         </View>
         <Text style={[styles.title, { color: c.text }]}>Log in to myTask</Text>
         <Text style={[styles.subtitle, { color: c.muted }]}>
-          Track work, manage teams, stay in sync.
+          {invitationToken
+            ? "Sign in to accept your organisation invitation."
+            : "Track work, manage teams, stay in sync."}
         </Text>
 
         {googleEnabled ? (
@@ -265,7 +272,12 @@ export function LoginScreen() {
 
         <TouchableOpacity
           style={styles.linkRow}
-          onPress={() => navigation.navigate("Signup")}
+          onPress={() =>
+            navigation.navigate(
+              "Signup",
+              invitationToken ? { invitationToken } : undefined,
+            )
+          }
           disabled={busy}
         >
           <Text style={{ color: c.muted }}>
@@ -273,6 +285,32 @@ export function LoginScreen() {
             <Text style={{ color: c.primary, fontWeight: "700" }}>Sign up</Text>
           </Text>
         </TouchableOpacity>
+
+        <View style={styles.legalRow}>
+          {(
+            [
+              { label: "Help", kind: "help" as const },
+              { label: "Terms", kind: "terms" as const },
+              { label: "Privacy", kind: "privacy" as const },
+            ] as const
+          ).map((item, index) => (
+            <View key={item.kind} style={styles.legalItem}>
+              {index > 0 ? (
+                <Text style={{ color: c.muted }}> · </Text>
+              ) : null}
+              <TouchableOpacity
+                onPress={() =>
+                  navigation.navigate("Legal", { kind: item.kind })
+                }
+                disabled={busy}
+              >
+                <Text style={{ color: c.primary, fontWeight: "600", fontSize: 12 }}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -332,4 +370,12 @@ const styles = StyleSheet.create({
   },
   buttonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
   linkRow: { marginTop: spacing.md, alignItems: "center" },
+  legalRow: {
+    marginTop: spacing.lg,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  legalItem: { flexDirection: "row", alignItems: "center" },
 });

@@ -7,11 +7,17 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useHomeBootstrap } from "@mytask/hooks";
+import { organisationsApi } from "@mytask/api";
+import { queryKeys, useHomeBootstrap } from "@mytask/hooks";
 import { spacing } from "@mytask/theme";
-import type { OrganisationMembership } from "@mytask/types";
+import type {
+  OrganisationInvitation,
+  OrganisationMembership,
+} from "@mytask/types";
+import { getErrorMessage } from "@mytask/utils";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { blockOrgSwitch } from "../services/trackingSession";
 import { useOrganisationStore } from "../store/organisationStore";
@@ -21,11 +27,68 @@ import { useToastStore } from "../store/toastStore";
 export function HomeScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const qc = useQueryClient();
   const { data, isLoading, isError, refetch } = useHomeBootstrap();
   const setOrganisation = useOrganisationStore((s) => s.setOrganisation);
   const organisations = (data?.organisations || []) as OrganisationMembership[];
+  const invitations = (data?.invitations || []) as OrganisationInvitation[];
   const c = useThemeStore((s) => s.colors);
   const toast = useToastStore();
+
+  const acceptMutation = useMutation({
+    mutationFn: (invite: OrganisationInvitation) =>
+      organisationsApi.acceptInvitation({
+        id: invite.id,
+        organisation_id: invite.organisation_id,
+        invitation_token: invite.invitation_token,
+        employee_id: invite.employee_id,
+      }),
+    onSuccess: async () => {
+      toast.success("Invitation accepted");
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.organisationInvitations }),
+        qc.invalidateQueries({ queryKey: ["organisations"] }),
+        qc.invalidateQueries({ queryKey: queryKeys.screens.home }),
+      ]);
+    },
+    onError: (err) => {
+      toast.error(
+        "Unable to accept",
+        getErrorMessage(err, "Could not accept invitation"),
+      );
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: (invite: OrganisationInvitation) =>
+      organisationsApi.rejectInvitation({
+        id: invite.id,
+        organisation_id: invite.organisation_id,
+        invitation_token: invite.invitation_token,
+        employee_id: invite.employee_id,
+      }),
+    onSuccess: async () => {
+      toast.success("Invitation rejected");
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.organisationInvitations }),
+        qc.invalidateQueries({ queryKey: ["organisations"] }),
+        qc.invalidateQueries({ queryKey: queryKeys.screens.home }),
+      ]);
+    },
+    onError: (err) => {
+      toast.error(
+        "Unable to reject",
+        getErrorMessage(err, "Could not reject invitation"),
+      );
+    },
+  });
+
+  const busyId =
+    acceptMutation.isPending
+      ? acceptMutation.variables?.id
+      : rejectMutation.isPending
+        ? rejectMutation.variables?.id
+        : null;
 
   if (isLoading) {
     return (
@@ -71,6 +134,83 @@ export function HomeScreen() {
       >
         <Text style={styles.createOrgText}>Create organisation</Text>
       </TouchableOpacity>
+
+      {invitations.length > 0 ? (
+        <View style={styles.invitesSection}>
+          <Text style={[styles.sectionTitle, { color: c.text }]}>
+            Pending invitations
+          </Text>
+          {invitations.map((invite) => {
+            const invitedBy =
+              invite.employee?.creator?.full_name ||
+              [
+                invite.employee?.creator?.first_name,
+                invite.employee?.creator?.last_name,
+              ]
+                .filter(Boolean)
+                .join(" ") ||
+              "A teammate";
+            const orgName = invite.organisation?.name || "Organisation";
+            const isBusy = busyId === invite.id;
+            return (
+              <View
+                key={String(invite.id)}
+                style={[
+                  styles.inviteCard,
+                  { backgroundColor: c.surface, borderColor: c.border },
+                ]}
+              >
+                <Text style={[styles.name, { color: c.text }]}>{orgName}</Text>
+                <Text style={{ color: c.muted, marginTop: 4, fontSize: 13 }}>
+                  {invitedBy} invited you
+                  {invite.role?.name ? ` as ${invite.role.name}` : ""}
+                </Text>
+                <View style={styles.inviteActions}>
+                  <TouchableOpacity
+                    style={[
+                      styles.inviteBtn,
+                      {
+                        backgroundColor: c.primary,
+                        opacity: busyId && !isBusy ? 0.5 : 1,
+                      },
+                    ]}
+                    disabled={Boolean(busyId)}
+                    onPress={() => acceptMutation.mutate(invite)}
+                  >
+                    {isBusy && acceptMutation.isPending ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <Text style={styles.inviteBtnText}>Accept</Text>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.inviteBtn,
+                      {
+                        backgroundColor: c.surface,
+                        borderWidth: 1,
+                        borderColor: c.border,
+                        opacity: busyId && !isBusy ? 0.5 : 1,
+                      },
+                    ]}
+                    disabled={Boolean(busyId)}
+                    onPress={() => rejectMutation.mutate(invite)}
+                  >
+                    {isBusy && rejectMutation.isPending ? (
+                      <ActivityIndicator color={c.text} size="small" />
+                    ) : (
+                      <Text style={[styles.inviteBtnText, { color: c.text }]}>
+                        Reject
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      ) : null}
+
       <FlatList
         data={organisations}
         keyExtractor={(item) => String(item.id)}
@@ -118,6 +258,26 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   heading: { fontSize: 22, fontWeight: "700" },
   sub: { marginTop: 4, marginBottom: spacing.md, fontSize: 13 },
+  sectionTitle: { fontSize: 16, fontWeight: "700", marginBottom: spacing.sm },
+  invitesSection: { marginBottom: spacing.md },
+  inviteCard: {
+    borderRadius: 16,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+  },
+  inviteActions: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: spacing.sm,
+  },
+  inviteBtn: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  inviteBtnText: { color: "#fff", fontWeight: "700" },
   card: {
     borderRadius: 16,
     padding: spacing.md,

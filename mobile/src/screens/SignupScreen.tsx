@@ -16,17 +16,18 @@ import { signupSchema, type SignupFormValues } from "@mytask/validation";
 import { authApi } from "@mytask/api";
 import { spacing } from "@mytask/theme";
 import { getErrorMessage, getTimezone } from "@mytask/utils";
-import { useNavigation } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useAuthStore } from "../store/authStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 import { signUpWithEmail } from "../services/firebase";
 import type { RootStackParamList } from "../navigation/RootNavigator";
+import { setPendingOrgInvitationToken } from "../navigation/navigationRef";
 
-export function SignupScreen() {
-  const navigation =
-    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+type Props = NativeStackScreenProps<RootStackParamList, "Signup">;
+
+export function SignupScreen({ navigation, route }: Props) {
+  const invitationToken = route.params?.invitationToken?.trim() || "";
   const setSession = useAuthStore((s) => s.setSession);
   const c = useThemeStore((s) => s.colors);
   const toast = useToastStore();
@@ -69,7 +70,11 @@ export function SignupScreen() {
         providerData: credential.user.providerData as unknown as unknown[],
         platform: Platform.OS,
         timezone: getTimezone(),
+        ...(invitationToken ? { invitation_token: invitationToken } : {}),
       });
+      if (invitationToken) {
+        setPendingOrgInvitationToken(invitationToken);
+      }
       await setSession(token, response.data.data);
       toast.success("Account created", "Welcome to myTask");
     } catch (err) {
@@ -91,7 +96,11 @@ export function SignupScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <Text style={[styles.title, { color: c.text }]}>Create your account</Text>
-        <Text style={[styles.subtitle, { color: c.muted }]}>Join myTask</Text>
+        <Text style={[styles.subtitle, { color: c.muted }]}>
+          {invitationToken
+            ? "Create an account to accept your organisation invitation."
+            : "Join myTask"}
+        </Text>
 
         {(
           [
@@ -171,7 +180,12 @@ export function SignupScreen() {
 
         <TouchableOpacity
           style={styles.linkRow}
-          onPress={() => navigation.navigate("Login")}
+          onPress={() =>
+            navigation.navigate(
+              "Login",
+              invitationToken ? { invitationToken } : undefined,
+            )
+          }
           disabled={loading}
         >
           <Text style={{ color: c.muted }}>

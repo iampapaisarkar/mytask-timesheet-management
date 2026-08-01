@@ -68,6 +68,19 @@ export function MainLayout() {
       <main className="mx-auto max-w-6xl px-3 py-6 sm:px-6 sm:py-8">
         <Outlet />
       </main>
+      <footer className="border-t border-border bg-[var(--mt-surface)]/60">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-3 py-4 text-xs text-muted sm:px-6">
+          <Link to={ROUTES.help} className="hover:text-primary">
+            Help & FAQ
+          </Link>
+          <Link to={ROUTES.terms} className="hover:text-primary">
+            Terms & Conditions
+          </Link>
+          <Link to={ROUTES.privacy} className="hover:text-primary">
+            Privacy Policy
+          </Link>
+        </div>
+      </footer>
     </div>
   );
 }

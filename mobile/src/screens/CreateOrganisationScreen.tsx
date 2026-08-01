@@ -20,9 +20,17 @@ import { useCreateOrganisation } from "@mytask/hooks";
 import { currencyFromCountryIso } from "@mytask/constants";
 import { spacing } from "@mytask/theme";
 import type { OrganisationMembership, UserProfile } from "@mytask/types";
-import { getErrorMessage, getOrganisationRoleCode } from "@mytask/utils";
+import {
+  emptyGlobalAddress,
+  getErrorMessage,
+  getOrganisationRoleCode,
+  hasAddressContent,
+  toAddressApiPayload,
+  type GlobalAddress,
+} from "@mytask/utils";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { PlacesAddressInput } from "../components/PlacesAddressInput";
 import { useAuthStore } from "../store/authStore";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
@@ -39,6 +47,7 @@ export function CreateOrganisationScreen() {
   const c = useThemeStore((s) => s.colors);
   const toast = useToastStore();
   const [error, setError] = useState<string | null>(null);
+  const [address, setAddress] = useState<GlobalAddress>(emptyGlobalAddress());
 
   const { control, handleSubmit, setValue } =
     useForm<CreateOrganisationFormValues>({
@@ -64,15 +73,60 @@ export function CreateOrganisationScreen() {
       },
     });
 
+  function syncAddressFields(next: GlobalAddress) {
+    setAddress(next);
+    setValue("address_1", next.address_line_1 || next.formatted_address, {
+      shouldValidate: true,
+    });
+    setValue("address_line_1", next.address_line_1 || next.formatted_address, {
+      shouldValidate: true,
+    });
+    setValue("formatted_address", next.formatted_address || next.address_line_1, {
+      shouldValidate: true,
+    });
+    setValue("address_2", next.address_line_2 || "", { shouldValidate: true });
+    setValue("address_line_2", next.address_line_2 || "", {
+      shouldValidate: true,
+    });
+    setValue("street", next.street || "", { shouldValidate: true });
+    setValue("city", next.city || "", { shouldValidate: true });
+    setValue("state_region_province", next.state_region_province || "", {
+      shouldValidate: true,
+    });
+    setValue("state_name", next.state_region_province || "", {
+      shouldValidate: true,
+    });
+    setValue("postcode", next.postal_code || "", { shouldValidate: true });
+    setValue("postal_code", next.postal_code || "", { shouldValidate: true });
+    if (next.country) setValue("country", next.country, { shouldValidate: true });
+    if (next.country_code) {
+      setValue("country_code", next.country_code, { shouldValidate: true });
+    }
+  }
+
   async function onSubmit(values: CreateOrganisationFormValues) {
     setError(null);
-    const addressLine =
-      values.address_line_1?.trim() ||
-      values.address_1?.trim() ||
-      values.formatted_address?.trim() ||
-      values.street?.trim() ||
-      "";
     try {
+      const addressPayload = hasAddressContent(address)
+        ? toAddressApiPayload(address, { includeCoordinates: false })
+        : {
+            address_1:
+              values.address_line_1 ||
+              values.address_1 ||
+              values.formatted_address ||
+              null,
+            address_line_1:
+              values.address_line_1 ||
+              values.address_1 ||
+              values.formatted_address ||
+              null,
+            formatted_address: values.formatted_address || null,
+            city: values.city || null,
+            postcode: values.postcode || values.postal_code || null,
+            country: values.country || null,
+            country_code: values.country_code || null,
+          };
+
       const response = await createMutation.mutateAsync({
         name: values.name,
         website: values.website || null,
@@ -85,15 +139,7 @@ export function CreateOrganisationScreen() {
           values.country_code || values.phone_country_iso || null,
         ),
         email: values.email,
-        address: {
-          address_1: addressLine,
-          address_line_1: addressLine,
-          formatted_address: values.formatted_address || addressLine,
-          city: values.city || null,
-          postcode: values.postcode || values.postal_code || null,
-          country: values.country || null,
-          country_code: values.country_code || null,
-        },
+        address: addressPayload,
       });
 
       const raw = response.data as unknown;
@@ -256,38 +302,10 @@ export function CreateOrganisationScreen() {
           )}
         />
 
-        <Controller
-          control={control}
-          name="address_1"
-          render={({ field: { onChange, value }, fieldState }) => (
-            <View style={styles.field}>
-              <Text style={[styles.label, { color: c.muted }]}>Address</Text>
-              <TextInput
-                autoCapitalize="sentences"
-                style={[
-                  styles.input,
-                  {
-                    borderColor: c.border,
-                    backgroundColor: c.surface,
-                    color: c.text,
-                  },
-                ]}
-                value={value || ""}
-                onChangeText={(text) => {
-                  onChange(text);
-                  setValue("address_line_1", text, { shouldValidate: true });
-                  setValue("formatted_address", text, { shouldValidate: true });
-                }}
-                placeholderTextColor={c.muted}
-                editable={!busy}
-              />
-              {fieldState.error ? (
-                <Text style={[styles.error, { color: c.negative }]}>
-                  {fieldState.error.message}
-                </Text>
-              ) : null}
-            </View>
-          )}
+        <PlacesAddressInput
+          value={address}
+          onChange={syncAddressFields}
+          label="Address"
         />
 
         {error ? (

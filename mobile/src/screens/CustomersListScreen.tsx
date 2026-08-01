@@ -10,7 +10,11 @@ import {
 } from "react-native";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useCreateCustomer, useCustomers } from "@mytask/hooks";
+import {
+  useCreateCustomer,
+  useCustomers,
+  useUpdateCustomer,
+} from "@mytask/hooks";
 import { DEFAULT_CURRENCY, DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing } from "@mytask/theme";
@@ -19,8 +23,14 @@ import {
   listPagination,
   listRows,
   phoneValueFromE164,
+  emptyGlobalAddress,
+  hasAddressContent,
+  toAddressApiPayload,
+  fromAddressRecord,
+  type GlobalAddress,
 } from "@mytask/utils";
 import { ListPager } from "../components/ListPager";
+import { PlacesAddressInput } from "../components/PlacesAddressInput";
 import { SearchBar } from "../components/SearchBar";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import type { RootStackParamList } from "../navigation/RootNavigator";
@@ -34,15 +44,32 @@ type Props = NativeStackScreenProps<RootStackParamList, "CustomersList">;
 type CustomerRow = {
   id?: number | string;
   name?: string;
-  contact_email?: string;
-  contact_phone_number?: string;
-  abn?: string;
+  abn?: string | null;
+  address?: string | Record<string, unknown> | null;
+  formatted_address?: string | null;
+  address_line_1?: string | null;
+  address_line_2?: string | null;
+  street?: string | null;
+  administrative_area?: string | null;
+  state_region_province?: string | null;
+  city?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+  country_code?: string | null;
+  place_id?: string | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  contact_name?: string | null;
+  contact_email?: string | null;
+  contact_phone_number?: string | null;
+  contact_phone_country_iso?: string | null;
+  hourly_rate?: number | string | null;
 };
 
 type CreateForm = {
   name: string;
   abn: string;
-  address: string;
+  address: GlobalAddress;
   contactName: string;
   contactEmail: string;
   contactPhone: string;
@@ -52,26 +79,70 @@ type CreateForm = {
 const emptyForm = (): CreateForm => ({
   name: "",
   abn: "",
-  address: "",
+  address: emptyGlobalAddress(),
   contactName: "",
   contactEmail: "",
   contactPhone: "",
   hourlyRate: "",
 });
 
+function addressFromCustomer(row: CustomerRow): GlobalAddress {
+  if (row.address && typeof row.address === "object") {
+    return fromAddressRecord(row.address);
+  }
+  const addressStr = typeof row.address === "string" ? row.address : "";
+  return fromAddressRecord({
+    address_line_1:
+      row.address_line_1 || row.formatted_address || addressStr || "",
+    address_line_2: row.address_line_2 || "",
+    street: row.street || "",
+    administrative_area:
+      row.administrative_area || row.state_region_province || "",
+    state_region_province: row.state_region_province || "",
+    city: row.city || "",
+    postal_code: row.postal_code || "",
+    country: row.country || "",
+    country_code: row.country_code || "",
+    place_id: row.place_id || "",
+    latitude: row.latitude ?? null,
+    longitude: row.longitude ?? null,
+    formatted_address: row.formatted_address || addressStr || "",
+  });
+}
+
+function formFromCustomer(row: CustomerRow): CreateForm {
+  const phone = phoneValueFromE164(
+    row.contact_phone_number,
+    row.contact_phone_country_iso,
+  );
+  return {
+    name: row.name || "",
+    abn: row.abn || "",
+    address: addressFromCustomer(row),
+    contactName: row.contact_name || "",
+    contactEmail: row.contact_email || "",
+    contactPhone: phone.phone_number || row.contact_phone_number || "",
+    hourlyRate: row.hourly_rate != null ? String(row.hourly_rate) : "",
+  };
+}
+
 export function CustomersListScreen(_props: Props) {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [form, setForm] = useState<CreateForm>(emptyForm);
-  const createSheetRef = useRef<BottomSheetModal>(null);
+  const [editing, setEditing] = useState<CustomerRow | null>(null);
+  const sheetRef = useRef<BottomSheetModal>(null);
   const debouncedSearch = useDebouncedValue(search.trim(), 400);
   const organisation = useOrganisationStore((s) => s.organisation);
   const role = organisation?.role || organisation?.role_code;
   const acl = getOrganisationAcl(role);
   const canCreate = can(acl, "customer", "create");
+  const canEdit = can(acl, "customer", "edit");
   const c = useThemeStore((s) => s.colors);
   const toast = useToastStore();
   const createMutation = useCreateCustomer();
+  const updateMutation = useUpdateCustomer();
+  const isEdit = editing?.id != null;
 
   useEffect(() => {
     setPage(1);
@@ -93,24 +164,33 @@ export function CustomersListScreen(_props: Props) {
   }, []);
 
   function openCreate() {
+    setEditing(null);
     setForm(emptyForm());
-    createSheetRef.current?.present();
+    sheetRef.current?.present();
   }
 
-  async function handleCreate() {
+  function openEdit(row: CustomerRow) {
+    if (!canEdit || row.id == null) return;
+    setEditing(row);
+    setForm(formFromCustomer(row));
+    sheetRef.current?.present();
+  }
+
+  async function handleSubmit() {
     if (!form.name.trim()) {
       toast.warning("Name required");
       return;
     }
-    const addressLine = form.address.trim();
     const phone = phoneValueFromE164(form.contactPhone.trim() || null);
+    const addressPayload = hasAddressContent(form.address)
+      ? toAddressApiPayload(form.address, { includeCoordinates: false })
+      : null;
     const payload: Record<string, unknown> = {
       name: form.name.trim(),
       abn: form.abn.trim() || null,
-      address: addressLine || null,
-      address_1: addressLine || null,
-      address_line_1: addressLine || null,
-      formatted_address: addressLine || null,
+      ...(addressPayload
+        ? { address: addressPayload, ...addressPayload }
+        : { address: null }),
       contact_name: form.contactName.trim() || null,
       contact_email: form.contactEmail.trim() || null,
       contact_phone_number: phone.phone_number,
@@ -120,12 +200,21 @@ export function CustomersListScreen(_props: Props) {
       currency: DEFAULT_CURRENCY,
     };
     try {
-      await createMutation.mutateAsync(payload);
-      toast.success("Customer created");
-      createSheetRef.current?.dismiss();
+      if (isEdit && editing?.id != null) {
+        await updateMutation.mutateAsync({ id: editing.id, payload });
+        toast.success("Customer updated");
+      } else {
+        await createMutation.mutateAsync(payload);
+        toast.success("Customer created");
+      }
+      sheetRef.current?.dismiss();
       setForm(emptyForm());
+      setEditing(null);
     } catch (err) {
-      toast.error("Create failed", getErrorMessage(err));
+      toast.error(
+        isEdit ? "Update failed" : "Create failed",
+        getErrorMessage(err),
+      );
     }
   }
 
@@ -140,7 +229,7 @@ export function CustomersListScreen(_props: Props) {
     );
   }
 
-  const pending = createMutation.isPending;
+  const pending = createMutation.isPending || updateMutation.isPending;
   const inputStyle = [
     styles.input,
     { borderColor: c.border, backgroundColor: c.bg, color: c.text },
@@ -197,11 +286,13 @@ export function CustomersListScreen(_props: Props) {
             />
           }
           renderItem={({ item }) => (
-            <View
+            <TouchableOpacity
               style={[
                 styles.card,
                 { backgroundColor: c.surface, borderColor: c.border },
               ]}
+              disabled={!canEdit}
+              onPress={() => openEdit(item)}
             >
               <Text style={[styles.name, { color: c.text }]}>
                 {item.name || `Customer #${item.id}`}
@@ -214,15 +305,25 @@ export function CustomersListScreen(_props: Props) {
                   ABN {item.abn}
                 </Text>
               ) : null}
-            </View>
+              {canEdit ? (
+                <Text
+                  style={{ color: c.primary, marginTop: 8, fontWeight: "600" }}
+                >
+                  Edit
+                </Text>
+              ) : null}
+            </TouchableOpacity>
           )}
         />
       )}
 
       <AppBottomSheet
-        ref={createSheetRef}
-        title="Create customer"
+        ref={sheetRef}
+        title={isEdit ? "Edit customer" : "Create customer"}
         snapPoints={["70%", "92%"]}
+        onDismiss={() => {
+          setEditing(null);
+        }}
         footer={
           <TouchableOpacity
             style={[
@@ -230,10 +331,16 @@ export function CustomersListScreen(_props: Props) {
               { backgroundColor: c.primary, opacity: pending ? 0.6 : 1 },
             ]}
             disabled={pending}
-            onPress={() => void handleCreate()}
+            onPress={() => void handleSubmit()}
           >
             <Text style={styles.createBtnText}>
-              {pending ? "Creating…" : "Create"}
+              {pending
+                ? isEdit
+                  ? "Saving…"
+                  : "Creating…"
+                : isEdit
+                  ? "Save"
+                  : "Create"}
             </Text>
           </TouchableOpacity>
         }
@@ -255,12 +362,10 @@ export function CustomersListScreen(_props: Props) {
           onChangeText={(abn) => patchForm({ abn })}
           placeholderTextColor={c.muted}
         />
-        <Text style={[styles.fieldLabel, { color: c.muted }]}>Address</Text>
-        <BottomSheetTextInput
-          style={inputStyle}
+        <PlacesAddressInput
           value={form.address}
-          onChangeText={(address) => patchForm({ address })}
-          placeholderTextColor={c.muted}
+          onChange={(address) => patchForm({ address })}
+          label="Address"
         />
         <Text style={[styles.fieldLabel, { color: c.muted }]}>
           Contact name

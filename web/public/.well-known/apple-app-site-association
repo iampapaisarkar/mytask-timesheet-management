@@ -1,0 +1,26 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "K43ZT2JGH4.com.mytask.imps.app",
+        "paths": [
+          "*",
+          "/org-invitation*",
+          "/help",
+          "/terms",
+          "/privacy",
+          "/pricing",
+          "/subscription",
+          "/billing*",
+          "/org/*",
+          "/login",
+          "/signup",
+          "/forgot-password",
+          "/profile",
+          "/organisations/*"
+        ]
+      }
+    ]
+  }
+}

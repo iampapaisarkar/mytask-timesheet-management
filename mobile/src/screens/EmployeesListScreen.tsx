@@ -16,6 +16,7 @@ import {
   useCreateEmployee,
   useEmployeeFormLookups,
   useEmployees,
+  useUpdateEmployee,
 } from "@mytask/hooks";
 import {
   DEFAULT_CURRENCY,
@@ -42,18 +43,28 @@ import { AppBottomSheet, BottomSheetTextInput } from "../ui";
 type EmployeeRow = {
   id?: number | string;
   details?: {
-    id?: number;
+    id?: number | string;
     full_name?: string;
+    first_name?: string;
+    last_name?: string;
     email?: string;
+    dob?: string;
     phone_number?: string;
     phone_country_iso?: string;
-    role?: { name?: string };
+    role?: { id?: number | string; name?: string; code?: string };
     address?: {
       formatted_address?: string;
       address_1?: string;
+      address_line_1?: string;
       city?: string;
     };
   };
+  wage?: {
+    start_date?: string;
+    employment_type?: { id?: number | string; code?: string; name?: string };
+    payroll_calendar?: { id?: number | string; name?: string };
+    hourly_rate_exc_super?: string | number | null;
+  } | null;
 };
 
 type CreateForm = {
@@ -93,28 +104,79 @@ function addressLabel(details: EmployeeRow["details"]) {
   if (!a) return null;
   return (
     a.formatted_address ||
+    a.address_line_1 ||
+    a.address_1 ||
     [a.address_1, a.city].filter(Boolean).join(", ") ||
     null
   );
+}
+
+function employeeId(row: EmployeeRow): number | string | undefined {
+  return row.details?.id ?? row.id;
+}
+
+function formFromEmployee(row: EmployeeRow): CreateForm {
+  const details = row.details;
+  const wage = row.wage;
+  let firstName = details?.first_name || "";
+  let lastName = details?.last_name || "";
+  if (!firstName && !lastName && details?.full_name) {
+    const parts = details.full_name.trim().split(/\s+/);
+    firstName = parts[0] || "";
+    lastName = parts.slice(1).join(" ");
+  }
+  const phone = phoneValueFromE164(
+    details?.phone_number,
+    details?.phone_country_iso,
+  );
+  return {
+    email: details?.email || "",
+    firstName,
+    lastName,
+    phone: phone.phone_number || details?.phone_number || "",
+    dob: details?.dob ? String(details.dob).slice(0, 10) : "",
+    address: addressLabel(details) || "",
+    roleId: details?.role?.id != null ? String(details.role.id) : "",
+    startDate: wage?.start_date
+      ? String(wage.start_date).slice(0, 10)
+      : todayIso(),
+    employmentTypeId:
+      wage?.employment_type?.id != null
+        ? String(wage.employment_type.id)
+        : "",
+    payrollCalendarId:
+      wage?.payroll_calendar?.id != null
+        ? String(wage.payroll_calendar.id)
+        : "",
+    hourlyRate:
+      wage?.hourly_rate_exc_super != null
+        ? String(wage.hourly_rate_exc_super)
+        : "",
+  };
 }
 
 export function EmployeesListScreen() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [form, setForm] = useState<CreateForm>(emptyForm);
+  const [editing, setEditing] = useState<EmployeeRow | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [picker, setPicker] = useState<"role" | "employment" | "calendar" | null>(
     null,
   );
-  const createSheetRef = useRef<BottomSheetModal>(null);
+  const sheetRef = useRef<BottomSheetModal>(null);
   const debouncedSearch = useDebouncedValue(search.trim(), 400);
   const organisation = useOrganisationStore((s) => s.organisation);
   const role = organisation?.role || organisation?.role_code;
   const acl = getOrganisationAcl(role);
   const canCreate = can(acl, "employee", "create");
+  const canEdit = can(acl, "employee", "edit");
   const c = useThemeStore((s) => s.colors);
   const toast = useToastStore();
   const createMutation = useCreateEmployee();
+  const updateMutation = useUpdateEmployee();
+  const editingId = editing ? employeeId(editing) : undefined;
+  const isEdit = editingId != null;
 
   useEffect(() => {
     setPage(1);
@@ -162,12 +224,21 @@ export function EmployeesListScreen() {
   }, []);
 
   function openCreate() {
+    setEditing(null);
     setForm(emptyForm());
     setSheetOpen(true);
-    createSheetRef.current?.present();
+    sheetRef.current?.present();
   }
 
-  async function handleCreate() {
+  function openEdit(row: EmployeeRow) {
+    if (!canEdit || employeeId(row) == null) return;
+    setEditing(row);
+    setForm(formFromEmployee(row));
+    setSheetOpen(true);
+    sheetRef.current?.present();
+  }
+
+  async function handleSubmit() {
     if (!form.email.trim() || !form.email.includes("@")) {
       toast.warning("Enter a valid email");
       return;
@@ -220,7 +291,7 @@ export function EmployeesListScreen() {
     }
 
     const payload: Record<string, unknown> = {
-      action: { create_user: true },
+      action: { create_user: !isEdit },
       details: {
         first_name: form.firstName.trim(),
         middle_name: null,
@@ -260,12 +331,21 @@ export function EmployeesListScreen() {
     };
 
     try {
-      await createMutation.mutateAsync(payload);
-      toast.success("Employee created & invitation sent");
-      createSheetRef.current?.dismiss();
+      if (isEdit && editingId != null) {
+        await updateMutation.mutateAsync({ id: editingId, payload });
+        toast.success("Employee updated");
+      } else {
+        await createMutation.mutateAsync(payload);
+        toast.success("Employee created & invitation sent");
+      }
+      sheetRef.current?.dismiss();
       setForm(emptyForm());
+      setEditing(null);
     } catch (err) {
-      toast.error("Create failed", getErrorMessage(err));
+      toast.error(
+        isEdit ? "Update failed" : "Create failed",
+        getErrorMessage(err),
+      );
     }
   }
 
@@ -280,7 +360,7 @@ export function EmployeesListScreen() {
     );
   }
 
-  const pending = createMutation.isPending;
+  const pending = createMutation.isPending || updateMutation.isPending;
   const inputStyle = [
     styles.input,
     { borderColor: c.border, backgroundColor: c.bg, color: c.text },
@@ -351,11 +431,13 @@ export function EmployeesListScreen() {
             const details = item.details;
             const address = addressLabel(details);
             return (
-              <View
+              <TouchableOpacity
                 style={[
                   styles.card,
                   { backgroundColor: c.surface, borderColor: c.border },
                 ]}
+                disabled={!canEdit}
+                onPress={() => openEdit(item)}
               >
                 <Text style={[styles.name, { color: c.text }]}>
                   {details?.full_name || `Employee #${details?.id ?? item.id}`}
@@ -380,19 +462,31 @@ export function EmployeesListScreen() {
                     {address}
                   </Text>
                 ) : null}
-              </View>
+                {canEdit ? (
+                  <Text
+                    style={{
+                      color: c.primary,
+                      marginTop: 8,
+                      fontWeight: "600",
+                    }}
+                  >
+                    Edit
+                  </Text>
+                ) : null}
+              </TouchableOpacity>
             );
           }}
         />
       )}
 
       <AppBottomSheet
-        ref={createSheetRef}
-        title="Create employee"
+        ref={sheetRef}
+        title={isEdit ? "Edit employee" : "Create employee"}
         snapPoints={["80%", "92%"]}
         onDismiss={() => {
           setSheetOpen(false);
           setPicker(null);
+          setEditing(null);
         }}
         footer={
           <TouchableOpacity
@@ -401,10 +495,16 @@ export function EmployeesListScreen() {
               { backgroundColor: c.primary, opacity: pending ? 0.6 : 1 },
             ]}
             disabled={pending}
-            onPress={() => void handleCreate()}
+            onPress={() => void handleSubmit()}
           >
             <Text style={styles.createBtnText}>
-              {pending ? "Creating…" : "Create & invite"}
+              {pending
+                ? isEdit
+                  ? "Saving…"
+                  : "Creating…"
+                : isEdit
+                  ? "Save changes"
+                  : "Create & invite"}
             </Text>
           </TouchableOpacity>
         }

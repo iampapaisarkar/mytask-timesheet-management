@@ -30,9 +30,11 @@ import { PayrollCalendarsScreen } from "../screens/PayrollCalendarsScreen";
 import { NotificationsListScreen } from "../features/notifications";
 import { ReportsScreen } from "../screens/ReportsScreen";
 import { PayoutsScreen } from "../screens/PayoutsScreen";
+import { PayoutDetailScreen } from "../screens/PayoutDetailScreen";
 import { SystemLogsScreen } from "../screens/SystemLogsScreen";
 import { CreateOrganisationScreen } from "../screens/CreateOrganisationScreen";
 import { LegalScreen } from "../screens/LegalScreen";
+import { OrgInvitationScreen } from "../screens/OrgInvitationScreen";
 import {
   PricingScreen,
   SubscriptionScreen,
@@ -40,9 +42,10 @@ import {
 } from "../features/billing";
 
 export type RootStackParamList = {
-  Login: undefined;
-  Signup: undefined;
+  Login: { invitationToken?: string } | undefined;
+  Signup: { invitationToken?: string } | undefined;
   ForgotPassword: undefined;
+  OrgInvitation: { token: string };
   MainTabs: undefined;
   OrgHome: { orgCode: string };
   Timesheets: { orgCode: string };
@@ -61,6 +64,7 @@ export type RootStackParamList = {
   JobsList: { orgCode: string };
   Reports: { orgCode: string };
   Payouts: { orgCode: string };
+  PayoutDetail: { orgCode: string; id: string };
   SystemLogs: { orgCode: string };
   NotificationsList: { orgCode: string };
   SettingsHub: { orgCode: string };
@@ -201,6 +205,11 @@ export function RootNavigator() {
             options={{ title: "Reset password" }}
           />
           <Stack.Screen
+            name="OrgInvitation"
+            component={OrgInvitationScreen}
+            options={{ title: "Organisation invitation" }}
+          />
+          <Stack.Screen
             name="Pricing"
             component={PricingScreen}
             options={{ title: "Pricing" }}
@@ -224,6 +233,11 @@ export function RootNavigator() {
             name="MainTabs"
             component={MainTabs}
             options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="OrgInvitation"
+            component={OrgInvitationScreen}
+            options={{ title: "Organisation invitation" }}
           />
           <Stack.Screen
             name="OrgHome"
@@ -284,6 +298,11 @@ export function RootNavigator() {
             name="Payouts"
             component={PayoutsScreen}
             options={{ title: "Payouts" }}
+          />
+          <Stack.Screen
+            name="PayoutDetail"
+            component={PayoutDetailScreen}
+            options={{ title: "Payout detail" }}
           />
           <Stack.Screen
             name="SystemLogs"

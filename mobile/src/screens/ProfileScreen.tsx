@@ -317,6 +317,28 @@ export function ProfileScreen() {
           </Text>
         </TouchableOpacity>
 
+        <Text style={[styles.sectionTitle, { color: c.text }]}>Support</Text>
+
+        {(
+          [
+            { label: "Help & FAQ", kind: "help" as const },
+            { label: "Terms & Conditions", kind: "terms" as const },
+            { label: "Privacy Policy", kind: "privacy" as const },
+          ] as const
+        ).map((item) => (
+          <TouchableOpacity
+            key={item.kind}
+            style={[
+              styles.row,
+              { backgroundColor: c.surface, borderColor: c.border },
+            ]}
+            onPress={() => navigation.navigate("Legal", { kind: item.kind })}
+          >
+            <Text style={[styles.rowText, { color: c.text }]}>{item.label}</Text>
+            <Text style={{ color: c.primary, fontWeight: "700" }}>Open</Text>
+          </TouchableOpacity>
+        ))}
+
         <TouchableOpacity
           style={[styles.logout, { backgroundColor: c.primary }]}
           onPress={() => void logout()}

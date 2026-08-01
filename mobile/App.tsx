@@ -11,6 +11,12 @@ import { sharedAuthTokenManager } from '@mytask/auth';
 import { createAppQueryClient } from '@mytask/hooks';
 import { colors } from '@mytask/theme';
 import { RootNavigator } from './src/navigation/RootNavigator';
+import { DeepLinkHandler } from './src/navigation/DeepLinkHandler';
+import { navigationLinking } from './src/navigation/linking';
+import {
+  flushPendingOrgInvitation,
+  navigationRef,
+} from './src/navigation/navigationRef';
 import { RealtimeProvider } from './src/providers/RealtimeProvider';
 import { AuthSessionProvider } from './src/providers/AuthSessionProvider';
 import { useAuthStore } from './src/store/authStore';
@@ -115,11 +121,17 @@ function App() {
           <AuthSessionProvider>
             <RealtimeProvider>
               <BottomSheetModalProvider>
-                <NavigationContainer theme={navTheme}>
+                <NavigationContainer
+                  ref={navigationRef}
+                  theme={navTheme}
+                  linking={navigationLinking}
+                  onReady={() => flushPendingOrgInvitation()}
+                >
                   <StatusBar
                     barStyle={mode === 'dark' ? 'light-content' : 'dark-content'}
                     backgroundColor={c.bg}
                   />
+                  <DeepLinkHandler />
                   <RootNavigator />
                   <ToastViewport />
                 </NavigationContainer>
