@@ -1,12 +1,17 @@
 import { useState } from "react";
 import { getErrorMessage } from "@mytask/utils";
 import { can, getOrganisationAcl } from "@mytask/services";
+import {
+  holidayCalendarSchema,
+  type HolidayCalendarFormValues,
+} from "@mytask/validation";
 import { useOrganisationStore } from "@/store/organisationStore";
 import { Button } from "@/components/ui/Button";
 import { TextInput } from "@/components/ui/TextInput";
 import { FormDialog } from "@/components/ui/FormDialog";
 import { useToastStore } from "@/store/toastStore";
 import { ResourceListPage } from "@/features/shared/ResourceListPage";
+import { useAppForm, useValidatedSubmit } from "@/hooks/useAppForm";
 import {
   useCreateHolidayCalendar,
   useHolidayCalendars,
@@ -18,6 +23,8 @@ type Row = Record<string, unknown> & {
   name?: string;
   date?: string;
 };
+
+const emptyHoliday: HolidayCalendarFormValues = { name: "", date: "" };
 
 export function HolidayCalendarsPage() {
   const [page, setPage] = useState(1);
@@ -33,33 +40,37 @@ export function HolidayCalendarsPage() {
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
-  const [name, setName] = useState("");
-  const [date, setDate] = useState("");
 
+  const form = useAppForm<HolidayCalendarFormValues>({
+    schema: holidayCalendarSchema,
+    defaultValues: emptyHoliday,
+  });
+  const {
+    register,
+    reset,
+    formState: { errors },
+  } = form;
 
   function openCreate() {
     setEditing(null);
-    setName("");
-    setDate("");
+    reset(emptyHoliday);
     setOpen(true);
   }
 
   function openEdit(row: Row) {
     if (!canEdit) return;
     setEditing(row);
-    setName(String(row.name || ""));
-    setDate(String(row.date || "").slice(0, 10));
+    reset({
+      name: String(row.name || ""),
+      date: String(row.date || "").slice(0, 10),
+    });
     setOpen(true);
   }
 
-  async function handleSave() {
-    if (!name.trim() || !date) {
-      toast.warning("Name and date are required");
-      return;
-    }
+  const handleSave = useValidatedSubmit(form, async (values) => {
     const payload = {
-      name: name.trim(),
-      date,
+      name: values.name.trim(),
+      date: values.date,
     };
     try {
       if (editing?.id != null) {
@@ -73,7 +84,7 @@ export function HolidayCalendarsPage() {
     } catch (err) {
       toast.error("Save failed", getErrorMessage(err));
     }
-  }
+  });
 
   return (
     <>
@@ -108,19 +119,19 @@ export function HolidayCalendarsPage() {
         open={open}
         title={editing ? "Edit holiday" : "Create holiday"}
         onClose={() => setOpen(false)}
-        onSubmit={() => void handleSave()}
+        onSubmit={handleSave}
         loading={createMutation.isPending || updateMutation.isPending}
       >
         <TextInput
           label="Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+          error={errors.name?.message}
+          {...register("name")}
         />
         <TextInput
           label="Date"
           type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
+          error={errors.date?.message}
+          {...register("date")}
         />
       </FormDialog>
     </>

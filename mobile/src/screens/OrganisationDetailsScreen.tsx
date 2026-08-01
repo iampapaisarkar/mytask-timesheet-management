@@ -1,16 +1,22 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { organisationsApi } from "@mytask/api";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing, typography } from "@mytask/theme";
 import { getErrorMessage } from "@mytask/utils";
+import {
+  organisationDetailsSchema,
+  type OrganisationDetailsFormValues,
+} from "@mytask/validation";
 import { AccessDenied } from "../components/AccessDenied";
+import { FormTextField } from "../components/FormTextField";
 import type { OrgStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
-import { Button, Card, TextField } from "../ui";
+import { useAppForm, useValidatedSubmit } from "../hooks/useAppForm";
+import { Button, Card } from "../ui";
 
 type Props = NativeStackScreenProps<OrgStackParamList, "OrganisationDetails">;
 
@@ -24,31 +30,48 @@ export function OrganisationDetailsScreen({ route }: Props) {
   const canEdit = can(acl, "organisationSetting", "edit");
   const c = useThemeStore((s) => s.colors);
   const toast = useToastStore();
-  const [name, setName] = useState(organisation?.name || "");
   const [saving, setSaving] = useState(false);
 
-  async function saveName() {
-    const trimmed = name.trim();
-    if (!trimmed) {
-      toast.warning("Name is required");
-      return;
-    }
+  const form = useAppForm<OrganisationDetailsFormValues>({
+    schema: organisationDetailsSchema,
+    defaultValues: {
+      name: organisation?.name || "",
+      website: "",
+      email: "",
+      phone_number: "",
+      phone_country_code: null,
+      phone_country_iso: null,
+    },
+  });
+
+  useEffect(() => {
+    form.reset({
+      name: organisation?.name || "",
+      website: "",
+      email: "",
+      phone_number: "",
+      phone_country_code: null,
+      phone_country_iso: null,
+    });
+  }, [organisation?.name, form.reset]);
+
+  const saveName = useValidatedSubmit(form, async (values) => {
     if (!organisation) return;
     setSaving(true);
     try {
       await organisationsApi.update({
-        name: trimmed,
+        name: values.name.trim(),
         code: organisation.code || orgCode,
         id: organisation.id,
       });
-      await setOrganisation({ ...organisation, name: trimmed });
+      await setOrganisation({ ...organisation, name: values.name.trim() });
       toast.success("Saved", "Organisation name updated");
     } catch (err) {
       toast.error("Update failed", getErrorMessage(err));
     } finally {
       setSaving(false);
     }
-  }
+  });
 
   if (!canView) {
     return <AccessDenied />;
@@ -84,15 +107,15 @@ export function OrganisationDetailsScreen({ route }: Props) {
         <Text style={[styles.label, { color: c.muted }]}>Name</Text>
         {canEdit ? (
           <>
-            <TextField
-              value={name}
-              onChangeText={setName}
+            <FormTextField
+              control={form.control}
+              name="name"
               editable={!saving}
               containerStyle={styles.nameField}
             />
             <Button
               title="Save name"
-              onPress={() => void saveName()}
+              onPress={saveName}
               loading={saving}
             />
           </>

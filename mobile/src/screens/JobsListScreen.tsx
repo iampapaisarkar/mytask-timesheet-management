@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { Controller } from "react-hook-form";
 import {
   useCreateJob,
   useCustomers,
@@ -18,27 +19,33 @@ import { DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing } from "@mytask/theme";
 import {
+  jobFormSchema,
+  type JobFormValues,
+} from "@mytask/validation";
+import {
   getErrorMessage,
   listPagination,
   listRows,
   phoneValueFromE164,
   emptyGlobalAddress,
-  hasAddressContent,
-  toAddressApiPayload,
   fromAddressRecord,
+  toAddressApiPayload,
   type GlobalAddress,
-  type PhoneValue,
 } from "@mytask/utils";
 import { AccessDenied } from "../components/AccessDenied";
-import {
-  GlobalPhoneInput,
-  emptyPhoneValue,
-} from "../components/GlobalPhoneInput";
+import { FormFieldError, FormTextField } from "../components/FormTextField";
+import { GlobalPhoneInput } from "../components/GlobalPhoneInput";
 import { ListPager } from "../components/ListPager";
 import { MobileSelect } from "../components/MobileSelect";
 import { PlacesAddressInput } from "../components/PlacesAddressInput";
 import { SearchBar } from "../components/SearchBar";
 import { SkeletonList } from "../components/Skeleton";
+import {
+  fieldChainProps,
+  useAppForm,
+  useFormFieldChain,
+  useValidatedSubmit,
+} from "../hooks/useAppForm";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import type { OrgStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
@@ -47,7 +54,6 @@ import { useToastStore } from "../store/toastStore";
 import { triggerHaptic } from "../utils/haptics";
 import {
   AppBottomSheet,
-  BottomSheetTextInput,
   BriefcaseIcon,
   Button,
   Card,
@@ -78,25 +84,20 @@ type CustomerRow = {
   name?: string;
 };
 
-type CreateForm = {
-  name: string;
-  customerId: string;
-  address: GlobalAddress;
-  radius: string;
-  siteContactName: string;
-  siteContactEmail: string;
-  siteContactPhone: PhoneValue;
-};
-
-const emptyForm = (): CreateForm => ({
+const emptyJob: JobFormValues = {
   name: "",
-  customerId: "",
-  address: emptyGlobalAddress(),
+  customer_id: "",
+  address_line_1: "",
+  formatted_address: "",
+  latitude: null,
+  longitude: null,
   radius: "100",
-  siteContactName: "",
-  siteContactEmail: "",
-  siteContactPhone: emptyPhoneValue(),
-});
+  site_contact_name: "",
+  site_contact_email: "",
+  site_contact_phone_number: "",
+  site_contact_phone_country_code: null,
+  site_contact_phone_country_iso: null,
+};
 
 function jobId(row: JobRow): number | string | undefined {
   return row.details?.id ?? row.id;
@@ -106,23 +107,46 @@ function jobName(row: JobRow): string {
   return row.details?.name || row.name || "";
 }
 
-function formFromJob(row: JobRow): CreateForm {
+function coordsFromAddress(next: GlobalAddress): {
+  latitude: number | null;
+  longitude: number | null;
+} {
+  const latitude =
+    next.latitude === "" || next.latitude == null
+      ? null
+      : Number(next.latitude);
+  const longitude =
+    next.longitude === "" || next.longitude == null
+      ? null
+      : Number(next.longitude);
+  return { latitude, longitude };
+}
+
+function formFromJob(row: JobRow): JobFormValues {
+  const addr = fromAddressRecord(row.address || null);
+  const { latitude, longitude } = coordsFromAddress(addr);
+  const phone = phoneValueFromE164(
+    row.site_contact_phone_number,
+    row.site_contact_phone_country_iso,
+  );
   return {
     name: jobName(row),
-    customerId:
+    customer_id:
       row.customer?.id != null
         ? String(row.customer.id)
         : row.customer_id != null
           ? String(row.customer_id)
           : "",
-    address: fromAddressRecord(row.address || null),
+    address_line_1: addr.address_line_1 || "",
+    formatted_address: addr.formatted_address || "",
+    latitude,
+    longitude,
     radius: row.radius != null ? String(row.radius) : "100",
-    siteContactName: row.site_contact_name || "",
-    siteContactEmail: row.site_contact_email || "",
-    siteContactPhone: phoneValueFromE164(
-      row.site_contact_phone_number,
-      row.site_contact_phone_country_iso,
-    ),
+    site_contact_name: row.site_contact_name || "",
+    site_contact_email: row.site_contact_email || "",
+    site_contact_phone_number: phone.phone_number || "",
+    site_contact_phone_country_code: phone.phone_country_code,
+    site_contact_phone_country_iso: phone.phone_country_iso,
   };
 }
 
@@ -130,7 +154,7 @@ export function JobsListScreen(_props: Props) {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [customerId, setCustomerId] = useState<string>("");
-  const [form, setForm] = useState<CreateForm>(emptyForm);
+  const [address, setAddress] = useState<GlobalAddress>(emptyGlobalAddress());
   const [editing, setEditing] = useState<JobRow | null>(null);
   const sheetRef = useRef<BottomSheetModal>(null);
   const debouncedSearch = useDebouncedValue(search.trim(), 400);
@@ -146,6 +170,21 @@ export function JobsListScreen(_props: Props) {
   const updateMutation = useUpdateJob();
   const editingId = editing ? jobId(editing) : undefined;
   const isEdit = editingId != null;
+
+  const form = useAppForm<JobFormValues>({
+    schema: jobFormSchema,
+    defaultValues: emptyJob,
+  });
+  const chain = useFormFieldChain(form, [
+    "name",
+    "radius",
+    "site_contact_name",
+    "site_contact_email",
+  ]);
+  const { setValue, watch } = form;
+  const phoneNumber = watch("site_contact_phone_number");
+  const phoneIso = watch("site_contact_phone_country_iso");
+  const phoneCode = watch("site_contact_phone_country_code");
 
   useEffect(() => {
     setPage(1);
@@ -181,55 +220,51 @@ export function JobsListScreen(_props: Props) {
   const totalPages = Math.max(1, Number(pagination?.total_pages) || 1);
   const currentPage = Number(pagination?.page_number) || page;
 
-  const patchForm = useCallback((partial: Partial<CreateForm>) => {
-    setForm((prev) => ({ ...prev, ...partial }));
-  }, []);
+  const handleAddressChange = useCallback(
+    (next: GlobalAddress) => {
+      setAddress(next);
+      const { latitude, longitude } = coordsFromAddress(next);
+      setValue("address_line_1", next.address_line_1 || "", {
+        shouldValidate: true,
+      });
+      setValue("formatted_address", next.formatted_address || "", {
+        shouldValidate: true,
+      });
+      setValue("latitude", latitude, { shouldValidate: true });
+      setValue("longitude", longitude, { shouldValidate: true });
+    },
+    [setValue],
+  );
 
-  function openCreate() {
+  const openCreate = useCallback(() => {
     setEditing(null);
-    setForm(emptyForm());
+    form.reset(emptyJob);
+    setAddress(emptyGlobalAddress());
     sheetRef.current?.present();
-  }
+  }, [form]);
 
-  function openEdit(row: JobRow) {
-    if (!canEdit || jobId(row) == null) return;
-    setEditing(row);
-    setForm(formFromJob(row));
-    sheetRef.current?.present();
-  }
+  const openEdit = useCallback(
+    (row: JobRow) => {
+      if (!canEdit || jobId(row) == null) return;
+      setEditing(row);
+      form.reset(formFromJob(row));
+      setAddress(fromAddressRecord(row.address || null));
+      sheetRef.current?.present();
+    },
+    [canEdit, form],
+  );
 
-  async function handleSubmit() {
-    if (!form.name.trim()) {
-      toast.warning("Name required");
-      return;
-    }
-    if (!form.customerId) {
-      toast.warning("Customer required");
-      return;
-    }
-    if (!hasAddressContent(form.address)) {
-      toast.warning("Address required");
-      return;
-    }
-    if (form.address.latitude == null || form.address.longitude == null) {
-      toast.warning("Select an address with coordinates");
-      return;
-    }
-    if (!form.radius.trim()) {
-      toast.warning("Radius required");
-      return;
-    }
-    const phone = form.siteContactPhone;
+  const handleSubmit = useValidatedSubmit(form, async (values) => {
     const payload: Record<string, unknown> = {
-      name: form.name.trim(),
-      customer: { id: Number(form.customerId) },
-      address: toAddressApiPayload(form.address, { includeCoordinates: true }),
-      radius: Number(form.radius),
-      site_contact_name: form.siteContactName.trim() || null,
-      site_contact_email: form.siteContactEmail.trim() || null,
-      site_contact_phone_number: phone.phone_number,
-      site_contact_phone_country_code: phone.phone_country_code,
-      site_contact_phone_country_iso: phone.phone_country_iso,
+      name: values.name.trim(),
+      customer: { id: Number(values.customer_id) },
+      address: toAddressApiPayload(address, { includeCoordinates: true }),
+      radius: Number(values.radius),
+      site_contact_name: values.site_contact_name?.trim() || null,
+      site_contact_email: values.site_contact_email?.trim() || null,
+      site_contact_phone_number: values.site_contact_phone_number || null,
+      site_contact_phone_country_code: values.site_contact_phone_country_code,
+      site_contact_phone_country_iso: values.site_contact_phone_country_iso,
     };
     try {
       if (isEdit && editingId != null) {
@@ -240,7 +275,8 @@ export function JobsListScreen(_props: Props) {
         toast.success("Job created");
       }
       sheetRef.current?.dismiss();
-      setForm(emptyForm());
+      form.reset(emptyJob);
+      setAddress(emptyGlobalAddress());
       setEditing(null);
     } catch (err) {
       toast.error(
@@ -248,7 +284,7 @@ export function JobsListScreen(_props: Props) {
         getErrorMessage(err),
       );
     }
-  }
+  });
 
   if (!canList) {
     return <AccessDenied />;
@@ -267,10 +303,6 @@ export function JobsListScreen(_props: Props) {
   }
 
   const pending = createMutation.isPending || updateMutation.isPending;
-  const inputStyle = [
-    styles.input,
-    { borderColor: c.border, backgroundColor: c.bg, color: c.text },
-  ];
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
@@ -388,6 +420,8 @@ export function JobsListScreen(_props: Props) {
         snapPoints={["75%", "92%"]}
         onDismiss={() => {
           setEditing(null);
+          form.reset(emptyJob);
+          setAddress(emptyGlobalAddress());
         }}
         footer={
           <Button
@@ -402,68 +436,112 @@ export function JobsListScreen(_props: Props) {
             }
             disabled={pending}
             loading={pending}
-            onPress={() => void handleSubmit()}
+            onPress={handleSubmit}
           />
         }
       >
-        <Text style={[styles.fieldLabel, { color: c.muted }]}>Name *</Text>
-        <BottomSheetTextInput
-          style={inputStyle}
-          value={form.name}
-          onChangeText={(name) => patchForm({ name })}
-          placeholderTextColor={c.muted}
+        <FormTextField
+          control={form.control}
+          name="name"
+          label="Name"
+          inputType="bottomSheet"
           autoCapitalize="words"
+          editable={!pending}
+          {...fieldChainProps(chain, "name")}
         />
-        <MobileSelect
-          label="Customer *"
-          value={form.customerId}
-          options={customerOptions}
-          onChange={(id) => patchForm({ customerId: id })}
-          placeholder="Select customer"
+        <Controller
+          control={form.control}
+          name="customer_id"
+          render={({ field: { onChange, onBlur, value }, fieldState }) => (
+            <>
+              <MobileSelect
+                label="Customer"
+                value={value}
+                options={customerOptions}
+                onChange={(id) => {
+                  onChange(id);
+                  onBlur();
+                }}
+                placeholder="Select customer"
+                disabled={pending}
+              />
+              <FormFieldError message={fieldState.error?.message} />
+            </>
+          )}
         />
-        <PlacesAddressInput
-          value={form.address}
-          onChange={(address) => patchForm({ address })}
-          label="Site address *"
-          requireCoordinates
-          inBottomSheet
+        <Controller
+          control={form.control}
+          name="formatted_address"
+          render={({ fieldState }) => (
+            <>
+              <PlacesAddressInput
+                value={address}
+                onChange={handleAddressChange}
+                label="Site address"
+                requireCoordinates
+                inBottomSheet
+              />
+              <FormFieldError message={fieldState.error?.message} />
+            </>
+          )}
         />
-        <Text style={[styles.fieldLabel, { color: c.muted }]}>
-          Geofence radius (m) *
-        </Text>
-        <BottomSheetTextInput
-          style={inputStyle}
-          value={form.radius}
-          onChangeText={(radius) => patchForm({ radius })}
-          placeholderTextColor={c.muted}
+        <FormTextField
+          control={form.control}
+          name="radius"
+          label="Geofence radius (m)"
+          inputType="bottomSheet"
           keyboardType="number-pad"
+          editable={!pending}
+          {...fieldChainProps(chain, "radius")}
         />
-        <Text style={[styles.fieldLabel, { color: c.muted }]}>
-          Site contact name
-        </Text>
-        <BottomSheetTextInput
-          style={inputStyle}
-          value={form.siteContactName}
-          onChangeText={(siteContactName) => patchForm({ siteContactName })}
-          placeholderTextColor={c.muted}
+        <FormTextField
+          control={form.control}
+          name="site_contact_name"
+          label="Site contact name"
+          inputType="bottomSheet"
           autoCapitalize="words"
+          editable={!pending}
+          {...fieldChainProps(chain, "site_contact_name")}
         />
-        <Text style={[styles.fieldLabel, { color: c.muted }]}>
-          Site contact email
-        </Text>
-        <BottomSheetTextInput
-          style={inputStyle}
-          value={form.siteContactEmail}
-          onChangeText={(siteContactEmail) => patchForm({ siteContactEmail })}
-          placeholderTextColor={c.muted}
+        <FormTextField
+          control={form.control}
+          name="site_contact_email"
+          label="Site contact email"
+          inputType="bottomSheet"
           autoCapitalize="none"
           keyboardType="email-address"
+          editable={!pending}
+          {...fieldChainProps(chain, "site_contact_email")}
         />
-        <GlobalPhoneInput
-          label="Site contact phone"
-          value={form.siteContactPhone}
-          onChange={(siteContactPhone) => patchForm({ siteContactPhone })}
-          inBottomSheet
+        <Controller
+          control={form.control}
+          name="site_contact_phone_number"
+          render={({ field: { onChange }, fieldState }) => (
+            <GlobalPhoneInput
+              label="Site contact phone"
+              value={{
+                phone_number: phoneNumber || null,
+                phone_country_code: phoneCode || null,
+                phone_country_iso: phoneIso || null,
+              }}
+              onChange={(phone) => {
+                onChange(phone.phone_number || "");
+                setValue(
+                  "site_contact_phone_country_code",
+                  phone.phone_country_code,
+                  { shouldValidate: true },
+                );
+                setValue(
+                  "site_contact_phone_country_iso",
+                  phone.phone_country_iso,
+                  { shouldValidate: true },
+                );
+              }}
+              error={fieldState.error?.message}
+              inBottomSheet
+              disabled={pending}
+            />
+          )}
         />
       </AppBottomSheet>
     </View>
@@ -493,18 +571,4 @@ const styles = StyleSheet.create({
   textCol: { flex: 1, minWidth: 0 },
   name: { fontWeight: "700", marginBottom: 4, letterSpacing: -0.2 },
   meta: { marginTop: 2, fontSize: 12, fontWeight: "500" },
-  fieldLabel: {
-    fontWeight: "600",
-    fontSize: 13,
-    marginBottom: 6,
-    marginTop: spacing.sm,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-    marginBottom: 4,
-  },
 });

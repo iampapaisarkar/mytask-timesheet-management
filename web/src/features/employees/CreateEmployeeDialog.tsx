@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Controller } from "react-hook-form";
 import {
   useCreateEmployee,
   useEmployeeFormLookups,
@@ -14,7 +15,17 @@ import {
   isSupportedCurrency,
   type SupportedCurrencyCode,
 } from "@mytask/constants";
-import { getErrorMessage, isValidInternationalPhone, phoneValueFromE164, fromAddressRecord, toAddressApiPayload, hasAddressContent, type PhoneValue, type GlobalAddress } from "@mytask/utils";
+import {
+  employeeDetailsStepSchema,
+  employeeEmailStepSchema,
+  employeePayrollStepSchema,
+  employeeWageStepSchema,
+  type EmployeeDetailsStepValues,
+  type EmployeeEmailStepValues,
+  type EmployeePayrollStepValues,
+  type EmployeeWageStepValues,
+} from "@mytask/validation";
+import { getErrorMessage, phoneValueFromE164, fromAddressRecord, toAddressApiPayload, type PhoneValue } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
 import { FullScreenModal } from "@/components/ui/FullScreenModal";
 import { TextInput } from "@/components/ui/TextInput";
@@ -22,17 +33,18 @@ import { GlobalPhoneInput } from "@/components/ui/GlobalPhoneInput";
 import {
   GoogleAddressAutocomplete,
   emptyAddress,
+  type AddressValue,
 } from "@/components/GoogleAddress";
 import { useToastStore } from "@/store/toastStore";
 import { useOrganisationStore } from "@/store/organisationStore";
 import { useLocaleDefaults } from "@/hooks/useLocaleDefaults";
+import { useAppForm, useValidatedSubmit } from "@/hooks/useAppForm";
 
 const selectClass =
   "mt-focus rounded-xl border border-border bg-[var(--mt-surface)] px-3.5 py-3 text-[var(--mt-text)] outline-none focus:border-primary";
 
 const STEPS = ["Email", "Details", "Wage", "Payroll"] as const;
 
-type PayType = "HOURLY" | "FIXED";
 type PaymentMethod = "CASH" | "DIRECT_DEBIT" | "BANK_TRANSFER";
 
 type NamedId = { id: number; name?: string; code?: string };
@@ -48,84 +60,47 @@ export type EmployeeListRow = {
   invitation?: { status?: { code?: string } };
 };
 
-type EmployeeForm = {
-  action: { create_user: boolean; message?: string } | null;
-  details: {
-    first_name: string;
-    middle_name: string;
-    last_name: string;
-    email: string;
-    preferred_name: string;
-    dob: string;
-    phone_number: string;
-    phone_country_code: string | null;
-    phone_country_iso: string | null;
-    address: GlobalAddress;
-    role: NamedId | null;
-  };
-  wage: {
-    start_date: string;
-    employment_type: NamedId | null;
-    payroll_calendar: NamedId | null;
-    pay_type: PayType;
-    currency: SupportedCurrencyCode;
-    hourly_rate_exc_super: string;
-    fixed_rate_exc_super: string;
-  };
-  payroll: {
-    payment_method: PaymentMethod;
-    account_holder_name: string;
-    bank_name: string;
-    bank_account_number: string;
-    ifsc_code: string;
-    swift_code: string;
-  };
-};
+const emptyEmail: EmployeeEmailStepValues = { email: "" };
 
-const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
-  { value: "CASH", label: "Cash" },
-  { value: "DIRECT_DEBIT", label: "Direct Debit" },
-  { value: "BANK_TRANSFER", label: "Bank Transfer" },
-];
-
-function emptyForm(
-  email = "",
-  currency: SupportedCurrencyCode = DEFAULT_CURRENCY,
-): EmployeeForm {
+function emptyDetails(email = ""): EmployeeDetailsStepValues {
   return {
-    action: null,
-    details: {
-      first_name: "",
-      middle_name: "",
-      last_name: "",
-      email,
-      preferred_name: "",
-      dob: "",
-      phone_number: "",
-      phone_country_code: null,
-      phone_country_iso: null,
-      address: emptyAddress(),
-      role: null,
-    },
-    wage: {
-      start_date: "",
-      employment_type: null,
-      payroll_calendar: null,
-      pay_type: "HOURLY",
-      currency,
-      hourly_rate_exc_super: "",
-      fixed_rate_exc_super: "",
-    },
-    payroll: {
-      payment_method: "CASH",
-      account_holder_name: "",
-      bank_name: "",
-      bank_account_number: "",
-      ifsc_code: "",
-      swift_code: "",
-    },
+    first_name: "",
+    middle_name: "",
+    last_name: "",
+    email,
+    preferred_name: "",
+    dob: "",
+    phone_number: "",
+    phone_country_code: null,
+    phone_country_iso: null,
+    address_line_1: "",
+    formatted_address: "",
+    role_id: "",
   };
 }
+
+function emptyWage(
+  currency: SupportedCurrencyCode = DEFAULT_CURRENCY,
+): EmployeeWageStepValues {
+  return {
+    start_date: "",
+    employment_type_id: "",
+    payroll_calendar_id: "",
+    pay_type: "HOURLY",
+    currency,
+    hourly_rate: "",
+    fixed_rate: "",
+  };
+}
+
+const emptyPayroll: EmployeePayrollStepValues = {
+  payment_method: "CASH",
+  account_holder_name: "",
+  bank_name: "",
+  bank_account_number: "",
+  ifsc_code: "",
+  swift_code: "",
+};
 
 function asNamed(raw: unknown): NamedId | null {
   if (!raw || typeof raw !== "object") return null;
@@ -138,42 +113,65 @@ function asNamed(raw: unknown): NamedId | null {
   };
 }
 
-function asPayType(raw: unknown): PayType {
-  const value = String(raw || "").toUpperCase();
-  return value === "FIXED" ? "FIXED" : "HOURLY";
+function detailsFromRow(
+  details: Record<string, unknown>,
+  address: AddressValue,
+): EmployeeDetailsStepValues {
+  const phone = phoneValueFromE164(String(details.phone_number || ""));
+  const role = asNamed(details.role);
+  return {
+    first_name: String(details.first_name || ""),
+    middle_name: String(details.middle_name || ""),
+    last_name: String(details.last_name || ""),
+    email: String(details.email || ""),
+    preferred_name: String(details.preferred_name || ""),
+    dob: String(details.dob || ""),
+    phone_number: phone.phone_number || String(details.phone_number || ""),
+    phone_country_code:
+      (details.phone_country_code as string | null) || phone.phone_country_code,
+    phone_country_iso:
+      (details.phone_country_iso as string | null) || phone.phone_country_iso,
+    address_line_1: address.address_line_1 || "",
+    formatted_address: address.formatted_address || "",
+    role_id: role?.id != null ? String(role.id) : "",
+  };
 }
 
-function asPaymentMethod(raw: unknown): PaymentMethod {
-  const value = String(raw || "").toUpperCase();
-  if (value === "DIRECT_DEBIT" || value === "BANK_TRANSFER") return value;
-  return "CASH";
-}
-
-function mapWageFromRaw(wage: Record<string, unknown>): EmployeeForm["wage"] {
-  const payType = asPayType(wage.pay_type);
-  const rawCurrency = String(wage.currency || DEFAULT_CURRENCY).toUpperCase();
+function wageFromRaw(
+  wage: Record<string, unknown>,
+  defaultCurrency: SupportedCurrencyCode,
+): EmployeeWageStepValues {
+  const payType =
+    String(wage.pay_type || "").toUpperCase() === "FIXED" ? "FIXED" : "HOURLY";
+  const rawCurrency = String(wage.currency || defaultCurrency).toUpperCase();
+  const employmentType = asNamed(wage.employment_type);
+  const payrollCalendar = asNamed(wage.payroll_calendar);
   return {
     start_date: String(wage.start_date || ""),
-    employment_type: asNamed(wage.employment_type),
-    payroll_calendar: asNamed(wage.payroll_calendar),
+    employment_type_id:
+      employmentType?.id != null ? String(employmentType.id) : "",
+    payroll_calendar_id:
+      payrollCalendar?.id != null ? String(payrollCalendar.id) : "",
     pay_type: payType,
-    currency: isSupportedCurrency(rawCurrency)
-      ? rawCurrency
-      : DEFAULT_CURRENCY,
-    hourly_rate_exc_super:
+    currency: isSupportedCurrency(rawCurrency) ? rawCurrency : defaultCurrency,
+    hourly_rate:
       payType === "HOURLY" ? String(wage.hourly_rate_exc_super ?? "") : "",
-    fixed_rate_exc_super:
+    fixed_rate:
       payType === "FIXED" ? String(wage.fixed_rate_exc_super ?? "") : "",
   };
 }
 
-function mapPayrollFromRaw(
+function payrollFromRaw(
   payroll: Record<string, unknown>,
-): EmployeeForm["payroll"] {
-  const paymentMethod = asPaymentMethod(payroll.payment_method);
-  const isBank = paymentMethod === "BANK_TRANSFER";
+): EmployeePayrollStepValues {
+  const paymentMethod = String(payroll.payment_method || "CASH").toUpperCase();
+  const method: PaymentMethod =
+    paymentMethod === "DIRECT_DEBIT" || paymentMethod === "BANK_TRANSFER"
+      ? paymentMethod
+      : "CASH";
+  const isBank = method === "BANK_TRANSFER";
   return {
-    payment_method: paymentMethod,
+    payment_method: method,
     account_holder_name: isBank
       ? String(payroll.account_holder_name || "")
       : "",
@@ -186,42 +184,39 @@ function mapPayrollFromRaw(
   };
 }
 
-function mapDetailsAddress(addressRaw: Record<string, unknown>) {
-  return fromAddressRecord(addressRaw);
-}
-
-function formFromEmployeeRow(row: EmployeeListRow): EmployeeForm {
+function resetEmployeeForms(
+  row: EmployeeListRow,
+  defaultCurrency: SupportedCurrencyCode,
+  resetters: {
+    resetEmail: (values: EmployeeEmailStepValues) => void;
+    resetDetails: (values: EmployeeDetailsStepValues) => void;
+    resetWage: (values: EmployeeWageStepValues) => void;
+    resetPayroll: (values: EmployeePayrollStepValues) => void;
+  },
+  setAddress: (value: AddressValue) => void,
+) {
   const details = (row.details || {}) as Record<string, unknown>;
   const addressRaw =
     details.address && typeof details.address === "object"
       ? (details.address as Record<string, unknown>)
       : {};
+  const address = fromAddressRecord(addressRaw);
   const wage = (row.wage || {}) as Record<string, unknown>;
   const payroll = (row.payroll || {}) as Record<string, unknown>;
+  const email = String(details.email || "");
 
-  return {
-    action: { create_user: false },
-    details: {
-      first_name: String(details.first_name || ""),
-      middle_name: String(details.middle_name || ""),
-      last_name: String(details.last_name || ""),
-      email: String(details.email || ""),
-      preferred_name: String(details.preferred_name || ""),
-      dob: String(details.dob || ""),
-      phone_number: String(details.phone_number || ""),
-      phone_country_code:
-        (details.phone_country_code as string) ||
-        phoneValueFromE164(String(details.phone_number || "")).phone_country_code,
-      phone_country_iso:
-        (details.phone_country_iso as string) ||
-        phoneValueFromE164(String(details.phone_number || "")).phone_country_iso,
-      address: mapDetailsAddress(addressRaw),
-      role: asNamed(details.role),
-    },
-    wage: mapWageFromRaw(wage),
-    payroll: mapPayrollFromRaw(payroll),
-  };
+  resetters.resetEmail({ email });
+  resetters.resetDetails(detailsFromRow(details, address));
+  resetters.resetWage(wageFromRaw(wage, defaultCurrency));
+  resetters.resetPayroll(payrollFromRaw(payroll));
+  setAddress(address);
 }
+
+const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
+  { value: "CASH", label: "Cash" },
+  { value: "DIRECT_DEBIT", label: "Direct Debit" },
+  { value: "BANK_TRANSFER", label: "Bank Transfer" },
+];
 
 function RadioOption<T extends string>({
   name,
@@ -285,10 +280,68 @@ export function CreateEmployeeDialog({
   const isEdit = employee != null && (employee.details?.id != null || employee.id != null);
   const employeeId = employee?.details?.id ?? employee?.id;
   const [step, setStep] = useState(isEdit ? 1 : 0);
-  const [email, setEmail] = useState("");
-  const [form, setForm] = useState<EmployeeForm>(() =>
-    emptyForm("", defaultWageCurrency),
-  );
+  const [action, setAction] = useState<{
+    create_user: boolean;
+    message?: string;
+  } | null>(null);
+  const [address, setAddress] = useState<AddressValue>(emptyAddress);
+
+  const emailForm = useAppForm<EmployeeEmailStepValues>({
+    schema: employeeEmailStepSchema,
+    defaultValues: emptyEmail,
+  });
+  const detailsForm = useAppForm<EmployeeDetailsStepValues>({
+    schema: employeeDetailsStepSchema,
+    defaultValues: emptyDetails(),
+  });
+  const wageForm = useAppForm<EmployeeWageStepValues>({
+    schema: employeeWageStepSchema,
+    defaultValues: emptyWage(defaultWageCurrency),
+  });
+  const payrollForm = useAppForm<EmployeePayrollStepValues>({
+    schema: employeePayrollStepSchema,
+    defaultValues: emptyPayroll,
+  });
+
+  const {
+    register: registerEmail,
+    reset: resetEmail,
+    formState: { errors: emailErrors },
+  } = emailForm;
+  const {
+    reset: resetDetails,
+    control: detailsControl,
+    register: registerDetails,
+    watch: watchDetails,
+    setValue: setDetailsValue,
+    getValues: getDetailsValues,
+    setError: setDetailsError,
+    trigger: triggerDetails,
+    formState: { errors: detailsErrors },
+  } = detailsForm;
+  const {
+    reset: resetWage,
+    register: registerWage,
+    watch: watchWage,
+    setValue: setWageValue,
+    getValues: getWageValues,
+    setError: setWageError,
+    trigger: triggerWage,
+    formState: { errors: wageErrors },
+  } = wageForm;
+  const {
+    reset: resetPayroll,
+    register: registerPayroll,
+    watch: watchPayroll,
+    setValue: setPayrollValue,
+    getValues: getPayrollValues,
+    trigger: triggerPayroll,
+    formState: { errors: payrollErrors },
+  } = payrollForm;
+
+  const payType = watchWage("pay_type");
+  const wageCurrency = watchWage("currency") as SupportedCurrencyCode;
+  const paymentMethod = watchPayroll("payment_method");
 
   const enabled = open && (isEdit || step >= 1);
   const formLookupsQuery = useEmployeeFormLookups(enabled);
@@ -311,89 +364,98 @@ export function CreateEmployeeDialog({
   useEffect(() => {
     if (!open) {
       setStep(0);
-      setEmail("");
-      setForm(emptyForm("", defaultWageCurrency));
+      setAction(null);
+      setAddress(emptyAddress());
+      resetEmail(emptyEmail);
+      resetDetails(emptyDetails());
+      resetWage(emptyWage(defaultWageCurrency));
+      resetPayroll(emptyPayroll);
       return;
     }
     if (employee) {
-      const next = formFromEmployeeRow(employee);
-      setForm(next);
-      setEmail(next.details.email);
+      resetEmployeeForms(
+        employee,
+        defaultWageCurrency,
+        {
+          resetEmail,
+          resetDetails,
+          resetWage,
+          resetPayroll,
+        },
+        setAddress,
+      );
+      setAction({ create_user: false });
       setStep(1);
     } else {
       setStep(0);
-      setEmail("");
-      setForm(emptyForm("", defaultWageCurrency));
+      setAction(null);
+      setAddress(emptyAddress());
+      resetEmail(emptyEmail);
+      resetDetails(emptyDetails());
+      resetWage(emptyWage(defaultWageCurrency));
+      resetPayroll(emptyPayroll);
     }
-  }, [open, employee]);
+  }, [
+    open,
+    employee,
+    defaultWageCurrency,
+    resetEmail,
+    resetDetails,
+    resetWage,
+    resetPayroll,
+  ]);
 
   const stepLabel = useMemo(() => STEPS[step] || "", [step]);
 
   if (!open) return null;
 
-  function patchDetails(partial: Partial<EmployeeForm["details"]>) {
-    setForm((prev) => ({
-      ...prev,
-      details: { ...prev.details, ...partial },
-    }));
+  function syncAddressToDetails(next: AddressValue) {
+    setAddress(next);
+    setDetailsValue("address_line_1", next.address_line_1 || "", {
+      shouldValidate: true,
+    });
+    setDetailsValue("formatted_address", next.formatted_address || "", {
+      shouldValidate: true,
+    });
   }
 
-  function patchAddress(next: EmployeeForm["details"]["address"]) {
-    setForm((prev) => ({
-      ...prev,
-      details: {
-        ...prev.details,
-        address: next,
-      },
-    }));
+  function findRole(roleId: string) {
+    return roles.find((r) => String(r.id) === roleId) || null;
   }
 
-  function patchWage(partial: Partial<EmployeeForm["wage"]>) {
-    setForm((prev) => ({ ...prev, wage: { ...prev.wage, ...partial } }));
+  function findEmploymentType(typeId: string) {
+    return employmentTypes.find((t) => String(t.id) === typeId) || null;
   }
 
-  function patchPayroll(partial: Partial<EmployeeForm["payroll"]>) {
-    setForm((prev) => ({
-      ...prev,
-      payroll: { ...prev.payroll, ...partial },
-    }));
+  function findCalendar(calendarId: string) {
+    return calendars.find((c) => String(c.id) === calendarId) || null;
   }
 
-  function setPayType(payType: PayType) {
-    setForm((prev) => ({
-      ...prev,
-      wage: {
-        ...prev.wage,
-        pay_type: payType,
-        hourly_rate_exc_super:
-          payType === "HOURLY" ? prev.wage.hourly_rate_exc_super : "",
-        fixed_rate_exc_super:
-          payType === "FIXED" ? prev.wage.fixed_rate_exc_super : "",
-      },
-    }));
-  }
-
-  function setPaymentMethod(method: PaymentMethod) {
-    setForm((prev) => ({
-      ...prev,
-      payroll: {
-        payment_method: method,
-        account_holder_name:
-          method === "BANK_TRANSFER" ? prev.payroll.account_holder_name : "",
-        bank_name: method === "BANK_TRANSFER" ? prev.payroll.bank_name : "",
-        bank_account_number:
-          method === "BANK_TRANSFER" ? prev.payroll.bank_account_number : "",
-        ifsc_code: method === "BANK_TRANSFER" ? prev.payroll.ifsc_code : "",
-        swift_code: method === "BANK_TRANSFER" ? prev.payroll.swift_code : "",
-      },
-    }));
-  }
-
-  async function handleSearch() {
-    if (!email.trim() || !email.includes("@")) {
-      toast.warning("Enter a valid email");
-      return;
+  function validateDetailsExtras() {
+    const roleId = getDetailsValues("role_id");
+    const matched = findRole(roleId);
+    if (matched && String(matched.code || "").toLowerCase() === "owner") {
+      setDetailsError("role_id", {
+        message: "Organisation Owner cannot be assigned",
+      });
+      return false;
     }
+    return true;
+  }
+
+  function validateWageExtras() {
+    const typeId = getWageValues("employment_type_id");
+    const matched = findEmploymentType(typeId);
+    if (matched && String(matched.code || "").toUpperCase() === "CONTRACT") {
+      setWageError("employment_type_id", {
+        message: "Contract employment type is not allowed",
+      });
+      return false;
+    }
+    return true;
+  }
+
+  async function runSearch(email: string) {
     try {
       const data = await searchMutation.mutateAsync(email.trim());
       const details = (data.details || {}) as Record<string, unknown>;
@@ -409,192 +471,116 @@ export function CreateEmployeeDialog({
             };
       const wage = (data.wage || {}) as Record<string, unknown>;
       const payroll = (data.payroll || {}) as Record<string, unknown>;
-      const action = (data.action || {
+      const nextAction = (data.action || {
         create_user: true,
-      }) as EmployeeForm["action"];
+      }) as { create_user: boolean; message?: string };
 
-      setForm({
-        action,
-        details: {
-          first_name: String(details.first_name || ""),
-          middle_name: String(details.middle_name || ""),
-          last_name: String(details.last_name || ""),
-          email: String(details.email || email.trim()),
-          preferred_name: String(details.preferred_name || ""),
-          dob: String(details.dob || ""),
-          phone_number: String(details.phone_number || ""),
-          phone_country_code:
-            (details.phone_country_code as string) ||
-            phoneValueFromE164(String(details.phone_number || ""))
-              .phone_country_code,
-          phone_country_iso:
-            (details.phone_country_iso as string) ||
-            phoneValueFromE164(String(details.phone_number || ""))
-              .phone_country_iso,
-          address: mapDetailsAddress(addressRaw as Record<string, unknown>),
-          role: asNamed(details.role),
-        },
-        wage: mapWageFromRaw(wage),
-        payroll: mapPayrollFromRaw(payroll),
-      });
+      const nextAddress = fromAddressRecord(
+        addressRaw as Record<string, unknown>,
+      );
+      resetDetails(
+        detailsFromRow(
+          { ...details, email: String(details.email || email.trim()) },
+          nextAddress,
+        ),
+      );
+      resetWage(wageFromRaw(wage, defaultWageCurrency));
+      resetPayroll(payrollFromRaw(payroll));
+      setAddress(nextAddress);
+      setAction(nextAction);
       setStep(1);
-      if (action?.message) {
-        toast.info("Email lookup", action.message);
+      if (nextAction.message) {
+        toast.info("Email lookup", nextAction.message);
       }
     } catch (err) {
       toast.error("Search failed", getErrorMessage(err));
     }
   }
 
-  function validateDetails(): string | null {
-    const d = form.details;
-    if (form.action?.create_user) {
-      if (!d.first_name.trim()) return "First name is required";
-      if (!d.last_name.trim()) return "Last name is required";
-    }
-    if (!d.email.trim()) return "Email is required";
-    if (!d.dob) return "Date of birth is required";
-    if (!hasAddressContent(d.address)) {
-      return "Please select or enter an address";
-    }
-    if (!d.phone_number.trim()) return "Phone number is required";
-    if (!isValidInternationalPhone(d.phone_number)) {
-      return "Enter a valid international phone number";
-    }
-    if (!d.role?.id) return "Role is required";
-    if (String(d.role.code || "").toLowerCase() === "owner") {
-      return "Organisation Owner cannot be assigned";
-    }
-    return null;
-  }
+  const handleSearch = useValidatedSubmit(emailForm, async (values) => {
+    await runSearch(values.email);
+  });
 
-  function validateWage(): string | null {
-    const w = form.wage;
-    if (!w.start_date) return "Start date is required";
-    if (!w.employment_type?.id) return "Employment type is required";
-    if (String(w.employment_type.code || "").toUpperCase() === "CONTRACT") {
-      return "Contract employment type is not allowed";
-    }
-    if (!w.payroll_calendar?.id) return "Payroll calendar is required";
-    if (!isSupportedCurrency(w.currency)) {
-      return "Currency must be a supported currency code";
-    }
-    if (w.pay_type === "HOURLY") {
-      if (!w.hourly_rate_exc_super.trim()) {
-        return "Hourly rate is required";
-      }
-      if (Number(w.hourly_rate_exc_super) <= 0) {
-        return "Hourly rate must be greater than 0";
-      }
-    } else {
-      if (!w.fixed_rate_exc_super.trim()) {
-        return "Fixed rate is required";
-      }
-      if (Number(w.fixed_rate_exc_super) <= 0) {
-        return "Fixed rate must be greater than 0";
-      }
-    }
-    return null;
-  }
+  const advanceFromDetails = useValidatedSubmit(detailsForm, () => {
+    if (!validateDetailsExtras()) return;
+    setStep(2);
+  });
 
-  function validatePayroll(): string | null {
-    const p = form.payroll;
-    if (!p.payment_method) return "Payment method is required";
-    if (p.payment_method === "BANK_TRANSFER") {
-      if (!p.account_holder_name.trim())
-        return "Account holder name is required";
-      if (!p.bank_name.trim()) return "Bank name is required";
-      if (!p.bank_account_number.trim())
-        return "Bank account number is required";
-      if (!p.ifsc_code.trim()) return "IFSC code is required";
-      if (!p.swift_code.trim()) return "SWIFT code is required";
-    }
-    return null;
-  }
+  const advanceFromWage = useValidatedSubmit(wageForm, () => {
+    if (!validateWageExtras()) return;
+    setStep(3);
+  });
 
   function goNext() {
-    if (step === 1) {
-      const err = validateDetails();
-      if (err) {
-        toast.warning(err);
-        return;
-      }
-    }
-    if (step === 2) {
-      const err = validateWage();
-      if (err) {
-        toast.warning(err);
-        return;
-      }
-    }
-    setStep((s) => Math.min(s + 1, STEPS.length - 1));
+    if (step === 1) advanceFromDetails();
+    else if (step === 2) advanceFromWage();
   }
 
-  async function handleCreate() {
-    const detailErr = validateDetails();
-    if (detailErr) {
-      toast.warning(detailErr);
+  async function submitEmployee() {
+    const detailsValid = await triggerDetails();
+    const wageValid = await triggerWage();
+    const payrollValid = await triggerPayroll();
+    const extrasOk = validateDetailsExtras() && validateWageExtras();
+
+    if (!detailsValid) {
       setStep(1);
       return;
     }
-    const wageErr = validateWage();
-    if (wageErr) {
-      toast.warning(wageErr);
+    if (!wageValid) {
       setStep(2);
       return;
     }
-    const payrollErr = validatePayroll();
-    if (payrollErr) {
-      toast.warning(payrollErr);
+    if (!payrollValid || !extrasOk) {
       return;
     }
 
-    const d = form.details;
-    const w = form.wage;
-    const p = form.payroll;
+    const d = getDetailsValues();
+    const w = getWageValues();
+    const p = getPayrollValues();
+    const role = findRole(d.role_id);
+    const employmentType = findEmploymentType(w.employment_type_id);
+    const payrollCalendar = findCalendar(w.payroll_calendar_id);
     const isBank = p.payment_method === "BANK_TRANSFER";
 
     const payload = {
       action: {
-        create_user: Boolean(form.action?.create_user),
+        create_user: Boolean(action?.create_user),
       },
       details: {
         first_name: d.first_name.trim() || null,
-        middle_name: d.middle_name.trim() || null,
+        middle_name: d.middle_name?.trim() || null,
         last_name: d.last_name.trim() || null,
         email: d.email.trim(),
-        preferred_name: d.preferred_name.trim() || null,
+        preferred_name: d.preferred_name?.trim() || null,
         dob: d.dob,
         phone_number: d.phone_number.trim(),
         phone_country_code: d.phone_country_code,
         phone_country_iso: d.phone_country_iso,
-        address: toAddressApiPayload(d.address, { includeCoordinates: false }),
-        role: d.role,
+        address: toAddressApiPayload(address, { includeCoordinates: false }),
+        role,
       },
       wage: {
         start_date: w.start_date,
-        employment_type: w.employment_type
-          ? { id: w.employment_type.id, code: w.employment_type.code }
+        employment_type: employmentType
+          ? { id: employmentType.id, code: employmentType.code }
           : null,
-        payroll_calendar: w.payroll_calendar
-          ? { id: w.payroll_calendar.id }
-          : null,
+        payroll_calendar: payrollCalendar ? { id: payrollCalendar.id } : null,
         pay_type: w.pay_type,
         currency: w.currency,
         hourly_rate_exc_super:
-          w.pay_type === "HOURLY" ? w.hourly_rate_exc_super || null : null,
+          w.pay_type === "HOURLY" ? w.hourly_rate || null : null,
         fixed_rate_exc_super:
-          w.pay_type === "FIXED" ? w.fixed_rate_exc_super || null : null,
+          w.pay_type === "FIXED" ? w.fixed_rate || null : null,
       },
       payroll: {
         payment_method: p.payment_method,
         ...(isBank
           ? {
-              account_holder_name: p.account_holder_name.trim(),
-              bank_name: p.bank_name.trim(),
-              bank_account_number: p.bank_account_number.trim(),
-              ifsc_code: p.ifsc_code.trim(),
-              swift_code: p.swift_code.trim(),
+              account_holder_name: p.account_holder_name?.trim(),
+              bank_name: p.bank_name?.trim(),
+              bank_account_number: p.bank_account_number?.trim(),
+              ifsc_code: p.ifsc_code?.trim(),
+              swift_code: p.swift_code?.trim(),
             }
           : {}),
       },
@@ -616,6 +602,8 @@ export function CreateEmployeeDialog({
       );
     }
   }
+
+  const handleCreate = useValidatedSubmit(payrollForm, submitEmployee);
 
   return (
     <FullScreenModal
@@ -686,10 +674,7 @@ export function CreateEmployeeDialog({
               </Button>
             ) : null}
             {step === 0 && !isEdit ? (
-              <Button
-                loading={searchMutation.isPending}
-                onClick={() => void handleSearch()}
-              >
+              <Button loading={searchMutation.isPending} onClick={handleSearch}>
                 Continue
               </Button>
             ) : null}
@@ -701,7 +686,7 @@ export function CreateEmployeeDialog({
                 loading={
                   createMutation.isPending || updateMutation.isPending
                 }
-                onClick={() => void handleCreate()}
+                onClick={handleCreate}
               >
                 {isEdit ? "Save changes" : "Create & invite"}
               </Button>
@@ -720,97 +705,115 @@ export function CreateEmployeeDialog({
               <TextInput
                 label="Email"
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                error={emailErrors.email?.message}
+                {...registerEmail("email")}
               />
             </div>
           ) : null}
 
           {step === 1 ? (
             <div className="flex flex-col gap-3">
-              {form.action?.message ? (
+              {action?.message ? (
                 <p className="rounded-xl bg-primary-muted/60 px-3 py-2 text-sm text-[var(--mt-text)]">
-                  {form.action.message}
+                  {action.message}
                 </p>
               ) : null}
               <div className="grid gap-3 sm:grid-cols-3">
                 <TextInput
                   label="First name"
-                  value={form.details.first_name}
-                  onChange={(e) => patchDetails({ first_name: e.target.value })}
-                  disabled={form.action?.create_user === false}
+                  error={detailsErrors.first_name?.message}
+                  disabled={action?.create_user === false}
+                  {...registerDetails("first_name")}
                 />
                 <TextInput
                   label="Middle name"
-                  value={form.details.middle_name}
-                  onChange={(e) =>
-                    patchDetails({ middle_name: e.target.value })
-                  }
-                  disabled={form.action?.create_user === false}
+                  error={detailsErrors.middle_name?.message}
+                  disabled={action?.create_user === false}
+                  {...registerDetails("middle_name")}
                 />
                 <TextInput
                   label="Last name"
-                  value={form.details.last_name}
-                  onChange={(e) => patchDetails({ last_name: e.target.value })}
-                  disabled={form.action?.create_user === false}
+                  error={detailsErrors.last_name?.message}
+                  disabled={action?.create_user === false}
+                  {...registerDetails("last_name")}
                 />
               </div>
               <TextInput
                 label="Email"
                 type="email"
-                value={form.details.email}
-                onChange={(e) => patchDetails({ email: e.target.value })}
+                error={detailsErrors.email?.message}
                 disabled
+                {...registerDetails("email")}
               />
               <TextInput
                 label="Preferred name"
-                value={form.details.preferred_name}
-                onChange={(e) =>
-                  patchDetails({ preferred_name: e.target.value })
-                }
+                error={detailsErrors.preferred_name?.message}
+                {...registerDetails("preferred_name")}
               />
               <div className="grid gap-3 sm:grid-cols-2">
                 <TextInput
                   label="Date of birth"
                   type="date"
-                  value={form.details.dob}
-                  onChange={(e) => patchDetails({ dob: e.target.value })}
-                  disabled={form.action?.create_user === false && !!form.details.dob}
+                  error={detailsErrors.dob?.message}
+                  disabled={action?.create_user === false && !!watchDetails("dob")}
+                  {...registerDetails("dob")}
                 />
-                <GlobalPhoneInput
-                  label="Phone number"
-                  required
-                  defaultCountry={localeDefaults.defaultCountry}
-                  value={{
-                    phone_number: form.details.phone_number || null,
-                    phone_country_code: form.details.phone_country_code,
-                    phone_country_iso: form.details.phone_country_iso,
-                  }}
-                  onChange={(phone: PhoneValue) =>
-                    patchDetails({
-                      phone_number: phone.phone_number || "",
-                      phone_country_code: phone.phone_country_code,
-                      phone_country_iso: phone.phone_country_iso,
-                    })
-                  }
+                <Controller
+                  control={detailsControl}
+                  name="phone_number"
+                  render={({ fieldState }) => (
+                    <GlobalPhoneInput
+                      label="Phone number"
+                      required
+                      defaultCountry={localeDefaults.defaultCountry}
+                      value={{
+                        phone_number: watchDetails("phone_number") || null,
+                        phone_country_code:
+                          watchDetails("phone_country_code") ?? null,
+                        phone_country_iso:
+                          watchDetails("phone_country_iso") ?? null,
+                      }}
+                      onChange={(phone: PhoneValue) => {
+                        setDetailsValue(
+                          "phone_number",
+                          phone.phone_number || "",
+                          { shouldValidate: true },
+                        );
+                        setDetailsValue(
+                          "phone_country_code",
+                          phone.phone_country_code ?? null,
+                          { shouldValidate: true },
+                        );
+                        setDetailsValue(
+                          "phone_country_iso",
+                          phone.phone_country_iso ?? null,
+                          { shouldValidate: true },
+                        );
+                      }}
+                      error={fieldState.error?.message}
+                    />
+                  )}
                 />
               </div>
               <GoogleAddressAutocomplete
                 label="Address"
-                value={form.details.address}
-                onChange={(next) => patchAddress(next)}
+                value={address}
+                onChange={syncAddressToDetails}
                 requireCoordinates={false}
+                error={detailsErrors.formatted_address?.message}
               />
               <label className="flex w-full flex-col gap-1.5 text-sm">
                 <span className="font-medium">Role</span>
                 <select
-                  className={selectClass}
-                  value={form.details.role?.id ?? ""}
-                  onChange={(e) => {
-                    const id = Number(e.target.value);
-                    const matched = roles.find((r) => r.id === id) || null;
-                    patchDetails({ role: matched });
-                  }}
+                  className={`${selectClass} ${
+                    detailsErrors.role_id ? "border-negative" : ""
+                  }`}
+                  value={watchDetails("role_id")}
+                  onChange={(e) =>
+                    setDetailsValue("role_id", e.target.value, {
+                      shouldValidate: true,
+                    })
+                  }
                 >
                   <option value="">Select role</option>
                   {roles.map((r) => (
@@ -819,6 +822,11 @@ export function CreateEmployeeDialog({
                     </option>
                   ))}
                 </select>
+                {detailsErrors.role_id ? (
+                  <span className="text-xs text-negative">
+                    {detailsErrors.role_id.message}
+                  </span>
+                ) : null}
               </label>
             </div>
           ) : null}
@@ -828,21 +836,21 @@ export function CreateEmployeeDialog({
               <TextInput
                 label="Start date"
                 type="date"
-                value={form.wage.start_date}
-                onChange={(e) => patchWage({ start_date: e.target.value })}
+                error={wageErrors.start_date?.message}
+                {...registerWage("start_date")}
               />
               <label className="flex w-full flex-col gap-1.5 text-sm">
                 <span className="font-medium">Employment type</span>
                 <select
-                  className={selectClass}
-                  value={form.wage.employment_type?.id ?? ""}
-                  onChange={(e) => {
-                    const id = Number(e.target.value);
-                    patchWage({
-                      employment_type:
-                        employmentTypes.find((x) => x.id === id) || null,
-                    });
-                  }}
+                  className={`${selectClass} ${
+                    wageErrors.employment_type_id ? "border-negative" : ""
+                  }`}
+                  value={watchWage("employment_type_id")}
+                  onChange={(e) =>
+                    setWageValue("employment_type_id", e.target.value, {
+                      shouldValidate: true,
+                    })
+                  }
                 >
                   <option value="">Select</option>
                   {employmentTypes.map((x) => (
@@ -851,19 +859,24 @@ export function CreateEmployeeDialog({
                     </option>
                   ))}
                 </select>
+                {wageErrors.employment_type_id ? (
+                  <span className="text-xs text-negative">
+                    {wageErrors.employment_type_id.message}
+                  </span>
+                ) : null}
               </label>
               <label className="flex w-full flex-col gap-1.5 text-sm">
                 <span className="font-medium">Payroll calendar</span>
                 <select
-                  className={selectClass}
-                  value={form.wage.payroll_calendar?.id ?? ""}
-                  onChange={(e) => {
-                    const id = Number(e.target.value);
-                    patchWage({
-                      payroll_calendar:
-                        calendars.find((x) => x.id === id) || null,
-                    });
-                  }}
+                  className={`${selectClass} ${
+                    wageErrors.payroll_calendar_id ? "border-negative" : ""
+                  }`}
+                  value={watchWage("payroll_calendar_id")}
+                  onChange={(e) =>
+                    setWageValue("payroll_calendar_id", e.target.value, {
+                      shouldValidate: true,
+                    })
+                  }
                 >
                   <option value="">Select</option>
                   {calendars.map((x) => (
@@ -872,6 +885,11 @@ export function CreateEmployeeDialog({
                     </option>
                   ))}
                 </select>
+                {wageErrors.payroll_calendar_id ? (
+                  <span className="text-xs text-negative">
+                    {wageErrors.payroll_calendar_id.message}
+                  </span>
+                ) : null}
               </label>
               <fieldset className="flex flex-col gap-2">
                 <legend className="text-sm font-medium">Pay type</legend>
@@ -879,16 +897,30 @@ export function CreateEmployeeDialog({
                   <RadioOption
                     name="pay_type"
                     value="HOURLY"
-                    checked={form.wage.pay_type === "HOURLY"}
+                    checked={payType === "HOURLY"}
                     label="Hourly"
-                    onChange={setPayType}
+                    onChange={(value) => {
+                      setWageValue("pay_type", value, {
+                        shouldValidate: true,
+                      });
+                      setWageValue("fixed_rate", "", {
+                        shouldValidate: true,
+                      });
+                    }}
                   />
                   <RadioOption
                     name="pay_type"
                     value="FIXED"
-                    checked={form.wage.pay_type === "FIXED"}
+                    checked={payType === "FIXED"}
                     label="Fixed"
-                    onChange={setPayType}
+                    onChange={(value) => {
+                      setWageValue("pay_type", value, {
+                        shouldValidate: true,
+                      });
+                      setWageValue("hourly_rate", "", {
+                        shouldValidate: true,
+                      });
+                    }}
                   />
                 </div>
               </fieldset>
@@ -896,11 +928,13 @@ export function CreateEmployeeDialog({
                 <span className="font-medium">Currency</span>
                 <select
                   className={selectClass}
-                  value={form.wage.currency}
+                  value={wageCurrency}
                   onChange={(e) => {
                     const code = e.target.value.toUpperCase();
                     if (isSupportedCurrency(code)) {
-                      patchWage({ currency: code });
+                      setWageValue("currency", code, {
+                        shouldValidate: true,
+                      });
                     }
                   }}
                 >
@@ -911,27 +945,23 @@ export function CreateEmployeeDialog({
                   ))}
                 </select>
               </label>
-              {form.wage.pay_type === "HOURLY" ? (
+              {payType === "HOURLY" ? (
                 <TextInput
-                  label={`Hourly rate (${currencyDisplayPrefix(form.wage.currency)})`}
+                  label={`Hourly rate (${currencyDisplayPrefix(wageCurrency)})`}
                   type="number"
                   step="0.01"
                   min="0"
-                  value={form.wage.hourly_rate_exc_super}
-                  onChange={(e) =>
-                    patchWage({ hourly_rate_exc_super: e.target.value })
-                  }
+                  error={wageErrors.hourly_rate?.message}
+                  {...registerWage("hourly_rate")}
                 />
               ) : (
                 <TextInput
-                  label={`Fixed rate (${currencyDisplayPrefix(form.wage.currency)})`}
+                  label={`Fixed rate (${currencyDisplayPrefix(wageCurrency)})`}
                   type="number"
                   step="0.01"
                   min="0"
-                  value={form.wage.fixed_rate_exc_super}
-                  onChange={(e) =>
-                    patchWage({ fixed_rate_exc_super: e.target.value })
-                  }
+                  error={wageErrors.fixed_rate?.message}
+                  {...registerWage("fixed_rate")}
                 />
               )}
             </div>
@@ -947,50 +977,51 @@ export function CreateEmployeeDialog({
                       key={opt.value}
                       name="payment_method"
                       value={opt.value}
-                      checked={form.payroll.payment_method === opt.value}
+                      checked={paymentMethod === opt.value}
                       label={opt.label}
-                      onChange={setPaymentMethod}
+                      onChange={(value) => {
+                        setPayrollValue("payment_method", value, {
+                          shouldValidate: true,
+                        });
+                        if (value !== "BANK_TRANSFER") {
+                          setPayrollValue("account_holder_name", "");
+                          setPayrollValue("bank_name", "");
+                          setPayrollValue("bank_account_number", "");
+                          setPayrollValue("ifsc_code", "");
+                          setPayrollValue("swift_code", "");
+                        }
+                      }}
                     />
                   ))}
                 </div>
               </fieldset>
-              {form.payroll.payment_method === "BANK_TRANSFER" ? (
+              {paymentMethod === "BANK_TRANSFER" ? (
                 <div className="flex flex-col gap-3">
                   <TextInput
                     label="Account holder name"
-                    value={form.payroll.account_holder_name}
-                    onChange={(e) =>
-                      patchPayroll({ account_holder_name: e.target.value })
-                    }
+                    error={payrollErrors.account_holder_name?.message}
+                    {...registerPayroll("account_holder_name")}
                   />
                   <TextInput
                     label="Bank name"
-                    value={form.payroll.bank_name}
-                    onChange={(e) =>
-                      patchPayroll({ bank_name: e.target.value })
-                    }
+                    error={payrollErrors.bank_name?.message}
+                    {...registerPayroll("bank_name")}
                   />
                   <TextInput
                     label="Bank account number"
-                    value={form.payroll.bank_account_number}
-                    onChange={(e) =>
-                      patchPayroll({ bank_account_number: e.target.value })
-                    }
+                    error={payrollErrors.bank_account_number?.message}
+                    {...registerPayroll("bank_account_number")}
                   />
                   <div className="grid gap-3 sm:grid-cols-2">
                     <TextInput
                       label="IFSC code"
-                      value={form.payroll.ifsc_code}
-                      onChange={(e) =>
-                        patchPayroll({ ifsc_code: e.target.value })
-                      }
+                      error={payrollErrors.ifsc_code?.message}
+                      {...registerPayroll("ifsc_code")}
                     />
                     <TextInput
                       label="SWIFT code"
-                      value={form.payroll.swift_code}
-                      onChange={(e) =>
-                        patchPayroll({ swift_code: e.target.value })
-                      }
+                      error={payrollErrors.swift_code?.message}
+                      {...registerPayroll("swift_code")}
                     />
                   </div>
                 </div>

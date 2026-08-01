@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { Controller } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
 import { authApi } from "@mytask/api";
 import { spacing, typography } from "@mytask/theme";
@@ -13,10 +12,15 @@ import {
   profileSchema,
   type ProfileFormValues,
 } from "@mytask/validation";
+import { FormTextField } from "../components/FormTextField";
 import { FormKeyboardScroll } from "../components/FormKeyboardScroll";
+import { GlobalPhoneInput } from "../components/GlobalPhoneInput";
 import {
-  GlobalPhoneInput,
-} from "../components/GlobalPhoneInput";
+  fieldChainProps,
+  useAppForm,
+  useFormFieldChain,
+  useValidatedSubmit,
+} from "../hooks/useAppForm";
 import { isTracking } from "../services/trackingSession";
 import { useAuthStore } from "../store/authStore";
 import { useThemeStore } from "../store/themeStore";
@@ -33,7 +37,6 @@ import {
   SectionHeader,
   SettingsIcon,
   SunIcon,
-  TextField,
   WalletIcon,
 } from "../ui";
 
@@ -65,18 +68,18 @@ export function ProfileScreen() {
   const toast = useToastStore();
   const queryClient = useQueryClient();
   const [formError, setFormError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  const {
-    control,
-    handleSubmit,
-    reset,
-    setValue,
-    watch,
-    formState: { errors, isSubmitting, isDirty },
-  } = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileSchema),
+  const form = useAppForm<ProfileFormValues>({
+    schema: profileSchema,
     defaultValues: profileDefaults(user),
   });
+  const chain = useFormFieldChain(form, [
+    "first_name",
+    "middle_name",
+    "last_name",
+  ]);
+  const { reset, setValue, watch, formState: { isDirty } } = form;
 
   const phoneCountryCode = watch("phone_country_code");
   const phoneCountryIso = watch("phone_country_iso");
@@ -85,8 +88,9 @@ export function ProfileScreen() {
     reset(profileDefaults(user));
   }, [user, reset]);
 
-  async function onSubmit(values: ProfileFormValues) {
+  const onSubmit = useValidatedSubmit(form, async (values) => {
     setFormError(null);
+    setSaving(true);
     const phone = phoneValueFromE164(
       values.phone_number || null,
       values.phone_country_iso,
@@ -110,8 +114,10 @@ export function ProfileScreen() {
       const message = getErrorMessage(err);
       setFormError(message);
       toast.error("Update failed", message);
+    } finally {
+      setSaving(false);
     }
-  }
+  });
 
   async function logout() {
     if (await isTracking()) {
@@ -157,76 +163,56 @@ export function ProfileScreen() {
 
       <SectionHeader title="Edit profile" />
 
-      <Controller
-        control={control}
+      <FormTextField
+        control={form.control}
         name="first_name"
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextField
-            label="First name"
-            value={value}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            autoCapitalize="words"
-            error={errors.first_name?.message}
-          />
-        )}
+        label="First name"
+        autoCapitalize="words"
+        editable={!saving}
+        {...fieldChainProps(chain, "first_name")}
       />
 
-      <Controller
-        control={control}
+      <FormTextField
+        control={form.control}
         name="middle_name"
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextField
-            label="Middle name"
-            value={value || ""}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            autoCapitalize="words"
-          />
-        )}
+        label="Middle name"
+        autoCapitalize="words"
+        editable={!saving}
+        {...fieldChainProps(chain, "middle_name")}
       />
 
-      <Controller
-        control={control}
+      <FormTextField
+        control={form.control}
         name="last_name"
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextField
-            label="Last name"
-            value={value}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            autoCapitalize="words"
-            error={errors.last_name?.message}
-          />
-        )}
+        label="Last name"
+        autoCapitalize="words"
+        editable={!saving}
+        {...fieldChainProps(chain, "last_name")}
       />
 
       <Controller
-        control={control}
+        control={form.control}
         name="phone_number"
-        render={({ field: { value } }) => (
+        render={({ field: { onChange }, fieldState }) => (
           <View style={styles.field}>
             <GlobalPhoneInput
               label="Phone"
               value={{
-                phone_number: value || null,
+                phone_number: watch("phone_number") || null,
                 phone_country_code: phoneCountryCode || null,
                 phone_country_iso: phoneCountryIso || null,
               }}
               onChange={(phone) => {
-                setValue("phone_number", phone.phone_number || "", {
+                onChange(phone.phone_number || "");
+                setValue("phone_country_code", phone.phone_country_code, {
                   shouldDirty: true,
                 });
-                setValue(
-                  "phone_country_code",
-                  phone.phone_country_code,
-                  { shouldDirty: true },
-                );
                 setValue("phone_country_iso", phone.phone_country_iso, {
                   shouldDirty: true,
                 });
               }}
-              error={errors.phone_number?.message}
+              error={fieldState.error?.message}
+              disabled={saving}
             />
           </View>
         )}
@@ -240,9 +226,9 @@ export function ProfileScreen() {
 
       <Button
         title="Save profile"
-        onPress={() => void handleSubmit(onSubmit)()}
-        loading={isSubmitting}
-        disabled={isSubmitting || !isDirty}
+        onPress={onSubmit}
+        loading={saving}
+        disabled={saving || !isDirty}
         style={styles.saveBtn}
       />
 

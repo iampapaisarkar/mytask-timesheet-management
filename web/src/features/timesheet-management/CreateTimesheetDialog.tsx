@@ -1,14 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
+import { Controller } from "react-hook-form";
+import { clsx } from "clsx";
 import {
   useCreateTimesheetManagement,
   useEmployeePayrollCycles,
   useEmployees,
   useJobs,
 } from "@mytask/hooks";
+import {
+  createTimesheetSchema,
+  type CreateTimesheetFormValues,
+} from "@mytask/validation";
 import { getErrorMessage, listRows } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
 import { FullScreenModal } from "@/components/ui/FullScreenModal";
 import { useToastStore } from "@/store/toastStore";
+import { useAppForm, useValidatedSubmit } from "@/hooks/useAppForm";
 
 type EmployeeRow = {
   details?: { id?: number; full_name?: string; email?: string };
@@ -30,6 +37,12 @@ type JobRow = {
 const selectClass =
   "mt-focus rounded-xl border border-border bg-[var(--mt-surface)] px-3.5 py-3 text-[var(--mt-text)] outline-none focus:border-primary disabled:opacity-50";
 
+const emptyTimesheet: CreateTimesheetFormValues = {
+  employee_id: "",
+  period_key: "",
+  job_ids: [],
+};
+
 function jobKey(job: JobRow) {
   return String(job.details?.id ?? job.id ?? "");
 }
@@ -49,9 +62,23 @@ export function CreateTimesheetDialog({
   const employeesQuery = useEmployees({ rows_per_page: 200 }, open);
   const jobsQuery = useJobs({ rows_per_page: 200 }, open);
   const createMutation = useCreateTimesheetManagement();
-  const [employeeId, setEmployeeId] = useState("");
-  const [periodKey, setPeriodKey] = useState("");
-  const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
+
+  const form = useAppForm<CreateTimesheetFormValues>({
+    schema: createTimesheetSchema,
+    defaultValues: emptyTimesheet,
+  });
+  const {
+    control,
+    reset,
+    setValue,
+    watch,
+    formState: { errors },
+  } = form;
+
+  const employeeId = watch("employee_id");
+  const periodKey = watch("period_key");
+  const selectedJobIds = watch("job_ids");
+
   const cyclesQuery = useEmployeePayrollCycles(
     employeeId ? Number(employeeId) : undefined,
   );
@@ -62,7 +89,7 @@ export function CreateTimesheetDialog({
     : []) as Period[];
   const jobs = listRows<JobRow>(jobsQuery.data);
 
-  const canCreate = Boolean(
+  const canShowSummary = Boolean(
     employeeId && periodKey && selectedJobIds.length > 0,
   );
 
@@ -88,51 +115,32 @@ export function CreateTimesheetDialog({
 
   useEffect(() => {
     if (!open) {
-      setEmployeeId("");
-      setPeriodKey("");
-      setSelectedJobIds([]);
+      reset(emptyTimesheet);
     }
-  }, [open]);
+  }, [open, reset]);
 
-  if (!open) return null;
-
-  function toggleJob(id: string) {
-    setSelectedJobIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-  }
-
-  async function handleCreate() {
+  const handleCreate = useValidatedSubmit(form, async (values) => {
     const period = periods.find(
-      (p) => `${p.start_date}|${p.end_date}` === periodKey,
+      (p) => `${p.start_date}|${p.end_date}` === values.period_key,
     );
-    if (!employeeId) {
-      toast.warning("Employee required", "Select an employee");
-      return;
-    }
-    if (!period) {
-      toast.warning("Period required", "Select a pay period");
-      return;
-    }
-    if (!selectedJobIds.length) {
-      toast.warning("Jobs required", "Select at least one job");
-      return;
-    }
+    if (!period) return;
     try {
       await createMutation.mutateAsync({
-        employee: { id: Number(employeeId) },
+        employee: { id: Number(values.employee_id) },
         period: {
           start_date: period.start_date,
           end_date: period.end_date,
         },
-        jobs: selectedJobIds.map((id) => ({ id: Number(id) })),
+        jobs: values.job_ids.map((id) => ({ id: Number(id) })),
       });
       toast.success("Timesheet created");
       onClose();
     } catch (err) {
       toast.error("Create failed", getErrorMessage(err));
     }
-  }
+  });
+
+  if (!open) return null;
 
   return (
     <FullScreenModal
@@ -147,8 +155,8 @@ export function CreateTimesheetDialog({
           </Button>
           <Button
             loading={createMutation.isPending}
-            disabled={!canCreate || createMutation.isPending}
-            onClick={() => void handleCreate()}
+            disabled={createMutation.isPending}
+            onClick={handleCreate}
           >
             Create Timesheet
           </Button>
@@ -161,114 +169,157 @@ export function CreateTimesheetDialog({
       </p>
 
       <div className="flex flex-col gap-3">
-        <label className="flex flex-col gap-1.5 text-sm">
-          <span className="font-medium">1. Employee</span>
-          <select
-            className={selectClass}
-            value={employeeId}
-            onChange={(e) => {
-              setEmployeeId(e.target.value);
-              setPeriodKey("");
-              setSelectedJobIds([]);
-            }}
-          >
-            <option value="">Select employee</option>
-            {employees.map((emp) => {
-              const id = emp.details?.id ?? emp.id;
-              const label =
-                emp.details?.full_name ||
-                emp.details?.email ||
-                `Employee #${id}`;
-              return (
-                <option key={String(id)} value={String(id)}>
-                  {label}
-                </option>
-              );
-            })}
-          </select>
-        </label>
-
-        <label className="flex flex-col gap-1.5 text-sm">
-          <span className="font-medium">2. Pay period</span>
-          <select
-            className={selectClass}
-            value={periodKey}
-            onChange={(e) => {
-              setPeriodKey(e.target.value);
-              setSelectedJobIds([]);
-            }}
-            disabled={!employeeId || cyclesQuery.isLoading}
-          >
-            <option value="">
-              {cyclesQuery.isLoading
-                ? "Loading periods…"
-                : cyclesQuery.isError
-                  ? "Unable to load periods"
-                  : "Select period"}
-            </option>
-            {periods.map((p) => (
-              <option
-                key={`${p.start_date}|${p.end_date}`}
-                value={`${p.start_date}|${p.end_date}`}
+        <Controller
+          name="employee_id"
+          control={control}
+          render={({ field }) => (
+            <label className="flex flex-col gap-1.5 text-sm">
+              <span className="font-medium">1. Employee</span>
+              <select
+                className={clsx(
+                  selectClass,
+                  errors.employee_id && "border-negative",
+                )}
+                value={field.value}
+                onChange={(e) => {
+                  field.onChange(e.target.value);
+                  setValue("period_key", "");
+                  setValue("job_ids", []);
+                }}
+                onBlur={field.onBlur}
               >
-                {p.label}
-              </option>
-            ))}
-          </select>
-          {employeeId && cyclesQuery.isError ? (
-            <span className="text-xs text-warning">
-              {getErrorMessage(
-                cyclesQuery.error,
-                "Could not load periods for this employee",
-              )}
-            </span>
-          ) : null}
-        </label>
+                <option value="">Select employee</option>
+                {employees.map((emp) => {
+                  const id = emp.details?.id ?? emp.id;
+                  const label =
+                    emp.details?.full_name ||
+                    emp.details?.email ||
+                    `Employee #${id}`;
+                  return (
+                    <option key={String(id)} value={String(id)}>
+                      {label}
+                    </option>
+                  );
+                })}
+              </select>
+              {errors.employee_id?.message ? (
+                <span className="text-xs text-negative">
+                  {errors.employee_id.message}
+                </span>
+              ) : null}
+            </label>
+          )}
+        />
 
-        <div className="flex flex-col gap-1.5 text-sm">
-          <span className="font-medium">3. Jobs (select one or more)</span>
-          <div
-            className={`max-h-56 space-y-2 overflow-y-auto rounded-xl border border-border p-3 ${
-              !periodKey ? "opacity-50" : ""
-            }`}
-          >
-            {!periodKey ? (
-              <p className="text-xs text-muted">Select a period first</p>
-            ) : jobsQuery.isLoading ? (
-              <p className="text-xs text-muted">Loading jobs…</p>
-            ) : jobs.length === 0 ? (
-              <p className="text-xs text-muted">
-                No jobs available. Create a job first.
-              </p>
-            ) : (
-              jobs.map((job) => {
-                const id = jobKey(job);
-                const checked = selectedJobIds.includes(id);
-                return (
-                  <label
-                    key={id}
-                    className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-primary-muted/40"
+        <Controller
+          name="period_key"
+          control={control}
+          render={({ field }) => (
+            <label className="flex flex-col gap-1.5 text-sm">
+              <span className="font-medium">2. Pay period</span>
+              <select
+                className={clsx(
+                  selectClass,
+                  errors.period_key && "border-negative",
+                )}
+                value={field.value}
+                onChange={(e) => {
+                  field.onChange(e.target.value);
+                  setValue("job_ids", []);
+                }}
+                onBlur={field.onBlur}
+                disabled={!employeeId || cyclesQuery.isLoading}
+              >
+                <option value="">
+                  {cyclesQuery.isLoading
+                    ? "Loading periods…"
+                    : cyclesQuery.isError
+                      ? "Unable to load periods"
+                      : "Select period"}
+                </option>
+                {periods.map((p) => (
+                  <option
+                    key={`${p.start_date}|${p.end_date}`}
+                    value={`${p.start_date}|${p.end_date}`}
                   >
-                    <input
-                      type="checkbox"
-                      className="accent-[var(--mt-primary,#04B6B1)]"
-                      checked={checked}
-                      onChange={() => toggleJob(id)}
-                    />
-                    <span>{jobLabel(job)}</span>
-                  </label>
-                );
-              })
-            )}
-          </div>
-          {!canCreate ? (
-            <span className="text-xs text-muted">
-              Employee, period, and at least one job are required.
-            </span>
-          ) : null}
-        </div>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+              {errors.period_key?.message ? (
+                <span className="text-xs text-negative">
+                  {errors.period_key.message}
+                </span>
+              ) : null}
+              {employeeId && cyclesQuery.isError ? (
+                <span className="text-xs text-warning">
+                  {getErrorMessage(
+                    cyclesQuery.error,
+                    "Could not load periods for this employee",
+                  )}
+                </span>
+              ) : null}
+            </label>
+          )}
+        />
 
-        {canCreate ? (
+        <Controller
+          name="job_ids"
+          control={control}
+          render={({ field }) => (
+            <div className="flex flex-col gap-1.5 text-sm">
+              <span className="font-medium">3. Jobs (select one or more)</span>
+              <div
+                className={clsx(
+                  "max-h-56 space-y-2 overflow-y-auto rounded-xl border p-3",
+                  errors.job_ids ? "border-negative" : "border-border",
+                  !periodKey ? "opacity-50" : "",
+                )}
+              >
+                {!periodKey ? (
+                  <p className="text-xs text-muted">Select a period first</p>
+                ) : jobsQuery.isLoading ? (
+                  <p className="text-xs text-muted">Loading jobs…</p>
+                ) : jobs.length === 0 ? (
+                  <p className="text-xs text-muted">
+                    No jobs available. Create a job first.
+                  </p>
+                ) : (
+                  jobs.map((job) => {
+                    const id = jobKey(job);
+                    const checked = field.value.includes(id);
+                    return (
+                      <label
+                        key={id}
+                        className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-primary-muted/40"
+                      >
+                        <input
+                          type="checkbox"
+                          className="accent-[var(--mt-primary,#04B6B1)]"
+                          checked={checked}
+                          onChange={() => {
+                            const next = checked
+                              ? field.value.filter((x) => x !== id)
+                              : [...field.value, id];
+                            field.onChange(next);
+                          }}
+                        />
+                        <span>{jobLabel(job)}</span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+              {errors.job_ids?.message ? (
+                <span className="text-xs text-negative">
+                  {errors.job_ids.message}
+                </span>
+              ) : null}
+            </div>
+          )}
+        />
+
+        {canShowSummary ? (
           <div className="rounded-xl border border-border bg-[var(--mt-surface)]/60 p-3 text-sm">
             <p className="text-xs font-medium uppercase tracking-wide text-muted">
               Summary

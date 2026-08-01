@@ -5,11 +5,16 @@ import { reportsApi } from "@mytask/api";
 import { formatHours, formatMoney } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { formatDisplayTime, formatTimesheetLabel, getErrorMessage } from "@mytask/utils";
+import {
+  reportGenerateSchema,
+  type ReportGenerateFormValues,
+} from "@mytask/validation";
 import { useOrganisationStore } from "@/store/organisationStore";
 import { useToastStore } from "@/store/toastStore";
 import { Card, PageHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ErrorState, LoadingState } from "@/components/ui/States";
+import { useAppForm, useValidatedSubmit } from "@/hooks/useAppForm";
 
 type EmpOption = {
   id: number;
@@ -131,8 +136,18 @@ export function ReportsPage() {
       : String(role || "");
   const isStaff = roleCode === "staff";
 
-  const [employeeId, setEmployeeId] = useState("");
-  const [timesheetId, setTimesheetId] = useState("");
+  const form = useAppForm<ReportGenerateFormValues>({
+    schema: reportGenerateSchema,
+    defaultValues: { employee_id: "", timesheet_id: "" },
+  });
+  const {
+    setValue,
+    watch,
+    formState: { errors },
+  } = form;
+  const employeeId = watch("employee_id");
+  const timesheetId = watch("timesheet_id");
+
   const [activeRequestId, setActiveRequestId] = useState<string | null>(
     searchParams.get("request"),
   );
@@ -149,9 +164,9 @@ export function ReportsPage() {
 
   useEffect(() => {
     if (isStaff && employees.length === 1 && !employeeId) {
-      setEmployeeId(String(employees[0].id));
+      setValue("employee_id", String(employees[0].id));
     }
-  }, [isStaff, employees, employeeId]);
+  }, [isStaff, employees, employeeId, setValue]);
 
   const timesheetsQuery = useQuery({
     queryKey: ["reports", "timesheets", employeeId] as const,
@@ -282,23 +297,23 @@ export function ReportsPage() {
     activeStatus.data &&
     !["completed", "failed"].includes(activeStatus.data.status || "");
 
+  const submitGenerate = useValidatedSubmit(form, (values) => {
+    if (!canCreate) {
+      toast.warning("You do not have permission to generate reports");
+      return;
+    }
+    createMutation.mutate({
+      employee_id: Number(values.employee_id),
+      timesheet_id: Number(values.timesheet_id),
+    });
+  });
+
   function handleGenerate() {
     if (!canCreate) {
       toast.warning("You do not have permission to generate reports");
       return;
     }
-    if (!employeeId) {
-      toast.warning("Select an employee");
-      return;
-    }
-    if (!timesheetId) {
-      toast.warning("Select an approved timesheet");
-      return;
-    }
-    createMutation.mutate({
-      employee_id: Number(employeeId),
-      timesheet_id: Number(timesheetId),
-    });
+    submitGenerate();
   }
 
   return (
@@ -317,11 +332,13 @@ export function ReportsPage() {
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-medium">Employee</span>
             <select
-              className="rounded-xl border border-border bg-[var(--mt-surface)] px-3 py-2.5"
+              className={`rounded-xl border bg-[var(--mt-surface)] px-3 py-2.5 ${
+                errors.employee_id ? "border-negative" : "border-border"
+              }`}
               value={employeeId}
               onChange={(e) => {
-                setEmployeeId(e.target.value);
-                setTimesheetId("");
+                setValue("employee_id", e.target.value, { shouldValidate: true });
+                setValue("timesheet_id", "", { shouldValidate: true });
               }}
               disabled={isStaff && employees.length === 1}
             >
@@ -332,15 +349,24 @@ export function ReportsPage() {
                 </option>
               ))}
             </select>
+            {errors.employee_id ? (
+              <span className="text-xs text-negative">
+                {errors.employee_id.message}
+              </span>
+            ) : null}
           </label>
 
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-medium">Approved timesheet</span>
             <select
-              className="rounded-xl border border-border bg-[var(--mt-surface)] px-3 py-2.5 disabled:opacity-55"
+              className={`rounded-xl border bg-[var(--mt-surface)] px-3 py-2.5 disabled:opacity-55 ${
+                errors.timesheet_id ? "border-negative" : "border-border"
+              }`}
               value={timesheetId}
               disabled={!employeeId || timesheetsQuery.isLoading}
-              onChange={(e) => setTimesheetId(e.target.value)}
+              onChange={(e) =>
+                setValue("timesheet_id", e.target.value, { shouldValidate: true })
+              }
             >
               <option value="">Select timesheet</option>
               {approvedTimesheets.map((ts) => (
@@ -353,6 +379,11 @@ export function ReportsPage() {
                 </option>
               ))}
             </select>
+            {errors.timesheet_id ? (
+              <span className="text-xs text-negative">
+                {errors.timesheet_id.message}
+              </span>
+            ) : null}
           </label>
         </div>
 

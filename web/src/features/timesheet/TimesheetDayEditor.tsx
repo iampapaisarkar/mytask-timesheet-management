@@ -4,6 +4,7 @@ import { useTimesheetDayEditorScreen } from "@mytask/hooks";
 import { reportsApi, timesheetsApi, timesheetManagementApi } from "@mytask/api";
 import { formatHours, formatMoney } from "@mytask/constants";
 import { formatDisplayTime, getErrorMessage } from "@mytask/utils";
+import { validateTimesheetDayTaskRow } from "@mytask/validation";
 import { Button } from "@/components/ui/Button";
 import { FullScreenModal } from "@/components/ui/FullScreenModal";
 import { TextInput } from "@/components/ui/TextInput";
@@ -235,6 +236,9 @@ export function TimesheetDayEditor({
   );
   const resolvedEmployeeId = employeeId ?? orgEmployeeId;
   const [tasks, setTasks] = useState<TaskDraft[]>([]);
+  const [taskErrors, setTaskErrors] = useState<
+    Record<string, Partial<Record<"job_id" | "start_time" | "end_time", string>>>
+  >({});
   const [isPublicHoliday, setIsPublicHoliday] = useState(false);
   const [saving, setSaving] = useState(false);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
@@ -373,20 +377,27 @@ export function TimesheetDayEditor({
   const { title, subtitle } = formatDisplayDate(day?.date, day?.day_name);
 
   async function handleSave() {
+    const nextErrors: Record<
+      string,
+      Partial<Record<"job_id" | "start_time" | "end_time", string>>
+    > = {};
+    let firstInvalidKey: string | null = null;
+
     for (const task of tasks) {
-      if (!task.start_time || !task.end_time) {
-        toast.warning("Missing times", "Each task needs start and end time");
-        return;
-      }
-      if (task.type === "working" && !(task.job_id || timesheetJobId)) {
-        toast.warning(
-          "Job required",
-          "This timesheet has no job assigned; working tasks need a job",
-        );
-        return;
+      const rowErrors = validateTimesheetDayTaskRow(task, timesheetJobId);
+      if (Object.keys(rowErrors).length) {
+        nextErrors[task.key] = rowErrors;
+        if (!firstInvalidKey) firstInvalidKey = task.key;
       }
     }
 
+    if (firstInvalidKey) {
+      setTaskErrors(nextErrors);
+      setExpandedKey(firstInvalidKey);
+      return;
+    }
+
+    setTaskErrors({});
     setSaving(true);
     try {
       const payload = {
@@ -413,6 +424,12 @@ export function TimesheetDayEditor({
     setTasks((prev) =>
       prev.map((t) => (t.key === key ? { ...t, ...patch } : t)),
     );
+    setTaskErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
   }
 
   function toggleExpand(key: string) {
@@ -552,6 +569,7 @@ export function TimesheetDayEditor({
                 tasks.map((task) => {
                   const expanded = expandedKey === task.key;
                   const color = SHEET_COLORS[task.type];
+                  const rowErrors = taskErrors[task.key];
                   const sub = taskSubtitle(
                     task,
                     timesheetJobs,
@@ -636,6 +654,11 @@ export function TimesheetDayEditor({
                                       </option>
                                     ))}
                                   </select>
+                                  {rowErrors?.job_id ? (
+                                    <span className="text-xs font-normal text-red-100">
+                                      {rowErrors.job_id}
+                                    </span>
+                                  ) : null}
                                 </label>
                               ) : (
                                 <div className="rounded-xl border border-white/20 bg-black/10 px-3 py-2 text-xs text-white">
@@ -657,6 +680,7 @@ export function TimesheetDayEditor({
                                   type="time"
                                   value={task.start_time}
                                   disabled={!canSave}
+                                  error={rowErrors?.start_time}
                                   onChange={(e) =>
                                     updateTask(task.key, {
                                       start_time: e.target.value,
@@ -673,6 +697,7 @@ export function TimesheetDayEditor({
                                   type="time"
                                   value={task.end_time}
                                   disabled={!canSave}
+                                  error={rowErrors?.end_time}
                                   onChange={(e) =>
                                     updateTask(task.key, {
                                       end_time: e.target.value,

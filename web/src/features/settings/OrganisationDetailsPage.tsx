@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Controller } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { organisationsApi } from "@mytask/api";
 import { queryKeys } from "@mytask/hooks";
@@ -8,7 +9,16 @@ import {
   isSupportedCurrency,
   type SupportedCurrencyCode,
 } from "@mytask/constants";
-import { getErrorMessage, phoneValueFromE164, fromAddressRecord, toAddressApiPayload, type PhoneValue } from "@mytask/utils";
+import {
+  getErrorMessage,
+  phoneValueFromE164,
+  fromAddressRecord,
+  toAddressApiPayload,
+} from "@mytask/utils";
+import {
+  organisationDetailsSchema,
+  type OrganisationDetailsFormValues,
+} from "@mytask/validation";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { useOrganisationStore } from "@/store/organisationStore";
 import { Card, PageHeader } from "@/components/ui/Card";
@@ -27,6 +37,16 @@ import {
   type AddressValue,
 } from "@/components/GoogleAddress";
 import { useLocaleDefaults } from "@/hooks/useLocaleDefaults";
+import { useAppForm, useValidatedSubmit } from "@/hooks/useAppForm";
+
+const emptyOrgDetails: OrganisationDetailsFormValues = {
+  name: "",
+  website: "",
+  email: "",
+  phone_number: "",
+  phone_country_code: null,
+  phone_country_iso: null,
+};
 
 export function OrganisationDetailsPage() {
   const organisation = useOrganisationStore((s) => s.organisation);
@@ -48,20 +68,26 @@ export function OrganisationDetailsPage() {
   });
 
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState<PhoneValue>({
-    phone_number: null,
-    phone_country_code: null,
-    phone_country_iso: null,
-  });
-  const [website, setWebsite] = useState("");
   const [address, setAddress] = useState<AddressValue>(emptyAddress);
   const [frequency, setFrequency] = useState("weekly");
   const [defaultCurrency, setDefaultCurrency] =
     useState<SupportedCurrencyCode>("USD");
+
+  const form = useAppForm<OrganisationDetailsFormValues>({
+    schema: organisationDetailsSchema,
+    defaultValues: emptyOrgDetails,
+  });
+  const {
+    register,
+    control,
+    reset,
+    watch,
+    formState: { errors },
+  } = form;
+
+  const phoneIso = watch("phone_country_iso");
   const localeDefaults = useLocaleDefaults(
-    phone.phone_country_iso ||
+    phoneIso ||
       (organisation as { default_country?: string } | null)?.default_country ||
       null,
   );
@@ -71,19 +97,20 @@ export function OrganisationDetailsPage() {
     const data = query.data;
     const addr = (data.address || {}) as Record<string, unknown>;
     const settings = (data.settings || {}) as Record<string, unknown>;
-    setName(String(data.name || ""));
-    setEmail(String(data.email || ""));
-    setPhone(
-      phoneValueFromE164(
-        String(data.phone_number || ""),
-        (data.phone_country_iso as string) || null,
-      ),
+    const phone = phoneValueFromE164(
+      String(data.phone_number || ""),
+      (data.phone_country_iso as string) || null,
     );
-    setWebsite(String(data.website || ""));
+    reset({
+      name: String(data.name || ""),
+      email: String(data.email || ""),
+      website: String(data.website || ""),
+      phone_number: phone.phone_number || "",
+      phone_country_code: phone.phone_country_code,
+      phone_country_iso: phone.phone_country_iso,
+    });
     setAddress(fromAddressRecord(addr));
-    setFrequency(
-      String(settings.timesheet_submission_frequency || "weekly"),
-    );
+    setFrequency(String(settings.timesheet_submission_frequency || "weekly"));
     const stored = String(data.default_currency || "").toUpperCase();
     if (isSupportedCurrency(stored)) {
       setDefaultCurrency(stored);
@@ -96,7 +123,31 @@ export function OrganisationDetailsPage() {
         ),
       );
     }
-  }, [query.data]);
+  }, [query.data, reset]);
+
+  const handleSave = useValidatedSubmit(form, async (values) => {
+    try {
+      await updateOrg.mutateAsync({
+        name: values.name.trim(),
+        email: values.email?.trim() || "",
+        phone_number: values.phone_number || null,
+        phone_country_code: values.phone_country_code,
+        phone_country_iso: values.phone_country_iso,
+        default_country: values.phone_country_iso || address.country_code,
+        default_currency: defaultCurrency,
+        website: values.website?.trim() || null,
+        address: toAddressApiPayload(address, { includeCoordinates: false }),
+      });
+      await updateSettings.mutateAsync({
+        timesheet_submission_frequency: frequency,
+      });
+      toast.success("Organisation updated");
+      setEditing(false);
+      void query.refetch();
+    } catch (err) {
+      toast.error("Update failed", getErrorMessage(err));
+    }
+  });
 
   if (query.isLoading) return <LoadingState />;
   if (query.isError) {
@@ -113,30 +164,6 @@ export function OrganisationDetailsPage() {
   const orgRole = (data.role || {}) as { name?: string; code?: string };
   const viewState = (viewAddress.state || {}) as { name?: string };
 
-  async function handleSave() {
-    try {
-      await updateOrg.mutateAsync({
-        name: name.trim(),
-        email: email.trim(),
-        phone_number: phone.phone_number,
-        phone_country_code: phone.phone_country_code,
-        phone_country_iso: phone.phone_country_iso,
-        default_country: phone.phone_country_iso || address.country_code,
-        default_currency: defaultCurrency,
-        website: website.trim() || null,
-        address: toAddressApiPayload(address, { includeCoordinates: false }),
-      });
-      await updateSettings.mutateAsync({
-        timesheet_submission_frequency: frequency,
-      });
-      toast.success("Organisation updated");
-      setEditing(false);
-      void query.refetch();
-    } catch (err) {
-      toast.error("Update failed", getErrorMessage(err));
-    }
-  }
-
   if (editing) {
     return (
       <div className="mt-fade-in flex flex-col gap-4">
@@ -149,7 +176,7 @@ export function OrganisationDetailsPage() {
               </Button>
               <Button
                 loading={updateOrg.isPending || updateSettings.isPending}
-                onClick={() => void handleSave()}
+                onClick={handleSave}
               >
                 Save
               </Button>
@@ -157,21 +184,53 @@ export function OrganisationDetailsPage() {
           }
         />
         <Card className="flex flex-col gap-3">
-          <TextInput label="Name" value={name} onChange={(e) => setName(e.target.value)} />
-          <TextInput label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <GlobalPhoneInput
-            label="Phone"
-            required
-            defaultCountry={localeDefaults.defaultCountry}
-            value={phone}
-            onChange={(next) => {
-              setPhone(next);
-              if (next.phone_country_iso) {
-                setDefaultCurrency(
-                  currencyFromCountryIso(next.phone_country_iso),
-                );
-              }
-            }}
+          <TextInput
+            label="Name"
+            error={errors.name?.message}
+            {...register("name")}
+          />
+          <TextInput
+            label="Email"
+            type="email"
+            error={errors.email?.message}
+            {...register("email")}
+          />
+          <Controller
+            control={control}
+            name="phone_number"
+            render={({ fieldState }) => (
+              <GlobalPhoneInput
+                label="Phone"
+                required
+                defaultCountry={localeDefaults.defaultCountry}
+                value={{
+                  phone_number: watch("phone_number") || null,
+                  phone_country_code: watch("phone_country_code") ?? null,
+                  phone_country_iso: watch("phone_country_iso") ?? null,
+                }}
+                onChange={(next) => {
+                  form.setValue("phone_number", next.phone_number || "", {
+                    shouldValidate: true,
+                  });
+                  form.setValue(
+                    "phone_country_code",
+                    next.phone_country_code ?? null,
+                    { shouldValidate: true },
+                  );
+                  form.setValue(
+                    "phone_country_iso",
+                    next.phone_country_iso ?? null,
+                    { shouldValidate: true },
+                  );
+                  if (next.phone_country_iso) {
+                    setDefaultCurrency(
+                      currencyFromCountryIso(next.phone_country_iso),
+                    );
+                  }
+                }}
+                error={fieldState.error?.message}
+              />
+            )}
           />
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-medium text-muted">
@@ -195,7 +254,11 @@ export function OrganisationDetailsPage() {
               this currency.
             </span>
           </label>
-          <TextInput label="Website" value={website} onChange={(e) => setWebsite(e.target.value)} />
+          <TextInput
+            label="Website"
+            error={errors.website?.message}
+            {...register("website")}
+          />
           <GoogleAddressAutocomplete
             label="Address"
             value={address}

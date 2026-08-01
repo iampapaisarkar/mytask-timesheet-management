@@ -1,21 +1,27 @@
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useState } from "react";
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { Controller } from "react-hook-form";
 import { signupSchema, type SignupFormValues } from "@mytask/validation";
 import { authApi } from "@mytask/api";
 import { radii, spacing, typography } from "@mytask/theme";
 import { getErrorMessage, getTimezone } from "@mytask/utils";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { FormTextField } from "../components/FormTextField";
 import { FormKeyboardScroll } from "../components/FormKeyboardScroll";
 import { GlobalPhoneInput } from "../components/GlobalPhoneInput";
+import {
+  fieldChainProps,
+  useAppForm,
+  useFormFieldChain,
+  useValidatedSubmit,
+} from "../hooks/useAppForm";
 import { useAuthStore } from "../store/authStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 import { signUpWithEmail } from "../services/firebase";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { setPendingOrgInvitationToken } from "../navigation/navigationRef";
-import { Button, TextField } from "../ui";
+import { Button } from "../ui";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Signup">;
 
@@ -27,14 +33,8 @@ export function SignupScreen({ navigation, route }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const {
-    control,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors },
-  } = useForm<SignupFormValues>({
-    resolver: zodResolver(signupSchema),
+  const form = useAppForm<SignupFormValues>({
+    schema: signupSchema,
     defaultValues: {
       first_name: "",
       middle_name: "",
@@ -48,10 +48,19 @@ export function SignupScreen({ navigation, route }: Props) {
       confirm_password: "",
     },
   });
+  const chain = useFormFieldChain(form, [
+    "first_name",
+    "last_name",
+    "email",
+    "dob",
+    "password",
+    "confirm_password",
+  ]);
+  const { setValue, watch } = form;
   const phoneCountryCode = watch("phone_country_code");
   const phoneCountryIso = watch("phone_country_iso");
 
-  async function onSubmit(values: SignupFormValues) {
+  const onSubmit = useValidatedSubmit(form, async (values) => {
     setError(null);
     setLoading(true);
     try {
@@ -85,7 +94,7 @@ export function SignupScreen({ navigation, route }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  });
 
   return (
     <FormKeyboardScroll contentContainerStyle={styles.container} bottomOffset={32}>
@@ -104,71 +113,83 @@ export function SignupScreen({ navigation, route }: Props) {
           { backgroundColor: c.surface, borderColor: c.border },
         ]}
       >
-        {(
-          [
-            { name: "first_name", label: "First name", autoCapitalize: "words" },
-            { name: "last_name", label: "Last name", autoCapitalize: "words" },
-            {
-              name: "email",
-              label: "Email",
-              autoCapitalize: "none",
-              keyboardType: "email-address",
-            },
-            { name: "dob", label: "Date of birth (YYYY-MM-DD)", autoCapitalize: "none" },
-            { name: "password", label: "Password", secure: true },
-            { name: "confirm_password", label: "Confirm password", secure: true },
-          ] as const
-        ).map((field) => (
-          <Controller
-            key={field.name}
-            control={control}
-            name={field.name}
-            render={({ field: { onChange, value }, fieldState }) => (
-              <TextField
-                label={field.label}
-                autoCapitalize={"autoCapitalize" in field ? field.autoCapitalize : "none"}
-                keyboardType={
-                  "keyboardType" in field ? field.keyboardType : "default"
-                }
-                secureTextEntry={"secure" in field ? field.secure : false}
-                value={value ?? ""}
-                onChangeText={onChange}
-                editable={!loading}
-                error={fieldState.error?.message}
-              />
-            )}
-          />
-        ))}
-
+        <FormTextField
+          control={form.control}
+          name="first_name"
+          label="First name"
+          autoCapitalize="words"
+          editable={!loading}
+          {...fieldChainProps(chain, "first_name")}
+        />
+        <FormTextField
+          control={form.control}
+          name="last_name"
+          label="Last name"
+          autoCapitalize="words"
+          editable={!loading}
+          {...fieldChainProps(chain, "last_name")}
+        />
+        <FormTextField
+          control={form.control}
+          name="email"
+          label="Email"
+          autoCapitalize="none"
+          keyboardType="email-address"
+          editable={!loading}
+          {...fieldChainProps(chain, "email")}
+        />
+        <FormTextField
+          control={form.control}
+          name="dob"
+          label="Date of birth (YYYY-MM-DD)"
+          autoCapitalize="none"
+          editable={!loading}
+          {...fieldChainProps(chain, "dob")}
+        />
         <Controller
-          control={control}
+          control={form.control}
           name="phone_number"
-          render={({ field: { value } }) => (
+          render={({ field: { onChange }, fieldState }) => (
             <View style={styles.phoneField}>
               <GlobalPhoneInput
                 label="Phone"
                 value={{
-                  phone_number: value || null,
+                  phone_number: watch("phone_number") || null,
                   phone_country_code: phoneCountryCode || null,
                   phone_country_iso: phoneCountryIso || null,
                 }}
                 onChange={(phone) => {
-                  setValue("phone_number", phone.phone_number || "", {
-                    shouldDirty: true,
-                    shouldValidate: true,
-                  });
+                  onChange(phone.phone_number || "");
                   setValue("phone_country_code", phone.phone_country_code, {
                     shouldDirty: true,
+                    shouldValidate: true,
                   });
                   setValue("phone_country_iso", phone.phone_country_iso, {
                     shouldDirty: true,
                   });
                 }}
                 required
-                error={errors.phone_number?.message}
+                error={fieldState.error?.message}
+                disabled={loading}
               />
             </View>
           )}
+        />
+        <FormTextField
+          control={form.control}
+          name="password"
+          label="Password"
+          secureTextEntry
+          editable={!loading}
+          {...fieldChainProps(chain, "password")}
+        />
+        <FormTextField
+          control={form.control}
+          name="confirm_password"
+          label="Confirm password"
+          secureTextEntry
+          editable={!loading}
+          {...fieldChainProps(chain, "confirm_password")}
         />
 
         {error ? (
@@ -181,7 +202,7 @@ export function SignupScreen({ navigation, route }: Props) {
 
         <Button
           title="Create account"
-          onPress={handleSubmit(onSubmit)}
+          onPress={onSubmit}
           disabled={loading}
           loading={loading}
           style={styles.submitBtn}

@@ -7,16 +7,21 @@ import {
   View,
 } from "react-native";
 import { useState } from "react";
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, type LoginFormValues } from "@mytask/validation";
 import { authApi } from "@mytask/api";
 import { radii, spacing, typography } from "@mytask/theme";
 import { getErrorMessage, getTimezone } from "@mytask/utils";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { FormTextField } from "../components/FormTextField";
 import { FormKeyboardScroll } from "../components/FormKeyboardScroll";
 import { GoogleGlyph } from "../components/GoogleGlyph";
+import {
+  fieldChainProps,
+  useAppForm,
+  useFormFieldChain,
+  useValidatedSubmit,
+} from "../hooks/useAppForm";
 import { useAuthStore } from "../store/authStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
@@ -29,7 +34,7 @@ import {
 import { isFirebaseConfigured, isGoogleSignInConfigured } from "../config/env";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { setPendingOrgInvitationToken } from "../navigation/navigationRef";
-import { Button, IconButton, MoonIcon, SunIcon, TextField } from "../ui";
+import { Button, IconButton, MoonIcon, SunIcon } from "../ui";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Login">;
 
@@ -44,10 +49,12 @@ export function LoginScreen({ navigation, route }: Props) {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { control, handleSubmit } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
+
+  const form = useAppForm<LoginFormValues>({
+    schema: loginSchema,
     defaultValues: { email: "", password: "" },
   });
+  const chain = useFormFieldChain(form, ["email", "password"]);
 
   const busy = loading || googleLoading;
   const googleEnabled = isFirebaseConfigured() && isGoogleSignInConfigured();
@@ -66,7 +73,7 @@ export function LoginScreen({ navigation, route }: Props) {
     await setSession(token, response.data.data);
   }
 
-  async function onSubmit(values: LoginFormValues) {
+  const onSubmit = useValidatedSubmit(form, async (values) => {
     setError(null);
     setLoading(true);
     try {
@@ -81,7 +88,7 @@ export function LoginScreen({ navigation, route }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  });
 
   async function onGoogleSignIn() {
     setError(null);
@@ -175,34 +182,22 @@ export function LoginScreen({ navigation, route }: Props) {
           </>
         ) : null}
 
-        <Controller
-          control={control}
+        <FormTextField
+          control={form.control}
           name="email"
-          render={({ field: { onChange, value }, fieldState }) => (
-            <TextField
-              label="Email"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              value={value}
-              onChangeText={onChange}
-              editable={!busy}
-              error={fieldState.error?.message}
-            />
-          )}
+          label="Email"
+          autoCapitalize="none"
+          keyboardType="email-address"
+          editable={!busy}
+          {...fieldChainProps(chain, "email")}
         />
-        <Controller
-          control={control}
+        <FormTextField
+          control={form.control}
           name="password"
-          render={({ field: { onChange, value }, fieldState }) => (
-            <TextField
-              label="Password"
-              secureTextEntry
-              value={value}
-              onChangeText={onChange}
-              editable={!busy}
-              error={fieldState.error?.message}
-            />
-          )}
+          label="Password"
+          secureTextEntry
+          editable={!busy}
+          {...fieldChainProps(chain, "password")}
         />
 
         {error ? (
@@ -217,7 +212,7 @@ export function LoginScreen({ navigation, route }: Props) {
 
         <Button
           title="Login"
-          onPress={handleSubmit(onSubmit)}
+          onPress={onSubmit}
           disabled={busy}
           loading={loading}
           style={styles.submitBtn}

@@ -40,6 +40,9 @@ export const TextField = forwardRef<TextInput, Props>(function TextField(
     inputStyle,
     inputType = "default",
     style,
+    accessibilityLabel,
+    accessibilityState,
+    accessibilityHint,
     ...rest
   },
   ref,
@@ -68,11 +71,28 @@ export const TextField = forwardRef<TextInput, Props>(function TextField(
           ref={ref as never}
           placeholderTextColor={c.subtle}
           style={[styles.input, { color: c.text }, inputStyle, style]}
+          accessibilityLabel={accessibilityLabel || label}
+          accessibilityHint={
+            accessibilityHint ||
+            (hasError && error ? `Error: ${error}` : undefined)
+          }
+          accessibilityState={{
+            ...(typeof accessibilityState === "object"
+              ? accessibilityState
+              : null),
+            disabled: rest.editable === false,
+          } as TextInputProps["accessibilityState"]}
           {...rest}
         />
       </View>
       {hasError ? (
-        <Text style={[styles.meta, { color: c.negative }]}>{error}</Text>
+        <Text
+          style={[styles.meta, { color: c.negative }]}
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+        >
+          {error}
+        </Text>
       ) : hint ? (
         <Text style={[styles.meta, { color: c.muted }]}>{hint}</Text>
       ) : null}

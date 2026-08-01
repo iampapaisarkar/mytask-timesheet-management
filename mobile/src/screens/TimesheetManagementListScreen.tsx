@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { Controller } from "react-hook-form";
 import {
   useCreateTimesheetManagement,
   useEmployeePayrollCycles,
@@ -25,11 +26,17 @@ import {
 } from "@mytask/utils";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing, typography } from "@mytask/theme";
+import {
+  createTimesheetSchema,
+  type CreateTimesheetFormValues,
+} from "@mytask/validation";
 import { AccessDenied } from "../components/AccessDenied";
+import { FormFieldError } from "../components/FormTextField";
 import { ListPager } from "../components/ListPager";
 import { MobileSelect } from "../components/MobileSelect";
 import { SearchBar } from "../components/SearchBar";
 import { SkeletonList } from "../components/Skeleton";
+import { useAppForm, useValidatedSubmit } from "../hooks/useAppForm";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import type { ManageStackParamList } from "../navigation/types";
 import { useOrgNavigate } from "../navigation/useOrgNavigate";
@@ -85,6 +92,12 @@ type JobRow = {
   details?: { id?: number; name?: string };
 };
 
+const emptyTimesheet: CreateTimesheetFormValues = {
+  employee_id: "",
+  period_key: "",
+  job_ids: [],
+};
+
 function jobNames(item: ManagementRow) {
   if (Array.isArray(item.jobs) && item.jobs.length) {
     return item.jobs.map((j) => j.name).filter(Boolean).join(", ");
@@ -102,9 +115,6 @@ export function TimesheetManagementListScreen({ route }: Props) {
   const canCreate = can(acl, "timesheetManagement", "create");
 
   const sheetRef = useRef<BottomSheetModal>(null);
-  const [employeeId, setEmployeeId] = useState("");
-  const [periodKey, setPeriodKey] = useState("");
-  const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<TimesheetStatusFilter>("all");
@@ -113,6 +123,14 @@ export function TimesheetManagementListScreen({ route }: Props) {
   const c = useThemeStore((s) => s.colors);
   const tabScrollInset = useOrgTabBarScrollInset();
   const statusCode = timesheetStatusCodeParam(filter);
+
+  const form = useAppForm<CreateTimesheetFormValues>({
+    schema: createTimesheetSchema,
+    defaultValues: emptyTimesheet,
+  });
+  const { setValue, watch } = form;
+  const employeeId = watch("employee_id");
+  const periodKey = watch("period_key");
 
   useEffect(() => {
     setPage(1);
@@ -185,50 +203,36 @@ export function TimesheetManagementListScreen({ route }: Props) {
     [jobs],
   );
 
-  const canSubmit = Boolean(
-    employeeId && periodKey && selectedJobIds.length > 0,
-  );
-
-  function resetForm() {
-    setEmployeeId("");
-    setPeriodKey("");
-    setSelectedJobIds([]);
-  }
-
   function openCreate() {
-    resetForm();
+    form.reset(emptyTimesheet);
     setSheetReady(true);
     sheetRef.current?.present();
   }
 
-  async function handleCreate() {
+  const handleCreate = useValidatedSubmit(form, async (values) => {
     const period = periods.find(
-      (p) => `${p.start_date}|${p.end_date}` === periodKey,
+      (p) => `${p.start_date}|${p.end_date}` === values.period_key,
     );
-    if (!employeeId || !period || !selectedJobIds.length) {
-      void triggerHaptic("error");
-      toast.warning("Employee, period, and at least one job are required.");
-      return;
-    }
+    if (!period) return;
     try {
       await createMutation.mutateAsync({
-        employee: { id: Number(employeeId) },
+        employee: { id: Number(values.employee_id) },
         period: {
           start_date: period.start_date,
           end_date: period.end_date,
         },
-        jobs: selectedJobIds.map((id) => ({ id: Number(id) })),
+        jobs: values.job_ids.map((id) => ({ id: Number(id) })),
       });
       void triggerHaptic("success");
       toast.success("Timesheet created");
       sheetRef.current?.dismiss();
-      resetForm();
+      form.reset(emptyTimesheet);
       void refetch();
     } catch (err) {
       void triggerHaptic("error");
       toast.error(getErrorMessage(err, "Unable to create timesheet"));
     }
-  }
+  });
 
   if (!canList) {
     return <AccessDenied />;
@@ -366,13 +370,13 @@ export function TimesheetManagementListScreen({ route }: Props) {
         snapPoints={["75%", "92%"]}
         onDismiss={() => {
           setSheetReady(false);
-          resetForm();
+          form.reset(emptyTimesheet);
         }}
         footer={
           <Button
             title={createMutation.isPending ? "Creating…" : "Create Timesheet"}
-            onPress={() => void handleCreate()}
-            disabled={!canSubmit || createMutation.isPending}
+            onPress={handleCreate}
+            disabled={createMutation.isPending}
             loading={createMutation.isPending}
           />
         }
@@ -381,17 +385,28 @@ export function TimesheetManagementListScreen({ route }: Props) {
           Employee → Period → Jobs
         </Text>
 
-        <MobileSelect
-          label="Employee"
-          value={employeeId}
-          options={employeeOptions}
-          onChange={(id) => {
-            setEmployeeId(id);
-            setPeriodKey("");
-            setSelectedJobIds([]);
-          }}
-          placeholder="Select employee"
-          emptyText="No employees"
+        <Controller
+          control={form.control}
+          name="employee_id"
+          render={({ field: { onChange, onBlur, value }, fieldState }) => (
+            <>
+              <MobileSelect
+                label="Employee"
+                value={value}
+                options={employeeOptions}
+                onChange={(id) => {
+                  onChange(id);
+                  onBlur();
+                  setValue("period_key", "");
+                  setValue("job_ids", []);
+                }}
+                placeholder="Select employee"
+                emptyText="No employees"
+                disabled={createMutation.isPending}
+              />
+              <FormFieldError message={fieldState.error?.message} />
+            </>
+          )}
         />
 
         {!employeeId ? (
@@ -404,29 +419,52 @@ export function TimesheetManagementListScreen({ route }: Props) {
             style={{ marginBottom: spacing.md }}
           />
         ) : (
-          <MobileSelect
-            label="Pay period"
-            value={periodKey}
-            options={periodOptions}
-            onChange={(key) => {
-              setPeriodKey(key);
-              setSelectedJobIds([]);
-            }}
-            placeholder="Select period"
-            searchable={false}
-            emptyText="No periods available"
+          <Controller
+            control={form.control}
+            name="period_key"
+            render={({ field: { onChange, onBlur, value }, fieldState }) => (
+              <>
+                <MobileSelect
+                  label="Pay period"
+                  value={value}
+                  options={periodOptions}
+                  onChange={(key) => {
+                    onChange(key);
+                    onBlur();
+                    setValue("job_ids", []);
+                  }}
+                  placeholder="Select period"
+                  searchable={false}
+                  emptyText="No periods available"
+                  disabled={createMutation.isPending}
+                />
+                <FormFieldError message={fieldState.error?.message} />
+              </>
+            )}
           />
         )}
 
-        <MobileSelect
-          label="Jobs"
-          multiple
-          values={selectedJobIds}
-          options={jobOptions}
-          onChange={setSelectedJobIds}
-          placeholder="Select one or more jobs"
-          disabled={!periodKey}
-          emptyText="No jobs"
+        <Controller
+          control={form.control}
+          name="job_ids"
+          render={({ field: { onChange, onBlur, value }, fieldState }) => (
+            <>
+              <MobileSelect
+                label="Jobs"
+                multiple
+                values={value}
+                options={jobOptions}
+                onChange={(ids) => {
+                  onChange(ids);
+                  onBlur();
+                }}
+                placeholder="Select one or more jobs"
+                disabled={!periodKey || createMutation.isPending}
+                emptyText="No jobs"
+              />
+              <FormFieldError message={fieldState.error?.message} />
+            </>
+          )}
         />
       </AppBottomSheet>
     </View>

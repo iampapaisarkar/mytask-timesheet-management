@@ -1,7 +1,5 @@
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Keyboard, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useState } from "react";
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import {
   forgotPasswordSchema,
   type ForgotPasswordFormValues,
@@ -10,12 +8,14 @@ import { radii, spacing, typography } from "@mytask/theme";
 import { getErrorMessage } from "@mytask/utils";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { FormTextField } from "../components/FormTextField";
 import { FormKeyboardScroll } from "../components/FormKeyboardScroll";
+import { useAppForm, useValidatedSubmit } from "../hooks/useAppForm";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 import { sendPasswordReset } from "../services/firebase";
 import type { RootStackParamList } from "../navigation/RootNavigator";
-import { Button, CheckCircleIcon, TextField } from "../ui";
+import { Button, CheckCircleIcon } from "../ui";
 
 export function ForgotPasswordScreen() {
   const navigation =
@@ -26,12 +26,12 @@ export function ForgotPasswordScreen() {
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
 
-  const { control, handleSubmit } = useForm<ForgotPasswordFormValues>({
-    resolver: zodResolver(forgotPasswordSchema),
+  const form = useAppForm<ForgotPasswordFormValues>({
+    schema: forgotPasswordSchema,
     defaultValues: { email: "" },
   });
 
-  async function onSubmit(values: ForgotPasswordFormValues) {
+  const onSubmit = useValidatedSubmit(form, async (values) => {
     setError(null);
     setLoading(true);
     try {
@@ -51,7 +51,7 @@ export function ForgotPasswordScreen() {
     } finally {
       setLoading(false);
     }
-  }
+  });
 
   return (
     <FormKeyboardScroll contentContainerStyle={styles.container} bottomOffset={32}>
@@ -87,20 +87,16 @@ export function ForgotPasswordScreen() {
             { backgroundColor: c.surface, borderColor: c.border },
           ]}
         >
-          <Controller
-            control={control}
+          <FormTextField
+            control={form.control}
             name="email"
-            render={({ field: { onChange, value }, fieldState }) => (
-              <TextField
-                label="Email"
-                autoCapitalize="none"
-                keyboardType="email-address"
-                value={value}
-                onChangeText={onChange}
-                editable={!loading}
-                error={fieldState.error?.message}
-              />
-            )}
+            label="Email"
+            autoCapitalize="none"
+            keyboardType="email-address"
+            editable={!loading}
+            returnKeyType="done"
+            blurOnSubmit
+            onSubmitEditing={() => Keyboard.dismiss()}
           />
 
           {error ? (
@@ -113,7 +109,7 @@ export function ForgotPasswordScreen() {
 
           <Button
             title="Send reset link"
-            onPress={handleSubmit(onSubmit)}
+            onPress={onSubmit}
             disabled={loading}
             loading={loading}
             style={styles.submitBtn}

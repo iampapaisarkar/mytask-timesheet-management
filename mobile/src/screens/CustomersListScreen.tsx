@@ -8,6 +8,8 @@ import {
 } from "react-native";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { Controller } from "react-hook-form";
+import type { z } from "zod";
 import {
   useCreateCustomer,
   useCustomers,
@@ -17,26 +19,32 @@ import { DEFAULT_CURRENCY, DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing } from "@mytask/theme";
 import {
+  customerSchema,
+  type CustomerFormValues,
+} from "@mytask/validation";
+import {
   getErrorMessage,
   listPagination,
   listRows,
   phoneValueFromE164,
   emptyGlobalAddress,
-  hasAddressContent,
-  toAddressApiPayload,
   fromAddressRecord,
+  toAddressApiPayload,
   type GlobalAddress,
-  type PhoneValue,
 } from "@mytask/utils";
 import { AccessDenied } from "../components/AccessDenied";
-import {
-  GlobalPhoneInput,
-  emptyPhoneValue,
-} from "../components/GlobalPhoneInput";
+import { FormTextField } from "../components/FormTextField";
+import { GlobalPhoneInput } from "../components/GlobalPhoneInput";
 import { ListPager } from "../components/ListPager";
 import { PlacesAddressInput } from "../components/PlacesAddressInput";
 import { SearchBar } from "../components/SearchBar";
 import { SkeletonList } from "../components/Skeleton";
+import {
+  fieldChainProps,
+  useAppForm,
+  useFormFieldChain,
+  useValidatedSubmit,
+} from "../hooks/useAppForm";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import type { OrgStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
@@ -45,7 +53,6 @@ import { useToastStore } from "../store/toastStore";
 import { triggerHaptic } from "../utils/haptics";
 import {
   AppBottomSheet,
-  BottomSheetTextInput,
   BuildingIcon,
   Button,
   Card,
@@ -82,25 +89,18 @@ type CustomerRow = {
   hourly_rate?: number | string | null;
 };
 
-type CreateForm = {
-  name: string;
-  abn: string;
-  address: GlobalAddress;
-  contactName: string;
-  contactEmail: string;
-  contactPhone: PhoneValue;
-  hourlyRate: string;
-};
-
-const emptyForm = (): CreateForm => ({
+const emptyCustomer: CustomerFormValues = {
   name: "",
   abn: "",
-  address: emptyGlobalAddress(),
-  contactName: "",
-  contactEmail: "",
-  contactPhone: emptyPhoneValue(),
-  hourlyRate: "",
-});
+  address: "",
+  contact_name: "",
+  contact_email: "",
+  contact_phone_number: "",
+  contact_phone_country_code: null,
+  contact_phone_country_iso: null,
+  hourly_rate: "",
+  currency: DEFAULT_CURRENCY,
+};
 
 function addressFromCustomer(row: CustomerRow): GlobalAddress {
   if (row.address && typeof row.address === "object") {
@@ -126,25 +126,30 @@ function addressFromCustomer(row: CustomerRow): GlobalAddress {
   });
 }
 
-function formFromCustomer(row: CustomerRow): CreateForm {
+function formFromCustomer(row: CustomerRow): CustomerFormValues {
+  const phone = phoneValueFromE164(
+    row.contact_phone_number,
+    row.contact_phone_country_iso,
+  );
+  const address = addressFromCustomer(row);
   return {
     name: row.name || "",
     abn: row.abn || "",
-    address: addressFromCustomer(row),
-    contactName: row.contact_name || "",
-    contactEmail: row.contact_email || "",
-    contactPhone: phoneValueFromE164(
-      row.contact_phone_number,
-      row.contact_phone_country_iso,
-    ),
-    hourlyRate: row.hourly_rate != null ? String(row.hourly_rate) : "",
+    address: address.formatted_address || address.address_line_1 || "",
+    contact_name: row.contact_name || "",
+    contact_email: row.contact_email || "",
+    contact_phone_number: phone.phone_number || "",
+    contact_phone_country_code: phone.phone_country_code,
+    contact_phone_country_iso: phone.phone_country_iso,
+    hourly_rate: row.hourly_rate != null ? String(row.hourly_rate) : "",
+    currency: DEFAULT_CURRENCY,
   };
 }
 
 export function CustomersListScreen(_props: Props) {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [form, setForm] = useState<CreateForm>(emptyForm);
+  const [address, setAddress] = useState<GlobalAddress>(emptyGlobalAddress());
   const [editing, setEditing] = useState<CustomerRow | null>(null);
   const sheetRef = useRef<BottomSheetModal>(null);
   const debouncedSearch = useDebouncedValue(search.trim(), 400);
@@ -159,6 +164,22 @@ export function CustomersListScreen(_props: Props) {
   const createMutation = useCreateCustomer();
   const updateMutation = useUpdateCustomer();
   const isEdit = editing?.id != null;
+
+  const form = useAppForm<CustomerFormValues>({
+    schema: customerSchema as z.ZodType<CustomerFormValues>,
+    defaultValues: emptyCustomer,
+  });
+  const chain = useFormFieldChain(form, [
+    "name",
+    "abn",
+    "contact_name",
+    "contact_email",
+    "hourly_rate",
+  ]);
+  const { setValue, watch } = form;
+  const phoneNumber = watch("contact_phone_number");
+  const phoneIso = watch("contact_phone_country_iso");
+  const phoneCode = watch("contact_phone_country_code");
 
   useEffect(() => {
     setPage(1);
@@ -178,44 +199,42 @@ export function CustomersListScreen(_props: Props) {
   const totalPages = Math.max(1, Number(pagination?.total_pages) || 1);
   const currentPage = Number(pagination?.page_number) || page;
 
-  const patchForm = useCallback((partial: Partial<CreateForm>) => {
-    setForm((prev) => ({ ...prev, ...partial }));
-  }, []);
-
-  function openCreate() {
+  const openCreate = useCallback(() => {
     setEditing(null);
-    setForm(emptyForm());
+    form.reset(emptyCustomer);
+    setAddress(emptyGlobalAddress());
     sheetRef.current?.present();
-  }
+  }, [form]);
 
-  function openEdit(row: CustomerRow) {
-    if (!canEdit || row.id == null) return;
-    setEditing(row);
-    setForm(formFromCustomer(row));
-    sheetRef.current?.present();
-  }
+  const openEdit = useCallback(
+    (row: CustomerRow) => {
+      if (!canEdit || row.id == null) return;
+      setEditing(row);
+      form.reset(formFromCustomer(row));
+      setAddress(addressFromCustomer(row));
+      sheetRef.current?.present();
+    },
+    [canEdit, form],
+  );
 
-  async function handleSubmit() {
-    if (!form.name.trim()) {
-      toast.warning("Name required");
-      return;
-    }
-    const phone = form.contactPhone;
-    const addressPayload = hasAddressContent(form.address)
-      ? toAddressApiPayload(form.address, { includeCoordinates: false })
-      : null;
+  const handleSubmit = useValidatedSubmit(form, async (values) => {
+    const addressPayload = toAddressApiPayload(address, {
+      includeCoordinates: false,
+    });
     const payload: Record<string, unknown> = {
-      name: form.name.trim(),
-      abn: form.abn.trim() || null,
+      name: values.name.trim(),
+      abn: values.abn?.trim() || null,
       ...(addressPayload
         ? { address: addressPayload, ...addressPayload }
         : { address: null }),
-      contact_name: form.contactName.trim() || null,
-      contact_email: form.contactEmail.trim() || null,
-      contact_phone_number: phone.phone_number,
-      contact_phone_country_code: phone.phone_country_code,
-      contact_phone_country_iso: phone.phone_country_iso,
-      hourly_rate: form.hourlyRate.trim() ? Number(form.hourlyRate) : null,
+      contact_name: values.contact_name?.trim() || null,
+      contact_email: values.contact_email?.trim() || null,
+      contact_phone_number: values.contact_phone_number || null,
+      contact_phone_country_code: values.contact_phone_country_code,
+      contact_phone_country_iso: values.contact_phone_country_iso,
+      hourly_rate: values.hourly_rate
+        ? Number(String(values.hourly_rate).trim())
+        : null,
       currency: DEFAULT_CURRENCY,
     };
     try {
@@ -227,7 +246,8 @@ export function CustomersListScreen(_props: Props) {
         toast.success("Customer created");
       }
       sheetRef.current?.dismiss();
-      setForm(emptyForm());
+      form.reset(emptyCustomer);
+      setAddress(emptyGlobalAddress());
       setEditing(null);
     } catch (err) {
       toast.error(
@@ -235,7 +255,7 @@ export function CustomersListScreen(_props: Props) {
         getErrorMessage(err),
       );
     }
-  }
+  });
 
   if (!canList) {
     return <AccessDenied />;
@@ -254,10 +274,6 @@ export function CustomersListScreen(_props: Props) {
   }
 
   const pending = createMutation.isPending || updateMutation.isPending;
-  const inputStyle = [
-    styles.input,
-    { borderColor: c.border, backgroundColor: c.bg, color: c.text },
-  ];
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
@@ -355,6 +371,8 @@ export function CustomersListScreen(_props: Props) {
         snapPoints={["70%", "92%"]}
         onDismiss={() => {
           setEditing(null);
+          form.reset(emptyCustomer);
+          setAddress(emptyGlobalAddress());
         }}
         footer={
           <Button
@@ -369,69 +387,93 @@ export function CustomersListScreen(_props: Props) {
             }
             disabled={pending}
             loading={pending}
-            onPress={() => void handleSubmit()}
+            onPress={handleSubmit}
           />
         }
       >
-        <Text style={[styles.fieldLabel, { color: c.muted }]}>Name *</Text>
-        <BottomSheetTextInput
-          style={inputStyle}
-          value={form.name}
-          onChangeText={(name) => patchForm({ name })}
-          placeholderTextColor={c.muted}
+        <FormTextField
+          control={form.control}
+          name="name"
+          label="Name"
+          inputType="bottomSheet"
           autoCapitalize="words"
+          editable={!pending}
+          {...fieldChainProps(chain, "name")}
         />
-        <Text style={[styles.fieldLabel, { color: c.muted }]}>
-          Business / tax ID
-        </Text>
-        <BottomSheetTextInput
-          style={inputStyle}
-          value={form.abn}
-          onChangeText={(abn) => patchForm({ abn })}
-          placeholderTextColor={c.muted}
+        <FormTextField
+          control={form.control}
+          name="abn"
+          label="Business / tax ID"
+          inputType="bottomSheet"
+          editable={!pending}
+          {...fieldChainProps(chain, "abn")}
         />
         <PlacesAddressInput
-          value={form.address}
-          onChange={(address) => patchForm({ address })}
+          value={address}
+          onChange={(next) => {
+            setAddress(next);
+            setValue(
+              "address",
+              next.formatted_address || next.address_line_1 || "",
+              { shouldDirty: true },
+            );
+          }}
           label="Address"
           inBottomSheet
         />
-        <Text style={[styles.fieldLabel, { color: c.muted }]}>
-          Contact name
-        </Text>
-        <BottomSheetTextInput
-          style={inputStyle}
-          value={form.contactName}
-          onChangeText={(contactName) => patchForm({ contactName })}
-          placeholderTextColor={c.muted}
+        <FormTextField
+          control={form.control}
+          name="contact_name"
+          label="Contact name"
+          inputType="bottomSheet"
           autoCapitalize="words"
+          editable={!pending}
+          {...fieldChainProps(chain, "contact_name")}
         />
-        <Text style={[styles.fieldLabel, { color: c.muted }]}>
-          Contact email
-        </Text>
-        <BottomSheetTextInput
-          style={inputStyle}
-          value={form.contactEmail}
-          onChangeText={(contactEmail) => patchForm({ contactEmail })}
-          placeholderTextColor={c.muted}
+        <FormTextField
+          control={form.control}
+          name="contact_email"
+          label="Contact email"
+          inputType="bottomSheet"
           autoCapitalize="none"
           keyboardType="email-address"
+          editable={!pending}
+          {...fieldChainProps(chain, "contact_email")}
         />
-        <GlobalPhoneInput
-          label="Contact phone"
-          value={form.contactPhone}
-          onChange={(contactPhone) => patchForm({ contactPhone })}
-          inBottomSheet
+        <Controller
+          control={form.control}
+          name="contact_phone_number"
+          render={({ field: { onChange }, fieldState }) => (
+            <GlobalPhoneInput
+              label="Contact phone"
+              value={{
+                phone_number: phoneNumber || null,
+                phone_country_code: phoneCode || null,
+                phone_country_iso: phoneIso || null,
+              }}
+              onChange={(phone) => {
+                onChange(phone.phone_number || "");
+                setValue("contact_phone_country_code", phone.phone_country_code, {
+                  shouldValidate: true,
+                });
+                setValue("contact_phone_country_iso", phone.phone_country_iso, {
+                  shouldValidate: true,
+                });
+              }}
+              error={fieldState.error?.message}
+              inBottomSheet
+              disabled={pending}
+            />
+          )}
         />
-        <Text style={[styles.fieldLabel, { color: c.muted }]}>
-          Hourly rate
-        </Text>
-        <BottomSheetTextInput
-          style={inputStyle}
-          value={form.hourlyRate}
-          onChangeText={(hourlyRate) => patchForm({ hourlyRate })}
-          placeholderTextColor={c.muted}
+        <FormTextField
+          control={form.control}
+          name="hourly_rate"
+          label="Hourly rate"
+          inputType="bottomSheet"
           keyboardType="decimal-pad"
+          editable={!pending}
+          {...fieldChainProps(chain, "hourly_rate")}
         />
       </AppBottomSheet>
     </View>
@@ -461,18 +503,4 @@ const styles = StyleSheet.create({
   textCol: { flex: 1, minWidth: 0 },
   name: { fontWeight: "700", marginBottom: 4, letterSpacing: -0.2 },
   meta: { marginTop: 2, fontSize: 12, fontWeight: "500" },
-  fieldLabel: {
-    fontWeight: "600",
-    fontSize: 13,
-    marginBottom: 6,
-    marginTop: spacing.sm,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-    marginBottom: 4,
-  },
 });

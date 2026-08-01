@@ -13,10 +13,21 @@ import { holidayCalendarsApi } from "@mytask/api";
 import { DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing, typography } from "@mytask/theme";
+import {
+  holidayCalendarSchema,
+  type HolidayCalendarFormValues,
+} from "@mytask/validation";
 import { getErrorMessage, listPagination, listRows } from "@mytask/utils";
 import { AccessDenied } from "../components/AccessDenied";
+import { FormTextField } from "../components/FormTextField";
 import { ListPager } from "../components/ListPager";
 import { SkeletonList } from "../components/Skeleton";
+import {
+  fieldChainProps,
+  useAppForm,
+  useFormFieldChain,
+  useValidatedSubmit,
+} from "../hooks/useAppForm";
 import type { OrgStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
@@ -24,7 +35,6 @@ import { useToastStore } from "../store/toastStore";
 import { triggerHaptic } from "../utils/haptics";
 import {
   AppBottomSheet,
-  BottomSheetTextInput,
   Button,
   Card,
   ChevronIcon,
@@ -41,10 +51,10 @@ type HolidayCalendarRow = {
   date?: string;
 };
 
+const emptyHoliday: HolidayCalendarFormValues = { name: "", date: "" };
+
 export function HolidayCalendarsScreen({}: Props) {
   const [page, setPage] = useState(1);
-  const [name, setName] = useState("");
-  const [date, setDate] = useState("");
   const [editing, setEditing] = useState<HolidayCalendarRow | null>(null);
   const sheetRef = useRef<BottomSheetModal>(null);
   const c = useThemeStore((s) => s.colors);
@@ -56,6 +66,12 @@ export function HolidayCalendarsScreen({}: Props) {
   const canList = can(acl, "holidayCalendar", "list");
   const canCreate = can(acl, "holidayCalendar", "create");
   const canEdit = can(acl, "holidayCalendar", "edit");
+
+  const form = useAppForm<HolidayCalendarFormValues>({
+    schema: holidayCalendarSchema,
+    defaultValues: emptyHoliday,
+  });
+  const chain = useFormFieldChain(form, ["name", "date"]);
 
   const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ["holiday-calendars", page] as const,
@@ -116,30 +132,29 @@ export function HolidayCalendarsScreen({}: Props) {
 
   const openCreate = useCallback(() => {
     setEditing(null);
-    setName("");
-    setDate("");
+    form.reset(emptyHoliday);
     sheetRef.current?.present();
-  }, []);
+  }, [form]);
 
-  const openEdit = useCallback((row: HolidayCalendarRow) => {
-    if (!canEdit) return;
-    setEditing(row);
-    setName(String(row.name || ""));
-    setDate(String(row.date || "").slice(0, 10));
-    sheetRef.current?.present();
-  }, [canEdit]);
+  const openEdit = useCallback(
+    (row: HolidayCalendarRow) => {
+      if (!canEdit) return;
+      setEditing(row);
+      form.reset({
+        name: String(row.name || ""),
+        date: String(row.date || "").slice(0, 10),
+      });
+      sheetRef.current?.present();
+    },
+    [canEdit, form],
+  );
 
-  function handleSave() {
-    if (!name.trim() || !date.trim()) {
-      toast.warning("Name and date are required");
-      return;
-    }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date.trim())) {
-      toast.warning("Date must be YYYY-MM-DD");
-      return;
-    }
-    saveMutation.mutate({ name: name.trim(), date: date.trim() });
-  }
+  const handleSave = useValidatedSubmit(form, async (values) => {
+    await saveMutation.mutateAsync({
+      name: values.name.trim(),
+      date: values.date.trim(),
+    });
+  });
 
   if (!canList) {
     return <AccessDenied />;
@@ -157,10 +172,6 @@ export function HolidayCalendarsScreen({}: Props) {
   }
 
   const pending = saveMutation.isPending;
-  const inputStyle = [
-    styles.input,
-    { borderColor: c.border, backgroundColor: c.bg, color: c.text },
-  ];
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
@@ -198,24 +209,22 @@ export function HolidayCalendarsScreen({}: Props) {
           }
           ListFooterComponent={
             <ListPager
+              hasRows={rows.length > 0}
               currentPage={currentPage}
               totalPages={totalPages}
-              isFetching={isFetching}
-              hasRows={Boolean(rows.length || Number(pagination?.total_rows))}
-              onPrev={() => setPage(Math.max(1, currentPage - 1))}
-              onNext={() => setPage(Math.min(totalPages, currentPage + 1))}
+              onPrev={() => setPage((p) => Math.max(1, p - 1))}
+              onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
             />
           }
           renderItem={({ item }) => (
             <Card
               style={styles.card}
               onPress={canEdit ? () => openEdit(item) : undefined}
-              accessibilityLabel={item.name || `Holiday #${item.id}`}
             >
               <View style={styles.cardRow}>
                 <View style={styles.cardTextCol}>
-                  <Text style={[styles.name, { color: c.text }]}>
-                    {item.name || `Holiday #${item.id}`}
+                  <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>
+                    {item.name || "Untitled"}
                   </Text>
                   <Text style={{ color: c.muted, marginTop: 2 }}>
                     {item.date ? String(item.date).slice(0, 10) : "—"}
@@ -232,32 +241,37 @@ export function HolidayCalendarsScreen({}: Props) {
         ref={sheetRef}
         title={editing ? "Edit holiday" : "Create holiday"}
         snapPoints={["45%", "70%"]}
+        onDismiss={() => {
+          setEditing(null);
+          form.reset(emptyHoliday);
+        }}
         footer={
           <Button
             title={pending ? "Saving…" : editing ? "Save" : "Create"}
             onPress={handleSave}
             loading={pending}
+            disabled={pending}
           />
         }
       >
-        <Text style={[styles.fieldLabel, { color: c.muted }]}>Name *</Text>
-        <BottomSheetTextInput
-          style={inputStyle}
-          value={name}
-          onChangeText={setName}
-          placeholderTextColor={c.muted}
+        <FormTextField
+          control={form.control}
+          name="name"
+          label="Name"
+          inputType="bottomSheet"
           autoCapitalize="words"
+          editable={!pending}
+          {...fieldChainProps(chain, "name")}
         />
-        <Text style={[styles.fieldLabel, { color: c.muted }]}>
-          Date (YYYY-MM-DD) *
-        </Text>
-        <BottomSheetTextInput
-          style={inputStyle}
-          value={date}
-          onChangeText={setDate}
+        <FormTextField
+          control={form.control}
+          name="date"
+          label="Date (YYYY-MM-DD)"
+          inputType="bottomSheet"
           placeholder="2026-12-25"
-          placeholderTextColor={c.muted}
           autoCapitalize="none"
+          editable={!pending}
+          {...fieldChainProps(chain, "date")}
         />
       </AppBottomSheet>
     </View>
@@ -286,20 +300,4 @@ const styles = StyleSheet.create({
   },
   cardTextCol: { flex: 1, minWidth: 0 },
   name: { fontWeight: "700", fontSize: typography.sizes.md },
-  fieldLabel: {
-    fontWeight: "700",
-    fontSize: 12,
-    marginBottom: 6,
-    marginTop: spacing.sm,
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
-  input: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-    marginBottom: 4,
-  },
 });

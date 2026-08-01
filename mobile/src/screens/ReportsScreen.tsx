@@ -18,14 +18,20 @@ import {
   formatTimesheetLabel,
   getErrorMessage,
 } from "@mytask/utils";
+import {
+  reportGenerateSchema,
+  type ReportGenerateFormValues,
+} from "@mytask/validation";
 import type { OrgStackParamList } from "../navigation/types";
 import { AccessDenied } from "../components/AccessDenied";
 import { SkeletonList } from "../components/Skeleton";
 import { MobileSelect } from "../components/MobileSelect";
+import { FormFieldError } from "../components/FormTextField";
 import { FormKeyboardScroll } from "../components/FormKeyboardScroll";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
+import { useAppForm, useValidatedSubmit } from "../hooks/useAppForm";
 import {
   Button,
   Card,
@@ -152,8 +158,18 @@ export function ReportsScreen({}: Props) {
   const toast = useToastStore();
   const qc = useQueryClient();
 
-  const [employeeId, setEmployeeId] = useState("");
-  const [timesheetId, setTimesheetId] = useState("");
+  const form = useAppForm<ReportGenerateFormValues>({
+    schema: reportGenerateSchema,
+    defaultValues: { employee_id: "", timesheet_id: "" },
+  });
+  const {
+    setValue,
+    watch,
+    formState: { errors },
+  } = form;
+  const employeeId = watch("employee_id");
+  const timesheetId = watch("timesheet_id");
+
   const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
   const [requestsPage, setRequestsPage] = useState(1);
   const [requestItems, setRequestItems] = useState<ReportRequest[]>([]);
@@ -262,9 +278,9 @@ export function ReportsScreen({}: Props) {
 
   useEffect(() => {
     if ((isStaff || employees.length === 1) && employees.length === 1 && !employeeId) {
-      setEmployeeId(String(employees[0].id));
+      setValue("employee_id", String(employees[0].id));
     }
-  }, [employees, employeeId, isStaff]);
+  }, [employees, employeeId, isStaff, setValue]);
 
   const createMutation = useMutation({
     mutationFn: (payload: Record<string, unknown>) =>
@@ -313,23 +329,23 @@ export function ReportsScreen({}: Props) {
     onError: (err) => toast.error("Download failed", getErrorMessage(err)),
   });
 
+  const submitGenerate = useValidatedSubmit(form, (values) => {
+    if (!canCreate) {
+      toast.warning("You do not have permission to generate reports");
+      return;
+    }
+    createMutation.mutate({
+      employee_id: Number(values.employee_id),
+      timesheet_id: Number(values.timesheet_id),
+    });
+  });
+
   function handleGenerate() {
     if (!canCreate) {
       toast.warning("You do not have permission to generate reports");
       return;
     }
-    if (!employeeId) {
-      toast.warning("Select an employee");
-      return;
-    }
-    if (!timesheetId) {
-      toast.warning("Select an approved timesheet");
-      return;
-    }
-    createMutation.mutate({
-      employee_id: Number(employeeId),
-      timesheet_id: Number(timesheetId),
-    });
+    submitGenerate();
   }
 
   if (!canView) {
@@ -355,24 +371,27 @@ export function ReportsScreen({}: Props) {
         {employeesQuery.isLoading ? (
           <SkeletonList rows={2} />
         ) : (
-          <MobileSelect
-            label="Employee"
-            value={employeeId}
-            options={employees.map((emp) => ({
-              value: String(emp.id),
-              label: `${emp.full_name || emp.email || `Employee #${emp.id}`}${
-                emp.is_you ? " (You)" : ""
-              }`,
-              hint: emp.email || undefined,
-            }))}
-            onChange={(id) => {
-              setEmployeeId(id);
-              setTimesheetId("");
-              setActiveRequestId(null);
-            }}
-            disabled={isStaff && employees.length === 1}
-            placeholder="Select employee"
-          />
+          <>
+            <MobileSelect
+              label="Employee"
+              value={employeeId}
+              options={employees.map((emp) => ({
+                value: String(emp.id),
+                label: `${emp.full_name || emp.email || `Employee #${emp.id}`}${
+                  emp.is_you ? " (You)" : ""
+                }`,
+                hint: emp.email || undefined,
+              }))}
+              onChange={(id) => {
+                setValue("employee_id", id, { shouldValidate: true });
+                setValue("timesheet_id", "", { shouldValidate: true });
+                setActiveRequestId(null);
+              }}
+              disabled={isStaff && employees.length === 1}
+              placeholder="Select employee"
+            />
+            <FormFieldError message={errors.employee_id?.message} />
+          </>
         )}
 
         {!employeeId ? (
@@ -387,27 +406,30 @@ export function ReportsScreen({}: Props) {
             can generate a report.
           </Text>
         ) : (
-          <MobileSelect
-            label="Approved timesheet"
-            value={timesheetId}
-            options={timesheets.map((ts) => ({
-              value: String(ts.id),
-              label: formatTimesheetLabel({ code: ts.code, id: ts.id }),
-              hint: [
-                ts.period_range,
-                ts.jobs?.length
-                  ? ts.jobs.map((j) => j.name).filter(Boolean).join(", ")
-                  : null,
-              ]
-                .filter(Boolean)
-                .join(" · "),
-            }))}
-            onChange={(id) => {
-              setTimesheetId(id);
-              setActiveRequestId(null);
-            }}
-            placeholder="Select timesheet"
-          />
+          <>
+            <MobileSelect
+              label="Approved timesheet"
+              value={timesheetId}
+              options={timesheets.map((ts) => ({
+                value: String(ts.id),
+                label: formatTimesheetLabel({ code: ts.code, id: ts.id }),
+                hint: [
+                  ts.period_range,
+                  ts.jobs?.length
+                    ? ts.jobs.map((j) => j.name).filter(Boolean).join(", ")
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · "),
+              }))}
+              onChange={(id) => {
+                setValue("timesheet_id", id, { shouldValidate: true });
+                setActiveRequestId(null);
+              }}
+              placeholder="Select timesheet"
+            />
+            <FormFieldError message={errors.timesheet_id?.message} />
+          </>
         )}
 
         {canCreate ? (

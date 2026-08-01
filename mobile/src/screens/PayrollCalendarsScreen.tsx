@@ -2,16 +2,28 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { Controller } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { payrollCalendarsApi, systemApi } from "@mytask/api";
 import { DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing, typography } from "@mytask/theme";
+import {
+  payrollCalendarSchema,
+  type PayrollCalendarFormValues,
+} from "@mytask/validation";
 import { getErrorMessage, listPagination, listRows } from "@mytask/utils";
 import { AccessDenied } from "../components/AccessDenied";
+import { FormFieldError, FormTextField } from "../components/FormTextField";
 import { ListPager } from "../components/ListPager";
 import { MobileSelect } from "../components/MobileSelect";
 import { SkeletonList } from "../components/Skeleton";
+import {
+  fieldChainProps,
+  useAppForm,
+  useFormFieldChain,
+  useValidatedSubmit,
+} from "../hooks/useAppForm";
 import type { OrgStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
@@ -19,7 +31,6 @@ import { useToastStore } from "../store/toastStore";
 import { triggerHaptic } from "../utils/haptics";
 import {
   AppBottomSheet,
-  BottomSheetTextInput,
   Button,
   Card,
   EmptyState,
@@ -40,12 +51,15 @@ type PayrollCalendarRow = {
   default?: boolean;
 };
 
+const emptyPayrollCalendar: PayrollCalendarFormValues = {
+  name: "",
+  pay_cycle_id: "",
+  start_date: "",
+  first_payment_date: "",
+};
+
 export function PayrollCalendarsScreen({}: Props) {
   const [page, setPage] = useState(1);
-  const [name, setName] = useState("");
-  const [payCycleId, setPayCycleId] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [firstPaymentDate, setFirstPaymentDate] = useState("");
   const sheetRef = useRef<BottomSheetModal>(null);
   const c = useThemeStore((s) => s.colors);
   const toast = useToastStore();
@@ -55,6 +69,16 @@ export function PayrollCalendarsScreen({}: Props) {
   const acl = getOrganisationAcl(role);
   const canList = can(acl, "payrollCalendar", "list");
   const canCreate = can(acl, "payrollCalendar", "create");
+
+  const form = useAppForm<PayrollCalendarFormValues>({
+    schema: payrollCalendarSchema,
+    defaultValues: emptyPayrollCalendar,
+  });
+  const chain = useFormFieldChain(form, [
+    "name",
+    "start_date",
+    "first_payment_date",
+  ]);
 
   const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ["payroll-calendars", page] as const,
@@ -130,39 +154,27 @@ export function PayrollCalendarsScreen({}: Props) {
   );
 
   const openCreate = useCallback(() => {
-    setName("");
-    setPayCycleId("");
-    setStartDate("");
-    setFirstPaymentDate("");
+    form.reset(emptyPayrollCalendar);
     sheetRef.current?.present();
-  }, []);
+  }, [form]);
 
-  function handleSave() {
+  const handleSave = useValidatedSubmit(form, async (values) => {
     const selectedPayCycle =
-      payCycles.find((cycle) => String(cycle.id) === payCycleId) || null;
-    if (!name.trim() || !selectedPayCycle || !startDate.trim() || !firstPaymentDate.trim()) {
-      toast.warning("Name, pay cycle, start date, and first payment date are required");
-      return;
-    }
-    if (
-      !/^\d{4}-\d{2}-\d{2}$/.test(startDate.trim()) ||
-      !/^\d{4}-\d{2}-\d{2}$/.test(firstPaymentDate.trim())
-    ) {
-      toast.warning("Dates must be YYYY-MM-DD");
-      return;
-    }
-    createMutation.mutate({
-      name: name.trim(),
+      payCycles.find((cycle) => String(cycle.id) === values.pay_cycle_id) ||
+      null;
+    if (!selectedPayCycle) return;
+    await createMutation.mutateAsync({
+      name: values.name.trim(),
       pay_cycle: {
         id: selectedPayCycle.id,
         name: selectedPayCycle.name,
         code: selectedPayCycle.code,
       },
-      start_date: startDate.trim(),
-      first_payment_date: firstPaymentDate.trim(),
+      start_date: values.start_date.trim(),
+      first_payment_date: values.first_payment_date.trim(),
       default: rows.length === 0,
     });
-  }
+  });
 
   if (!canList) {
     return <AccessDenied />;
@@ -180,10 +192,6 @@ export function PayrollCalendarsScreen({}: Props) {
   }
 
   const pending = createMutation.isPending;
-  const inputStyle = [
-    styles.input,
-    { borderColor: c.border, backgroundColor: c.bg, color: c.text },
-  ];
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
@@ -268,53 +276,67 @@ export function PayrollCalendarsScreen({}: Props) {
         ref={sheetRef}
         title="Create payroll calendar"
         snapPoints={["60%", "92%"]}
+        onDismiss={() => form.reset(emptyPayrollCalendar)}
         footer={
           <Button
             title={pending ? "Creating…" : "Create"}
             onPress={handleSave}
             loading={pending}
+            disabled={pending}
           />
         }
       >
-        <Text style={[styles.fieldLabel, { color: c.muted }]}>Name *</Text>
-        <BottomSheetTextInput
-          style={inputStyle}
-          value={name}
-          onChangeText={setName}
-          placeholderTextColor={c.muted}
+        <FormTextField
+          control={form.control}
+          name="name"
+          label="Name"
+          inputType="bottomSheet"
           autoCapitalize="words"
+          editable={!pending}
+          {...fieldChainProps(chain, "name")}
         />
-        <MobileSelect
-          label="Pay cycle *"
-          value={payCycleId}
-          options={payCycleOptions}
-          onChange={setPayCycleId}
-          placeholder="Select pay cycle"
-          emptyText={
-            payCyclesQuery.isLoading ? "Loading…" : "No pay cycles"
-          }
+        <Controller
+          control={form.control}
+          name="pay_cycle_id"
+          render={({ field: { onChange, onBlur, value }, fieldState }) => (
+            <>
+              <MobileSelect
+                label="Pay cycle"
+                value={value}
+                options={payCycleOptions}
+                onChange={(id) => {
+                  onChange(id);
+                  onBlur();
+                }}
+                placeholder="Select pay cycle"
+                emptyText={
+                  payCyclesQuery.isLoading ? "Loading…" : "No pay cycles"
+                }
+                disabled={pending}
+              />
+              <FormFieldError message={fieldState.error?.message} />
+            </>
+          )}
         />
-        <Text style={[styles.fieldLabel, { color: c.muted }]}>
-          Start date (YYYY-MM-DD) *
-        </Text>
-        <BottomSheetTextInput
-          style={inputStyle}
-          value={startDate}
-          onChangeText={setStartDate}
+        <FormTextField
+          control={form.control}
+          name="start_date"
+          label="Start date (YYYY-MM-DD)"
+          inputType="bottomSheet"
           placeholder="2026-01-01"
-          placeholderTextColor={c.muted}
           autoCapitalize="none"
+          editable={!pending}
+          {...fieldChainProps(chain, "start_date")}
         />
-        <Text style={[styles.fieldLabel, { color: c.muted }]}>
-          First payment date (YYYY-MM-DD) *
-        </Text>
-        <BottomSheetTextInput
-          style={inputStyle}
-          value={firstPaymentDate}
-          onChangeText={setFirstPaymentDate}
+        <FormTextField
+          control={form.control}
+          name="first_payment_date"
+          label="First payment date (YYYY-MM-DD)"
+          inputType="bottomSheet"
           placeholder="2026-01-15"
-          placeholderTextColor={c.muted}
           autoCapitalize="none"
+          editable={!pending}
+          {...fieldChainProps(chain, "first_payment_date")}
         />
       </AppBottomSheet>
     </View>
@@ -348,20 +370,4 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   defaultPillText: { fontSize: 11, fontWeight: "700" },
-  fieldLabel: {
-    fontWeight: "700",
-    fontSize: 12,
-    marginBottom: 6,
-    marginTop: spacing.sm,
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
-  input: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-    marginBottom: 4,
-  },
 });

@@ -18,6 +18,7 @@ import {
 import { useTimesheetDayEditorScreen } from "@mytask/hooks";
 import { spacing } from "@mytask/theme";
 import { formatDisplayTimeRange, getErrorMessage } from "@mytask/utils";
+import { validateTimesheetDayTaskRow } from "@mytask/validation";
 import {
   TrackingMap,
   type TrackingLogs,
@@ -203,6 +204,9 @@ export function TimesheetDayDetailScreen({ route }: Props) {
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [tab, setTab] = useState<ViewTab>("sheets");
   const [tasks, setTasks] = useState<TaskDraft[]>([]);
+  const [taskErrors, setTaskErrors] = useState<
+    Record<string, Partial<Record<"job_id" | "start_time" | "end_time", string>>>
+  >({});
   const [isPublicHoliday, setIsPublicHoliday] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -295,23 +299,37 @@ export function TimesheetDayDetailScreen({ route }: Props) {
     setTasks((prev) =>
       prev.map((t) => (t.key === key ? { ...t, ...patch } : t)),
     );
+    setTaskErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
   }
 
   async function handleSave() {
+    const nextErrors: Record<
+      string,
+      Partial<Record<"job_id" | "start_time" | "end_time", string>>
+    > = {};
+    let firstInvalidKey: string | null = null;
+
     for (const task of tasks) {
-      if (!task.start_time || !task.end_time) {
-        toast.warning("Missing times", "Each task needs start and end time");
-        return;
-      }
-      if (task.type === "working" && !(task.job_id || timesheetJobId)) {
-        toast.warning(
-          "Job required",
-          "Working tasks need a job on this timesheet",
-        );
-        return;
+      const rowErrors = validateTimesheetDayTaskRow(task, timesheetJobId);
+      if (Object.keys(rowErrors).length) {
+        nextErrors[task.key] = rowErrors;
+        if (!firstInvalidKey) firstInvalidKey = task.key;
       }
     }
 
+    if (firstInvalidKey) {
+      setTaskErrors(nextErrors);
+      setExpandedKey(firstInvalidKey);
+      setTab("sheets");
+      return;
+    }
+
+    setTaskErrors({});
     setSaving(true);
     try {
       const payload = {
@@ -493,6 +511,7 @@ export function TimesheetDayDetailScreen({ route }: Props) {
                         {canSave ? (
                           <EditFields
                             task={task}
+                            errors={taskErrors[task.key]}
                             jobs={
                               timesheetJobs.length
                                 ? timesheetJobs
@@ -503,6 +522,11 @@ export function TimesheetDayDetailScreen({ route }: Props) {
                               setTasks((prev) =>
                                 prev.filter((t) => t.key !== task.key),
                               );
+                              setTaskErrors((prev) => {
+                                const next = { ...prev };
+                                delete next[task.key];
+                                return next;
+                              });
                               setExpandedKey(null);
                             }}
                           />
@@ -630,11 +654,13 @@ function SummaryChip({
 function EditFields({
   task,
   jobs,
+  errors,
   onChange,
   onRemove,
 }: {
   task: TaskDraft;
   jobs: Array<{ id?: number; name?: string }>;
+  errors?: Partial<Record<"job_id" | "start_time" | "end_time", string>>;
   onChange: (patch: Partial<TaskDraft>) => void;
   onRemove: () => void;
 }) {
@@ -669,39 +695,46 @@ function EditFields({
         <Field
           label="Start"
           value={task.start_time}
+          error={errors?.start_time}
           onChangeText={(start_time) => onChange({ start_time })}
           placeholder="09:00"
         />
         <Field
           label="End"
           value={task.end_time}
+          error={errors?.end_time}
           onChangeText={(end_time) => onChange({ end_time })}
           placeholder="17:00"
         />
       </View>
       {task.type === "working" && jobs.length > 1 ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {jobs.map((job) => {
-            const id = String(job.id);
-            const active = task.job_id === id;
-            return (
-              <Pressable
-                key={id}
-                onPress={() => onChange({ job_id: id })}
-                style={[
-                  styles.jobChip,
-                  {
-                    backgroundColor: active
-                      ? "rgba(255,255,255,0.4)"
-                      : "rgba(255,255,255,0.15)",
-                  },
-                ]}
-              >
-                <Text style={styles.jobChipText}>{job.name}</Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+        <>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {jobs.map((job) => {
+              const id = String(job.id);
+              const active = task.job_id === id;
+              return (
+                <Pressable
+                  key={id}
+                  onPress={() => onChange({ job_id: id })}
+                  style={[
+                    styles.jobChip,
+                    {
+                      backgroundColor: active
+                        ? "rgba(255,255,255,0.4)"
+                        : "rgba(255,255,255,0.15)",
+                    },
+                  ]}
+                >
+                  <Text style={styles.jobChipText}>{job.name}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+          {errors?.job_id ? (
+            <Text style={styles.fieldError}>{errors.job_id}</Text>
+          ) : null}
+        </>
       ) : null}
       <Field
         label="Remarks"
@@ -720,12 +753,14 @@ function EditFields({
 function Field({
   label,
   value,
+  error,
   onChangeText,
   placeholder,
   multiline,
 }: {
   label: string;
   value: string;
+  error?: string;
   onChangeText: (v: string) => void;
   placeholder?: string;
   multiline?: boolean;
@@ -739,8 +774,13 @@ function Field({
         placeholder={placeholder}
         placeholderTextColor="rgba(255,255,255,0.55)"
         multiline={multiline}
-        style={[styles.fieldInput, multiline && { minHeight: 64 }]}
+        style={[
+          styles.fieldInput,
+          multiline && { minHeight: 64 },
+          error ? styles.fieldInputError : null,
+        ]}
       />
+      {error ? <Text style={styles.fieldError}>{error}</Text> : null}
     </View>
   );
 }
@@ -849,6 +889,15 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "600",
     backgroundColor: "rgba(0,0,0,0.12)",
+  },
+  fieldInputError: {
+    borderColor: "#fecaca",
+  },
+  fieldError: {
+    color: "#fecaca",
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 4,
   },
   jobChip: {
     borderRadius: 999,
