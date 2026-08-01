@@ -19,6 +19,7 @@ import {
   BillingHistoryScreen,
 } from "../features/billing";
 import { OrgNavigator } from "./OrgNavigator";
+import { nativeBackScreenOptions } from "./standaloneOptions";
 import type { RootStackParamList } from "./types";
 
 export type { RootStackParamList } from "./types";
@@ -50,7 +51,7 @@ export function RootNavigator() {
         headerTintColor: c.text,
         headerTitleStyle: { fontWeight: "700", fontSize: 17 },
         headerShadowVisible: false,
-        headerBackTitle: "",
+        ...nativeBackScreenOptions,
         contentStyle: { backgroundColor: c.bg },
         animation: stackAnimation,
         animationDuration: Platform.OS === "ios" ? undefined : 260,

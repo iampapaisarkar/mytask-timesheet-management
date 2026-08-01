@@ -36,6 +36,7 @@ import { useLeaveOrganisation } from "./LeaveOrganisationContext";
 import { OrgTabBar } from "./OrgTabBar";
 import {
   orgStackAnimation,
+  nativeBackScreenOptions,
   standaloneScreenOptions,
 } from "./standaloneOptions";
 import type {
@@ -245,6 +246,11 @@ export function OrgNavigator({ navigation, route }: OrgProps) {
           screenOptions={{
             contentStyle: { backgroundColor: c.bg },
             headerShown: false,
+            headerStyle: { backgroundColor: c.surface },
+            headerTintColor: c.text,
+            headerTitleStyle: { fontWeight: "700", fontSize: 17 },
+            headerShadowVisible: false,
+            ...nativeBackScreenOptions,
             animation: orgStackAnimation,
           }}
         >

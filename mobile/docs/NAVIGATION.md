@@ -33,7 +33,7 @@ Authenticated root is a **native stack**:
 | More | Hub only — destinations push onto `OrgStack` |
 
 Tab roots have **no back button** and **swipe-back disabled**.  
-Standalone org-stack screens (`TimesheetDetail`, `TimesheetManagementDetail`, day editor, More destinations) use `StandaloneHeader` (`← Back · TS-…` / title), enable iOS/Android swipe-back, and hide OrgHeader + tab bar by architecture (siblings of `OrgTabs`).
+Standalone org-stack screens (`TimesheetDetail`, `TimesheetManagementDetail`, day editor, More destinations) use the native stack header (chevron-only back + title), enable iOS/Android swipe-back, and hide OrgHeader + tab bar by architecture (siblings of `OrgTabs`).
 
 ## Deep links
 

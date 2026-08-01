@@ -16,7 +16,6 @@ import { useOrgNavigate } from "../navigation/useOrgNavigate";
 import { AccessDenied } from "../components/AccessDenied";
 import { FullScreenSheet } from "../components/FullScreenSheet";
 import { SkeletonDetail } from "../components/Skeleton";
-import { StandaloneHeader } from "../components/StandaloneHeader";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
@@ -109,16 +108,7 @@ export function TimesheetManagementDetailScreen({ navigation, route }: Props) {
     formatTimesheetLabel({ id });
 
   useEffect(() => {
-    navigation.setOptions({
-      header: () => (
-        <StandaloneHeader
-          title={headerCode}
-          onBack={() => {
-            if (navigation.canGoBack()) navigation.goBack();
-          }}
-        />
-      ),
-    });
+    navigation.setOptions({ title: headerCode });
   }, [headerCode, navigation]);
 
   const jobsLabel =
