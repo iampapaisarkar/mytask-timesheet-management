@@ -135,3 +135,43 @@ export function statusLabel(
   }
   return status.name || status.code || "—";
 }
+
+/** Shared chips for Sheets + Manage timesheet lists. */
+export type TimesheetStatusFilter =
+  | "all"
+  | "approved"
+  | "pending"
+  | "draft"
+  | "rejected";
+
+export const TIMESHEET_STATUS_FILTER_OPTIONS: Array<{
+  value: TimesheetStatusFilter;
+  label: string;
+}> = [
+  { value: "all", label: "All" },
+  { value: "approved", label: "Approved" },
+  { value: "pending", label: "Pending" },
+  { value: "draft", label: "Draft" },
+  { value: "rejected", label: "Rejected" },
+];
+
+/**
+ * Map UI filter chips to backend `status_code` (draft | submitted | approved | rejected).
+ * Pending maps to `submitted` (awaiting approval).
+ */
+export function timesheetStatusCodeParam(
+  filter: TimesheetStatusFilter,
+): string | undefined {
+  switch (filter) {
+    case "approved":
+      return "approved";
+    case "pending":
+      return "submitted";
+    case "draft":
+      return "draft";
+    case "rejected":
+      return "rejected";
+    default:
+      return undefined;
+  }
+}

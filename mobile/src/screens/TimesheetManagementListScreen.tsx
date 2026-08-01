@@ -43,9 +43,13 @@ import {
   Card,
   EmptyState,
   ErrorState,
+  FilterChips,
   ScreenHeader,
   SheetsIcon,
   StatusBadge,
+  TIMESHEET_STATUS_FILTER_OPTIONS,
+  type TimesheetStatusFilter,
+  timesheetStatusCodeParam,
 } from "../ui";
 
 type Props = NativeStackScreenProps<
@@ -102,13 +106,15 @@ export function TimesheetManagementListScreen({ route }: Props) {
   const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<TimesheetStatusFilter>("all");
   const debouncedSearch = useDebouncedValue(search.trim(), 400);
   const toast = useToastStore();
   const c = useThemeStore((s) => s.colors);
+  const statusCode = timesheetStatusCodeParam(filter);
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch]);
+  }, [debouncedSearch, filter]);
 
   const { data, isLoading, isError, isFetching, refetch } =
     useTimesheetManagement(
@@ -117,6 +123,7 @@ export function TimesheetManagementListScreen({ route }: Props) {
         page_number: page,
         sort_by: "id",
         ...(debouncedSearch ? { search: debouncedSearch } : {}),
+        ...(statusCode ? { status_code: statusCode } : {}),
       },
       canList,
     );
@@ -248,6 +255,11 @@ export function TimesheetManagementListScreen({ route }: Props) {
           onChangeText={setSearch}
           placeholder="Search by timesheet code"
         />
+        <FilterChips
+          value={filter}
+          onChange={setFilter}
+          options={[...TIMESHEET_STATUS_FILTER_OPTIONS]}
+        />
         {canCreate ? (
           <Button
             title="Create timesheet"
@@ -278,13 +290,13 @@ export function TimesheetManagementListScreen({ route }: Props) {
             <EmptyState
               icon={<SheetsIcon color={c.primary} size={28} />}
               title={
-                debouncedSearch
+                debouncedSearch || filter !== "all"
                   ? "No matching timesheets"
                   : "No managed timesheets"
               }
               description={
-                debouncedSearch
-                  ? "Try a different search."
+                debouncedSearch || filter !== "all"
+                  ? "Try a different search or clear filters."
                   : "Timesheets you create or manage will appear here."
               }
             />

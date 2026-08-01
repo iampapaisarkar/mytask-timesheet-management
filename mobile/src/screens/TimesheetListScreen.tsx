@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   FlatList,
   RefreshControl,
@@ -34,7 +34,10 @@ import {
   ScreenHeader,
   SheetsIcon,
   StatusBadge,
+  TIMESHEET_STATUS_FILTER_OPTIONS,
+  type TimesheetStatusFilter,
   statusLabel,
+  timesheetStatusCodeParam,
 } from "../ui";
 import { triggerHaptic } from "../utils/haptics";
 
@@ -48,14 +51,6 @@ type TimesheetRow = {
   job?: { id?: number; name?: string } | null;
   jobs?: Array<{ id?: number; name?: string }> | null;
 };
-
-type StatusFilter = "all" | "approved" | "pending" | "rejected" | "draft";
-
-function statusCode(status: TimesheetRow["status"]) {
-  if (!status) return "";
-  if (typeof status === "string") return status.toLowerCase();
-  return (status.code || status.name || "").toLowerCase();
-}
 
 function jobLabel(item: TimesheetRow) {
   if (Array.isArray(item.jobs) && item.jobs.length) {
@@ -76,13 +71,14 @@ export function TimesheetListScreen({ route }: Props) {
   const canList = can(acl, "timesheet", "list");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<StatusFilter>("all");
+  const [filter, setFilter] = useState<TimesheetStatusFilter>("all");
   const debouncedSearch = useDebouncedValue(search.trim(), 400);
   const c = useThemeStore((s) => s.colors);
+  const statusCode = timesheetStatusCodeParam(filter);
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch]);
+  }, [debouncedSearch, filter]);
 
   const { data, isLoading, isError, isFetching, refetch } = useTimesheets(
     {
@@ -90,6 +86,7 @@ export function TimesheetListScreen({ route }: Props) {
       page_number: page,
       sort_by: "id",
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
+      ...(statusCode ? { status_code: statusCode } : {}),
     },
     canList,
   );
@@ -97,21 +94,6 @@ export function TimesheetListScreen({ route }: Props) {
   const pagination = listPagination(data);
   const totalPages = Math.max(1, Number(pagination?.total_pages) || 1);
   const currentPage = Number(pagination?.page_number) || page;
-
-  const filteredRows = useMemo(() => {
-    if (filter === "all") return rows;
-    return rows.filter((row) => {
-      const code = statusCode(row.status);
-      if (filter === "pending") {
-        return (
-          code.includes("pend") ||
-          code.includes("submit") ||
-          code === "pending_approval"
-        );
-      }
-      return code.includes(filter);
-    });
-  }, [rows, filter]);
 
   if (!canList) {
     return <AccessDenied />;
@@ -144,13 +126,7 @@ export function TimesheetListScreen({ route }: Props) {
         <FilterChips
           value={filter}
           onChange={setFilter}
-          options={[
-            { value: "all", label: "All" },
-            { value: "approved", label: "Approved" },
-            { value: "pending", label: "Pending" },
-            { value: "draft", label: "Draft" },
-            { value: "rejected", label: "Rejected" },
-          ]}
+          options={[...TIMESHEET_STATUS_FILTER_OPTIONS]}
         />
       </View>
       {isLoading && !data ? (
@@ -158,7 +134,7 @@ export function TimesheetListScreen({ route }: Props) {
       ) : (
         <FlatList
           contentContainerStyle={styles.list}
-          data={filteredRows}
+          data={rows}
           keyExtractor={(item, index) => String(item.id ?? index)}
           showsHorizontalScrollIndicator={false}
           refreshControl={
