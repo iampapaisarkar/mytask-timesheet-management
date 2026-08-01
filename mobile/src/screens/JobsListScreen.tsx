@@ -403,6 +403,7 @@ export function JobsListScreen(_props: Props) {
           onChange={(address) => patchForm({ address })}
           label="Site address *"
           requireCoordinates
+          inBottomSheet
         />
         <Text style={[styles.fieldLabel, { color: c.muted }]}>
           Geofence radius (m) *

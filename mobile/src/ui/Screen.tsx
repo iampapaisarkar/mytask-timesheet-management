@@ -1,13 +1,11 @@
 import type { ReactNode } from "react";
 import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
   StyleSheet,
   View,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { spacing } from "@mytask/theme";
 import { useThemeStore } from "../store/themeStore";
@@ -38,7 +36,7 @@ export function Screen({
   style?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
   padded?: boolean;
-  /** Wrap with KeyboardAvoidingView for full-screen forms. */
+  /** Use keyboard-aware scrolling so focused inputs stay visible. */
   keyboard?: boolean;
 }) {
   const c = useThemeStore((s) => s.colors);
@@ -53,38 +51,32 @@ export function Screen({
       : 0,
   };
 
-  const body = scroll ? (
-    <ScrollView
-      style={[{ flex: 1, backgroundColor: c.bg }, style]}
-      contentContainerStyle={[
-        padStyle,
-        padded && styles.scrollPad,
-        contentStyle,
-      ]}
-      keyboardShouldPersistTaps="handled"
-      keyboardDismissMode="interactive"
-      showsVerticalScrollIndicator={false}
-      showsHorizontalScrollIndicator={false}
-      automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
-    >
-      {children}
-    </ScrollView>
-  ) : (
+  if (scroll || keyboard) {
+    return (
+      <KeyboardAwareScrollView
+        style={[{ flex: 1, backgroundColor: c.bg }, style]}
+        contentContainerStyle={[
+          padStyle,
+          padded && styles.scrollPad,
+          contentStyle,
+        ]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
+        bottomOffset={24}
+        extraKeyboardSpace={16}
+        enabled={keyboard || scroll}
+      >
+        {children}
+      </KeyboardAwareScrollView>
+    );
+  }
+
+  return (
     <View style={[{ flex: 1, backgroundColor: c.bg }, padStyle, style]}>
       <View style={[{ flex: 1 }, contentStyle]}>{children}</View>
     </View>
-  );
-
-  if (!keyboard) return body;
-
-  return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: c.bg }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 88 : 0}
-    >
-      {body}
-    </KeyboardAvoidingView>
   );
 }
 

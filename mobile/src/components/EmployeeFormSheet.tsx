@@ -692,6 +692,7 @@ export function EmployeeFormSheet({
             label="Address"
             value={form.address}
             onChange={(address) => patch({ address })}
+            inBottomSheet
           />
           <MobileSelect
             label="Role"

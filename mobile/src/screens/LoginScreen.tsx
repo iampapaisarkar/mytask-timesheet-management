@@ -1,9 +1,7 @@
 import {
   ActivityIndicator,
   Image,
-  KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -19,6 +17,8 @@ import { spacing } from "@mytask/theme";
 import { getErrorMessage, getTimezone } from "@mytask/utils";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { FormKeyboardScroll } from "../components/FormKeyboardScroll";
+import { GoogleGlyph } from "../components/GoogleGlyph";
 import { useAuthStore } from "../store/authStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
@@ -31,7 +31,6 @@ import {
 import { isFirebaseConfigured, isGoogleSignInConfigured } from "../config/env";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { setPendingOrgInvitationToken } from "../navigation/navigationRef";
-import { GoogleGlyph } from "../components/GoogleGlyph";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Login">;
 
@@ -114,14 +113,11 @@ export function LoginScreen({ navigation, route }: Props) {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.flex, { backgroundColor: c.bg, paddingTop: insets.top }]}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    <FormKeyboardScroll
+      style={{ paddingTop: insets.top }}
+      contentContainerStyle={styles.container}
+      bottomOffset={32}
     >
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-      >
         <TouchableOpacity onPress={() => void toggleTheme()} style={styles.themeBtn}>
           <Text style={{ color: c.primary, fontWeight: "600" }}>
             {mode === "dark" ? "Light" : "Dark"}
@@ -315,8 +311,7 @@ export function LoginScreen({ navigation, route }: Props) {
             </View>
           ))}
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </FormKeyboardScroll>
   );
 }
 

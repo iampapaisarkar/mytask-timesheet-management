@@ -9,7 +9,6 @@ import {
   BottomSheetBackdrop,
   BottomSheetFooter,
   BottomSheetModal,
-  BottomSheetScrollView,
   BottomSheetTextInput,
   BottomSheetView,
   useBottomSheetModal,
@@ -20,6 +19,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radii, spacing } from "@mytask/theme";
 import { useThemeStore } from "../store/themeStore";
+import { BottomSheetKeyboardAwareScrollView } from "./BottomSheetKeyboardAwareScrollView";
 import { elevation } from "./tokens";
 import { CloseIcon } from "./icons";
 
@@ -52,8 +52,7 @@ export type AppBottomSheetProps = {
 };
 
 /**
- * Form / filter sheet with keyboard-aware footer via BottomSheetFooter.
- * Save actions stay visible above the home indicator and keyboard.
+ * Form sheet that keeps focused inputs and the Save footer above the keyboard.
  */
 export const AppBottomSheet = forwardRef<
   BottomSheetModal,
@@ -77,6 +76,10 @@ export const AppBottomSheet = forwardRef<
     () => snapPointsProp ?? ["55%", "92%"],
     [snapPointsProp],
   );
+
+  const footerHeight = footer
+    ? 72 + Math.max(insets.bottom, spacing.sm)
+    : Math.max(insets.bottom, spacing.md);
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -114,9 +117,6 @@ export const AppBottomSheet = forwardRef<
     [c.border, c.surface, footer, insets.bottom],
   );
 
-  const Body = scrollable ? BottomSheetScrollView : BottomSheetView;
-  const footerPad = footer ? 88 + Math.max(insets.bottom - spacing.sm, 0) : Math.max(insets.bottom, spacing.md);
-
   return (
     <BottomSheetModal
       ref={ref}
@@ -132,11 +132,13 @@ export const AppBottomSheet = forwardRef<
         { backgroundColor: c.surface },
         elevation.sheet,
       ]}
-      keyboardBehavior="interactive"
+      // Extend to max snap when keyboard opens; scroll view keeps focus visible.
+      keyboardBehavior="extend"
       keyboardBlurBehavior="restore"
       android_keyboardInputMode="adjustResize"
       topInset={insets.top}
       enableDynamicSizing={false}
+      enableBlurKeyboardOnGesture
     >
       <View style={[styles.header, { borderBottomColor: c.border }]}>
         <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>
@@ -144,18 +146,29 @@ export const AppBottomSheet = forwardRef<
         </Text>
         <SheetCloseButton color={c.muted} />
       </View>
-      <Body
-        style={styles.body}
-        contentContainerStyle={[
-          styles.bodyContent,
-          { paddingBottom: footerPad },
-        ]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        showsHorizontalScrollIndicator={false}
-      >
-        {children}
-      </Body>
+      {scrollable ? (
+        <BottomSheetKeyboardAwareScrollView
+          style={styles.body}
+          contentContainerStyle={[
+            styles.bodyContent,
+            { paddingBottom: footerHeight + spacing.lg },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}
+          bottomOffset={footerHeight + 24}
+          extraKeyboardSpace={24}
+          bounces
+        >
+          {children}
+        </BottomSheetKeyboardAwareScrollView>
+      ) : (
+        <BottomSheetView
+          style={[styles.body, styles.bodyContent, { paddingBottom: footerHeight }]}
+        >
+          {children}
+        </BottomSheetView>
+      )}
     </BottomSheetModal>
   );
 });

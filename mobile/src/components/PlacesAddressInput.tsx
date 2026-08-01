@@ -8,6 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import {
   hasAddressContent,
   normalizeAddress,
@@ -51,14 +52,18 @@ export function PlacesAddressInput({
   placeholder = "Start typing an address…",
   label = "Address",
   requireCoordinates = false,
+  inBottomSheet = false,
 }: {
   value?: Partial<GlobalAddress> | null;
   onChange: (next: GlobalAddress) => void;
   placeholder?: string;
   label?: string;
   requireCoordinates?: boolean;
+  /** Use BottomSheetTextInput so the sheet scrolls the field above the keyboard. */
+  inBottomSheet?: boolean;
 }) {
   const c = useThemeStore((s) => s.colors);
+  const Input = inBottomSheet ? BottomSheetTextInput : TextInput;
   const apiKey = ENV.GOOGLE_MAPS_API_KEY;
   const address = normalizeAddress(value);
   const [query, setQuery] = useState(
@@ -171,9 +176,9 @@ export function PlacesAddressInput({
         <Text style={{ color: c.muted, fontSize: 12, marginBottom: 8 }}>
           Set GOOGLE_MAPS_API_KEY (Places API enabled) for address autofill.
         </Text>
-        <TextInput
+        <Input
           value={query}
-          onChangeText={(text) => {
+          onChangeText={(text: string) => {
             setQuery(text);
             onChange(
               normalizeAddress({
@@ -198,9 +203,9 @@ export function PlacesAddressInput({
     <View style={styles.wrap}>
       <Text style={[styles.label, { color: c.muted }]}>{label}</Text>
       <View style={{ position: "relative" }}>
-        <TextInput
+        <Input
           value={query}
-          onChangeText={(text) => {
+          onChangeText={(text: string) => {
             setQuery(text);
             setOpen(true);
             if (!text.trim()) {

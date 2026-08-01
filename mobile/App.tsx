@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, StatusBar, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -117,28 +118,30 @@ function App() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <AuthSessionProvider>
-            <RealtimeProvider>
-              <BottomSheetModalProvider>
-                <NavigationContainer
-                  ref={navigationRef}
-                  theme={navTheme}
-                  linking={navigationLinking}
-                  onReady={() => flushPendingOrgInvitation()}
-                >
-                  <StatusBar
-                    barStyle={mode === 'dark' ? 'light-content' : 'dark-content'}
-                    backgroundColor={c.bg}
-                  />
-                  <DeepLinkHandler />
-                  <RootNavigator />
-                  <ToastViewport />
-                </NavigationContainer>
-              </BottomSheetModalProvider>
-            </RealtimeProvider>
-          </AuthSessionProvider>
-        </QueryClientProvider>
+        <KeyboardProvider>
+          <QueryClientProvider client={queryClient}>
+            <AuthSessionProvider>
+              <RealtimeProvider>
+                <BottomSheetModalProvider>
+                  <NavigationContainer
+                    ref={navigationRef}
+                    theme={navTheme}
+                    linking={navigationLinking}
+                    onReady={() => flushPendingOrgInvitation()}
+                  >
+                    <StatusBar
+                      barStyle={mode === 'dark' ? 'light-content' : 'dark-content'}
+                      backgroundColor={c.bg}
+                    />
+                    <DeepLinkHandler />
+                    <RootNavigator />
+                    <ToastViewport />
+                  </NavigationContainer>
+                </BottomSheetModalProvider>
+              </RealtimeProvider>
+            </AuthSessionProvider>
+          </QueryClientProvider>
+        </KeyboardProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

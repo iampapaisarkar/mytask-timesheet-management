@@ -1,8 +1,5 @@
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -20,6 +17,7 @@ import { spacing } from "@mytask/theme";
 import { getErrorMessage } from "@mytask/utils";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { FormKeyboardScroll } from "../components/FormKeyboardScroll";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 import { sendPasswordReset } from "../services/firebase";
@@ -62,14 +60,7 @@ export function ForgotPasswordScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.flex, { backgroundColor: c.bg }]}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-      >
+    <FormKeyboardScroll contentContainerStyle={styles.container} bottomOffset={32}>
         <Text style={[styles.title, { color: c.text }]}>Reset password</Text>
         <Text style={[styles.subtitle, { color: c.muted }]}>
           Enter your email and we'll send a reset link.
@@ -151,8 +142,7 @@ export function ForgotPasswordScreen() {
             Back to login
           </Text>
         </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </FormKeyboardScroll>
   );
 }
 

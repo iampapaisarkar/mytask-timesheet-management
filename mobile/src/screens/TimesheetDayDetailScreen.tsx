@@ -8,6 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import {
@@ -430,12 +431,15 @@ export function TimesheetDayDetailScreen({ route, navigation }: Props) {
 
       <View style={styles.body}>
         {tab === "sheets" ? (
-          <ScrollView
+          <KeyboardAwareScrollView
             contentContainerStyle={{
               padding: spacing.md,
-              paddingBottom: canSave ? 100 : spacing.xxl,
+              paddingBottom: canSave ? 120 : spacing.xxl,
             }}
             keyboardShouldPersistTaps="handled"
+            bottomOffset={canSave ? 100 : 24}
+            extraKeyboardSpace={16}
+            showsVerticalScrollIndicator={false}
           >
             {!tasks.length ? (
               <Text style={{ color: c.muted, fontSize: 14, textAlign: "center" }}>
@@ -547,7 +551,7 @@ export function TimesheetDayDetailScreen({ route, navigation }: Props) {
                 </Text>
               </Pressable>
             ) : null}
-          </ScrollView>
+          </KeyboardAwareScrollView>
         ) : null}
 
         {tab === "timeline" ? (

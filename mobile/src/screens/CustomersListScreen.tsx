@@ -378,6 +378,7 @@ export function CustomersListScreen(_props: Props) {
           value={form.address}
           onChange={(address) => patchForm({ address })}
           label="Address"
+          inBottomSheet
         />
         <Text style={[styles.fieldLabel, { color: c.muted }]}>
           Contact name

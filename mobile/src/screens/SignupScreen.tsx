@@ -1,8 +1,6 @@
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -17,6 +15,7 @@ import { authApi } from "@mytask/api";
 import { spacing } from "@mytask/theme";
 import { getErrorMessage, getTimezone } from "@mytask/utils";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { FormKeyboardScroll } from "../components/FormKeyboardScroll";
 import { useAuthStore } from "../store/authStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
@@ -87,14 +86,7 @@ export function SignupScreen({ navigation, route }: Props) {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.flex, { backgroundColor: c.bg }]}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-      >
+    <FormKeyboardScroll contentContainerStyle={styles.container} bottomOffset={32}>
         <Text style={[styles.title, { color: c.text }]}>Create your account</Text>
         <Text style={[styles.subtitle, { color: c.muted }]}>
           {invitationToken
@@ -193,8 +185,7 @@ export function SignupScreen({ navigation, route }: Props) {
             <Text style={{ color: c.primary, fontWeight: "700" }}>Login</Text>
           </Text>
         </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </FormKeyboardScroll>
   );
 }
 
