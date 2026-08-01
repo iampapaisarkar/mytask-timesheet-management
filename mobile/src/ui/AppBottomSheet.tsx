@@ -7,12 +7,14 @@ import {
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import {
   BottomSheetBackdrop,
+  BottomSheetFooter,
   BottomSheetModal,
   BottomSheetScrollView,
   BottomSheetTextInput,
   BottomSheetView,
   useBottomSheetModal,
   type BottomSheetBackdropProps,
+  type BottomSheetFooterProps,
   type BottomSheetModalProps,
 } from "@gorhom/bottom-sheet";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -50,8 +52,8 @@ export type AppBottomSheetProps = {
 };
 
 /**
- * Standard form / filter sheet. Present via ref.present() / ref.dismiss().
- * Prefer this over RN Modal for create/edit/filter flows.
+ * Form / filter sheet with keyboard-aware footer via BottomSheetFooter.
+ * Save actions stay visible above the home indicator and keyboard.
  */
 export const AppBottomSheet = forwardRef<
   BottomSheetModal,
@@ -72,7 +74,7 @@ export const AppBottomSheet = forwardRef<
   const c = useThemeStore((s) => s.colors);
   const insets = useSafeAreaInsets();
   const snapPoints = useMemo(
-    () => snapPointsProp ?? ["50%", "92%"],
+    () => snapPointsProp ?? ["55%", "92%"],
     [snapPointsProp],
   );
 
@@ -89,7 +91,31 @@ export const AppBottomSheet = forwardRef<
     [],
   );
 
+  const renderFooter = useCallback(
+    (props: BottomSheetFooterProps) => {
+      if (!footer) return null;
+      return (
+        <BottomSheetFooter {...props} bottomInset={0}>
+          <View
+            style={[
+              styles.footer,
+              {
+                borderTopColor: c.border,
+                backgroundColor: c.surface,
+                paddingBottom: Math.max(insets.bottom, spacing.sm),
+              },
+            ]}
+          >
+            {footer}
+          </View>
+        </BottomSheetFooter>
+      );
+    },
+    [c.border, c.surface, footer, insets.bottom],
+  );
+
   const Body = scrollable ? BottomSheetScrollView : BottomSheetView;
+  const footerPad = footer ? 88 + Math.max(insets.bottom - spacing.sm, 0) : Math.max(insets.bottom, spacing.md);
 
   return (
     <BottomSheetModal
@@ -99,6 +125,7 @@ export const AppBottomSheet = forwardRef<
       onDismiss={onDismiss}
       stackBehavior={stackBehavior}
       backdropComponent={renderBackdrop}
+      footerComponent={footer ? renderFooter : undefined}
       handleIndicatorStyle={{ backgroundColor: c.border, width: 40 }}
       backgroundStyle={[
         styles.sheetBg,
@@ -109,6 +136,7 @@ export const AppBottomSheet = forwardRef<
       keyboardBlurBehavior="restore"
       android_keyboardInputMode="adjustResize"
       topInset={insets.top}
+      enableDynamicSizing={false}
     >
       <View style={[styles.header, { borderBottomColor: c.border }]}>
         <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>
@@ -120,26 +148,14 @@ export const AppBottomSheet = forwardRef<
         style={styles.body}
         contentContainerStyle={[
           styles.bodyContent,
-          { paddingBottom: Math.max(insets.bottom, spacing.md) + (footer ? 72 : 0) },
+          { paddingBottom: footerPad },
         ]}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
       >
         {children}
       </Body>
-      {footer ? (
-        <View
-          style={[
-            styles.footer,
-            {
-              borderTopColor: c.border,
-              backgroundColor: c.surface,
-              paddingBottom: Math.max(insets.bottom, spacing.sm),
-            },
-          ]}
-        >
-          {footer}
-        </View>
-      ) : null}
     </BottomSheetModal>
   );
 });
@@ -169,10 +185,6 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
   },
   footer: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
     borderTopWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,

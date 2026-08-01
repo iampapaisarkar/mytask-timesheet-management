@@ -1,6 +1,6 @@
 import type { LinkingOptions } from "@react-navigation/native";
 import { APP_WEB_HOST, APP_WEB_ORIGIN } from "@mytask/constants";
-import type { RootStackParamList } from "./RootNavigator";
+import type { RootStackParamList } from "./types";
 
 /**
  * Universal Links / App Links share the same HTTPS host as the web app so email
@@ -12,59 +12,79 @@ export const linkingPrefixes = [
   "mytask://",
 ] as const;
 
-export const navigationLinking: LinkingOptions<RootStackParamList> = {
-  prefixes: [...linkingPrefixes],
-  config: {
-    screens: {
-      OrgInvitation: {
-        path: "org-invitation",
-        parse: {
-          token: (value: string) => value,
+const linkingConfig = {
+  screens: {
+    OrgInvitation: {
+      path: "org-invitation",
+      parse: {
+        token: (value: string) => value,
+      },
+    },
+    Legal: {
+      path: ":kind(help|terms|privacy)",
+      parse: {
+        kind: (value: string) => {
+          if (value === "terms" || value === "privacy" || value === "help") {
+            return value;
+          }
+          return "help";
         },
       },
-      Legal: {
-        path: ":kind(help|terms|privacy)",
-        parse: {
-          kind: (value: string) => {
-            if (value === "terms" || value === "privacy" || value === "help") {
-              return value;
-            }
-            return "help";
+    },
+    Pricing: "pricing",
+    Subscription: "subscription",
+    BillingHistory: "billing",
+    Home: "",
+    Profile: "profile",
+    CreateOrganisation: "organisations/create",
+    NotificationsList: "org/:orgCode/notifications",
+    Organisation: {
+      path: "org/:orgCode",
+      screens: {
+        Dashboard: {
+          path: "",
+          screens: {
+            OrgDashboard: "",
+          },
+        },
+        Sheets: {
+          screens: {
+            TimesheetList: "timesheet",
+            TimesheetDetail: "timesheet/:id/details",
+          },
+        },
+        Manage: {
+          screens: {
+            TimesheetManagementList: "timesheet-management",
+            TimesheetManagementDetail: "timesheet-management/:id/details",
+          },
+        },
+        More: {
+          screens: {
+            MoreHome: "more",
+            EmployeesList: "employees",
+            CustomersList: "customers",
+            JobsList: "jobs",
+            Reports: "reports",
+            Payouts: "payouts",
+            PayoutDetail: "payouts/:id",
+            SystemLogs: "system-logs",
+            SettingsHub: "settings",
+            OrganisationDetails: "settings/organisation-details",
+            HolidayCalendars: "settings/holiday-calendars",
+            PayrollCalendars: "settings/payroll-calendars",
           },
         },
       },
-      Pricing: "pricing",
-      Subscription: "subscription",
-      BillingHistory: "billing",
-      MainTabs: {
-        path: "",
-        screens: {
-          Organisations: "",
-          Profile: "profile",
-        },
-      },
-      CreateOrganisation: "organisations/create",
-      OrgHome: "org/:orgCode",
-      Timesheets: "org/:orgCode/timesheet",
-      TimesheetDetail: "org/:orgCode/timesheet/:id/details",
-      TimesheetManagementList: "org/:orgCode/timesheet-management",
-      TimesheetManagementDetail:
-        "org/:orgCode/timesheet-management/:id/details",
-      Reports: "org/:orgCode/reports",
-      Payouts: "org/:orgCode/payouts",
-      PayoutDetail: "org/:orgCode/payouts/:id",
-      EmployeesList: "org/:orgCode/employees",
-      CustomersList: "org/:orgCode/customers",
-      JobsList: "org/:orgCode/jobs",
-      SystemLogs: "org/:orgCode/system-logs",
-      NotificationsList: "org/:orgCode/notifications",
-      SettingsHub: "org/:orgCode/settings",
-      OrganisationDetails: "org/:orgCode/settings/organisation-details",
-      HolidayCalendars: "org/:orgCode/settings/holiday-calendars",
-      PayrollCalendars: "org/:orgCode/settings/payroll-calendars",
-      Login: "login",
-      Signup: "signup",
-      ForgotPassword: "forgot-password",
     },
+    Login: "login",
+    Signup: "signup",
+    ForgotPassword: "forgot-password",
   },
+} as const;
+
+export const navigationLinking: LinkingOptions<RootStackParamList> = {
+  prefixes: [...linkingPrefixes],
+  // Nested org paths — PathConfig generics don't model multi-level tab/stack trees.
+  config: linkingConfig as unknown as LinkingOptions<RootStackParamList>["config"],
 };

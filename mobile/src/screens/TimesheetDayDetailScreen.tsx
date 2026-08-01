@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,6 +21,7 @@ import {
   TrackingMap,
   type TrackingLogs,
 } from "../components/TrackingMap";
+import { SkeletonDetail } from "../components/Skeleton";
 import {
   TrackedTimeline,
   formatMinutesAsHm,
@@ -29,13 +29,13 @@ import {
   type TimelineTask,
   type TimelineTaskType,
 } from "../components/TrackedTimeline";
-import type { RootStackParamList } from "../navigation/RootNavigator";
+import type { SheetsStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 import { CloseIcon, PlusIcon, SegmentedControl } from "../ui";
 
-type Props = NativeStackScreenProps<RootStackParamList, "TimesheetDayDetail">;
+type Props = NativeStackScreenProps<SheetsStackParamList, "TimesheetDayDetail">;
 
 type TaskType = TimelineTaskType;
 
@@ -333,8 +333,8 @@ export function TimesheetDayDetailScreen({ route, navigation }: Props) {
 
   if (dayQuery.isLoading) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.primary} />
+      <View style={{ flex: 1, backgroundColor: c.bg }}>
+        <SkeletonDetail />
       </View>
     );
   }

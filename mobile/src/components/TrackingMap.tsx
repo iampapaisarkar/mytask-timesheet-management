@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { spacing } from "@mytask/theme";
 import { useThemeStore } from "../store/themeStore";
-import { MINIMAL_MAP_STYLE } from "./mapStyle";
+import { mapStyleForTheme } from "./mapStyle";
 
 export type TrackingPoint = {
   latitude?: number | string | null;
@@ -169,6 +169,7 @@ export function TrackingMap({
   selectedType?: FlatPoint["type"] | null;
 }) {
   const c = useThemeStore((s) => s.colors);
+  const mode = useThemeStore((s) => s.mode);
   const points = useMemo(
     () => flattenTrackingLogs(trackingLogs),
     [trackingLogs],
@@ -227,7 +228,7 @@ export function TrackingMap({
       <MapView
         style={StyleSheet.absoluteFill}
         provider={provider}
-        customMapStyle={MINIMAL_MAP_STYLE}
+        customMapStyle={mapStyleForTheme(mode)}
         mapType="standard"
         showsPointsOfInterest={false}
         showsBuildings={false}

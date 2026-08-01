@@ -2,9 +2,6 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -24,6 +21,7 @@ import {
   profileSchema,
   type ProfileFormValues,
 } from "@mytask/validation";
+import { FormKeyboardScroll } from "../components/FormKeyboardScroll";
 import { isTracking } from "../services/trackingSession";
 import { useAuthStore } from "../store/authStore";
 import { useThemeStore } from "../store/themeStore";
@@ -133,14 +131,7 @@ export function ProfileScreen() {
   ];
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: c.bg }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-      >
+    <FormKeyboardScroll contentContainerStyle={styles.container}>
         <View
           style={[
             styles.card,
@@ -345,8 +336,7 @@ export function ProfileScreen() {
         >
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </FormKeyboardScroll>
   );
 }
 

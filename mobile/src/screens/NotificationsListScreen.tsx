@@ -1,6 +1,5 @@
 import { useLayoutEffect, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -26,9 +25,11 @@ import {
   listRows,
 } from "@mytask/utils";
 import { ListPager } from "../components/ListPager";
+import { SkeletonList } from "../components/Skeleton";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
+import { triggerHaptic } from "../utils/haptics";
 
 type Props = NativeStackScreenProps<RootStackParamList, "NotificationsList">;
 
@@ -104,16 +105,24 @@ export function NotificationsListScreen({ navigation, route }: Props) {
     const timesheetMatch = path.match(/\/timesheet\/(\d+)/);
     const managementMatch = path.match(/\/timesheet-management\/(\d+)/);
     if (timesheetMatch) {
-      navigation.navigate("TimesheetDetail", {
+      navigation.navigate("Organisation", {
         orgCode,
-        id: timesheetMatch[1],
+        screen: "Sheets",
+        params: {
+          screen: "TimesheetDetail",
+          params: { orgCode, id: timesheetMatch[1] },
+        },
       });
       return;
     }
     if (managementMatch) {
-      navigation.navigate("TimesheetManagementDetail", {
+      navigation.navigate("Organisation", {
         orgCode,
-        id: managementMatch[1],
+        screen: "Manage",
+        params: {
+          screen: "TimesheetManagementDetail",
+          params: { orgCode, id: managementMatch[1] },
+        },
       });
       return;
     }
@@ -134,18 +143,20 @@ export function NotificationsListScreen({ navigation, route }: Props) {
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       {isLoading && !data ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={c.primary} />
-        </View>
+        <SkeletonList rows={6} />
       ) : (
         <FlatList
           contentContainerStyle={{ padding: spacing.md }}
           data={rows}
           keyExtractor={(item, index) => String(item.id ?? index)}
+          showsHorizontalScrollIndicator={false}
           refreshControl={
             <RefreshControl
               refreshing={isFetching && !isLoading}
-              onRefresh={() => void refetch()}
+              onRefresh={() => {
+                void triggerHaptic("light");
+                void refetch();
+              }}
               tintColor={c.primary}
             />
           }

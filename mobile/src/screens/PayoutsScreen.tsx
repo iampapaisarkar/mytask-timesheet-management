@@ -29,13 +29,15 @@ import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing } from "@mytask/theme";
 import { getErrorMessage, listPagination, listRows } from "@mytask/utils";
 import { ListPager } from "../components/ListPager";
-import type { RootStackParamList } from "../navigation/RootNavigator";
+import { SkeletonList } from "../components/Skeleton";
+import type { MoreStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
+import { triggerHaptic } from "../utils/haptics";
 import { AppBottomSheet } from "../ui";
 
-type Props = NativeStackScreenProps<RootStackParamList, "Payouts">;
+type Props = NativeStackScreenProps<MoreStackParamList, "Payouts">;
 
 type StatusLike = string | { code?: string; name?: string } | null | undefined;
 
@@ -336,11 +338,7 @@ export function PayoutsScreen({ navigation, route }: Props) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filters}
-      >
+      <View style={styles.filters}>
         {STATUS_FILTERS.map((item) => {
           const selected = status === item.value;
           return (
@@ -370,21 +368,23 @@ export function PayoutsScreen({ navigation, route }: Props) {
             </TouchableOpacity>
           );
         })}
-      </ScrollView>
+      </View>
 
       {isLoading && !data ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={c.primary} />
-        </View>
+        <SkeletonList rows={6} />
       ) : (
         <FlatList
           contentContainerStyle={{ padding: spacing.md, paddingTop: canCreate ? 0 : spacing.md }}
           data={rows}
           keyExtractor={(item, index) => String(item.id ?? index)}
+          showsHorizontalScrollIndicator={false}
           refreshControl={
             <RefreshControl
               refreshing={isFetching && !isLoading}
-              onRefresh={() => void refetch()}
+              onRefresh={() => {
+                void triggerHaptic("light");
+                void refetch();
+              }}
               tintColor={c.primary}
             />
           }
@@ -568,15 +568,20 @@ const styles = StyleSheet.create({
   },
   exportBtnText: { fontWeight: "700", fontSize: 13 },
   filters: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.sm,
-    gap: 8,
   },
   filterChip: {
     borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    minHeight: 40,
+    alignItems: "center",
+    justifyContent: "center",
   },
   actions: {
     flexDirection: "row",

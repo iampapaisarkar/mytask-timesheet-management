@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import {
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   View,
@@ -28,6 +30,7 @@ export function Screen({
   style,
   contentStyle,
   padded = true,
+  keyboard = false,
 }: {
   children: ReactNode;
   scroll?: boolean;
@@ -35,6 +38,8 @@ export function Screen({
   style?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
   padded?: boolean;
+  /** Wrap with KeyboardAvoidingView for full-screen forms. */
+  keyboard?: boolean;
 }) {
   const c = useThemeStore((s) => s.colors);
   const insets = useSafeAreaInsets();
@@ -48,33 +53,38 @@ export function Screen({
       : 0,
   };
 
-  if (scroll) {
-    return (
-      <ScrollView
-        style={[{ flex: 1, backgroundColor: c.bg }, style]}
-        contentContainerStyle={[
-          padStyle,
-          padded && styles.scrollPad,
-          contentStyle,
-        ]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {children}
-      </ScrollView>
-    );
-  }
-
-  return (
-    <View
-      style={[
-        { flex: 1, backgroundColor: c.bg },
+  const body = scroll ? (
+    <ScrollView
+      style={[{ flex: 1, backgroundColor: c.bg }, style]}
+      contentContainerStyle={[
         padStyle,
-        style,
+        padded && styles.scrollPad,
+        contentStyle,
       ]}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
+      showsVerticalScrollIndicator={false}
+      showsHorizontalScrollIndicator={false}
+      automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
     >
+      {children}
+    </ScrollView>
+  ) : (
+    <View style={[{ flex: 1, backgroundColor: c.bg }, padStyle, style]}>
       <View style={[{ flex: 1 }, contentStyle]}>{children}</View>
     </View>
+  );
+
+  if (!keyboard) return body;
+
+  return (
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: c.bg }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 88 : 0}
+    >
+      {body}
+    </KeyboardAvoidingView>
   );
 }
 

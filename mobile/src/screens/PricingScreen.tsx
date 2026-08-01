@@ -1,5 +1,4 @@
 import {
-  ActivityIndicator,
   Linking,
   ScrollView,
   StyleSheet,
@@ -18,12 +17,15 @@ import {
 import { spacing } from "@mytask/theme";
 import { getErrorMessage } from "@mytask/utils";
 import type { RootStackParamList } from "../navigation/RootNavigator";
+import { SkeletonDetail } from "../components/Skeleton";
+import { useAuthStore } from "../store/authStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 
 export function PricingScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const token = useAuthStore((s) => s.token);
   const c = useThemeStore((s) => s.colors);
   const toast = useToastStore();
   const [interval, setInterval] = useState<"month" | "year">("month");
@@ -52,8 +54,8 @@ export function PricingScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.primary} />
+      <View style={{ flex: 1, backgroundColor: c.bg }}>
+        <SkeletonDetail />
       </View>
     );
   }
@@ -174,14 +176,18 @@ export function PricingScreen() {
         }
       />
 
-      <TouchableOpacity
-        onPress={() => navigation.navigate("BillingHistory")}
-        style={{ marginTop: 16 }}
-      >
-        <Text style={{ color: c.primary, fontWeight: "600", textAlign: "center" }}>
-          Billing history
-        </Text>
-      </TouchableOpacity>
+      {token ? (
+        <TouchableOpacity
+          onPress={() => navigation.navigate("BillingHistory")}
+          style={{ marginTop: 16 }}
+        >
+          <Text
+            style={{ color: c.primary, fontWeight: "600", textAlign: "center" }}
+          >
+            Billing history
+          </Text>
+        </TouchableOpacity>
+      ) : null}
     </ScrollView>
   );
 }

@@ -31,6 +31,7 @@ import {
 import { isFirebaseConfigured, isGoogleSignInConfigured } from "../config/env";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { setPendingOrgInvitationToken } from "../navigation/navigationRef";
+import { GoogleGlyph } from "../components/GoogleGlyph";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Login">;
 
@@ -158,9 +159,12 @@ export function LoginScreen({ navigation, route }: Props) {
             {googleLoading ? (
               <ActivityIndicator color={c.primary} />
             ) : (
-              <Text style={[styles.googleButtonText, { color: c.text }]}>
-                Continue with Google
-              </Text>
+              <View style={styles.googleRow}>
+                <GoogleGlyph size={18} />
+                <Text style={[styles.googleButtonText, { color: c.text }]}>
+                  Continue with Google
+                </Text>
+              </View>
             )}
           </TouchableOpacity>
         ) : null}
@@ -341,6 +345,12 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     alignItems: "center",
     marginBottom: spacing.md,
+  },
+  googleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
   },
   googleButtonText: { fontWeight: "700", fontSize: 15 },
   dividerRow: {

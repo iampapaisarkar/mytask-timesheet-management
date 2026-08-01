@@ -1,10 +1,10 @@
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { spacing } from "@mytask/theme";
-import type { RootStackParamList } from "../navigation/RootNavigator";
+import type { MoreStackParamList } from "../navigation/types";
 import { useThemeStore } from "../store/themeStore";
 
-type Props = NativeStackScreenProps<RootStackParamList, "SettingsHub">;
+type Props = NativeStackScreenProps<MoreStackParamList, "SettingsHub">;
 
 const SETTINGS_LINKS = [
   {

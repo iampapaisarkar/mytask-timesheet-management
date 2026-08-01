@@ -38,6 +38,7 @@
 | Mobile parity + UX overhaul (phase 1) | ✅ Done | 2026-08-01 | Safe areas / premium tab bar / nav transitions; `@gorhom/bottom-sheet`; Google Maps + minimal style; timesheet day mobile redesign + save; TM detail approve/reject; Reports/Payouts/System logs; auth signup/forgot; settings hubs; create org |
 | Mobile parity phase 2 | ✅ Done | 2026-08-01 | Org invitation deep links + pending inbox; Login/Signup invitation_token; payout workflow + eligible create; holiday/payroll calendar create/edit; Places address; employee/customer/job create+edit |
 | Mobile ↔ web feature alignment | ✅ Done | 2026-08-01 | Removed non-web earning rates from mobile settings; Help/Terms/Privacy on main app (web+mobile, shared copy); payout detail; reports history/table/PDF/email; Universal Links host `mytaskapp.iampapaisarkar.dev` |
+| Mobile org navigation UX | ✅ Done | 2026-08-01 | Root Home without tabs; org-only premium bottom tabs; custom OrgHeader; swipe-back only on detail screens |
 
 ## Vue ↔ Web ↔ Mobile gap matrix
 
@@ -70,4 +71,4 @@
 
 ## Current focus
 
-Mobile ↔ web alignment for settings, legal, payouts detail, reports, and Universal Links. Remaining: FCM push on mobile; payout date-range filters polish.
+Organisation navigation shell shipped (root home + org tabs + OrgHeader). Remaining: FCM push on mobile; payout date-range filters polish.

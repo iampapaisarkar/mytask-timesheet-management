@@ -1,11 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
-  Modal,
-  Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -20,13 +16,16 @@ import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing } from "@mytask/theme";
 import { getErrorMessage, listPagination, listRows } from "@mytask/utils";
 import { ListPager } from "../components/ListPager";
-import type { RootStackParamList } from "../navigation/RootNavigator";
+import { MobileSelect } from "../components/MobileSelect";
+import { SkeletonList } from "../components/Skeleton";
+import type { MoreStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
+import { triggerHaptic } from "../utils/haptics";
 import { AppBottomSheet, BottomSheetTextInput } from "../ui";
 
-type Props = NativeStackScreenProps<RootStackParamList, "PayrollCalendars">;
+type Props = NativeStackScreenProps<MoreStackParamList, "PayrollCalendars">;
 
 type PayCycle = { id: number; name: string; code: string };
 
@@ -45,7 +44,6 @@ export function PayrollCalendarsScreen({}: Props) {
   const [payCycleId, setPayCycleId] = useState("");
   const [startDate, setStartDate] = useState("");
   const [firstPaymentDate, setFirstPaymentDate] = useState("");
-  const [cyclePickerOpen, setCyclePickerOpen] = useState(false);
   const sheetRef = useRef<BottomSheetModal>(null);
   const c = useThemeStore((s) => s.colors);
   const toast = useToastStore();
@@ -117,9 +115,14 @@ export function PayrollCalendarsScreen({}: Props) {
   const totalPages = Math.max(1, Number(pagination?.total_pages) || 1);
   const currentPage = Number(pagination?.page_number) || page;
   const payCycles = payCyclesQuery.data || [];
-  const selectedPayCycle = useMemo(
-    () => payCycles.find((cycle) => String(cycle.id) === payCycleId) || null,
-    [payCycles, payCycleId],
+  const payCycleOptions = useMemo(
+    () =>
+      payCycles.map((cycle) => ({
+        value: String(cycle.id),
+        label: cycle.name,
+        hint: cycle.code,
+      })),
+    [payCycles],
   );
 
   const openCreate = useCallback(() => {
@@ -131,6 +134,8 @@ export function PayrollCalendarsScreen({}: Props) {
   }, []);
 
   function handleSave() {
+    const selectedPayCycle =
+      payCycles.find((cycle) => String(cycle.id) === payCycleId) || null;
     if (!name.trim() || !selectedPayCycle || !startDate.trim() || !firstPaymentDate.trim()) {
       toast.warning("Name, pay cycle, start date, and first payment date are required");
       return;
@@ -183,9 +188,7 @@ export function PayrollCalendarsScreen({}: Props) {
         </TouchableOpacity>
       ) : null}
       {isLoading && !data ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={c.primary} />
-        </View>
+        <SkeletonList rows={6} />
       ) : (
         <FlatList
           contentContainerStyle={{
@@ -194,10 +197,14 @@ export function PayrollCalendarsScreen({}: Props) {
           }}
           data={rows}
           keyExtractor={(item, index) => String(item.id ?? index)}
+          showsHorizontalScrollIndicator={false}
           refreshControl={
             <RefreshControl
               refreshing={isFetching && !isLoading}
-              onRefresh={() => void refetch()}
+              onRefresh={() => {
+                void triggerHaptic("light");
+                void refetch();
+              }}
               tintColor={c.primary}
             />
           }
@@ -270,18 +277,16 @@ export function PayrollCalendarsScreen({}: Props) {
           placeholderTextColor={c.muted}
           autoCapitalize="words"
         />
-        <Text style={[styles.fieldLabel, { color: c.muted }]}>Pay cycle *</Text>
-        <TouchableOpacity
-          style={[
-            styles.pickerBtn,
-            { borderColor: c.border, backgroundColor: c.bg },
-          ]}
-          onPress={() => setCyclePickerOpen(true)}
-        >
-          <Text style={{ color: selectedPayCycle ? c.text : c.muted }}>
-            {selectedPayCycle?.name || "Select pay cycle"}
-          </Text>
-        </TouchableOpacity>
+        <MobileSelect
+          label="Pay cycle *"
+          value={payCycleId}
+          options={payCycleOptions}
+          onChange={setPayCycleId}
+          placeholder="Select pay cycle"
+          emptyText={
+            payCyclesQuery.isLoading ? "Loading…" : "No pay cycles"
+          }
+        />
         <Text style={[styles.fieldLabel, { color: c.muted }]}>
           Start date (YYYY-MM-DD) *
         </Text>
@@ -305,55 +310,6 @@ export function PayrollCalendarsScreen({}: Props) {
           autoCapitalize="none"
         />
       </AppBottomSheet>
-
-      <Modal
-        visible={cyclePickerOpen}
-        animationType="slide"
-        onRequestClose={() => setCyclePickerOpen(false)}
-      >
-        <View style={[styles.modal, { backgroundColor: c.bg }]}>
-          <Text style={[styles.modalTitle, { color: c.text }]}>
-            Select pay cycle
-          </Text>
-          <ScrollView>
-            {payCyclesQuery.isLoading ? (
-              <ActivityIndicator color={c.primary} />
-            ) : (
-              payCycles.map((cycle) => {
-                const id = String(cycle.id);
-                const selected = payCycleId === id;
-                return (
-                  <Pressable
-                    key={id}
-                    style={[
-                      styles.option,
-                      {
-                        borderColor: selected ? c.primary : c.border,
-                        backgroundColor: c.surface,
-                      },
-                    ]}
-                    onPress={() => {
-                      setPayCycleId(id);
-                      setCyclePickerOpen(false);
-                    }}
-                  >
-                    <Text style={{ color: c.text }}>{cycle.name}</Text>
-                    <Text style={{ color: c.muted, marginTop: 2, fontSize: 12 }}>
-                      {cycle.code}
-                    </Text>
-                  </Pressable>
-                );
-              })
-            )}
-          </ScrollView>
-          <TouchableOpacity
-            style={[styles.doneBtn, { backgroundColor: c.primary }]}
-            onPress={() => setCyclePickerOpen(false)}
-          >
-            <Text style={styles.createBtnText}>Done</Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -392,29 +348,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 4,
   },
-  pickerBtn: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 4,
-  },
   submitBtn: {
     borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  modal: { flex: 1, padding: spacing.lg, paddingTop: 56 },
-  modalTitle: { fontSize: 20, fontWeight: "700", marginBottom: spacing.md },
-  option: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  doneBtn: {
-    marginTop: spacing.md,
-    borderRadius: 14,
     paddingVertical: 14,
     alignItems: "center",
   },

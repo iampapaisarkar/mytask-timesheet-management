@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -17,13 +16,15 @@ import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing } from "@mytask/theme";
 import { getErrorMessage, listPagination, listRows } from "@mytask/utils";
 import { ListPager } from "../components/ListPager";
-import type { RootStackParamList } from "../navigation/RootNavigator";
+import { SkeletonList } from "../components/Skeleton";
+import type { MoreStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
+import { triggerHaptic } from "../utils/haptics";
 import { AppBottomSheet, BottomSheetTextInput } from "../ui";
 
-type Props = NativeStackScreenProps<RootStackParamList, "HolidayCalendars">;
+type Props = NativeStackScreenProps<MoreStackParamList, "HolidayCalendars">;
 
 type HolidayCalendarRow = {
   id?: number | string;
@@ -157,9 +158,7 @@ export function HolidayCalendarsScreen({}: Props) {
         </TouchableOpacity>
       ) : null}
       {isLoading && !data ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={c.primary} />
-        </View>
+        <SkeletonList rows={6} />
       ) : (
         <FlatList
           contentContainerStyle={{
@@ -168,10 +167,14 @@ export function HolidayCalendarsScreen({}: Props) {
           }}
           data={rows}
           keyExtractor={(item, index) => String(item.id ?? index)}
+          showsHorizontalScrollIndicator={false}
           refreshControl={
             <RefreshControl
               refreshing={isFetching && !isLoading}
-              onRefresh={() => void refetch()}
+              onRefresh={() => {
+                void triggerHaptic("light");
+                void refetch();
+              }}
               tintColor={c.primary}
             />
           }

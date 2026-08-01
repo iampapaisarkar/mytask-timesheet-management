@@ -75,7 +75,7 @@ export function OrgInvitationScreen({ navigation, route }: Props) {
         qc.invalidateQueries({ queryKey: ["organisations"] }),
         qc.invalidateQueries({ queryKey: queryKeys.screens.home }),
       ]);
-      navigation.replace("MainTabs");
+      navigation.replace("Home");
     },
     onError: (err) => {
       toast.error(
@@ -122,7 +122,7 @@ export function OrgInvitationScreen({ navigation, route }: Props) {
           style={[styles.btn, { backgroundColor: c.primary, marginTop: 20 }]}
           onPress={() =>
             isLoggedIn
-              ? navigation.replace("MainTabs")
+              ? navigation.replace("Home")
               : navigation.replace("Login")
           }
         >

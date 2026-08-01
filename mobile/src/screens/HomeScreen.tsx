@@ -18,6 +18,7 @@ import type {
   OrganisationMembership,
 } from "@mytask/types";
 import { getErrorMessage } from "@mytask/utils";
+import { SkeletonList } from "../components/Skeleton";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { blockOrgSwitch } from "../services/trackingSession";
 import { useOrganisationStore } from "../store/organisationStore";
@@ -92,9 +93,8 @@ export function HomeScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.primary} />
-        <Text style={{ color: c.muted, marginTop: 12 }}>Loading…</Text>
+      <View style={{ flex: 1, backgroundColor: c.bg }}>
+        <SkeletonList rows={6} />
       </View>
     );
   }
@@ -214,6 +214,7 @@ export function HomeScreen() {
       <FlatList
         data={organisations}
         keyExtractor={(item) => String(item.id)}
+        showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 24 }}
         ListEmptyComponent={
           <Text style={[styles.empty, { color: c.muted }]}>
@@ -241,7 +242,7 @@ export function HomeScreen() {
                 name: item.name,
                 role: (item.role || item.role_code) as string,
               });
-              navigation.navigate("OrgHome", { orgCode: item.code });
+              navigation.navigate("Organisation", { orgCode: item.code });
             }}
           >
             <Text style={[styles.name, { color: c.text }]}>{item.name}</Text>

@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
-  Modal,
-  Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -34,16 +30,19 @@ import {
   type GlobalAddress,
 } from "@mytask/utils";
 import { ListPager } from "../components/ListPager";
+import { MobileSelect } from "../components/MobileSelect";
 import { PlacesAddressInput } from "../components/PlacesAddressInput";
 import { SearchBar } from "../components/SearchBar";
+import { SkeletonList } from "../components/Skeleton";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
-import type { RootStackParamList } from "../navigation/RootNavigator";
+import type { MoreStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
+import { triggerHaptic } from "../utils/haptics";
 import { AppBottomSheet, BottomSheetTextInput } from "../ui";
 
-type Props = NativeStackScreenProps<RootStackParamList, "JobsList">;
+type Props = NativeStackScreenProps<MoreStackParamList, "JobsList">;
 
 type JobRow = {
   id?: number | string;
@@ -117,10 +116,8 @@ export function JobsListScreen(_props: Props) {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [customerId, setCustomerId] = useState<string>("");
-  const [filterOpen, setFilterOpen] = useState(false);
   const [form, setForm] = useState<CreateForm>(emptyForm);
   const [editing, setEditing] = useState<JobRow | null>(null);
-  const [customerPickerOpen, setCustomerPickerOpen] = useState(false);
   const sheetRef = useRef<BottomSheetModal>(null);
   const debouncedSearch = useDebouncedValue(search.trim(), 400);
   const organisation = useOrganisationStore((s) => s.organisation);
@@ -141,13 +138,17 @@ export function JobsListScreen(_props: Props) {
 
   const customersQuery = useCustomers({ rows_per_page: 200, sort_by: "name" });
   const customers = listRows<CustomerRow>(customersQuery.data);
-  const selectedCustomer = useMemo(
-    () => customers.find((x) => String(x.id) === customerId),
-    [customers, customerId],
+  const customerOptions = useMemo(
+    () =>
+      customers.map((cust) => ({
+        value: String(cust.id),
+        label: cust.name || `Customer #${cust.id}`,
+      })),
+    [customers],
   );
-  const formCustomer = useMemo(
-    () => customers.find((x) => String(x.id) === form.customerId),
-    [customers, form.customerId],
+  const filterOptions = useMemo(
+    () => [{ value: "", label: "All customers" }, ...customerOptions],
+    [customerOptions],
   );
 
   const { data, isLoading, isError, isFetching, refetch } = useJobs({
@@ -256,29 +257,14 @@ export function JobsListScreen(_props: Props) {
           onChangeText={setSearch}
           placeholder="Search by job name"
         />
-        <View style={styles.filterRow}>
-          <TouchableOpacity
-            style={[
-              styles.filterBtn,
-              { borderColor: c.border, backgroundColor: c.surface },
-            ]}
-            onPress={() => setFilterOpen(true)}
-          >
-            <Text style={{ color: c.text, fontWeight: "600" }} numberOfLines={1}>
-              {selectedCustomer?.name
-                ? `Customer: ${selectedCustomer.name}`
-                : "Filter by customer"}
-            </Text>
-          </TouchableOpacity>
-          {customerId ? (
-            <TouchableOpacity
-              onPress={() => setCustomerId("")}
-              style={styles.clearBtn}
-            >
-              <Text style={{ color: c.primary, fontWeight: "700" }}>Clear</Text>
-            </TouchableOpacity>
-          ) : null}
-        </View>
+        <MobileSelect
+          label="Filter by customer"
+          value={customerId}
+          options={filterOptions}
+          onChange={setCustomerId}
+          placeholder="All customers"
+          style={{ marginTop: spacing.sm }}
+        />
       </View>
       {canCreate ? (
         <TouchableOpacity
@@ -289,9 +275,7 @@ export function JobsListScreen(_props: Props) {
         </TouchableOpacity>
       ) : null}
       {isLoading && !data ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={c.primary} />
-        </View>
+        <SkeletonList rows={6} />
       ) : (
         <FlatList
           contentContainerStyle={{ padding: spacing.md, paddingTop: 0 }}
@@ -299,10 +283,14 @@ export function JobsListScreen(_props: Props) {
           keyExtractor={(item, index) =>
             String(item.details?.id ?? item.id ?? index)
           }
+          showsHorizontalScrollIndicator={false}
           refreshControl={
             <RefreshControl
               refreshing={isFetching && !isLoading}
-              onRefresh={() => void refetch()}
+              onRefresh={() => {
+                void triggerHaptic("light");
+                void refetch();
+              }}
               tintColor={c.primary}
             />
           }
@@ -394,18 +382,13 @@ export function JobsListScreen(_props: Props) {
           placeholderTextColor={c.muted}
           autoCapitalize="words"
         />
-        <Text style={[styles.fieldLabel, { color: c.muted }]}>Customer *</Text>
-        <TouchableOpacity
-          style={[
-            styles.pickerBtn,
-            { borderColor: c.border, backgroundColor: c.bg },
-          ]}
-          onPress={() => setCustomerPickerOpen(true)}
-        >
-          <Text style={{ color: formCustomer ? c.text : c.muted }}>
-            {formCustomer?.name || "Select customer"}
-          </Text>
-        </TouchableOpacity>
+        <MobileSelect
+          label="Customer *"
+          value={form.customerId}
+          options={customerOptions}
+          onChange={(id) => patchForm({ customerId: id })}
+          placeholder="Select customer"
+        />
         <PlacesAddressInput
           value={form.address}
           onChange={(address) => patchForm({ address })}
@@ -455,131 +438,12 @@ export function JobsListScreen(_props: Props) {
           keyboardType="phone-pad"
         />
       </AppBottomSheet>
-
-      <Modal
-        visible={customerPickerOpen}
-        animationType="slide"
-        onRequestClose={() => setCustomerPickerOpen(false)}
-      >
-        <View style={[styles.modal, { backgroundColor: c.bg }]}>
-          <Text style={[styles.modalTitle, { color: c.text }]}>
-            Select customer
-          </Text>
-          <ScrollView>
-            {customers.map((cust) => {
-              const id = String(cust.id);
-              const selected = form.customerId === id;
-              return (
-                <Pressable
-                  key={id}
-                  style={[
-                    styles.option,
-                    {
-                      borderColor: selected ? c.primary : c.border,
-                      backgroundColor: c.surface,
-                    },
-                  ]}
-                  onPress={() => {
-                    patchForm({ customerId: id });
-                    setCustomerPickerOpen(false);
-                  }}
-                >
-                  <Text style={{ color: c.text }}>
-                    {cust.name || `Customer #${cust.id}`}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-          <TouchableOpacity
-            style={[styles.doneBtn, { backgroundColor: c.primary }]}
-            onPress={() => setCustomerPickerOpen(false)}
-          >
-            <Text style={styles.createBtnText}>Done</Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
-
-      <Modal
-        visible={filterOpen}
-        animationType="slide"
-        onRequestClose={() => setFilterOpen(false)}
-      >
-        <View style={[styles.modal, { backgroundColor: c.bg }]}>
-          <Text style={[styles.modalTitle, { color: c.text }]}>
-            Filter by customer
-          </Text>
-          <ScrollView>
-            <Pressable
-              style={[
-                styles.option,
-                {
-                  borderColor: !customerId ? c.primary : c.border,
-                  backgroundColor: c.surface,
-                },
-              ]}
-              onPress={() => {
-                setCustomerId("");
-                setFilterOpen(false);
-              }}
-            >
-              <Text style={{ color: c.text, fontWeight: "600" }}>
-                All customers
-              </Text>
-            </Pressable>
-            {customers.map((cust) => {
-              const id = String(cust.id);
-              const selected = customerId === id;
-              return (
-                <Pressable
-                  key={id}
-                  style={[
-                    styles.option,
-                    {
-                      borderColor: selected ? c.primary : c.border,
-                      backgroundColor: c.surface,
-                    },
-                  ]}
-                  onPress={() => {
-                    setCustomerId(id);
-                    setFilterOpen(false);
-                  }}
-                >
-                  <Text style={{ color: c.text }}>
-                    {cust.name || `Customer #${cust.id}`}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-          <TouchableOpacity
-            style={[styles.doneBtn, { backgroundColor: c.primary }]}
-            onPress={() => setFilterOpen(false)}
-          >
-            <Text style={styles.createBtnText}>Done</Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   header: { paddingHorizontal: spacing.md, paddingTop: spacing.md },
-  filterRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  filterBtn: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-  },
-  clearBtn: { paddingHorizontal: 8, paddingVertical: 8 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   card: {
     borderRadius: 16,
@@ -612,29 +476,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 4,
   },
-  pickerBtn: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 4,
-  },
   submitBtn: {
     borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  modal: { flex: 1, padding: spacing.lg, paddingTop: 56 },
-  modalTitle: { fontSize: 20, fontWeight: "700", marginBottom: spacing.md },
-  option: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  doneBtn: {
-    marginTop: spacing.md,
-    borderRadius: 14,
     paddingVertical: 14,
     alignItems: "center",
   },

@@ -1,15 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  Modal,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import {
   useCreateTimesheetManagement,
@@ -28,14 +27,19 @@ import {
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing } from "@mytask/theme";
 import { ListPager } from "../components/ListPager";
+import { MobileSelect } from "../components/MobileSelect";
 import { SearchBar } from "../components/SearchBar";
+import { SkeletonList } from "../components/Skeleton";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
-import type { RootStackParamList } from "../navigation/RootNavigator";
+import type { ManageStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
+import { useToastStore } from "../store/toastStore";
+import { triggerHaptic } from "../utils/haptics";
+import { AppBottomSheet } from "../ui";
 
 type Props = NativeStackScreenProps<
-  RootStackParamList,
+  ManageStackParamList,
   "TimesheetManagementList"
 >;
 
@@ -86,14 +90,14 @@ export function TimesheetManagementListScreen({ navigation, route }: Props) {
   const acl = getOrganisationAcl(role);
   const canCreate = can(acl, "timesheetManagement", "create");
 
-  const [createOpen, setCreateOpen] = useState(false);
+  const sheetRef = useRef<BottomSheetModal>(null);
   const [employeeId, setEmployeeId] = useState("");
   const [periodKey, setPeriodKey] = useState("");
   const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
-  const [formError, setFormError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search.trim(), 400);
+  const toast = useToastStore();
 
   useEffect(() => {
     setPage(1);
@@ -112,8 +116,9 @@ export function TimesheetManagementListScreen({ navigation, route }: Props) {
   const currentPage = Number(pagination?.page_number) || page;
   const c = useThemeStore((s) => s.colors);
 
-  const employeesQuery = useEmployees({ rows_per_page: 200 }, createOpen);
-  const jobsQuery = useJobs({ rows_per_page: 200 }, createOpen);
+  const [sheetReady, setSheetReady] = useState(false);
+  const employeesQuery = useEmployees({ rows_per_page: 200 }, sheetReady);
+  const jobsQuery = useJobs({ rows_per_page: 200 }, sheetReady);
   const cyclesQuery = useEmployeePayrollCycles(
     employeeId ? Number(employeeId) : undefined,
   );
@@ -125,44 +130,57 @@ export function TimesheetManagementListScreen({ navigation, route }: Props) {
     : []) as Period[];
   const jobs = listRows<JobRow>(jobsQuery.data);
 
+  const employeeOptions = useMemo(
+    () =>
+      employees.map((emp) => {
+        const id = String(emp.details?.id ?? emp.id);
+        return {
+          value: id,
+          label:
+            emp.details?.full_name ||
+            emp.details?.email ||
+            `Employee #${id}`,
+          hint: emp.details?.email,
+        };
+      }),
+    [employees],
+  );
+
+  const periodOptions = useMemo(
+    () =>
+      periods.map((p) => ({
+        value: `${p.start_date}|${p.end_date}`,
+        label: p.label,
+      })),
+    [periods],
+  );
+
+  const jobOptions = useMemo(
+    () =>
+      jobs.map((job) => {
+        const id = String(job.details?.id ?? job.id);
+        return {
+          value: id,
+          label: job.details?.name || job.name || `Job #${id}`,
+        };
+      }),
+    [jobs],
+  );
+
   const canSubmit = Boolean(
     employeeId && periodKey && selectedJobIds.length > 0,
   );
-
-  const summary = useMemo(() => {
-    const emp = employees.find(
-      (e) => String(e.details?.id ?? e.id) === employeeId,
-    );
-    const period = periods.find(
-      (p) => `${p.start_date}|${p.end_date}` === periodKey,
-    );
-    const selected = jobs.filter((j) =>
-      selectedJobIds.includes(String(j.details?.id ?? j.id)),
-    );
-    return {
-      employee:
-        emp?.details?.full_name ||
-        emp?.details?.email ||
-        (employeeId ? `#${employeeId}` : ""),
-      period: period?.label || "",
-      jobs: selected
-        .map((j) => j.details?.name || j.name)
-        .filter(Boolean)
-        .join(", "),
-    };
-  }, [employees, periods, jobs, employeeId, periodKey, selectedJobIds]);
 
   function resetForm() {
     setEmployeeId("");
     setPeriodKey("");
     setSelectedJobIds([]);
-    setFormError(null);
   }
 
-  function toggleJob(id: string) {
-    setSelectedJobIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+  function openCreate() {
+    resetForm();
+    setSheetReady(true);
+    sheetRef.current?.present();
   }
 
   async function handleCreate() {
@@ -170,10 +188,10 @@ export function TimesheetManagementListScreen({ navigation, route }: Props) {
       (p) => `${p.start_date}|${p.end_date}` === periodKey,
     );
     if (!employeeId || !period || !selectedJobIds.length) {
-      setFormError("Employee, period, and at least one job are required.");
+      void triggerHaptic("error");
+      toast.warning("Employee, period, and at least one job are required.");
       return;
     }
-    setFormError(null);
     try {
       await createMutation.mutateAsync({
         employee: { id: Number(employeeId) },
@@ -183,11 +201,14 @@ export function TimesheetManagementListScreen({ navigation, route }: Props) {
         },
         jobs: selectedJobIds.map((id) => ({ id: Number(id) })),
       });
-      setCreateOpen(false);
+      void triggerHaptic("success");
+      toast.success("Timesheet created");
+      sheetRef.current?.dismiss();
       resetForm();
       void refetch();
     } catch (err) {
-      setFormError(getErrorMessage(err, "Unable to create timesheet"));
+      void triggerHaptic("error");
+      toast.error(getErrorMessage(err, "Unable to create timesheet"));
     }
   }
 
@@ -214,234 +235,166 @@ export function TimesheetManagementListScreen({ navigation, route }: Props) {
       {canCreate ? (
         <TouchableOpacity
           style={[styles.createBtn, { backgroundColor: c.primary }]}
-          onPress={() => {
-            resetForm();
-            setCreateOpen(true);
-          }}
+          onPress={openCreate}
         >
           <Text style={styles.createBtnText}>Create timesheet</Text>
         </TouchableOpacity>
       ) : null}
       {isLoading && !data ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={c.primary} />
-        </View>
+        <SkeletonList rows={6} />
       ) : (
-      <FlatList
-        contentContainerStyle={{ padding: spacing.md, paddingTop: spacing.sm }}
-        data={rows}
-        keyExtractor={(item, index) => String(item.id ?? index)}
-        refreshControl={
-          <RefreshControl
-            refreshing={isFetching && !isLoading}
-            onRefresh={() => void refetch()}
-            tintColor={c.primary}
-          />
-        }
-        ListEmptyComponent={
-          <Text style={[styles.empty, { color: c.muted }]}>
-            {debouncedSearch
-              ? "No timesheets match that code"
-              : "No managed timesheets"}
-          </Text>
-        }
-        ListFooterComponent={
-          <ListPager
-            currentPage={currentPage}
-            totalPages={totalPages}
-            isFetching={isFetching}
-            hasRows={Boolean(rows.length || Number(pagination?.total_rows))}
-            onPrev={() => setPage(Math.max(1, currentPage - 1))}
-            onNext={() => setPage(Math.min(totalPages, currentPage + 1))}
-          />
-        }
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={[
-              styles.card,
-              { backgroundColor: c.surface, borderColor: c.border },
-            ]}
-            disabled={item.id == null}
-            onPress={() => {
-              if (item.id == null) return;
-              navigation.navigate("TimesheetManagementDetail", {
-                orgCode,
-                id: String(item.id),
-              });
-            }}
-          >
-            <Text style={[styles.id, { color: c.text }]}>
-              {formatTimesheetLabel({ code: item.code, id: item.id })}
-              {item.employee?.user?.full_name
-                ? ` · ${item.employee.user.full_name}`
-                : ""}
-            </Text>
-            <Text style={{ color: c.muted }}>
-              {item.period_range || "—"}
-            </Text>
-            <Text style={{ color: c.text, marginTop: 4, fontWeight: "600" }}>
-              {jobNames(item)}
-            </Text>
-            <Text style={{ color: c.muted, marginTop: 2 }}>
-              {statusLabel(item.status)}
-            </Text>
-          </TouchableOpacity>
-        )}
-      />
-      )}
-
-      <Modal
-        visible={createOpen}
-        animationType="slide"
-        onRequestClose={() => setCreateOpen(false)}
-      >
-        <View style={[styles.modal, { backgroundColor: c.bg }]}>
-          <Text style={[styles.modalTitle, { color: c.text }]}>
-            Create timesheet
-          </Text>
-          <Text style={{ color: c.muted, marginBottom: spacing.md }}>
-            Employee → Period → Jobs (multi-select)
-          </Text>
-          <ScrollView>
-            <Text style={[styles.label, { color: c.text }]}>1. Employee</Text>
-            {employees.map((emp) => {
-              const id = String(emp.details?.id ?? emp.id);
-              const selected = employeeId === id;
-              return (
-                <TouchableOpacity
-                  key={id}
-                  style={[
-                    styles.option,
-                    {
-                      borderColor: selected ? c.primary : c.border,
-                      backgroundColor: c.surface,
-                    },
-                  ]}
-                  onPress={() => {
-                    setEmployeeId(id);
-                    setPeriodKey("");
-                    setSelectedJobIds([]);
-                  }}
-                >
-                  <Text style={{ color: c.text }}>
-                    {emp.details?.full_name ||
-                      emp.details?.email ||
-                      `Employee #${id}`}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-
-            <Text style={[styles.label, { color: c.text }]}>2. Pay period</Text>
-            {!employeeId ? (
-              <Text style={{ color: c.muted }}>Select an employee first</Text>
-            ) : cyclesQuery.isLoading ? (
-              <ActivityIndicator color={c.primary} />
-            ) : (
-              periods.map((p) => {
-                const key = `${p.start_date}|${p.end_date}`;
-                const selected = periodKey === key;
-                return (
-                  <TouchableOpacity
-                    key={key}
-                    style={[
-                      styles.option,
-                      {
-                        borderColor: selected ? c.primary : c.border,
-                        backgroundColor: c.surface,
-                      },
-                    ]}
-                    onPress={() => {
-                      setPeriodKey(key);
-                      setSelectedJobIds([]);
-                    }}
-                  >
-                    <Text style={{ color: c.text }}>{p.label}</Text>
-                  </TouchableOpacity>
-                );
-              })
-            )}
-
-            <Text style={[styles.label, { color: c.text }]}>
-              3. Jobs (one or more)
-            </Text>
-            {!periodKey ? (
-              <Text style={{ color: c.muted }}>Select a period first</Text>
-            ) : (
-              jobs.map((job) => {
-                const id = String(job.details?.id ?? job.id);
-                const selected = selectedJobIds.includes(id);
-                return (
-                  <TouchableOpacity
-                    key={id}
-                    style={[
-                      styles.option,
-                      {
-                        borderColor: selected ? c.primary : c.border,
-                        backgroundColor: c.surface,
-                      },
-                    ]}
-                    onPress={() => toggleJob(id)}
-                  >
-                    <Text style={{ color: c.text }}>
-                      {selected ? "✓ " : ""}
-                      {job.details?.name || job.name || `Job #${id}`}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })
-            )}
-
-            {canSubmit ? (
-              <View
-                style={[
-                  styles.summary,
-                  { borderColor: c.border, backgroundColor: c.surface },
-                ]}
-              >
-                <Text style={{ color: c.text }}>{summary.employee}</Text>
-                <Text style={{ color: c.muted }}>{summary.period}</Text>
-                <Text style={{ color: c.text, fontWeight: "700" }}>
-                  {summary.jobs}
-                </Text>
-              </View>
-            ) : null}
-
-            {formError ? (
-              <Text style={{ color: "#c0392b", marginTop: spacing.sm }}>
-                {formError}
-              </Text>
-            ) : null}
-          </ScrollView>
-
-          <View style={styles.modalActions}>
-            <TouchableOpacity
-              style={[styles.secondaryBtn, { borderColor: c.border }]}
-              onPress={() => {
-                setCreateOpen(false);
-                resetForm();
+        <FlatList
+          contentContainerStyle={{
+            padding: spacing.md,
+            paddingTop: spacing.sm,
+          }}
+          data={rows}
+          keyExtractor={(item, index) => String(item.id ?? index)}
+          showsHorizontalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isFetching && !isLoading}
+              onRefresh={() => {
+                void triggerHaptic("light");
+                void refetch();
               }}
-            >
-              <Text style={{ color: c.text }}>Cancel</Text>
-            </TouchableOpacity>
+              tintColor={c.primary}
+            />
+          }
+          ListEmptyComponent={
+            <Text style={[styles.empty, { color: c.muted }]}>
+              {debouncedSearch
+                ? "No timesheets match that code"
+                : "No managed timesheets"}
+            </Text>
+          }
+          ListFooterComponent={
+            <ListPager
+              currentPage={currentPage}
+              totalPages={totalPages}
+              isFetching={isFetching}
+              hasRows={Boolean(
+                rows.length || Number(pagination?.total_rows),
+              )}
+              onPrev={() => setPage(Math.max(1, currentPage - 1))}
+              onNext={() => setPage(Math.min(totalPages, currentPage + 1))}
+            />
+          }
+          renderItem={({ item }) => (
             <TouchableOpacity
               style={[
-                styles.primaryBtn,
-                {
-                  backgroundColor: c.primary,
-                  opacity: canSubmit && !createMutation.isPending ? 1 : 0.5,
-                },
+                styles.card,
+                { backgroundColor: c.surface, borderColor: c.border },
               ]}
-              disabled={!canSubmit || createMutation.isPending}
-              onPress={() => void handleCreate()}
+              disabled={item.id == null}
+              onPress={() => {
+                if (item.id == null) return;
+                navigation.navigate("TimesheetManagementDetail", {
+                  orgCode,
+                  id: String(item.id),
+                });
+              }}
             >
-              <Text style={styles.createBtnText}>
-                {createMutation.isPending ? "Creating…" : "Create Timesheet"}
+              <Text style={[styles.id, { color: c.text }]}>
+                {formatTimesheetLabel({ code: item.code, id: item.id })}
+                {item.employee?.user?.full_name
+                  ? ` · ${item.employee.user.full_name}`
+                  : ""}
+              </Text>
+              <Text style={{ color: c.muted }}>
+                {item.period_range || "—"}
+              </Text>
+              <Text
+                style={{ color: c.text, marginTop: 4, fontWeight: "600" }}
+              >
+                {jobNames(item)}
+              </Text>
+              <Text style={{ color: c.muted, marginTop: 2 }}>
+                {statusLabel(item.status)}
               </Text>
             </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+          )}
+        />
+      )}
+
+      <AppBottomSheet
+        ref={sheetRef}
+        title="Create timesheet"
+        snapPoints={["75%", "92%"]}
+        onDismiss={() => {
+          setSheetReady(false);
+          resetForm();
+        }}
+        footer={
+          <TouchableOpacity
+            style={[
+              styles.primaryBtn,
+              {
+                backgroundColor: c.primary,
+                opacity: canSubmit && !createMutation.isPending ? 1 : 0.5,
+              },
+            ]}
+            disabled={!canSubmit || createMutation.isPending}
+            onPress={() => void handleCreate()}
+          >
+            <Text style={styles.createBtnText}>
+              {createMutation.isPending ? "Creating…" : "Create Timesheet"}
+            </Text>
+          </TouchableOpacity>
+        }
+      >
+        <Text style={[styles.hint, { color: c.muted }]}>
+          Employee → Period → Jobs
+        </Text>
+
+        <MobileSelect
+          label="Employee"
+          value={employeeId}
+          options={employeeOptions}
+          onChange={(id) => {
+            setEmployeeId(id);
+            setPeriodKey("");
+            setSelectedJobIds([]);
+          }}
+          placeholder="Select employee"
+          emptyText="No employees"
+        />
+
+        {!employeeId ? (
+          <Text style={{ color: c.muted, marginBottom: spacing.md }}>
+            Select an employee to load pay periods
+          </Text>
+        ) : cyclesQuery.isLoading ? (
+          <ActivityIndicator
+            color={c.primary}
+            style={{ marginBottom: spacing.md }}
+          />
+        ) : (
+          <MobileSelect
+            label="Pay period"
+            value={periodKey}
+            options={periodOptions}
+            onChange={(key) => {
+              setPeriodKey(key);
+              setSelectedJobIds([]);
+            }}
+            placeholder="Select period"
+            searchable={false}
+            emptyText="No periods available"
+          />
+        )}
+
+        <MobileSelect
+          label="Jobs"
+          multiple
+          values={selectedJobIds}
+          options={jobOptions}
+          onChange={setSelectedJobIds}
+          placeholder="Select one or more jobs"
+          disabled={!periodKey}
+          emptyText="No jobs"
+        />
+      </AppBottomSheet>
     </View>
   );
 }
@@ -457,12 +410,6 @@ const styles = StyleSheet.create({
   id: { fontWeight: "700", marginBottom: 4 },
   empty: { textAlign: "center", marginTop: 40 },
   link: { fontWeight: "700", marginTop: 8 },
-  pager: { alignItems: "center", paddingVertical: spacing.md },
-  pagerRow: {
-    flexDirection: "row",
-    gap: 24,
-    justifyContent: "center",
-  },
   createBtn: {
     marginHorizontal: spacing.md,
     marginTop: spacing.md,
@@ -471,37 +418,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   createBtnText: { color: "#fff", fontWeight: "700" },
-  modal: { flex: 1, padding: spacing.md, paddingTop: 56 },
-  modalTitle: { fontSize: 22, fontWeight: "700", marginBottom: 4 },
-  label: { fontWeight: "700", marginTop: spacing.md, marginBottom: 8 },
-  option: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-  },
-  summary: {
-    marginTop: spacing.md,
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-  },
-  modalActions: {
-    flexDirection: "row",
-    gap: 10,
-    paddingTop: spacing.md,
-  },
-  secondaryBtn: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
+  hint: { marginBottom: spacing.md, fontSize: 13 },
   primaryBtn: {
-    flex: 1,
     borderRadius: 12,
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: "center",
   },
 });

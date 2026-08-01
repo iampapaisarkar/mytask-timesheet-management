@@ -1,6 +1,5 @@
 import { useCallback } from "react";
 import {
-  ActivityIndicator,
   Alert,
   ScrollView,
   StyleSheet,
@@ -21,12 +20,13 @@ import { formatMoney } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing } from "@mytask/theme";
 import { getErrorMessage } from "@mytask/utils";
-import type { RootStackParamList } from "../navigation/RootNavigator";
+import type { MoreStackParamList } from "../navigation/types";
+import { SkeletonDetail } from "../components/Skeleton";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 
-type Props = NativeStackScreenProps<RootStackParamList, "PayoutDetail">;
+type Props = NativeStackScreenProps<MoreStackParamList, "PayoutDetail">;
 
 type StatusLike = string | { code?: string; name?: string } | null | undefined;
 
@@ -269,8 +269,8 @@ export function PayoutDetailScreen({ navigation, route }: Props) {
 
   if (detailQuery.isLoading) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.primary} />
+      <View style={{ flex: 1, backgroundColor: c.bg }}>
+        <SkeletonDetail />
       </View>
     );
   }

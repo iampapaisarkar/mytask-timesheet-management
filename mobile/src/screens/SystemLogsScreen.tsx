@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -19,12 +18,14 @@ import {
   listRows,
 } from "@mytask/utils";
 import { ListPager } from "../components/ListPager";
-import type { RootStackParamList } from "../navigation/RootNavigator";
+import { SkeletonList } from "../components/Skeleton";
+import type { MoreStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
+import { triggerHaptic } from "../utils/haptics";
 import { SegmentedControl } from "../ui";
 
-type Props = NativeStackScreenProps<RootStackParamList, "SystemLogs">;
+type Props = NativeStackScreenProps<MoreStackParamList, "SystemLogs">;
 type LogKind = "internal" | "external" | "email";
 
 type LogRow = {
@@ -91,10 +92,21 @@ export function SystemLogsScreen({}: Props) {
     );
   }
 
-  if (query.isLoading) {
+  if (query.isLoading && !query.data) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.primary} />
+      <View style={{ flex: 1, backgroundColor: c.bg }}>
+        <View style={{ padding: spacing.md, paddingBottom: spacing.sm }}>
+          <SegmentedControl
+            value={kind}
+            onChange={setKind}
+            options={[
+              { value: "internal", label: "Internal" },
+              { value: "external", label: "External" },
+              { value: "email", label: "Email" },
+            ]}
+          />
+        </View>
+        <SkeletonList rows={6} />
       </View>
     );
   }
@@ -115,11 +127,15 @@ export function SystemLogsScreen({}: Props) {
       <FlatList
         data={rows}
         keyExtractor={(item, index) => String(item.id ?? index)}
+        showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ padding: spacing.md, paddingTop: 0 }}
         refreshControl={
           <RefreshControl
             refreshing={query.isFetching && !query.isLoading}
-            onRefresh={() => void query.refetch()}
+            onRefresh={() => {
+              void triggerHaptic("light");
+              void query.refetch();
+            }}
             tintColor={c.primary}
           />
         }

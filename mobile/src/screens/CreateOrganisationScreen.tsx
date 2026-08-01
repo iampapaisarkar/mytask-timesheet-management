@@ -1,9 +1,6 @@
 import { useState } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -30,6 +27,7 @@ import {
 } from "@mytask/utils";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { FormKeyboardScroll } from "../components/FormKeyboardScroll";
 import { PlacesAddressInput } from "../components/PlacesAddressInput";
 import { useAuthStore } from "../store/authStore";
 import { useOrganisationStore } from "../store/organisationStore";
@@ -171,7 +169,7 @@ export function CreateOrganisationScreen() {
           role: getOrganisationRoleCode(created),
         });
         toast.success("Organisation created", created.name);
-        navigation.replace("OrgHome", { orgCode: created.code });
+        navigation.replace("Organisation", { orgCode: created.code });
       } else {
         toast.success("Organisation created");
         navigation.goBack();
@@ -189,14 +187,7 @@ export function CreateOrganisationScreen() {
   const busy = createMutation.isPending;
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.flex, { backgroundColor: c.bg }]}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-      >
+    <FormKeyboardScroll contentContainerStyle={styles.container}>
         <Text style={[styles.title, { color: c.text }]}>
           Create organisation
         </Text>
@@ -326,8 +317,7 @@ export function CreateOrganisationScreen() {
             <Text style={styles.buttonText}>Create organisation</Text>
           )}
         </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </FormKeyboardScroll>
   );
 }
 

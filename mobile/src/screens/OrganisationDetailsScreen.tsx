@@ -13,12 +13,12 @@ import { organisationsApi } from "@mytask/api";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing } from "@mytask/theme";
 import { getErrorMessage } from "@mytask/utils";
-import type { RootStackParamList } from "../navigation/RootNavigator";
+import type { MoreStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 
-type Props = NativeStackScreenProps<RootStackParamList, "OrganisationDetails">;
+type Props = NativeStackScreenProps<MoreStackParamList, "OrganisationDetails">;
 
 export function OrganisationDetailsScreen({ route }: Props) {
   const { orgCode } = route.params;

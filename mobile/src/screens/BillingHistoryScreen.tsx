@@ -1,5 +1,4 @@
 import {
-  ActivityIndicator,
   FlatList,
   Linking,
   StyleSheet,
@@ -11,6 +10,7 @@ import { useBillingHistory, useSyncSubscription } from "@mytask/hooks";
 import { spacing } from "@mytask/theme";
 import { getErrorMessage } from "@mytask/utils";
 import type { BillingHistoryItem } from "@mytask/types";
+import { SkeletonList } from "../components/Skeleton";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 
@@ -25,8 +25,8 @@ export function BillingHistoryScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.primary} />
+      <View style={{ flex: 1, backgroundColor: c.bg }}>
+        <SkeletonList rows={6} />
       </View>
     );
   }
@@ -65,6 +65,7 @@ export function BillingHistoryScreen() {
       <FlatList
         data={rows}
         keyExtractor={(item) => String(item.id)}
+        showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ padding: spacing.lg, paddingBottom: 40 }}
         ListEmptyComponent={
           <Text style={{ color: c.muted, textAlign: "center", marginTop: 40 }}>

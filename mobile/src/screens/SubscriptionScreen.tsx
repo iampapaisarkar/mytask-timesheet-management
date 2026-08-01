@@ -1,5 +1,4 @@
 import {
-  ActivityIndicator,
   Linking,
   ScrollView,
   StyleSheet,
@@ -18,6 +17,7 @@ import {
 import { spacing } from "@mytask/theme";
 import { getErrorMessage } from "@mytask/utils";
 import type { RootStackParamList } from "../navigation/RootNavigator";
+import { SkeletonDetail } from "../components/Skeleton";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 
@@ -55,8 +55,8 @@ export function SubscriptionScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.primary} />
+      <View style={{ flex: 1, backgroundColor: c.bg }}>
+        <SkeletonDetail />
       </View>
     );
   }

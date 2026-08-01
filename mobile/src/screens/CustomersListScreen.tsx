@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -32,14 +31,16 @@ import {
 import { ListPager } from "../components/ListPager";
 import { PlacesAddressInput } from "../components/PlacesAddressInput";
 import { SearchBar } from "../components/SearchBar";
+import { SkeletonList } from "../components/Skeleton";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
-import type { RootStackParamList } from "../navigation/RootNavigator";
+import type { MoreStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
+import { triggerHaptic } from "../utils/haptics";
 import { AppBottomSheet, BottomSheetTextInput } from "../ui";
 
-type Props = NativeStackScreenProps<RootStackParamList, "CustomersList">;
+type Props = NativeStackScreenProps<MoreStackParamList, "CustomersList">;
 
 type CustomerRow = {
   id?: number | string;
@@ -253,18 +254,20 @@ export function CustomersListScreen(_props: Props) {
         </TouchableOpacity>
       ) : null}
       {isLoading && !data ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={c.primary} />
-        </View>
+        <SkeletonList rows={6} />
       ) : (
         <FlatList
           contentContainerStyle={{ padding: spacing.md, paddingTop: 0 }}
           data={rows}
           keyExtractor={(item, index) => String(item.id ?? index)}
+          showsHorizontalScrollIndicator={false}
           refreshControl={
             <RefreshControl
               refreshing={isFetching && !isLoading}
-              onRefresh={() => void refetch()}
+              onRefresh={() => {
+                void triggerHaptic("light");
+                void refetch();
+              }}
               tintColor={c.primary}
             />
           }

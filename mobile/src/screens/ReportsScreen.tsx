@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
-  ScrollView,
   Share,
   StyleSheet,
   Text,
@@ -20,12 +19,15 @@ import {
   formatTimesheetLabel,
   getErrorMessage,
 } from "@mytask/utils";
-import type { RootStackParamList } from "../navigation/RootNavigator";
+import type { MoreStackParamList } from "../navigation/types";
+import { SkeletonList } from "../components/Skeleton";
+import { MobileSelect } from "../components/MobileSelect";
+import { FormKeyboardScroll } from "../components/FormKeyboardScroll";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 
-type Props = NativeStackScreenProps<RootStackParamList, "Reports">;
+type Props = NativeStackScreenProps<MoreStackParamList, "Reports">;
 
 type EmpOption = {
   id: number;
@@ -340,10 +342,7 @@ export function ReportsScreen({}: Props) {
   const currency = result?.currency || result?.pay_cycle?.currency || "AUD";
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: c.bg }}
-      contentContainerStyle={styles.container}
-    >
+    <FormKeyboardScroll contentContainerStyle={styles.container}>
       <Text style={[styles.title, { color: c.text }]}>Reports</Text>
       <Text style={[styles.sub, { color: c.muted }]}>
         Generate a pay report for one approved timesheet, then download or email
@@ -358,82 +357,62 @@ export function ReportsScreen({}: Props) {
       >
         <Text style={[styles.cardTitle, { color: c.text }]}>Generate report</Text>
 
-        <Text style={[styles.label, { color: c.text }]}>Employee</Text>
         {employeesQuery.isLoading ? (
-          <ActivityIndicator color={c.primary} />
+          <SkeletonList rows={2} />
         ) : (
-          employees.map((emp) => {
-            const id = String(emp.id);
-            const selected = employeeId === id;
-            return (
-              <TouchableOpacity
-                key={id}
-                disabled={isStaff && employees.length === 1}
-                style={[
-                  styles.option,
-                  {
-                    borderColor: selected ? c.primary : c.border,
-                    backgroundColor: c.bg,
-                    opacity: isStaff && employees.length === 1 ? 0.75 : 1,
-                  },
-                ]}
-                onPress={() => {
-                  setEmployeeId(id);
-                  setTimesheetId("");
-                  setActiveRequestId(null);
-                }}
-              >
-                <Text style={{ color: c.text }}>
-                  {emp.full_name || emp.email || `Employee #${id}`}
-                  {emp.is_you ? " (You)" : ""}
-                </Text>
-              </TouchableOpacity>
-            );
-          })
+          <MobileSelect
+            label="Employee"
+            value={employeeId}
+            options={employees.map((emp) => ({
+              value: String(emp.id),
+              label: `${emp.full_name || emp.email || `Employee #${emp.id}`}${
+                emp.is_you ? " (You)" : ""
+              }`,
+              hint: emp.email || undefined,
+            }))}
+            onChange={(id) => {
+              setEmployeeId(id);
+              setTimesheetId("");
+              setActiveRequestId(null);
+            }}
+            disabled={isStaff && employees.length === 1}
+            placeholder="Select employee"
+          />
         )}
 
-        <Text style={[styles.label, { color: c.text }]}>Approved timesheet</Text>
         {!employeeId ? (
-          <Text style={{ color: c.muted }}>Select an employee first</Text>
+          <Text style={{ color: c.muted, marginBottom: spacing.md }}>
+            Select an employee first
+          </Text>
         ) : timesheetsQuery.isLoading ? (
-          <ActivityIndicator color={c.primary} />
+          <SkeletonList rows={2} />
         ) : timesheets.length === 0 ? (
-          <Text style={{ color: c.muted }}>
+          <Text style={{ color: c.muted, marginBottom: spacing.md }}>
             No approved timesheets for this employee. Only approved timesheets
             can generate a report.
           </Text>
         ) : (
-          timesheets.map((ts) => {
-            const id = String(ts.id);
-            const selected = timesheetId === id;
-            return (
-              <TouchableOpacity
-                key={id}
-                style={[
-                  styles.option,
-                  {
-                    borderColor: selected ? c.primary : c.border,
-                    backgroundColor: c.bg,
-                  },
-                ]}
-                onPress={() => {
-                  setTimesheetId(id);
-                  setActiveRequestId(null);
-                }}
-              >
-                <Text style={{ color: c.text }}>
-                  {formatTimesheetLabel({ code: ts.code, id: ts.id })}
-                  {ts.period_range ? ` · ${ts.period_range}` : ""}
-                  {ts.jobs?.length
-                    ? ` · ${ts.jobs
-                        .map((j) => j.name)
-                        .filter(Boolean)
-                        .join(", ")}`
-                    : ""}
-                </Text>
-              </TouchableOpacity>
-            );
-          })
+          <MobileSelect
+            label="Approved timesheet"
+            value={timesheetId}
+            options={timesheets.map((ts) => ({
+              value: String(ts.id),
+              label: formatTimesheetLabel({ code: ts.code, id: ts.id }),
+              hint: [
+                ts.period_range,
+                ts.jobs?.length
+                  ? ts.jobs.map((j) => j.name).filter(Boolean).join(", ")
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · "),
+            }))}
+            onChange={(id) => {
+              setTimesheetId(id);
+              setActiveRequestId(null);
+            }}
+            placeholder="Select timesheet"
+          />
         )}
 
         {canCreate ? (
@@ -617,7 +596,7 @@ export function ReportsScreen({}: Props) {
       >
         <Text style={[styles.cardTitle, { color: c.text }]}>History</Text>
         {historyQuery.isLoading && requestItems.length === 0 ? (
-          <ActivityIndicator color={c.primary} />
+          <SkeletonList rows={3} />
         ) : requestItems.length === 0 ? (
           <Text style={{ color: c.muted }}>No previous reports</Text>
         ) : (
@@ -658,7 +637,7 @@ export function ReportsScreen({}: Props) {
           </TouchableOpacity>
         ) : null}
       </View>
-    </ScrollView>
+    </FormKeyboardScroll>
   );
 }
 

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   StyleSheet,
   Text,
@@ -18,13 +17,14 @@ import {
 } from "@mytask/hooks";
 import { spacing } from "@mytask/theme";
 import { formatTimesheetLabel, getErrorMessage } from "@mytask/utils";
-import type { RootStackParamList } from "../navigation/RootNavigator";
+import type { ManageStackParamList } from "../navigation/types";
 import { FullScreenSheet } from "../components/FullScreenSheet";
+import { SkeletonDetail } from "../components/Skeleton";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 
 type Props = NativeStackScreenProps<
-  RootStackParamList,
+  ManageStackParamList,
   "TimesheetManagementDetail"
 >;
 
@@ -145,8 +145,8 @@ export function TimesheetManagementDetailScreen({ navigation, route }: Props) {
 
   if (query.isLoading) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.primary} />
+      <View style={{ flex: 1, backgroundColor: c.bg }}>
+        <SkeletonDetail />
       </View>
     );
   }
@@ -254,6 +254,7 @@ export function TimesheetManagementDetailScreen({ navigation, route }: Props) {
       <FlatList
         data={days}
         keyExtractor={(item, index) => String(item.id ?? item.date ?? index)}
+        showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ padding: spacing.md, paddingTop: 0 }}
         ListHeaderComponent={
           <Text style={[styles.section, { color: c.text }]}>Days</Text>

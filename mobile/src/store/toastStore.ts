@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { triggerHaptic } from "../utils/haptics";
 
 export type ToastTone = "success" | "error" | "warning" | "info";
 
@@ -24,8 +25,11 @@ export const useToastStore = create<ToastState>((set, get) => ({
   items: [],
   push: (tone, title, description) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    set({ items: [...get().items, { id, tone, title, description }] });
-    setTimeout(() => get().dismiss(id), 3500);
+    set({ items: [...get().items.slice(-2), { id, tone, title, description }] });
+    if (tone === "success") void triggerHaptic("success");
+    else if (tone === "error") void triggerHaptic("error");
+    else if (tone === "warning") void triggerHaptic("warning");
+    else void triggerHaptic("light");
   },
   success: (title, description) => get().push("success", title, description),
   error: (title, description) => get().push("error", title, description),
