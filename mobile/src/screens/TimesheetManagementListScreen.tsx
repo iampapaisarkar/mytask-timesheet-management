@@ -26,6 +26,7 @@ import {
 } from "@mytask/utils";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing } from "@mytask/theme";
+import { AccessDenied } from "../components/AccessDenied";
 import { ListPager } from "../components/ListPager";
 import { MobileSelect } from "../components/MobileSelect";
 import { SearchBar } from "../components/SearchBar";
@@ -88,6 +89,7 @@ export function TimesheetManagementListScreen({ navigation, route }: Props) {
   const organisation = useOrganisationStore((s) => s.organisation);
   const role = organisation?.role || organisation?.role_code;
   const acl = getOrganisationAcl(role);
+  const canList = can(acl, "timesheetManagement", "list");
   const canCreate = can(acl, "timesheetManagement", "create");
 
   const sheetRef = useRef<BottomSheetModal>(null);
@@ -104,12 +106,15 @@ export function TimesheetManagementListScreen({ navigation, route }: Props) {
   }, [debouncedSearch]);
 
   const { data, isLoading, isError, isFetching, refetch } =
-    useTimesheetManagement({
-      rows_per_page: DEFAULT_LIST_PAGE_SIZE,
-      page_number: page,
-      sort_by: "id",
-      ...(debouncedSearch ? { search: debouncedSearch } : {}),
-    });
+    useTimesheetManagement(
+      {
+        rows_per_page: DEFAULT_LIST_PAGE_SIZE,
+        page_number: page,
+        sort_by: "id",
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
+      },
+      canList,
+    );
   const rows = listRows<ManagementRow>(data);
   const pagination = listPagination(data);
   const totalPages = Math.max(1, Number(pagination?.total_pages) || 1);
@@ -210,6 +215,10 @@ export function TimesheetManagementListScreen({ navigation, route }: Props) {
       void triggerHaptic("error");
       toast.error(getErrorMessage(err, "Unable to create timesheet"));
     }
+  }
+
+  if (!canList) {
+    return <AccessDenied />;
   }
 
   if (isError && !data) {

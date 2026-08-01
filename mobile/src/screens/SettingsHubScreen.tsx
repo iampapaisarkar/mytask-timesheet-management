@@ -1,32 +1,60 @@
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { spacing } from "@mytask/theme";
+import { AccessDenied } from "../components/AccessDenied";
+import { useOrgAcl } from "../hooks/useOrgAcl";
 import type { MoreStackParamList } from "../navigation/types";
 import { useThemeStore } from "../store/themeStore";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "SettingsHub">;
 
-const SETTINGS_LINKS = [
-  {
-    label: "Organisation details",
-    hint: "Name, code, your role",
-    route: "OrganisationDetails" as const,
-  },
-  {
-    label: "Holiday calendars",
-    hint: "Public holidays",
-    route: "HolidayCalendars" as const,
-  },
-  {
-    label: "Payroll calendars",
-    hint: "Pay periods",
-    route: "PayrollCalendars" as const,
-  },
-];
+type SettingsRoute =
+  | "OrganisationDetails"
+  | "HolidayCalendars"
+  | "PayrollCalendars";
 
 export function SettingsHubScreen({ navigation, route }: Props) {
   const { orgCode } = route.params;
   const c = useThemeStore((s) => s.colors);
+  const { can } = useOrgAcl();
+
+  if (!can("setting", "list")) {
+    return <AccessDenied />;
+  }
+
+  const links: Array<{
+    label: string;
+    hint: string;
+    route: SettingsRoute;
+  }> = [
+    ...(can("organisationSetting", "view")
+      ? [
+          {
+            label: "Organisation details",
+            hint: "Name, code, your role",
+            route: "OrganisationDetails" as const,
+          },
+        ]
+      : []),
+    ...(can("holidayCalendar", "list")
+      ? [
+          {
+            label: "Holiday calendars",
+            hint: "Public holidays",
+            route: "HolidayCalendars" as const,
+          },
+        ]
+      : []),
+    ...(can("payrollCalendar", "list")
+      ? [
+          {
+            label: "Payroll calendars",
+            hint: "Pay periods",
+            route: "PayrollCalendars" as const,
+          },
+        ]
+      : []),
+  ];
 
   return (
     <ScrollView
@@ -37,20 +65,26 @@ export function SettingsHubScreen({ navigation, route }: Props) {
       <Text style={[styles.sub, { color: c.muted }]}>
         Organisation configuration
       </Text>
-      {SETTINGS_LINKS.map((item) => (
-        <TouchableOpacity
-          key={item.route}
-          style={[
-            styles.card,
-            { backgroundColor: c.surface, borderColor: c.border },
-          ]}
-          onPress={() => navigation.navigate(item.route, { orgCode })}
-        >
-          <Text style={[styles.label, { color: c.text }]}>{item.label}</Text>
-          <Text style={[styles.hint, { color: c.muted }]}>{item.hint}</Text>
-          <Text style={[styles.chevron, { color: c.primary }]}>Open</Text>
-        </TouchableOpacity>
-      ))}
+      {links.length === 0 ? (
+        <Text style={{ color: c.muted }}>
+          No settings are available for your role.
+        </Text>
+      ) : (
+        links.map((item) => (
+          <TouchableOpacity
+            key={item.route}
+            style={[
+              styles.card,
+              { backgroundColor: c.surface, borderColor: c.border },
+            ]}
+            onPress={() => navigation.navigate(item.route, { orgCode })}
+          >
+            <Text style={[styles.label, { color: c.text }]}>{item.label}</Text>
+            <Text style={[styles.hint, { color: c.muted }]}>{item.hint}</Text>
+            <Text style={[styles.chevron, { color: c.primary }]}>Open</Text>
+          </TouchableOpacity>
+        ))
+      )}
     </ScrollView>
   );
 }

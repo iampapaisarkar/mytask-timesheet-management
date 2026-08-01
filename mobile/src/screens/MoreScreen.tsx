@@ -71,11 +71,15 @@ export function MoreScreen({ navigation, route }: Props) {
           },
         ]
       : []),
-    {
-      label: "Settings",
-      hint: "Organisation configuration",
-      route: "SettingsHub",
-    },
+    ...(can(acl, "setting", "list")
+      ? [
+          {
+            label: "Settings",
+            hint: "Organisation configuration",
+            route: "SettingsHub" as const,
+          },
+        ]
+      : []),
   ];
 
   async function leaveOrganisation() {

@@ -15,6 +15,7 @@ import { DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing } from "@mytask/theme";
 import { getErrorMessage, listPagination, listRows } from "@mytask/utils";
+import { AccessDenied } from "../components/AccessDenied";
 import { ListPager } from "../components/ListPager";
 import { MobileSelect } from "../components/MobileSelect";
 import { SkeletonList } from "../components/Skeleton";
@@ -51,10 +52,12 @@ export function PayrollCalendarsScreen({}: Props) {
   const organisation = useOrganisationStore((s) => s.organisation);
   const role = organisation?.role || organisation?.role_code;
   const acl = getOrganisationAcl(role);
+  const canList = can(acl, "payrollCalendar", "list");
   const canCreate = can(acl, "payrollCalendar", "create");
 
   const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ["payroll-calendars", page] as const,
+    enabled: canList,
     queryFn: async ({ signal }) => {
       const res = await payrollCalendarsApi.list(
         {
@@ -158,6 +161,10 @@ export function PayrollCalendarsScreen({}: Props) {
       first_payment_date: firstPaymentDate.trim(),
       default: rows.length === 0,
     });
+  }
+
+  if (!canList) {
+    return <AccessDenied />;
   }
 
   if (isError && !data) {

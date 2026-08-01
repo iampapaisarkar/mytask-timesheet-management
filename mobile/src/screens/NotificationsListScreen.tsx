@@ -14,7 +14,7 @@ import {
   useNotifications,
 } from "@mytask/hooks";
 import { DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
-import { resolveNotificationPath } from "@mytask/services";
+import { can, getOrganisationAcl, resolveNotificationPath } from "@mytask/services";
 import { spacing } from "@mytask/theme";
 import type { AppNotification } from "@mytask/types";
 import {
@@ -27,6 +27,7 @@ import {
 import { ListPager } from "../components/ListPager";
 import { SkeletonList } from "../components/Skeleton";
 import type { RootStackParamList } from "../navigation/RootNavigator";
+import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 import { triggerHaptic } from "../utils/haptics";
@@ -35,6 +36,9 @@ type Props = NativeStackScreenProps<RootStackParamList, "NotificationsList">;
 
 export function NotificationsListScreen({ navigation, route }: Props) {
   const { orgCode } = route.params;
+  const organisation = useOrganisationStore((s) => s.organisation);
+  const role = organisation?.role || organisation?.role_code;
+  const acl = getOrganisationAcl(role);
   const [page, setPage] = useState(1);
   const c = useThemeStore((s) => s.colors);
   const toast = useToastStore();
@@ -105,6 +109,13 @@ export function NotificationsListScreen({ navigation, route }: Props) {
     const timesheetMatch = path.match(/\/timesheet\/(\d+)/);
     const managementMatch = path.match(/\/timesheet-management\/(\d+)/);
     if (timesheetMatch) {
+      if (!can(acl, "timesheet", "view")) {
+        toast.warning(
+          "Access denied",
+          "You do not have permission to view this timesheet.",
+        );
+        return;
+      }
       navigation.navigate("Organisation", {
         orgCode,
         screen: "Sheets",
@@ -116,6 +127,16 @@ export function NotificationsListScreen({ navigation, route }: Props) {
       return;
     }
     if (managementMatch) {
+      if (
+        !can(acl, "timesheetManagement", "view") &&
+        !can(acl, "timesheetManagement", "list")
+      ) {
+        toast.warning(
+          "Access denied",
+          "You do not have permission to view this timesheet.",
+        );
+        return;
+      }
       navigation.navigate("Organisation", {
         orgCode,
         screen: "Manage",

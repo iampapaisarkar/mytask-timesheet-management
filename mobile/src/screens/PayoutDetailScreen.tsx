@@ -21,6 +21,7 @@ import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing } from "@mytask/theme";
 import { getErrorMessage } from "@mytask/utils";
 import type { MoreStackParamList } from "../navigation/types";
+import { AccessDenied } from "../components/AccessDenied";
 import { SkeletonDetail } from "../components/Skeleton";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
@@ -136,12 +137,13 @@ export function PayoutDetailScreen({ navigation, route }: Props) {
   const organisation = useOrganisationStore((s) => s.organisation);
   const role = organisation?.role || organisation?.role_code;
   const acl = getOrganisationAcl(role);
-  const canEdit =
-    can(acl, "payout", "edit") || can(acl, "payout", "list");
+  const canView =
+    can(acl, "payout", "view") || can(acl, "payout", "list");
+  const canEdit = can(acl, "payout", "edit");
   const c = useThemeStore((s) => s.colors);
   const toast = useToastStore();
 
-  const detailQuery = usePayout(id, true);
+  const detailQuery = usePayout(id, canView);
   const selected = detailQuery.data as PayoutDetail | undefined;
 
   const submitMutation = useSubmitPayout();
@@ -265,6 +267,10 @@ export function PayoutDetailScreen({ navigation, route }: Props) {
         ) : null}
       </View>
     );
+  }
+
+  if (!canView) {
+    return <AccessDenied />;
   }
 
   if (detailQuery.isLoading) {

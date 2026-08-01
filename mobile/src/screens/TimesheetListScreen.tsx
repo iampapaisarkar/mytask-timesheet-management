@@ -10,17 +10,20 @@ import {
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useTimesheets } from "@mytask/hooks";
 import { DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
+import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing } from "@mytask/theme";
 import {
   formatTimesheetLabel,
   listPagination,
   listRows,
 } from "@mytask/utils";
+import { AccessDenied } from "../components/AccessDenied";
 import { SearchBar } from "../components/SearchBar";
 import { ListPager } from "../components/ListPager";
 import { SkeletonList } from "../components/Skeleton";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import type { SheetsStackParamList } from "../navigation/types";
+import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { triggerHaptic } from "../utils/haptics";
 
@@ -43,6 +46,10 @@ function statusLabel(status: TimesheetRow["status"]) {
 
 export function TimesheetListScreen({ navigation, route }: Props) {
   const { orgCode } = route.params;
+  const organisation = useOrganisationStore((s) => s.organisation);
+  const role = organisation?.role || organisation?.role_code;
+  const acl = getOrganisationAcl(role);
+  const canList = can(acl, "timesheet", "list");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search.trim(), 400);
@@ -52,16 +59,23 @@ export function TimesheetListScreen({ navigation, route }: Props) {
     setPage(1);
   }, [debouncedSearch]);
 
-  const { data, isLoading, isError, isFetching, refetch } = useTimesheets({
-    rows_per_page: DEFAULT_LIST_PAGE_SIZE,
-    page_number: page,
-    sort_by: "id",
-    ...(debouncedSearch ? { search: debouncedSearch } : {}),
-  });
+  const { data, isLoading, isError, isFetching, refetch } = useTimesheets(
+    {
+      rows_per_page: DEFAULT_LIST_PAGE_SIZE,
+      page_number: page,
+      sort_by: "id",
+      ...(debouncedSearch ? { search: debouncedSearch } : {}),
+    },
+    canList,
+  );
   const rows = listRows<TimesheetRow>(data);
   const pagination = listPagination(data);
   const totalPages = Math.max(1, Number(pagination?.total_pages) || 1);
   const currentPage = Number(pagination?.page_number) || page;
+
+  if (!canList) {
+    return <AccessDenied />;
+  }
 
   if (isError && !data) {
     return (

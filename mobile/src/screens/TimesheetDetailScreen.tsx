@@ -9,11 +9,14 @@ import {
 } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useSubmitTimesheet, useTimesheet } from "@mytask/hooks";
+import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing } from "@mytask/theme";
 import { formatTimesheetLabel, getErrorMessage } from "@mytask/utils";
 import type { SheetsStackParamList } from "../navigation/types";
+import { AccessDenied } from "../components/AccessDenied";
 import { FullScreenSheet } from "../components/FullScreenSheet";
 import { SkeletonDetail } from "../components/Skeleton";
+import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 
@@ -44,7 +47,11 @@ type TimesheetDetail = {
 
 export function TimesheetDetailScreen({ navigation, route }: Props) {
   const { id, orgCode } = route.params;
-  const query = useTimesheet(id);
+  const organisation = useOrganisationStore((s) => s.organisation);
+  const role = organisation?.role || organisation?.role_code;
+  const acl = getOrganisationAcl(role);
+  const canView = can(acl, "timesheet", "view");
+  const query = useTimesheet(id, canView);
   const submit = useSubmitTimesheet();
   const toast = useToastStore();
   const c = useThemeStore((s) => s.colors);
@@ -86,6 +93,10 @@ export function TimesheetDetailScreen({ navigation, route }: Props) {
     } catch (err) {
       toast.error("Submit failed", getErrorMessage(err));
     }
+  }
+
+  if (!canView) {
+    return <AccessDenied />;
   }
 
   if (query.isLoading) {

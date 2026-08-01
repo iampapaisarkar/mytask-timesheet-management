@@ -244,6 +244,7 @@ export function OrgNavigator({ navigation, route }: OrgProps) {
   const c = useThemeStore((s) => s.colors);
   const acl = getOrganisationAcl(organisation?.role || organisation?.role_code);
   const canManage = can(acl, "timesheetManagement", "list");
+  const canSheets = can(acl, "timesheet", "list");
   const codeValue = useMemo(() => orgCode, [orgCode]);
 
   async function leaveOrganisation() {
@@ -280,17 +281,19 @@ export function OrgNavigator({ navigation, route }: OrgProps) {
                 ),
               }}
             />
-            <Tab.Screen
-              name="Sheets"
-              component={SheetsStackScreen}
-              options={{
-                title: "Sheets",
-                tabBarLabel: "Sheets",
-                tabBarIcon: ({ color, focused, size }) => (
-                  <SheetsIcon color={color} focused={focused} size={size} />
-                ),
-              }}
-            />
+            {canSheets ? (
+              <Tab.Screen
+                name="Sheets"
+                component={SheetsStackScreen}
+                options={{
+                  title: "Sheets",
+                  tabBarLabel: "Sheets",
+                  tabBarIcon: ({ color, focused, size }) => (
+                    <SheetsIcon color={color} focused={focused} size={size} />
+                  ),
+                }}
+              />
+            ) : null}
             {canManage ? (
               <Tab.Screen
                 name="Manage"

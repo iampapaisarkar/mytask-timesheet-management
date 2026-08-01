@@ -20,6 +20,7 @@ import {
   getErrorMessage,
 } from "@mytask/utils";
 import type { MoreStackParamList } from "../navigation/types";
+import { AccessDenied } from "../components/AccessDenied";
 import { SkeletonList } from "../components/Skeleton";
 import { MobileSelect } from "../components/MobileSelect";
 import { FormKeyboardScroll } from "../components/FormKeyboardScroll";
@@ -326,13 +327,7 @@ export function ReportsScreen({}: Props) {
   }
 
   if (!canView) {
-    return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <Text style={{ color: c.text }}>
-          You do not have permission to view reports.
-        </Text>
-      </View>
-    );
+    return <AccessDenied />;
   }
 
   const processing =

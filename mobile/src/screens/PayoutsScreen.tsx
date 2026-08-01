@@ -28,6 +28,7 @@ import { DEFAULT_LIST_PAGE_SIZE, formatMoney } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing } from "@mytask/theme";
 import { getErrorMessage, listPagination, listRows } from "@mytask/utils";
+import { AccessDenied } from "../components/AccessDenied";
 import { ListPager } from "../components/ListPager";
 import { SkeletonList } from "../components/Skeleton";
 import type { MoreStackParamList } from "../navigation/types";
@@ -122,8 +123,7 @@ export function PayoutsScreen({ navigation, route }: Props) {
   const acl = getOrganisationAcl(role);
   const canList = can(acl, "payout", "list");
   const canCreate = can(acl, "payout", "create");
-  const canEdit =
-    can(acl, "payout", "edit") || can(acl, "payout", "list");
+  const canEdit = can(acl, "payout", "edit");
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState("");
   const c = useThemeStore((s) => s.colors);
@@ -277,13 +277,7 @@ export function PayoutsScreen({ navigation, route }: Props) {
   }
 
   if (!canList) {
-    return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <Text style={{ color: c.text }}>
-          You do not have permission to view payouts.
-        </Text>
-      </View>
-    );
+    return <AccessDenied />;
   }
 
   if (isError && !data) {

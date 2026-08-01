@@ -28,6 +28,7 @@ import {
   fromAddressRecord,
   type GlobalAddress,
 } from "@mytask/utils";
+import { AccessDenied } from "../components/AccessDenied";
 import { ListPager } from "../components/ListPager";
 import { PlacesAddressInput } from "../components/PlacesAddressInput";
 import { SearchBar } from "../components/SearchBar";
@@ -137,6 +138,7 @@ export function CustomersListScreen(_props: Props) {
   const organisation = useOrganisationStore((s) => s.organisation);
   const role = organisation?.role || organisation?.role_code;
   const acl = getOrganisationAcl(role);
+  const canList = can(acl, "customer", "list");
   const canCreate = can(acl, "customer", "create");
   const canEdit = can(acl, "customer", "edit");
   const c = useThemeStore((s) => s.colors);
@@ -149,12 +151,15 @@ export function CustomersListScreen(_props: Props) {
     setPage(1);
   }, [debouncedSearch]);
 
-  const { data, isLoading, isError, isFetching, refetch } = useCustomers({
-    rows_per_page: DEFAULT_LIST_PAGE_SIZE,
-    page_number: page,
-    sort_by: "id",
-    ...(debouncedSearch ? { search: debouncedSearch } : {}),
-  });
+  const { data, isLoading, isError, isFetching, refetch } = useCustomers(
+    {
+      rows_per_page: DEFAULT_LIST_PAGE_SIZE,
+      page_number: page,
+      sort_by: "id",
+      ...(debouncedSearch ? { search: debouncedSearch } : {}),
+    },
+    canList,
+  );
   const rows = listRows<CustomerRow>(data);
   const pagination = listPagination(data);
   const totalPages = Math.max(1, Number(pagination?.total_pages) || 1);
@@ -217,6 +222,10 @@ export function CustomersListScreen(_props: Props) {
         getErrorMessage(err),
       );
     }
+  }
+
+  if (!canList) {
+    return <AccessDenied />;
   }
 
   if (isError && !data) {

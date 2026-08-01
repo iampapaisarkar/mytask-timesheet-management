@@ -15,6 +15,7 @@ import { DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing } from "@mytask/theme";
 import { getErrorMessage, listPagination, listRows } from "@mytask/utils";
+import { AccessDenied } from "../components/AccessDenied";
 import { ListPager } from "../components/ListPager";
 import { SkeletonList } from "../components/Skeleton";
 import type { MoreStackParamList } from "../navigation/types";
@@ -44,11 +45,13 @@ export function HolidayCalendarsScreen({}: Props) {
   const organisation = useOrganisationStore((s) => s.organisation);
   const role = organisation?.role || organisation?.role_code;
   const acl = getOrganisationAcl(role);
+  const canList = can(acl, "holidayCalendar", "list");
   const canCreate = can(acl, "holidayCalendar", "create");
   const canEdit = can(acl, "holidayCalendar", "edit");
 
   const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ["holiday-calendars", page] as const,
+    enabled: canList,
     queryFn: async ({ signal }) => {
       const res = await holidayCalendarsApi.list(
         {
@@ -128,6 +131,10 @@ export function HolidayCalendarsScreen({}: Props) {
       return;
     }
     saveMutation.mutate({ name: name.trim(), date: date.trim() });
+  }
+
+  if (!canList) {
+    return <AccessDenied />;
   }
 
   if (isError && !data) {

@@ -13,6 +13,7 @@ import { organisationsApi } from "@mytask/api";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing } from "@mytask/theme";
 import { getErrorMessage } from "@mytask/utils";
+import { AccessDenied } from "../components/AccessDenied";
 import type { MoreStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
@@ -26,6 +27,7 @@ export function OrganisationDetailsScreen({ route }: Props) {
   const setOrganisation = useOrganisationStore((s) => s.setOrganisation);
   const role = organisation?.role || organisation?.role_code;
   const acl = getOrganisationAcl(role);
+  const canView = can(acl, "organisationSetting", "view");
   const canEdit = can(acl, "organisationSetting", "edit");
   const c = useThemeStore((s) => s.colors);
   const toast = useToastStore();
@@ -53,6 +55,10 @@ export function OrganisationDetailsScreen({ route }: Props) {
     } finally {
       setSaving(false);
     }
+  }
+
+  if (!canView) {
+    return <AccessDenied />;
   }
 
   return (

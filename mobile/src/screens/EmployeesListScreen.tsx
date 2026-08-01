@@ -17,6 +17,7 @@ import {
   listPagination,
   listRows,
 } from "@mytask/utils";
+import { AccessDenied } from "../components/AccessDenied";
 import { EmployeeFormSheet } from "../components/EmployeeFormSheet";
 import { ListPager } from "../components/ListPager";
 import { SearchBar } from "../components/SearchBar";
@@ -126,13 +127,7 @@ export function EmployeesListScreen() {
   }
 
   if (!canList) {
-    return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <Text style={{ color: c.text }}>
-          You do not have permission to view employees.
-        </Text>
-      </View>
-    );
+    return <AccessDenied />;
   }
 
   if (isError && !data) {

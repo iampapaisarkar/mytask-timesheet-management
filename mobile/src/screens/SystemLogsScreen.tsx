@@ -17,6 +17,7 @@ import {
   listPagination,
   listRows,
 } from "@mytask/utils";
+import { AccessDenied } from "../components/AccessDenied";
 import { ListPager } from "../components/ListPager";
 import { SkeletonList } from "../components/Skeleton";
 import type { MoreStackParamList } from "../navigation/types";
@@ -83,13 +84,7 @@ export function SystemLogsScreen({}: Props) {
   const currentPage = Number(pagination?.page_number) || page;
 
   if (!canList) {
-    return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <Text style={{ color: c.text }}>
-          You do not have permission to view system logs.
-        </Text>
-      </View>
-    );
+    return <AccessDenied />;
   }
 
   if (query.isLoading && !query.data) {

@@ -29,6 +29,7 @@ import {
   fromAddressRecord,
   type GlobalAddress,
 } from "@mytask/utils";
+import { AccessDenied } from "../components/AccessDenied";
 import { ListPager } from "../components/ListPager";
 import { MobileSelect } from "../components/MobileSelect";
 import { PlacesAddressInput } from "../components/PlacesAddressInput";
@@ -123,6 +124,7 @@ export function JobsListScreen(_props: Props) {
   const organisation = useOrganisationStore((s) => s.organisation);
   const role = organisation?.role || organisation?.role_code;
   const acl = getOrganisationAcl(role);
+  const canList = can(acl, "job", "list");
   const canCreate = can(acl, "job", "create");
   const canEdit = can(acl, "job", "edit");
   const c = useThemeStore((s) => s.colors);
@@ -151,13 +153,16 @@ export function JobsListScreen(_props: Props) {
     [customerOptions],
   );
 
-  const { data, isLoading, isError, isFetching, refetch } = useJobs({
-    rows_per_page: DEFAULT_LIST_PAGE_SIZE,
-    page_number: page,
-    sort_by: "id",
-    ...(debouncedSearch ? { search: debouncedSearch } : {}),
-    ...(customerId ? { customer_id: customerId } : {}),
-  });
+  const { data, isLoading, isError, isFetching, refetch } = useJobs(
+    {
+      rows_per_page: DEFAULT_LIST_PAGE_SIZE,
+      page_number: page,
+      sort_by: "id",
+      ...(debouncedSearch ? { search: debouncedSearch } : {}),
+      ...(customerId ? { customer_id: customerId } : {}),
+    },
+    canList,
+  );
   const rows = listRows<JobRow>(data);
   const pagination = listPagination(data);
   const totalPages = Math.max(1, Number(pagination?.total_pages) || 1);
@@ -230,6 +235,10 @@ export function JobsListScreen(_props: Props) {
         getErrorMessage(err),
       );
     }
+  }
+
+  if (!canList) {
+    return <AccessDenied />;
   }
 
   if (isError && !data) {

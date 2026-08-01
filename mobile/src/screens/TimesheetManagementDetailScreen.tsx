@@ -15,11 +15,14 @@ import {
   useSubmitTimesheetManagement,
   useTimesheetManagementItem,
 } from "@mytask/hooks";
+import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing } from "@mytask/theme";
 import { formatTimesheetLabel, getErrorMessage } from "@mytask/utils";
 import type { ManageStackParamList } from "../navigation/types";
+import { AccessDenied } from "../components/AccessDenied";
 import { FullScreenSheet } from "../components/FullScreenSheet";
 import { SkeletonDetail } from "../components/Skeleton";
+import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 
@@ -65,7 +68,11 @@ type StatusAction = "submit" | "approve" | "reject" | "revert";
 
 export function TimesheetManagementDetailScreen({ navigation, route }: Props) {
   const { id, orgCode } = route.params;
-  const query = useTimesheetManagementItem(id);
+  const organisation = useOrganisationStore((s) => s.organisation);
+  const role = organisation?.role || organisation?.role_code;
+  const acl = getOrganisationAcl(role);
+  const canView = can(acl, "timesheetManagement", "view");
+  const query = useTimesheetManagementItem(id, canView);
   const submit = useSubmitTimesheetManagement();
   const approve = useApproveTimesheet();
   const reject = useRejectTimesheet();
@@ -141,6 +148,10 @@ export function TimesheetManagementDetailScreen({ navigation, route }: Props) {
     } catch (err) {
       toast.error("Action failed", getErrorMessage(err));
     }
+  }
+
+  if (!canView) {
+    return <AccessDenied />;
   }
 
   if (query.isLoading) {
