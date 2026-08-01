@@ -1,12 +1,73 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import { radii, spacing } from "@mytask/theme";
 import { useThemeStore } from "../store/themeStore";
-import { touchTarget } from "./tokens";
+import { triggerHaptic } from "../utils/haptics";
+import { elevation, motion, touchTarget } from "./tokens";
 
 export type SegmentOption<T extends string> = {
   value: T;
   label: string;
 };
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+function SegmentItem<T extends string>({
+  option,
+  active,
+  onPress,
+}: {
+  option: SegmentOption<T>;
+  active: boolean;
+  onPress: () => void;
+}) {
+  const c = useThemeStore((s) => s.colors);
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <AnimatedPressable
+      accessibilityRole="tab"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={option.label}
+      onPress={() => {
+        void triggerHaptic("selection");
+        onPress();
+      }}
+      onPressIn={() => {
+        scale.value = withSpring(0.97, motion.spring.snappy);
+      }}
+      onPressOut={() => {
+        scale.value = withSpring(1, motion.spring.snappy);
+      }}
+      style={[
+        styles.item,
+        active && elevation.soft,
+        {
+          backgroundColor: active ? c.primary : "transparent",
+        },
+        animStyle,
+      ]}
+    >
+      <Text
+        style={[
+          styles.label,
+          { color: active ? c.white : c.muted },
+          active && styles.labelActive,
+        ]}
+        numberOfLines={1}
+      >
+        {option.label}
+      </Text>
+    </AnimatedPressable>
+  );
+}
 
 export function SegmentedControl<T extends string>({
   value,
@@ -21,40 +82,17 @@ export function SegmentedControl<T extends string>({
 
   return (
     <View
-      style={[
-        styles.track,
-        { backgroundColor: c.bg, borderColor: c.border },
-      ]}
+      style={[styles.track, { backgroundColor: c.bgMuted }]}
       accessibilityRole="tablist"
     >
-      {options.map((opt) => {
-        const active = opt.value === value;
-        return (
-          <Pressable
-            key={opt.value}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: active }}
-            onPress={() => onChange(opt.value)}
-            style={[
-              styles.item,
-              active && {
-                backgroundColor: c.surface,
-                borderColor: c.border,
-              },
-            ]}
-          >
-            <Text
-              style={[
-                styles.label,
-                { color: active ? c.text : c.muted },
-                active && styles.labelActive,
-              ]}
-            >
-              {opt.label}
-            </Text>
-          </Pressable>
-        );
-      })}
+      {options.map((opt) => (
+        <SegmentItem
+          key={opt.value}
+          option={opt}
+          active={opt.value === value}
+          onPress={() => onChange(opt.value)}
+        />
+      ))}
     </View>
   );
 }
@@ -62,19 +100,16 @@ export function SegmentedControl<T extends string>({
 const styles = StyleSheet.create({
   track: {
     flexDirection: "row",
-    borderRadius: radii.md,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radii.full,
     padding: 3,
     gap: 2,
   },
   item: {
     flex: 1,
-    minHeight: touchTarget.min,
+    minHeight: touchTarget.min - 4,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: radii.sm,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "transparent",
+    borderRadius: radii.full,
     paddingHorizontal: spacing.sm,
   },
   label: { fontSize: 13, fontWeight: "600" },

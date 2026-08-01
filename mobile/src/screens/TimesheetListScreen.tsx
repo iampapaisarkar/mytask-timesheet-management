@@ -1,17 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   RefreshControl,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useTimesheets } from "@mytask/hooks";
 import { DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
-import { spacing } from "@mytask/theme";
+import { spacing, typography } from "@mytask/theme";
 import {
   formatTimesheetLabel,
   listPagination,
@@ -25,6 +24,17 @@ import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import type { SheetsStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
+import {
+  BriefcaseIcon,
+  Card,
+  EmptyState,
+  ErrorState,
+  FilterChips,
+  ScreenHeader,
+  SheetsIcon,
+  StatusBadge,
+  statusLabel,
+} from "../ui";
 import { triggerHaptic } from "../utils/haptics";
 
 type Props = NativeStackScreenProps<SheetsStackParamList, "TimesheetList">;
@@ -38,10 +48,22 @@ type TimesheetRow = {
   jobs?: Array<{ id?: number; name?: string }> | null;
 };
 
-function statusLabel(status: TimesheetRow["status"]) {
-  if (!status) return "—";
-  if (typeof status === "string") return status;
-  return status.name || status.code || "—";
+type StatusFilter = "all" | "approved" | "pending" | "rejected" | "draft";
+
+function statusCode(status: TimesheetRow["status"]) {
+  if (!status) return "";
+  if (typeof status === "string") return status.toLowerCase();
+  return (status.code || status.name || "").toLowerCase();
+}
+
+function jobLabel(item: TimesheetRow) {
+  if (Array.isArray(item.jobs) && item.jobs.length) {
+    return item.jobs
+      .map((j) => j.name)
+      .filter(Boolean)
+      .join(", ");
+  }
+  return item.job?.name || "";
 }
 
 export function TimesheetListScreen({ navigation, route }: Props) {
@@ -52,6 +74,7 @@ export function TimesheetListScreen({ navigation, route }: Props) {
   const canList = can(acl, "timesheet", "list");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<StatusFilter>("all");
   const debouncedSearch = useDebouncedValue(search.trim(), 400);
   const c = useThemeStore((s) => s.colors);
 
@@ -73,36 +96,67 @@ export function TimesheetListScreen({ navigation, route }: Props) {
   const totalPages = Math.max(1, Number(pagination?.total_pages) || 1);
   const currentPage = Number(pagination?.page_number) || page;
 
+  const filteredRows = useMemo(() => {
+    if (filter === "all") return rows;
+    return rows.filter((row) => {
+      const code = statusCode(row.status);
+      if (filter === "pending") {
+        return (
+          code.includes("pend") ||
+          code.includes("submit") ||
+          code === "pending_approval"
+        );
+      }
+      return code.includes(filter);
+    });
+  }, [rows, filter]);
+
   if (!canList) {
     return <AccessDenied />;
   }
 
   if (isError && !data) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <Text style={{ color: c.text }}>Failed to load timesheets</Text>
-        <TouchableOpacity onPress={() => void refetch()}>
-          <Text style={[styles.link, { color: c.primary }]}>Try again</Text>
-        </TouchableOpacity>
+      <View style={[styles.flex, { backgroundColor: c.bg }]}>
+        <ErrorState
+          title="Failed to load timesheets"
+          description="Check your connection and try again."
+          onRetry={() => void refetch()}
+        />
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: c.bg }}>
+    <View style={[styles.flex, { backgroundColor: c.bg }]}>
       <View style={styles.header}>
+        <ScreenHeader
+          title="Timesheets"
+          subtitle="Track periods, jobs, and approval status"
+        />
         <SearchBar
           value={search}
           onChangeText={setSearch}
           placeholder="Search by timesheet code"
+        />
+        <FilterChips
+          value={filter}
+          onChange={setFilter}
+          options={[
+            { value: "all", label: "All" },
+            { value: "approved", label: "Approved" },
+            { value: "pending", label: "Pending" },
+            { value: "draft", label: "Draft" },
+            { value: "rejected", label: "Rejected" },
+          ]}
         />
       </View>
       {isLoading && !data ? (
         <SkeletonList rows={6} />
       ) : (
         <FlatList
-          contentContainerStyle={{ padding: spacing.md, paddingTop: 0 }}
-          data={rows}
+          contentContainerStyle={styles.list}
+          data={filteredRows}
           keyExtractor={(item, index) => String(item.id ?? index)}
           showsHorizontalScrollIndicator={false}
           refreshControl={
@@ -116,11 +170,19 @@ export function TimesheetListScreen({ navigation, route }: Props) {
             />
           }
           ListEmptyComponent={
-            <Text style={[styles.empty, { color: c.muted }]}>
-              {debouncedSearch
-                ? "No timesheets match that code"
-                : "No timesheets found"}
-            </Text>
+            <EmptyState
+              icon={<SheetsIcon color={c.primary} size={28} />}
+              title={
+                debouncedSearch || filter !== "all"
+                  ? "No matching timesheets"
+                  : "No timesheets yet"
+              }
+              description={
+                debouncedSearch || filter !== "all"
+                  ? "Try a different search or clear filters."
+                  : "Your timesheet periods will appear here once created."
+              }
+            />
           }
           ListFooterComponent={
             <ListPager
@@ -132,34 +194,51 @@ export function TimesheetListScreen({ navigation, route }: Props) {
               onNext={() => setPage(Math.min(totalPages, currentPage + 1))}
             />
           }
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={[
-                styles.card,
-                { backgroundColor: c.surface, borderColor: c.border },
-              ]}
-              onPress={() => {
-                if (item.id == null) return;
-                navigation.navigate("TimesheetDetail", {
-                  orgCode,
-                  id: String(item.id),
-                });
-              }}
-            >
-              <Text style={[styles.id, { color: c.text }]}>
-                {formatTimesheetLabel({ code: item.code, id: item.id })}
-              </Text>
-              <Text style={{ color: c.muted }}>
-                {item.period_range || "—"}
-                {Array.isArray(item.jobs) && item.jobs.length
-                  ? ` · ${item.jobs.map((j) => j.name).filter(Boolean).join(", ")}`
-                  : item.job?.name
-                    ? ` · ${item.job.name}`
-                    : ""}{" "}
-                · {statusLabel(item.status)}
-              </Text>
-            </TouchableOpacity>
-          )}
+          renderItem={({ item }) => {
+            const jobs = jobLabel(item);
+            return (
+              <Card
+                style={styles.card}
+                accessibilityLabel={`Timesheet ${formatTimesheetLabel({
+                  code: item.code,
+                  id: item.id,
+                })}`}
+                onPress={() => {
+                  if (item.id == null) return;
+                  void triggerHaptic("selection");
+                  navigation.navigate("TimesheetDetail", {
+                    orgCode,
+                    id: String(item.id),
+                  });
+                }}
+              >
+                <View style={styles.cardTop}>
+                  <Text style={[styles.id, { color: c.text }]} numberOfLines={1}>
+                    {formatTimesheetLabel({ code: item.code, id: item.id })}
+                  </Text>
+                  <StatusBadge status={item.status} />
+                </View>
+                <Text style={[styles.period, { color: c.muted }]}>
+                  {item.period_range || "—"}
+                </Text>
+                {jobs ? (
+                  <View style={styles.metaRow}>
+                    <BriefcaseIcon color={c.subtle} size={14} />
+                    <Text
+                      style={[styles.meta, { color: c.muted }]}
+                      numberOfLines={1}
+                    >
+                      {jobs}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={[styles.meta, { color: c.subtle }]}>
+                    {statusLabel(item.status)}
+                  </Text>
+                )}
+              </Card>
+            );
+          }}
         />
       )}
     </View>
@@ -167,15 +246,47 @@ export function TimesheetListScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  header: { paddingHorizontal: spacing.md, paddingTop: spacing.md },
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  card: {
-    borderRadius: 16,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    borderWidth: 1,
+  flex: { flex: 1 },
+  header: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    gap: spacing.sm,
   },
-  id: { fontWeight: "700", marginBottom: 4 },
-  empty: { textAlign: "center", marginTop: 40 },
-  link: { fontWeight: "700", marginTop: 8 },
+  list: {
+    padding: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xxl,
+  },
+  card: {
+    marginBottom: spacing.sm,
+  },
+  cardTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+    marginBottom: 6,
+  },
+  id: {
+    flex: 1,
+    fontSize: typography.sizes.md,
+    fontWeight: "700",
+    letterSpacing: -0.2,
+  },
+  period: {
+    fontSize: typography.sizes.sm,
+    fontWeight: "500",
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+  },
+  meta: {
+    flex: 1,
+    fontSize: typography.sizes.xs,
+    fontWeight: "500",
+    marginTop: 8,
+  },
 });

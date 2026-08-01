@@ -1,5 +1,10 @@
 import { useEffect } from "react";
-import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
+import {
+  StyleSheet,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -7,8 +12,9 @@ import Animated, {
   withTiming,
   Easing,
 } from "react-native-reanimated";
-import { spacing } from "@mytask/theme";
+import { radii, spacing } from "@mytask/theme";
 import { useThemeStore } from "../store/themeStore";
+import { elevation } from "../ui/tokens";
 
 function Pulse({
   style,
@@ -74,6 +80,7 @@ export function SkeletonList({
           key={i}
           style={[
             styles.card,
+            elevation.card,
             {
               minHeight: rowHeight,
               backgroundColor: c.surface,
@@ -102,6 +109,7 @@ export function SkeletonDashboard() {
             key={i}
             style={[
               styles.stat,
+              elevation.card,
               { backgroundColor: c.surface, borderColor: c.border },
             ]}
           >
@@ -114,6 +122,7 @@ export function SkeletonDashboard() {
       <View
         style={[
           styles.chart,
+          elevation.card,
           { backgroundColor: c.surface, borderColor: c.border },
         ]}
       >
@@ -142,6 +151,7 @@ export function SkeletonDetail() {
       <View
         style={[
           styles.card,
+          elevation.card,
           { backgroundColor: c.surface, borderColor: c.border, marginTop: 16 },
         ]}
       >
@@ -161,8 +171,8 @@ export function SkeletonDetail() {
 const styles = StyleSheet.create({
   pad: { padding: spacing.lg },
   card: {
-    borderRadius: 16,
-    borderWidth: 1,
+    borderRadius: radii.xl,
+    borderWidth: StyleSheet.hairlineWidth,
     padding: spacing.md,
     marginBottom: spacing.sm,
   },
@@ -170,14 +180,14 @@ const styles = StyleSheet.create({
   stat: {
     width: "48%",
     flexGrow: 1,
-    borderRadius: 16,
-    borderWidth: 1,
+    borderRadius: radii.xl,
+    borderWidth: StyleSheet.hairlineWidth,
     padding: spacing.md,
   },
   chart: {
     marginTop: spacing.md,
-    borderRadius: 16,
-    borderWidth: 1,
+    borderRadius: radii.xl,
+    borderWidth: StyleSheet.hairlineWidth,
     padding: spacing.md,
   },
   bars: {

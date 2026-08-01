@@ -32,9 +32,18 @@ import {
 } from "../components/TrackedTimeline";
 import type { SheetsStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
-import { useThemeStore } from "../store/themeStore";
+import { useThemeStore, type AppColors } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
-import { CloseIcon, PlusIcon, SegmentedControl } from "../ui";
+import {
+  Button,
+  CloseIcon,
+  EmptyState,
+  ErrorState,
+  IconButton,
+  PlusIcon,
+  SegmentedControl,
+  statusVisual,
+} from "../ui";
 
 type Props = NativeStackScreenProps<SheetsStackParamList, "TimesheetDayDetail">;
 
@@ -77,12 +86,6 @@ type DayPayload = {
   timesheet_job?: { id?: number; name?: string } | null;
   timesheet_jobs?: Array<{ id?: number; name?: string }> | null;
   available_jobs?: JobRow[];
-};
-
-const SHEET_COLORS: Record<TaskType, string> = {
-  working: "#04B6B1",
-  travel: "#7BA3F0",
-  break: "#F59E0B",
 };
 
 type ViewTab = "sheets" | "timeline" | "map";
@@ -342,11 +345,11 @@ export function TimesheetDayDetailScreen({ route, navigation }: Props) {
 
   if (dayQuery.isError || !day) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <Text style={{ color: c.text }}>Failed to load day</Text>
-        <Pressable onPress={() => void dayQuery.refetch()}>
-          <Text style={[styles.link, { color: c.primary }]}>Try again</Text>
-        </Pressable>
+      <View style={[styles.flex, { backgroundColor: c.bg }]}>
+        <ErrorState
+          title="Failed to load day"
+          onRetry={() => void dayQuery.refetch()}
+        />
       </View>
     );
   }
@@ -370,14 +373,12 @@ export function TimesheetDayDetailScreen({ route, navigation }: Props) {
             <Text style={[styles.dateTitle, { color: c.text }]}>{title}</Text>
             <Text style={{ color: c.muted, fontSize: 13 }}>{subtitle}</Text>
           </View>
-          <Pressable
+          <IconButton
+            icon={<CloseIcon color={c.muted} />}
             onPress={() => navigation.goBack()}
-            hitSlop={12}
             accessibilityLabel="Close"
-            style={styles.closeBtn}
-          >
-            <CloseIcon color={c.muted} />
-          </Pressable>
+            soft
+          />
         </View>
 
         <ScrollView
@@ -388,25 +389,30 @@ export function TimesheetDayDetailScreen({ route, navigation }: Props) {
           <SummaryChip
             label="Work"
             value={formatMinutesAsHm(totals.working)}
-            color={SHEET_COLORS.working}
+            type="working"
             theme={c}
           />
           <SummaryChip
             label="Break"
             value={formatMinutesAsHm(totals.break)}
-            color={SHEET_COLORS.break}
+            type="break"
             theme={c}
           />
           <SummaryChip
             label="Travel"
             value={formatMinutesAsHm(totals.travel)}
-            color={SHEET_COLORS.travel}
+            type="travel"
             theme={c}
           />
         </ScrollView>
 
         {canSave ? (
-          <View style={styles.holidayRow}>
+          <View
+            style={[
+              styles.holidayRow,
+              { backgroundColor: c.bgMuted, borderColor: c.border },
+            ]}
+          >
             <Text style={{ color: c.text, fontWeight: "600", fontSize: 13 }}>
               Public holiday
             </Text>
@@ -442,9 +448,7 @@ export function TimesheetDayDetailScreen({ route, navigation }: Props) {
             showsVerticalScrollIndicator={false}
           >
             {!tasks.length ? (
-              <Text style={{ color: c.muted, fontSize: 14, textAlign: "center" }}>
-                No sheets for this day
-              </Text>
+              <EmptyState title="No sheets for this day" />
             ) : (
               tasks.map((task) => {
                 const expanded = expandedKey === task.key;
@@ -452,12 +456,13 @@ export function TimesheetDayDetailScreen({ route, navigation }: Props) {
                   timesheetJobs.find((j) => String(j.id) === task.job_id)
                     ?.name ||
                   jobOptions.find((j) => String(j.id) === task.job_id)?.name;
+                const visual = statusVisual(c, task.type);
                 return (
                   <View
                     key={task.key}
                     style={[
                       styles.sheetCard,
-                      { backgroundColor: SHEET_COLORS[task.type] },
+                      { backgroundColor: visual.solid },
                     ]}
                   >
                     <Pressable
@@ -533,23 +538,18 @@ export function TimesheetDayDetailScreen({ route, navigation }: Props) {
             )}
 
             {canSave ? (
-              <Pressable
+              <Button
+                title="Add sheet"
+                variant="soft"
+                leftIcon={<PlusIcon color={c.secondary} size={18} />}
                 onPress={() => {
                   const next = emptyTask(timesheetJobId);
                   setTasks((prev) => [...prev, next]);
                   setExpandedKey(next.key);
                   setTab("sheets");
                 }}
-                style={[
-                  styles.addBtn,
-                  { borderColor: c.border, backgroundColor: c.surface },
-                ]}
-              >
-                <PlusIcon color={c.primary} />
-                <Text style={{ color: c.primary, fontWeight: "700" }}>
-                  Add sheet
-                </Text>
-              </Pressable>
+                style={styles.addBtn}
+              />
             ) : null}
           </KeyboardAwareScrollView>
         ) : null}
@@ -594,18 +594,11 @@ export function TimesheetDayDetailScreen({ route, navigation }: Props) {
             },
           ]}
         >
-          <Pressable
+          <Button
+            title={saving ? "Saving…" : "Save day"}
             onPress={() => void handleSave()}
-            disabled={saving}
-            style={[
-              styles.saveBtn,
-              { backgroundColor: c.primary, opacity: saving ? 0.7 : 1 },
-            ]}
-          >
-            <Text style={styles.saveText}>
-              {saving ? "Saving…" : "Save day"}
-            </Text>
-          </Pressable>
+            loading={saving}
+          />
         </View>
       ) : null}
     </View>
@@ -615,27 +608,28 @@ export function TimesheetDayDetailScreen({ route, navigation }: Props) {
 function SummaryChip({
   label,
   value,
-  color,
+  type,
   theme,
 }: {
   label: string;
   value: string;
-  color: string;
-  theme: { border: string; bg: string; text: string; muted: string };
+  type: TaskType;
+  theme: AppColors;
 }) {
+  const visual = statusVisual(theme, type);
   return (
     <View
       style={[
         styles.badge,
-        { borderColor: theme.border, backgroundColor: theme.bg },
+        { borderColor: visual.border, backgroundColor: visual.bg },
       ]}
     >
-      <View style={[styles.badgeDot, { backgroundColor: color }]} />
+      <View style={[styles.badgeDot, { backgroundColor: visual.solid }]} />
       <View>
         <Text style={{ color: theme.muted, fontSize: 10, fontWeight: "600" }}>
           {label}
         </Text>
-        <Text style={{ color: theme.text, fontSize: 13, fontWeight: "700" }}>
+        <Text style={{ color: visual.text, fontSize: 13, fontWeight: "700" }}>
           {value}
         </Text>
       </View>
@@ -763,8 +757,7 @@ function Field({
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  link: { fontWeight: "700", marginTop: 8 },
+  flex: { flex: 1 },
   header: {
     paddingHorizontal: 16,
     paddingBottom: 12,
@@ -776,19 +769,13 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   dateTitle: { fontSize: 22, fontWeight: "700" },
-  closeBtn: {
-    width: 40,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   badges: { gap: 8, paddingRight: 8 },
   badge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    borderWidth: 1,
-    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
@@ -797,11 +784,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   body: { flex: 1 },
   tabPane: { flex: 1, padding: spacing.md },
   sheetCard: {
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 14,
     marginBottom: 10,
   },
@@ -824,28 +815,12 @@ const styles = StyleSheet.create({
     borderTopColor: "rgba(255,255,255,0.25)",
   },
   sheetMeta: { color: "rgba(255,255,255,0.95)", fontSize: 12, marginTop: 4 },
-  addBtn: {
-    marginTop: 4,
-    borderWidth: 1,
-    borderRadius: 14,
-    borderStyle: "dashed",
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 8,
-  },
+  addBtn: { marginTop: 4 },
   footer: {
     borderTopWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 16,
     paddingTop: 12,
   },
-  saveBtn: {
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  saveText: { color: "#fff", fontWeight: "700", fontSize: 15 },
   typeRow: { flexDirection: "row", gap: 8 },
   typeChip: {
     borderRadius: 999,

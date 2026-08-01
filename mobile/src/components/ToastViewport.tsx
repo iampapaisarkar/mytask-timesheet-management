@@ -8,7 +8,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path } from "react-native-svg";
 import { useToastStore, type ToastItem, type ToastTone } from "../store/toastStore";
-import { useThemeStore } from "../store/themeStore";
+import { useThemeStore, type AppColors } from "../store/themeStore";
 import { elevation } from "../ui/tokens";
 
 const TONE: Record<ToastTone, string> = {
@@ -17,6 +17,15 @@ const TONE: Record<ToastTone, string> = {
   warning: "#F59E0B",
   info: "#04B6B1",
 };
+
+function SOFT_TONE(c: AppColors): Record<ToastTone, string> {
+  return {
+    success: c.positiveSoft,
+    error: c.negativeSoft,
+    warning: c.warningSoft,
+    info: c.primarySoft,
+  };
+}
 
 function ToastIcon({ tone, color }: { tone: ToastTone; color: string }) {
   if (tone === "success") {
@@ -78,6 +87,7 @@ function ToastCard({
 }) {
   const c = useThemeStore((s) => s.colors);
   const accent = TONE[item.tone];
+  const soft = SOFT_TONE(c)[item.tone];
 
   useEffect(() => {
     const t = setTimeout(() => onDismiss(item.id), 3400);
@@ -99,11 +109,10 @@ function ToastCard({
             backgroundColor: c.surface,
             borderColor: c.border,
           },
-          elevation.card,
+          elevation.raised,
         ]}
       >
-        <View style={[styles.accent, { backgroundColor: accent }]} />
-        <View style={styles.icon}>
+        <View style={[styles.icon, { backgroundColor: soft }]}>
           <ToastIcon tone={item.tone} color={accent} />
         </View>
         <View style={styles.copy}>
@@ -148,24 +157,24 @@ const styles = StyleSheet.create({
   },
   toast: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: "hidden",
     flexDirection: "row",
     alignItems: "center",
-    minHeight: 56,
-  },
-  accent: {
-    width: 4,
-    alignSelf: "stretch",
+    minHeight: 60,
+    padding: 10,
+    gap: 12,
   },
   icon: {
-    paddingLeft: 12,
-    paddingRight: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
   copy: {
     flex: 1,
-    paddingVertical: 12,
-    paddingRight: 14,
+    paddingRight: 8,
     minWidth: 0,
   },
   title: { fontSize: 14, fontWeight: "700" },

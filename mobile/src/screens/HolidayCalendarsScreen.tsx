@@ -4,7 +4,6 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
@@ -13,7 +12,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { holidayCalendarsApi } from "@mytask/api";
 import { DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
-import { spacing } from "@mytask/theme";
+import { spacing, typography } from "@mytask/theme";
 import { getErrorMessage, listPagination, listRows } from "@mytask/utils";
 import { AccessDenied } from "../components/AccessDenied";
 import { ListPager } from "../components/ListPager";
@@ -23,7 +22,17 @@ import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 import { triggerHaptic } from "../utils/haptics";
-import { AppBottomSheet, BottomSheetTextInput } from "../ui";
+import {
+  AppBottomSheet,
+  BottomSheetTextInput,
+  Button,
+  Card,
+  ChevronIcon,
+  EmptyState,
+  ErrorState,
+  ScreenHeader,
+  SheetsIcon,
+} from "../ui";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "HolidayCalendars">;
 
@@ -139,11 +148,11 @@ export function HolidayCalendarsScreen({}: Props) {
 
   if (isError && !data) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <Text style={{ color: c.text }}>Failed to load holiday calendars</Text>
-        <TouchableOpacity onPress={() => void refetch()}>
-          <Text style={[styles.link, { color: c.primary }]}>Try again</Text>
-        </TouchableOpacity>
+      <View style={[styles.flex, { backgroundColor: c.bg }]}>
+        <ErrorState
+          title="Failed to load holiday calendars"
+          onRetry={() => void refetch()}
+        />
       </View>
     );
   }
@@ -156,22 +165,20 @@ export function HolidayCalendarsScreen({}: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      {canCreate ? (
-        <TouchableOpacity
-          style={[styles.createBtn, { backgroundColor: c.primary }]}
-          onPress={openCreate}
-        >
-          <Text style={styles.createBtnText}>Create holiday</Text>
-        </TouchableOpacity>
-      ) : null}
+      <View style={styles.header}>
+        <ScreenHeader
+          title="Holiday calendars"
+          subtitle="Public holidays observed by your organisation"
+        />
+        {canCreate ? (
+          <Button title="Create holiday" onPress={openCreate} size="md" />
+        ) : null}
+      </View>
       {isLoading && !data ? (
         <SkeletonList rows={6} />
       ) : (
         <FlatList
-          contentContainerStyle={{
-            padding: spacing.md,
-            paddingTop: canCreate ? 0 : spacing.md,
-          }}
+          contentContainerStyle={styles.list}
           data={rows}
           keyExtractor={(item, index) => String(item.id ?? index)}
           showsHorizontalScrollIndicator={false}
@@ -186,9 +193,10 @@ export function HolidayCalendarsScreen({}: Props) {
             />
           }
           ListEmptyComponent={
-            <Text style={[styles.empty, { color: c.muted }]}>
-              No holiday calendars found
-            </Text>
+            <EmptyState
+              icon={<SheetsIcon color={c.primary} size={28} />}
+              title="No holiday calendars found"
+            />
           }
           ListFooterComponent={
             <ListPager
@@ -201,26 +209,23 @@ export function HolidayCalendarsScreen({}: Props) {
             />
           }
           renderItem={({ item }) => (
-            <TouchableOpacity
-              style={[
-                styles.card,
-                { backgroundColor: c.surface, borderColor: c.border },
-              ]}
-              disabled={!canEdit}
-              onPress={() => openEdit(item)}
+            <Card
+              style={styles.card}
+              onPress={canEdit ? () => openEdit(item) : undefined}
+              accessibilityLabel={item.name || `Holiday #${item.id}`}
             >
-              <Text style={[styles.name, { color: c.text }]}>
-                {item.name || `Holiday #${item.id}`}
-              </Text>
-              <Text style={{ color: c.muted }}>
-                {item.date ? String(item.date).slice(0, 10) : "—"}
-              </Text>
-              {canEdit ? (
-                <Text style={{ color: c.primary, marginTop: 8, fontWeight: "600" }}>
-                  Edit
-                </Text>
-              ) : null}
-            </TouchableOpacity>
+              <View style={styles.cardRow}>
+                <View style={styles.cardTextCol}>
+                  <Text style={[styles.name, { color: c.text }]}>
+                    {item.name || `Holiday #${item.id}`}
+                  </Text>
+                  <Text style={{ color: c.muted, marginTop: 2 }}>
+                    {item.date ? String(item.date).slice(0, 10) : "—"}
+                  </Text>
+                </View>
+                {canEdit ? <ChevronIcon color={c.subtle} /> : null}
+              </View>
+            </Card>
           )}
         />
       )}
@@ -230,18 +235,11 @@ export function HolidayCalendarsScreen({}: Props) {
         title={editing ? "Edit holiday" : "Create holiday"}
         snapPoints={["45%", "70%"]}
         footer={
-          <TouchableOpacity
-            style={[
-              styles.submitBtn,
-              { backgroundColor: c.primary, opacity: pending ? 0.6 : 1 },
-            ]}
-            disabled={pending}
+          <Button
+            title={pending ? "Saving…" : editing ? "Save" : "Create"}
             onPress={handleSave}
-          >
-            <Text style={styles.createBtnText}>
-              {pending ? "Saving…" : editing ? "Save" : "Create"}
-            </Text>
-          </TouchableOpacity>
+            loading={pending}
+          />
         }
       >
         <Text style={[styles.fieldLabel, { color: c.muted }]}>Name *</Text>
@@ -269,42 +267,40 @@ export function HolidayCalendarsScreen({}: Props) {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  card: {
-    borderRadius: 16,
+  flex: { flex: 1 },
+  header: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    gap: spacing.sm,
+  },
+  list: {
     padding: spacing.md,
-    marginBottom: spacing.sm,
-    borderWidth: 1,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xxl,
   },
-  name: { fontWeight: "700", marginBottom: 4 },
-  empty: { textAlign: "center", marginTop: 40 },
-  link: { fontWeight: "700", marginTop: 8 },
-  createBtn: {
-    marginHorizontal: spacing.md,
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
-    borderRadius: 12,
-    paddingVertical: 12,
+  card: { marginBottom: spacing.sm },
+  cardRow: {
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
   },
-  createBtnText: { color: "#fff", fontWeight: "700" },
+  cardTextCol: { flex: 1, minWidth: 0 },
+  name: { fontWeight: "700", fontSize: typography.sizes.md },
   fieldLabel: {
-    fontWeight: "600",
-    fontSize: 13,
+    fontWeight: "700",
+    fontSize: 12,
     marginBottom: 6,
     marginTop: spacing.sm,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
   },
   input: {
-    borderWidth: 1,
-    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
     marginBottom: 4,
-  },
-  submitBtn: {
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
   },
 });

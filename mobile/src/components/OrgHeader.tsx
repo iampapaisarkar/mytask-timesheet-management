@@ -10,6 +10,7 @@ import type { RootStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { BellIcon, MoonIcon, SunIcon } from "../ui";
+import { elevation } from "../ui/tokens";
 
 const logo = require("../../mytasklogo.png");
 
@@ -52,6 +53,7 @@ export function OrgHeader({ orgCode, onLeaveOrganisation }: Props) {
     <View
       style={[
         styles.wrap,
+        elevation.soft,
         {
           paddingTop: Math.max(insets.top, spacing.sm),
           backgroundColor: c.surface,
@@ -63,7 +65,7 @@ export function OrgHeader({ orgCode, onLeaveOrganisation }: Props) {
         <HeaderIconButton
           accessibilityLabel="Back to myTask home"
           onPress={() => onLeaveOrganisation?.()}
-          style={styles.logoBtn}
+          style={[styles.logoBtn, { backgroundColor: c.primarySoft }]}
         >
           <Image source={logo} style={styles.logo} accessibilityIgnoresInvertColors />
         </HeaderIconButton>

@@ -1,17 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useEmployees } from "@mytask/hooks";
 import { DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
-import { spacing } from "@mytask/theme";
+import { spacing, typography } from "@mytask/theme";
 import {
   formatPhoneDisplay,
   listPagination,
@@ -26,6 +19,17 @@ import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { triggerHaptic } from "../utils/haptics";
+import {
+  Avatar,
+  Button,
+  Card,
+  ChevronIcon,
+  EmptyState,
+  ErrorState,
+  ScreenHeader,
+  StatusBadge,
+  UsersIcon,
+} from "../ui";
 
 type EmployeeRow = {
   id?: number | string;
@@ -132,11 +136,11 @@ export function EmployeesListScreen() {
 
   if (isError && !data) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <Text style={{ color: c.text }}>Failed to load employees</Text>
-        <TouchableOpacity onPress={() => void refetch()}>
-          <Text style={[styles.link, { color: c.primary }]}>Try again</Text>
-        </TouchableOpacity>
+      <View style={[styles.flex, { backgroundColor: c.bg }]}>
+        <ErrorState
+          title="Failed to load employees"
+          onRetry={() => void refetch()}
+        />
       </View>
     );
   }
@@ -144,26 +148,25 @@ export function EmployeesListScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <View style={styles.header}>
+        <ScreenHeader
+          title="Employees"
+          subtitle="Team members in this organisation"
+        />
         <SearchBar
           value={search}
           onChangeText={setSearch}
           placeholder="Search name, email, or address"
         />
+        {canCreate ? (
+          <Button title="Create employee" onPress={openCreate} size="md" />
+        ) : null}
       </View>
-      {canCreate ? (
-        <TouchableOpacity
-          style={[styles.createBtn, { backgroundColor: c.primary }]}
-          onPress={openCreate}
-        >
-          <Text style={styles.createBtnText}>Create employee</Text>
-        </TouchableOpacity>
-      ) : null}
 
       {isLoading && !data ? (
         <SkeletonList rows={6} />
       ) : (
         <FlatList
-          contentContainerStyle={{ padding: spacing.md, paddingTop: 0 }}
+          contentContainerStyle={styles.list}
           data={rows}
           keyExtractor={(item, index) =>
             String(item.details?.id ?? item.id ?? index)
@@ -180,11 +183,17 @@ export function EmployeesListScreen() {
             />
           }
           ListEmptyComponent={
-            <Text style={[styles.empty, { color: c.muted }]}>
-              {debouncedSearch
-                ? "No employees match your search"
-                : "No employees"}
-            </Text>
+            <EmptyState
+              icon={<UsersIcon color={c.primary} size={28} />}
+              title={
+                debouncedSearch ? "No employees match your search" : "No employees yet"
+              }
+              description={
+                debouncedSearch
+                  ? "Try a different search."
+                  : "Employees added to this organisation will appear here."
+              }
+            />
           }
           ListFooterComponent={
             <ListPager
@@ -199,51 +208,46 @@ export function EmployeesListScreen() {
           renderItem={({ item }) => {
             const details = item.details;
             const address = addressLabel(details);
+            const name = details?.full_name || `Employee #${details?.id ?? item.id}`;
             return (
-              <TouchableOpacity
-                style={[
-                  styles.card,
-                  { backgroundColor: c.surface, borderColor: c.border },
-                ]}
-                disabled={!canEdit}
-                onPress={() => openEdit(item)}
+              <Card
+                style={styles.card}
+                onPress={canEdit ? () => openEdit(item) : undefined}
+                accessibilityLabel={name}
               >
-                <Text style={[styles.name, { color: c.text }]}>
-                  {details?.full_name ||
-                    `Employee #${details?.id ?? item.id}`}
-                </Text>
-                <Text style={{ color: c.muted }}>
-                  {details?.email || "—"}
-                  {details?.role?.name ? ` · ${details.role.name}` : ""}
-                </Text>
-                {details?.phone_number ? (
-                  <Text style={[styles.meta, { color: c.muted }]}>
-                    {formatPhoneDisplay(
-                      details.phone_number,
-                      details.phone_country_iso,
-                    )}
-                  </Text>
-                ) : null}
-                {address ? (
-                  <Text
-                    style={[styles.meta, { color: c.muted }]}
-                    numberOfLines={2}
-                  >
-                    {address}
-                  </Text>
-                ) : null}
-                {canEdit ? (
-                  <Text
-                    style={{
-                      color: c.primary,
-                      marginTop: 8,
-                      fontWeight: "600",
-                    }}
-                  >
-                    Edit
-                  </Text>
-                ) : null}
-              </TouchableOpacity>
+                <View style={styles.row}>
+                  <Avatar name={name} size={44} />
+                  <View style={styles.textCol}>
+                    <View style={styles.nameRow}>
+                      <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>
+                        {name}
+                      </Text>
+                      <StatusBadge status="active" label="Active" />
+                    </View>
+                    <Text style={{ color: c.muted }} numberOfLines={1}>
+                      {details?.email || "—"}
+                      {details?.role?.name ? ` · ${details.role.name}` : ""}
+                    </Text>
+                    {details?.phone_number ? (
+                      <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>
+                        {formatPhoneDisplay(
+                          details.phone_number,
+                          details.phone_country_iso,
+                        )}
+                      </Text>
+                    ) : null}
+                    {address ? (
+                      <Text
+                        style={[styles.meta, { color: c.muted }]}
+                        numberOfLines={2}
+                      >
+                        {address}
+                      </Text>
+                    ) : null}
+                  </View>
+                  {canEdit ? <ChevronIcon color={c.subtle} /> : null}
+                </View>
+              </Card>
             );
           }}
         />
@@ -263,24 +267,36 @@ export function EmployeesListScreen() {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  header: { paddingHorizontal: spacing.md, paddingTop: spacing.sm },
-  createBtn: {
-    marginHorizontal: spacing.md,
-    marginBottom: spacing.sm,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: "center",
+  flex: { flex: 1 },
+  header: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    gap: spacing.sm,
   },
-  createBtnText: { color: "#fff", fontWeight: "700" },
-  card: {
-    borderRadius: 16,
+  list: {
     padding: spacing.md,
-    marginBottom: spacing.sm,
-    borderWidth: 1,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xxl,
   },
-  name: { fontWeight: "700", marginBottom: 4 },
-  meta: { marginTop: 4, fontSize: 12 },
-  empty: { textAlign: "center", marginTop: 40 },
-  link: { fontWeight: "700", marginTop: 8 },
+  card: { marginBottom: spacing.sm },
+  row: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.sm,
+  },
+  textCol: { flex: 1, minWidth: 0 },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+    marginBottom: 2,
+  },
+  name: {
+    flex: 1,
+    fontSize: typography.sizes.md,
+    fontWeight: "700",
+    letterSpacing: -0.2,
+  },
+  meta: { marginTop: 4, fontSize: typography.sizes.xs },
 });

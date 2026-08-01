@@ -1,19 +1,12 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import {
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { payrollCalendarsApi, systemApi } from "@mytask/api";
 import { DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
-import { spacing } from "@mytask/theme";
+import { spacing, typography } from "@mytask/theme";
 import { getErrorMessage, listPagination, listRows } from "@mytask/utils";
 import { AccessDenied } from "../components/AccessDenied";
 import { ListPager } from "../components/ListPager";
@@ -24,7 +17,16 @@ import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 import { triggerHaptic } from "../utils/haptics";
-import { AppBottomSheet, BottomSheetTextInput } from "../ui";
+import {
+  AppBottomSheet,
+  BottomSheetTextInput,
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  ScreenHeader,
+  SheetsIcon,
+} from "../ui";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "PayrollCalendars">;
 
@@ -169,11 +171,11 @@ export function PayrollCalendarsScreen({}: Props) {
 
   if (isError && !data) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <Text style={{ color: c.text }}>Failed to load payroll calendars</Text>
-        <TouchableOpacity onPress={() => void refetch()}>
-          <Text style={[styles.link, { color: c.primary }]}>Try again</Text>
-        </TouchableOpacity>
+      <View style={[styles.flex, { backgroundColor: c.bg }]}>
+        <ErrorState
+          title="Failed to load payroll calendars"
+          onRetry={() => void refetch()}
+        />
       </View>
     );
   }
@@ -186,22 +188,20 @@ export function PayrollCalendarsScreen({}: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      {canCreate ? (
-        <TouchableOpacity
-          style={[styles.createBtn, { backgroundColor: c.primary }]}
-          onPress={openCreate}
-        >
-          <Text style={styles.createBtnText}>Create calendar</Text>
-        </TouchableOpacity>
-      ) : null}
+      <View style={styles.header}>
+        <ScreenHeader
+          title="Payroll calendars"
+          subtitle="Pay cycles and payment schedules"
+        />
+        {canCreate ? (
+          <Button title="Create calendar" onPress={openCreate} size="md" />
+        ) : null}
+      </View>
       {isLoading && !data ? (
         <SkeletonList rows={6} />
       ) : (
         <FlatList
-          contentContainerStyle={{
-            padding: spacing.md,
-            paddingTop: canCreate ? 0 : spacing.md,
-          }}
+          contentContainerStyle={styles.list}
           data={rows}
           keyExtractor={(item, index) => String(item.id ?? index)}
           showsHorizontalScrollIndicator={false}
@@ -216,9 +216,10 @@ export function PayrollCalendarsScreen({}: Props) {
             />
           }
           ListEmptyComponent={
-            <Text style={[styles.empty, { color: c.muted }]}>
-              No payroll calendars found
-            </Text>
+            <EmptyState
+              icon={<SheetsIcon color={c.primary} size={28} />}
+              title="No payroll calendars found"
+            />
           }
           ListFooterComponent={
             <ListPager
@@ -231,17 +232,25 @@ export function PayrollCalendarsScreen({}: Props) {
             />
           }
           renderItem={({ item }) => (
-            <View
-              style={[
-                styles.card,
-                { backgroundColor: c.surface, borderColor: c.border },
-              ]}
-            >
-              <Text style={[styles.name, { color: c.text }]}>
-                {item.name || `Calendar #${item.id}`}
-                {item.default ? " · Default" : ""}
-              </Text>
-              <Text style={{ color: c.muted }}>
+            <Card style={styles.card}>
+              <View style={styles.cardTop}>
+                <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>
+                  {item.name || `Calendar #${item.id}`}
+                </Text>
+                {item.default ? (
+                  <View
+                    style={[
+                      styles.defaultPill,
+                      { backgroundColor: c.primarySoft },
+                    ]}
+                  >
+                    <Text style={[styles.defaultPillText, { color: c.primary }]}>
+                      Default
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+              <Text style={{ color: c.muted, marginTop: 2 }}>
                 {item.pay_cycle?.name || "—"}
                 {item.start_date
                   ? ` · ${String(item.start_date).slice(0, 10)}`
@@ -252,7 +261,7 @@ export function PayrollCalendarsScreen({}: Props) {
                   First payment {String(item.first_payment_date).slice(0, 10)}
                 </Text>
               ) : null}
-            </View>
+            </Card>
           )}
         />
       )}
@@ -262,18 +271,11 @@ export function PayrollCalendarsScreen({}: Props) {
         title="Create payroll calendar"
         snapPoints={["60%", "92%"]}
         footer={
-          <TouchableOpacity
-            style={[
-              styles.submitBtn,
-              { backgroundColor: c.primary, opacity: pending ? 0.6 : 1 },
-            ]}
-            disabled={pending}
+          <Button
+            title={pending ? "Creating…" : "Create"}
             onPress={handleSave}
-          >
-            <Text style={styles.createBtnText}>
-              {pending ? "Creating…" : "Create"}
-            </Text>
-          </TouchableOpacity>
+            loading={pending}
+          />
         }
       >
         <Text style={[styles.fieldLabel, { color: c.muted }]}>Name *</Text>
@@ -322,42 +324,45 @@ export function PayrollCalendarsScreen({}: Props) {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  card: {
-    borderRadius: 16,
+  flex: { flex: 1 },
+  header: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    gap: spacing.sm,
+  },
+  list: {
     padding: spacing.md,
-    marginBottom: spacing.sm,
-    borderWidth: 1,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xxl,
   },
-  name: { fontWeight: "700", marginBottom: 4 },
-  empty: { textAlign: "center", marginTop: 40 },
-  link: { fontWeight: "700", marginTop: 8 },
-  createBtn: {
-    marginHorizontal: spacing.md,
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
-    borderRadius: 12,
-    paddingVertical: 12,
+  card: { marginBottom: spacing.sm },
+  cardTop: {
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
   },
-  createBtnText: { color: "#fff", fontWeight: "700" },
+  name: { flex: 1, fontWeight: "700", fontSize: typography.sizes.md },
+  defaultPill: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  defaultPillText: { fontSize: 11, fontWeight: "700" },
   fieldLabel: {
-    fontWeight: "600",
-    fontSize: 13,
+    fontWeight: "700",
+    fontSize: 12,
     marginBottom: 6,
     marginTop: spacing.sm,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
   },
   input: {
-    borderWidth: 1,
-    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
     marginBottom: 4,
-  },
-  submitBtn: {
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
   },
 });

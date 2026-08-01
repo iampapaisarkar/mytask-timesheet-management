@@ -15,7 +15,7 @@ import {
 } from "@mytask/hooks";
 import { DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
 import { can, getOrganisationAcl, resolveNotificationPath } from "@mytask/services";
-import { spacing } from "@mytask/theme";
+import { spacing, typography } from "@mytask/theme";
 import type { AppNotification } from "@mytask/types";
 import {
   formatDisplayDateTime,
@@ -31,6 +31,8 @@ import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 import { triggerHaptic } from "../utils/haptics";
+import { BellIcon } from "../ui/icons";
+import { Card, EmptyState, ErrorState } from "../ui";
 
 type Props = NativeStackScreenProps<RootStackParamList, "NotificationsList">;
 
@@ -152,11 +154,12 @@ export function NotificationsListScreen({ navigation, route }: Props) {
 
   if (isError && !data) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <Text style={{ color: c.text }}>Failed to load notifications</Text>
-        <TouchableOpacity onPress={() => void refetch()}>
-          <Text style={[styles.link, { color: c.primary }]}>Try again</Text>
-        </TouchableOpacity>
+      <View style={[styles.flex, { backgroundColor: c.bg }]}>
+        <ErrorState
+          title="Failed to load notifications"
+          description="Check your connection and try again."
+          onRetry={() => void refetch()}
+        />
       </View>
     );
   }
@@ -167,7 +170,7 @@ export function NotificationsListScreen({ navigation, route }: Props) {
         <SkeletonList rows={6} />
       ) : (
         <FlatList
-          contentContainerStyle={{ padding: spacing.md }}
+          contentContainerStyle={styles.list}
           data={rows}
           keyExtractor={(item, index) => String(item.id ?? index)}
           showsHorizontalScrollIndicator={false}
@@ -182,9 +185,11 @@ export function NotificationsListScreen({ navigation, route }: Props) {
             />
           }
           ListEmptyComponent={
-            <Text style={[styles.empty, { color: c.muted }]}>
-              No notifications yet
-            </Text>
+            <EmptyState
+              icon={<BellIcon color={c.primary} size={26} />}
+              title="No notifications yet"
+              description="Updates about your organisation will show up here."
+            />
           }
           ListFooterComponent={
             <ListPager
@@ -199,43 +204,45 @@ export function NotificationsListScreen({ navigation, route }: Props) {
           renderItem={({ item }) => {
             const unread = item.status?.code === "unread";
             return (
-              <TouchableOpacity
-                style={[
-                  styles.card,
-                  {
-                    backgroundColor: c.surface,
-                    borderColor: unread ? c.primary : c.border,
-                  },
-                ]}
+              <Card
+                style={styles.card}
+                accentBorder={unread ? c.primary : undefined}
                 onPress={() => openNotification(item)}
+                accessibilityLabel={item.title || "Notification"}
               >
-                <Text
-                  style={[
-                    styles.title,
-                    { color: c.text, fontWeight: unread ? "700" : "600" },
-                  ]}
-                >
-                  {item.title || "Notification"}
-                </Text>
+                <View style={styles.titleRow}>
+                  {unread ? (
+                    <View style={[styles.unreadDot, { backgroundColor: c.primary }]} />
+                  ) : null}
+                  <Text
+                    style={[
+                      styles.title,
+                      { color: c.text, fontWeight: unread ? "700" : "600" },
+                    ]}
+                    numberOfLines={2}
+                  >
+                    {item.title || "Notification"}
+                  </Text>
+                </View>
                 {item.body ? (
                   <Text style={[styles.body, { color: c.muted }]} numberOfLines={3}>
                     {item.body}
                   </Text>
                 ) : null}
                 <View style={styles.metaRow}>
-                  <Text style={[styles.meta, { color: c.muted }]}>
+                  <Text style={[styles.meta, { color: c.subtle }]}>
                     {item.status?.name || item.status?.code || "—"}
                   </Text>
                   {item.sent_at ? (
                     <Text
-                      style={[styles.meta, { color: c.muted }]}
+                      style={[styles.meta, { color: c.subtle }]}
                       accessibilityLabel={formatDisplayDateTime(item.sent_at)}
                     >
                       {formatTimeAgo(item.sent_at)}
                     </Text>
                   ) : null}
                 </View>
-              </TouchableOpacity>
+              </Card>
             );
           }}
         />
@@ -245,21 +252,25 @@ export function NotificationsListScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  link: { fontWeight: "700", marginTop: 8 },
-  empty: { textAlign: "center", marginTop: 40 },
-  card: {
-    borderRadius: 16,
+  flex: { flex: 1 },
+  list: {
     padding: spacing.md,
-    marginBottom: spacing.sm,
-    borderWidth: 1,
+    paddingBottom: spacing.xxl,
   },
-  title: { fontSize: 15, marginBottom: 4 },
-  body: { fontSize: 13, lineHeight: 18, marginBottom: 8 },
+  card: { marginBottom: spacing.sm },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 4,
+  },
+  unreadDot: { width: 7, height: 7, borderRadius: 4 },
+  title: { flex: 1, fontSize: typography.sizes.md },
+  body: { fontSize: typography.sizes.sm, lineHeight: 18, marginBottom: 8 },
   metaRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     gap: 8,
   },
-  meta: { fontSize: 11, fontWeight: "600" },
+  meta: { fontSize: typography.sizes.xs, fontWeight: "600" },
 });

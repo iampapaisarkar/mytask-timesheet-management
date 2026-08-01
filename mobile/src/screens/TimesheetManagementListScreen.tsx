@@ -5,7 +5,6 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
@@ -25,7 +24,7 @@ import {
   listRows,
 } from "@mytask/utils";
 import { can, getOrganisationAcl } from "@mytask/services";
-import { spacing } from "@mytask/theme";
+import { spacing, typography } from "@mytask/theme";
 import { AccessDenied } from "../components/AccessDenied";
 import { ListPager } from "../components/ListPager";
 import { MobileSelect } from "../components/MobileSelect";
@@ -37,7 +36,16 @@ import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 import { triggerHaptic } from "../utils/haptics";
-import { AppBottomSheet } from "../ui";
+import {
+  AppBottomSheet,
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  ScreenHeader,
+  SheetsIcon,
+  StatusBadge,
+} from "../ui";
 
 type Props = NativeStackScreenProps<
   ManageStackParamList,
@@ -71,12 +79,6 @@ type JobRow = {
   details?: { id?: number; name?: string };
 };
 
-function statusLabel(status: ManagementRow["status"]) {
-  if (!status) return "—";
-  if (typeof status === "string") return status;
-  return status.name || status.code || "—";
-}
-
 function jobNames(item: ManagementRow) {
   if (Array.isArray(item.jobs) && item.jobs.length) {
     return item.jobs.map((j) => j.name).filter(Boolean).join(", ");
@@ -100,6 +102,7 @@ export function TimesheetManagementListScreen({ navigation, route }: Props) {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search.trim(), 400);
   const toast = useToastStore();
+  const c = useThemeStore((s) => s.colors);
 
   useEffect(() => {
     setPage(1);
@@ -119,7 +122,6 @@ export function TimesheetManagementListScreen({ navigation, route }: Props) {
   const pagination = listPagination(data);
   const totalPages = Math.max(1, Number(pagination?.total_pages) || 1);
   const currentPage = Number(pagination?.page_number) || page;
-  const c = useThemeStore((s) => s.colors);
 
   const [sheetReady, setSheetReady] = useState(false);
   const employeesQuery = useEmployees({ rows_per_page: 200 }, sheetReady);
@@ -223,40 +225,40 @@ export function TimesheetManagementListScreen({ navigation, route }: Props) {
 
   if (isError && !data) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <Text style={{ color: c.text }}>Failed to load timesheets</Text>
-        <TouchableOpacity onPress={() => void refetch()}>
-          <Text style={[styles.link, { color: c.primary }]}>Try again</Text>
-        </TouchableOpacity>
+      <View style={[styles.flex, { backgroundColor: c.bg }]}>
+        <ErrorState
+          title="Failed to load timesheets"
+          onRetry={() => void refetch()}
+        />
       </View>
     );
   }
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.md }}>
+      <View style={styles.header}>
+        <ScreenHeader
+          title="Manage timesheets"
+          subtitle="Review, submit, and action employee timesheets"
+        />
         <SearchBar
           value={search}
           onChangeText={setSearch}
           placeholder="Search by timesheet code"
         />
+        {canCreate ? (
+          <Button
+            title="Create timesheet"
+            onPress={openCreate}
+            size="md"
+          />
+        ) : null}
       </View>
-      {canCreate ? (
-        <TouchableOpacity
-          style={[styles.createBtn, { backgroundColor: c.primary }]}
-          onPress={openCreate}
-        >
-          <Text style={styles.createBtnText}>Create timesheet</Text>
-        </TouchableOpacity>
-      ) : null}
       {isLoading && !data ? (
         <SkeletonList rows={6} />
       ) : (
         <FlatList
-          contentContainerStyle={{
-            padding: spacing.md,
-            paddingTop: spacing.sm,
-          }}
+          contentContainerStyle={styles.list}
           data={rows}
           keyExtractor={(item, index) => String(item.id ?? index)}
           showsHorizontalScrollIndicator={false}
@@ -271,11 +273,19 @@ export function TimesheetManagementListScreen({ navigation, route }: Props) {
             />
           }
           ListEmptyComponent={
-            <Text style={[styles.empty, { color: c.muted }]}>
-              {debouncedSearch
-                ? "No timesheets match that code"
-                : "No managed timesheets"}
-            </Text>
+            <EmptyState
+              icon={<SheetsIcon color={c.primary} size={28} />}
+              title={
+                debouncedSearch
+                  ? "No matching timesheets"
+                  : "No managed timesheets"
+              }
+              description={
+                debouncedSearch
+                  ? "Try a different search."
+                  : "Timesheets you create or manage will appear here."
+              }
+            />
           }
           ListFooterComponent={
             <ListPager
@@ -290,38 +300,41 @@ export function TimesheetManagementListScreen({ navigation, route }: Props) {
             />
           }
           renderItem={({ item }) => (
-            <TouchableOpacity
-              style={[
-                styles.card,
-                { backgroundColor: c.surface, borderColor: c.border },
-              ]}
-              disabled={item.id == null}
-              onPress={() => {
-                if (item.id == null) return;
-                navigation.navigate("TimesheetManagementDetail", {
-                  orgCode,
-                  id: String(item.id),
-                });
-              }}
+            <Card
+              style={styles.card}
+              accessibilityLabel={`Timesheet ${formatTimesheetLabel({
+                code: item.code,
+                id: item.id,
+              })}`}
+              onPress={
+                item.id == null
+                  ? undefined
+                  : () => {
+                      navigation.navigate("TimesheetManagementDetail", {
+                        orgCode,
+                        id: String(item.id),
+                      });
+                    }
+              }
             >
-              <Text style={[styles.id, { color: c.text }]}>
-                {formatTimesheetLabel({ code: item.code, id: item.id })}
-                {item.employee?.user?.full_name
-                  ? ` · ${item.employee.user.full_name}`
-                  : ""}
-              </Text>
-              <Text style={{ color: c.muted }}>
+              <View style={styles.cardTop}>
+                <Text style={[styles.id, { color: c.text }]} numberOfLines={1}>
+                  {formatTimesheetLabel({ code: item.code, id: item.id })}
+                </Text>
+                <StatusBadge status={item.status} />
+              </View>
+              {item.employee?.user?.full_name ? (
+                <Text style={[styles.employee, { color: c.text }]} numberOfLines={1}>
+                  {item.employee.user.full_name}
+                </Text>
+              ) : null}
+              <Text style={[styles.period, { color: c.muted }]}>
                 {item.period_range || "—"}
               </Text>
-              <Text
-                style={{ color: c.text, marginTop: 4, fontWeight: "600" }}
-              >
+              <Text style={[styles.jobs, { color: c.muted }]} numberOfLines={1}>
                 {jobNames(item)}
               </Text>
-              <Text style={{ color: c.muted, marginTop: 2 }}>
-                {statusLabel(item.status)}
-              </Text>
-            </TouchableOpacity>
+            </Card>
           )}
         />
       )}
@@ -335,21 +348,12 @@ export function TimesheetManagementListScreen({ navigation, route }: Props) {
           resetForm();
         }}
         footer={
-          <TouchableOpacity
-            style={[
-              styles.primaryBtn,
-              {
-                backgroundColor: c.primary,
-                opacity: canSubmit && !createMutation.isPending ? 1 : 0.5,
-              },
-            ]}
-            disabled={!canSubmit || createMutation.isPending}
+          <Button
+            title={createMutation.isPending ? "Creating…" : "Create Timesheet"}
             onPress={() => void handleCreate()}
-          >
-            <Text style={styles.createBtnText}>
-              {createMutation.isPending ? "Creating…" : "Create Timesheet"}
-            </Text>
-          </TouchableOpacity>
+            disabled={!canSubmit || createMutation.isPending}
+            loading={createMutation.isPending}
+          />
         }
       >
         <Text style={[styles.hint, { color: c.muted }]}>
@@ -409,28 +413,44 @@ export function TimesheetManagementListScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  card: {
-    borderRadius: 16,
+  flex: { flex: 1 },
+  header: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    gap: spacing.sm,
+  },
+  list: {
     padding: spacing.md,
-    marginBottom: spacing.sm,
-    borderWidth: 1,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xxl,
   },
-  id: { fontWeight: "700", marginBottom: 4 },
-  empty: { textAlign: "center", marginTop: 40 },
-  link: { fontWeight: "700", marginTop: 8 },
-  createBtn: {
-    marginHorizontal: spacing.md,
-    marginTop: spacing.md,
-    borderRadius: 12,
-    paddingVertical: 12,
+  card: { marginBottom: spacing.sm },
+  cardTop: {
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+    marginBottom: 6,
   },
-  createBtnText: { color: "#fff", fontWeight: "700" },
+  id: {
+    flex: 1,
+    fontSize: typography.sizes.md,
+    fontWeight: "700",
+    letterSpacing: -0.2,
+  },
+  employee: {
+    fontSize: typography.sizes.sm,
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  period: {
+    fontSize: typography.sizes.sm,
+    fontWeight: "500",
+  },
+  jobs: {
+    marginTop: 6,
+    fontSize: typography.sizes.xs,
+    fontWeight: "500",
+  },
   hint: { marginBottom: spacing.md, fontSize: 13 },
-  primaryBtn: {
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
 });

@@ -1,10 +1,8 @@
 import {
-  ActivityIndicator,
   Image,
   Platform,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -13,7 +11,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, type LoginFormValues } from "@mytask/validation";
 import { authApi } from "@mytask/api";
-import { spacing } from "@mytask/theme";
+import { radii, spacing, typography } from "@mytask/theme";
 import { getErrorMessage, getTimezone } from "@mytask/utils";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -31,6 +29,7 @@ import {
 import { isFirebaseConfigured, isGoogleSignInConfigured } from "../config/env";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { setPendingOrgInvitationToken } from "../navigation/navigationRef";
+import { Button, IconButton, MoonIcon, SunIcon, TextField } from "../ui";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Login">;
 
@@ -118,263 +117,236 @@ export function LoginScreen({ navigation, route }: Props) {
       contentContainerStyle={styles.container}
       bottomOffset={32}
     >
-        <TouchableOpacity onPress={() => void toggleTheme()} style={styles.themeBtn}>
-          <Text style={{ color: c.primary, fontWeight: "600" }}>
-            {mode === "dark" ? "Light" : "Dark"}
-          </Text>
-        </TouchableOpacity>
+      <View style={styles.themeBtn}>
+        <IconButton
+          soft
+          accessibilityLabel={mode === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+          icon={
+            mode === "dark" ? (
+              <SunIcon color={c.primary} size={18} />
+            ) : (
+              <MoonIcon color={c.primary} size={18} />
+            )
+          }
+          onPress={() => void toggleTheme()}
+        />
+      </View>
 
-        <View style={styles.brandRow}>
+      <View style={styles.hero}>
+        <View style={[styles.logoWrap, { backgroundColor: c.primarySoft }]}>
           <Image
             source={require("../../assets/logo.png")}
             style={styles.logo}
             resizeMode="contain"
           />
-          <Text style={[styles.brand, { color: c.text }]}>myTask</Text>
         </View>
-        <Text style={[styles.title, { color: c.text }]}>Log in to myTask</Text>
+        <Text style={[styles.brand, { color: c.text }]}>myTask</Text>
+        <Text style={[styles.title, { color: c.text }]}>Log in to your account</Text>
         <Text style={[styles.subtitle, { color: c.muted }]}>
           {invitationToken
             ? "Sign in to accept your organisation invitation."
             : "Track work, manage teams, stay in sync."}
         </Text>
+      </View>
 
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: c.surface, borderColor: c.border },
+        ]}
+      >
         {googleEnabled ? (
-          <TouchableOpacity
-            style={[
-              styles.googleButton,
-              {
-                backgroundColor: c.surface,
-                borderColor: c.border,
-                opacity: busy ? 0.7 : 1,
-              },
-            ]}
-            onPress={() => void onGoogleSignIn()}
-            disabled={busy}
-          >
-            {googleLoading ? (
-              <ActivityIndicator color={c.primary} />
-            ) : (
-              <View style={styles.googleRow}>
-                <GoogleGlyph size={18} />
-                <Text style={[styles.googleButtonText, { color: c.text }]}>
-                  Continue with Google
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        ) : null}
-
-        {googleEnabled ? (
-          <View style={styles.dividerRow}>
-            <View style={[styles.divider, { backgroundColor: c.border }]} />
-            <Text style={[styles.dividerText, { color: c.muted }]}>
-              or continue with email
-            </Text>
-            <View style={[styles.divider, { backgroundColor: c.border }]} />
-          </View>
+          <>
+            <Button
+              title="Continue with Google"
+              variant="outline"
+              onPress={() => void onGoogleSignIn()}
+              disabled={busy}
+              loading={googleLoading}
+              leftIcon={googleLoading ? undefined : <GoogleGlyph size={18} />}
+            />
+            <View style={styles.dividerRow}>
+              <View style={[styles.divider, { backgroundColor: c.border }]} />
+              <Text style={[styles.dividerText, { color: c.muted }]}>
+                or continue with email
+              </Text>
+              <View style={[styles.divider, { backgroundColor: c.border }]} />
+            </View>
+          </>
         ) : null}
 
         <Controller
           control={control}
           name="email"
           render={({ field: { onChange, value }, fieldState }) => (
-            <View style={styles.field}>
-              <Text style={[styles.label, { color: c.muted }]}>Email</Text>
-              <TextInput
-                autoCapitalize="none"
-                keyboardType="email-address"
-                style={[
-                  styles.input,
-                  { borderColor: c.border, backgroundColor: c.surface, color: c.text },
-                ]}
-                value={value}
-                onChangeText={onChange}
-                placeholderTextColor={c.muted}
-                editable={!busy}
-              />
-              {fieldState.error ? (
-                <Text style={[styles.error, { color: c.negative }]}>
-                  {fieldState.error.message}
-                </Text>
-              ) : null}
-            </View>
+            <TextField
+              label="Email"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              value={value}
+              onChangeText={onChange}
+              editable={!busy}
+              error={fieldState.error?.message}
+            />
           )}
         />
         <Controller
           control={control}
           name="password"
           render={({ field: { onChange, value }, fieldState }) => (
-            <View style={styles.field}>
-              <Text style={[styles.label, { color: c.muted }]}>Password</Text>
-              <TextInput
-                secureTextEntry
-                style={[
-                  styles.input,
-                  { borderColor: c.border, backgroundColor: c.surface, color: c.text },
-                ]}
-                value={value}
-                onChangeText={onChange}
-                placeholderTextColor={c.muted}
-                editable={!busy}
-              />
-              {fieldState.error ? (
-                <Text style={[styles.error, { color: c.negative }]}>
-                  {fieldState.error.message}
-                </Text>
-              ) : null}
-            </View>
+            <TextField
+              label="Password"
+              secureTextEntry
+              value={value}
+              onChangeText={onChange}
+              editable={!busy}
+              error={fieldState.error?.message}
+            />
           )}
         />
 
         {error ? (
-          <Text style={[styles.errorBanner, { color: c.negative }]}>{error}</Text>
+          <View
+            style={[styles.errorBanner, { backgroundColor: c.negativeSoft }]}
+          >
+            <Text style={[styles.errorBannerText, { color: c.negativeText }]}>
+              {error}
+            </Text>
+          </View>
         ) : null}
 
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: c.primary, opacity: busy ? 0.7 : 1 }]}
+        <Button
+          title="Login"
           onPress={handleSubmit(onSubmit)}
           disabled={busy}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Login</Text>
-          )}
-        </TouchableOpacity>
+          loading={loading}
+          style={styles.submitBtn}
+        />
 
         <TouchableOpacity
           style={styles.linkRow}
           onPress={() => navigation.navigate("ForgotPassword")}
           disabled={busy}
         >
-          <Text style={{ color: c.primary, fontWeight: "600" }}>
+          <Text style={{ color: c.primary, fontWeight: "700", fontSize: 13 }}>
             Forgot password?
           </Text>
         </TouchableOpacity>
+      </View>
 
-        <TouchableOpacity
-          style={[
-            styles.button,
-            {
-              backgroundColor: c.surface,
-              borderWidth: 1,
-              borderColor: c.border,
-              marginTop: spacing.md,
-              opacity: busy ? 0.7 : 1,
-            },
-          ]}
-          onPress={() => navigation.navigate("Pricing")}
-          disabled={busy}
-        >
-          <Text style={[styles.buttonText, { color: c.text }]}>See Pricing</Text>
-        </TouchableOpacity>
+      <Button
+        title="See pricing"
+        variant="soft"
+        onPress={() => navigation.navigate("Pricing")}
+        disabled={busy}
+        style={styles.pricingBtn}
+      />
 
-        <TouchableOpacity
-          style={styles.linkRow}
-          onPress={() =>
-            navigation.navigate(
-              "Signup",
-              invitationToken ? { invitationToken } : undefined,
-            )
-          }
-          disabled={busy}
-        >
-          <Text style={{ color: c.muted }}>
-            New to myTask?{" "}
-            <Text style={{ color: c.primary, fontWeight: "700" }}>Sign up</Text>
-          </Text>
-        </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.signupRow}
+        onPress={() =>
+          navigation.navigate(
+            "Signup",
+            invitationToken ? { invitationToken } : undefined,
+          )
+        }
+        disabled={busy}
+      >
+        <Text style={{ color: c.muted, fontSize: 13 }}>
+          New to myTask?{" "}
+          <Text style={{ color: c.primary, fontWeight: "700" }}>Sign up</Text>
+        </Text>
+      </TouchableOpacity>
 
-        <View style={styles.legalRow}>
-          {(
-            [
-              { label: "Help", kind: "help" as const },
-              { label: "Terms", kind: "terms" as const },
-              { label: "Privacy", kind: "privacy" as const },
-            ] as const
-          ).map((item, index) => (
-            <View key={item.kind} style={styles.legalItem}>
-              {index > 0 ? (
-                <Text style={{ color: c.muted }}> · </Text>
-              ) : null}
-              <TouchableOpacity
-                onPress={() =>
-                  navigation.navigate("Legal", { kind: item.kind })
-                }
-                disabled={busy}
-              >
-                <Text style={{ color: c.primary, fontWeight: "600", fontSize: 12 }}>
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
+      <View style={styles.legalRow}>
+        {(
+          [
+            { label: "Help", kind: "help" as const },
+            { label: "Terms", kind: "terms" as const },
+            { label: "Privacy", kind: "privacy" as const },
+          ] as const
+        ).map((item, index) => (
+          <View key={item.kind} style={styles.legalItem}>
+            {index > 0 ? (
+              <Text style={{ color: c.subtle }}> · </Text>
+            ) : null}
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate("Legal", { kind: item.kind })
+              }
+              disabled={busy}
+            >
+              <Text style={{ color: c.primary, fontWeight: "600", fontSize: 12 }}>
+                {item.label}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+      </View>
     </FormKeyboardScroll>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
   container: {
     flexGrow: 1,
     justifyContent: "center",
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
   },
-  themeBtn: { alignSelf: "flex-end", marginBottom: spacing.md },
-  brandRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: spacing.sm,
-  },
-  logo: { width: 44, height: 44, borderRadius: 12 },
-  brand: { fontSize: 28, fontWeight: "700" },
-  title: { fontSize: 22, fontWeight: "700", marginTop: spacing.sm },
-  subtitle: { marginTop: 6, marginBottom: spacing.lg, fontSize: 14 },
-  googleButton: {
-    borderRadius: 14,
-    borderWidth: 1,
-    paddingVertical: 15,
-    alignItems: "center",
-    marginBottom: spacing.md,
-  },
-  googleRow: {
-    flexDirection: "row",
+  themeBtn: { alignSelf: "flex-end", marginBottom: spacing.sm },
+  hero: { alignItems: "center", marginBottom: spacing.lg },
+  logoWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: radii.xl,
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
+    marginBottom: spacing.sm,
   },
-  googleButtonText: { fontWeight: "700", fontSize: 15 },
+  logo: { width: 40, height: 40, borderRadius: 10 },
+  brand: {
+    fontSize: typography.sizes.xl,
+    fontWeight: "700",
+    letterSpacing: -0.3,
+  },
+  title: {
+    fontSize: typography.sizes.xxl,
+    fontWeight: "700",
+    marginTop: spacing.md,
+    textAlign: "center",
+    letterSpacing: -0.4,
+  },
+  subtitle: {
+    marginTop: 6,
+    fontSize: typography.sizes.sm,
+    textAlign: "center",
+    lineHeight: 20,
+    maxWidth: 280,
+  },
+  card: {
+    borderRadius: radii.xxl,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: spacing.lg,
+  },
   dividerRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    marginBottom: spacing.md,
+    marginVertical: spacing.md,
   },
   divider: { flex: 1, height: StyleSheet.hairlineWidth },
-  dividerText: { fontSize: 12 },
-  field: { marginBottom: spacing.md },
-  label: { marginBottom: 6, fontWeight: "600", fontSize: 13 },
-  input: {
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    fontSize: 16,
+  dividerText: { fontSize: typography.sizes.xs, fontWeight: "500" },
+  errorBanner: {
+    borderRadius: radii.md,
+    padding: spacing.sm,
+    marginBottom: spacing.sm,
   },
-  error: { marginTop: 4, fontSize: 12 },
-  errorBanner: { marginBottom: spacing.sm, fontSize: 13 },
-  button: {
-    borderRadius: 14,
-    paddingVertical: 15,
-    alignItems: "center",
-    marginTop: spacing.sm,
-  },
-  buttonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  errorBannerText: { fontSize: typography.sizes.sm, fontWeight: "500" },
+  submitBtn: { marginTop: spacing.xs },
   linkRow: { marginTop: spacing.md, alignItems: "center" },
+  pricingBtn: { marginTop: spacing.lg },
+  signupRow: { marginTop: spacing.lg, alignItems: "center" },
   legalRow: {
     marginTop: spacing.lg,
     flexDirection: "row",

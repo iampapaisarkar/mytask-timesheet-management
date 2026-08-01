@@ -1,11 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { timesheetActivityApi } from '@mytask/api';
 import { STORAGE_KEYS } from '@mytask/constants';
@@ -21,6 +15,7 @@ import {
   getTrackingOrganisationCode,
   setTrackingSession,
 } from '../services/trackingSession';
+import { Button, Card, ClockIcon } from '../ui';
 
 type TimerState = 'stop' | 'running' | 'pause';
 
@@ -266,17 +261,19 @@ export function ClockInOut() {
   }
 
   return (
-    <View
-      style={[
-        styles.card,
-        { backgroundColor: c.surface, borderColor: c.border },
-      ]}
-    >
-      <Text style={[styles.title, { color: c.text }]}>Log your time</Text>
+    <Card style={styles.card}>
+      <View style={styles.titleRow}>
+        <View style={[styles.iconBadge, { backgroundColor: c.primarySoft }]}>
+          <ClockIcon color={c.primary} size={18} />
+        </View>
+        <Text style={[styles.title, { color: c.text }]}>Log your time</Text>
+      </View>
       {otherOrgMessage ? (
-        <Text style={[styles.banner, { color: c.warning }]}>
-          {otherOrgMessage}
-        </Text>
+        <View style={[styles.bannerWrap, { backgroundColor: c.warningSoft }]}>
+          <Text style={[styles.banner, { color: c.warningText }]}>
+            {otherOrgMessage}
+          </Text>
+        </View>
       ) : null}
 
       <Text style={[styles.timer, { color: c.primary }]}>{formatted}</Text>
@@ -289,11 +286,11 @@ export function ClockInOut() {
 
       <View style={styles.row}>
         {!running ? (
-          <ActionButton
-            label={showStart ? 'Start' : 'Resume'}
-            color={c.primary}
+          <Button
+            title={showStart ? 'Start' : 'Resume'}
             loading={busy === 'start' || busy === 'resume'}
             disabled={busy != null || Boolean(otherOrgMessage)}
+            style={styles.actionBtn}
             onPress={() => {
               if (showStart) {
                 void onStart();
@@ -303,70 +300,57 @@ export function ClockInOut() {
             }}
           />
         ) : (
-          <ActionButton
-            label="Pause"
-            color={c.warning}
+          <Button
+            title="Pause"
+            style={[styles.actionBtn, { backgroundColor: c.warning, borderColor: c.warning }]}
             loading={busy === 'pause'}
             disabled={busy != null}
             onPress={() => void onPause()}
           />
         )}
-        <ActionButton
-          label="Stop"
-          color={c.negative}
+        <Button
+          title="Stop"
+          variant="danger"
+          style={styles.actionBtn}
           loading={busy === 'stop'}
           disabled={busy != null || !canStop}
           onPress={() => void onStop()}
         />
       </View>
-    </View>
-  );
-}
-
-function ActionButton({
-  label,
-  color,
-  loading,
-  disabled,
-  onPress,
-}: {
-  label: string;
-  color: string;
-  loading: boolean;
-  disabled: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity
-      style={[
-        styles.btn,
-        { backgroundColor: color, opacity: disabled && !loading ? 0.45 : 1 },
-      ]}
-      disabled={disabled}
-      onPress={onPress}
-    >
-      {loading ? (
-        <ActivityIndicator color="#fff" />
-      ) : (
-        <Text style={styles.btnText}>{label}</Text>
-      )}
-    </TouchableOpacity>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: spacing.lg,
     marginBottom: spacing.md,
     alignItems: 'center',
+    paddingVertical: spacing.lg,
   },
-  title: { fontSize: 16, fontWeight: '700', marginBottom: spacing.sm },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  iconBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: { fontSize: 16, fontWeight: '700' },
+  bannerWrap: {
+    borderRadius: 12,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 8,
+    marginBottom: spacing.sm,
+    alignSelf: 'stretch',
+  },
   banner: {
     fontSize: 12,
     textAlign: 'center',
-    marginBottom: spacing.sm,
     lineHeight: 18,
   },
   timer: {
@@ -381,13 +365,5 @@ const styles = StyleSheet.create({
     gap: 10,
     width: '100%',
   },
-  btn: {
-    flex: 1,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 48,
-  },
-  btnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  actionBtn: { flex: 1 },
 });

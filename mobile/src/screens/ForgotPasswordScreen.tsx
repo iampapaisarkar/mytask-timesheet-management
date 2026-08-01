@@ -1,11 +1,4 @@
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,7 +6,7 @@ import {
   forgotPasswordSchema,
   type ForgotPasswordFormValues,
 } from "@mytask/validation";
-import { spacing } from "@mytask/theme";
+import { radii, spacing, typography } from "@mytask/theme";
 import { getErrorMessage } from "@mytask/utils";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -22,6 +15,7 @@ import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 import { sendPasswordReset } from "../services/firebase";
 import type { RootStackParamList } from "../navigation/RootNavigator";
+import { Button, CheckCircleIcon, TextField } from "../ui";
 
 export function ForgotPasswordScreen() {
   const navigation =
@@ -61,124 +55,133 @@ export function ForgotPasswordScreen() {
 
   return (
     <FormKeyboardScroll contentContainerStyle={styles.container} bottomOffset={32}>
+      <View style={styles.hero}>
         <Text style={[styles.title, { color: c.text }]}>Reset password</Text>
         <Text style={[styles.subtitle, { color: c.muted }]}>
-          Enter your email and we'll send a reset link.
+          Enter your email and we&rsquo;ll send you a reset link.
         </Text>
+      </View>
 
-        {sent ? (
-          <View
-            style={[
-              styles.successCard,
-              { backgroundColor: c.surface, borderColor: c.border },
-            ]}
-          >
-            <Text style={[styles.successText, { color: c.text }]}>
-              If an account exists for that email, a reset link is on its way.
-            </Text>
+      {sent ? (
+        <View
+          style={[
+            styles.card,
+            styles.successCard,
+            { backgroundColor: c.surface, borderColor: c.border },
+          ]}
+        >
+          <View style={[styles.successIcon, { backgroundColor: c.positiveSoft }]}>
+            <CheckCircleIcon color={c.positive} size={26} />
           </View>
-        ) : (
-          <>
-            <Controller
-              control={control}
-              name="email"
-              render={({ field: { onChange, value }, fieldState }) => (
-                <View style={styles.field}>
-                  <Text style={[styles.label, { color: c.muted }]}>Email</Text>
-                  <TextInput
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                    style={[
-                      styles.input,
-                      {
-                        borderColor: c.border,
-                        backgroundColor: c.surface,
-                        color: c.text,
-                      },
-                    ]}
-                    value={value}
-                    onChangeText={onChange}
-                    placeholderTextColor={c.muted}
-                    editable={!loading}
-                  />
-                  {fieldState.error ? (
-                    <Text style={[styles.error, { color: c.negative }]}>
-                      {fieldState.error.message}
-                    </Text>
-                  ) : null}
-                </View>
-              )}
-            />
+          <Text style={[styles.successTitle, { color: c.text }]}>
+            Check your inbox
+          </Text>
+          <Text style={[styles.successText, { color: c.muted }]}>
+            If an account exists for that email, a reset link is on its way.
+          </Text>
+        </View>
+      ) : (
+        <View
+          style={[
+            styles.card,
+            { backgroundColor: c.surface, borderColor: c.border },
+          ]}
+        >
+          <Controller
+            control={control}
+            name="email"
+            render={({ field: { onChange, value }, fieldState }) => (
+              <TextField
+                label="Email"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                value={value}
+                onChangeText={onChange}
+                editable={!loading}
+                error={fieldState.error?.message}
+              />
+            )}
+          />
 
-            {error ? (
-              <Text style={[styles.errorBanner, { color: c.negative }]}>
+          {error ? (
+            <View style={[styles.errorBanner, { backgroundColor: c.negativeSoft }]}>
+              <Text style={[styles.errorBannerText, { color: c.negativeText }]}>
                 {error}
               </Text>
-            ) : null}
+            </View>
+          ) : null}
 
-            <TouchableOpacity
-              style={[
-                styles.button,
-                { backgroundColor: c.primary, opacity: loading ? 0.7 : 1 },
-              ]}
-              onPress={handleSubmit(onSubmit)}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>Send reset link</Text>
-              )}
-            </TouchableOpacity>
-          </>
-        )}
+          <Button
+            title="Send reset link"
+            onPress={handleSubmit(onSubmit)}
+            disabled={loading}
+            loading={loading}
+            style={styles.submitBtn}
+          />
+        </View>
+      )}
 
-        <TouchableOpacity
-          style={styles.linkRow}
-          onPress={() => navigation.navigate("Login")}
-          disabled={loading}
-        >
-          <Text style={{ color: c.primary, fontWeight: "700" }}>
-            Back to login
-          </Text>
-        </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.linkRow}
+        onPress={() => navigation.navigate("Login")}
+        disabled={loading}
+      >
+        <Text style={{ color: c.primary, fontWeight: "700", fontSize: 13 }}>
+          Back to login
+        </Text>
+      </TouchableOpacity>
     </FormKeyboardScroll>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
   container: {
     flexGrow: 1,
+    justifyContent: "center",
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
   },
-  title: { fontSize: 22, fontWeight: "700" },
-  subtitle: { marginTop: 6, marginBottom: spacing.lg, fontSize: 14 },
-  field: { marginBottom: spacing.md },
-  label: { marginBottom: 6, fontWeight: "600", fontSize: 13 },
-  input: {
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    fontSize: 16,
+  hero: { marginBottom: spacing.lg },
+  title: {
+    fontSize: typography.sizes.xxl,
+    fontWeight: "700",
+    letterSpacing: -0.4,
   },
-  error: { marginTop: 4, fontSize: 12 },
-  errorBanner: { marginBottom: spacing.sm, fontSize: 13 },
-  button: {
-    borderRadius: 14,
-    paddingVertical: 15,
+  subtitle: {
+    marginTop: 6,
+    fontSize: typography.sizes.sm,
+    lineHeight: 20,
+  },
+  card: {
+    borderRadius: radii.xxl,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: spacing.lg,
+  },
+  successCard: { alignItems: "center" },
+  successIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: radii.xl,
     alignItems: "center",
-    marginTop: spacing.sm,
+    justifyContent: "center",
+    marginBottom: spacing.sm,
   },
-  buttonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  successTitle: {
+    fontSize: typography.sizes.lg,
+    fontWeight: "700",
+  },
+  successText: {
+    marginTop: 6,
+    fontSize: typography.sizes.sm,
+    lineHeight: 20,
+    textAlign: "center",
+  },
+  errorBanner: {
+    borderRadius: radii.md,
+    padding: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  errorBannerText: { fontSize: typography.sizes.sm, fontWeight: "500" },
+  submitBtn: { marginTop: spacing.xs },
   linkRow: { marginTop: spacing.lg, alignItems: "center" },
-  successCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  successText: { fontSize: 14, lineHeight: 20 },
 });

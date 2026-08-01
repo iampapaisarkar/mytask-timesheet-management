@@ -1,11 +1,7 @@
-import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { spacing } from "@mytask/theme";
+import { StyleSheet, Text, View } from "react-native";
+import { spacing, typography } from "@mytask/theme";
 import { useThemeStore } from "../store/themeStore";
+import { Button } from "../ui";
 
 type Props = {
   currentPage: number;
@@ -29,53 +25,44 @@ export function ListPager({
 
   return (
     <View style={styles.pager}>
-      <Text style={{ color: c.muted, marginBottom: spacing.sm }}>
+      <Text style={[styles.label, { color: c.muted }]}>
         Page {currentPage} of {totalPages}
       </Text>
-      <View style={styles.pagerRow}>
-        <TouchableOpacity
-          disabled={currentPage <= 1 || isFetching}
-          onPress={onPrev}
-        >
-          <Text
-            style={[
-              styles.link,
-              {
-                color: currentPage <= 1 ? c.muted : c.primary,
-                opacity: currentPage <= 1 ? 0.5 : 1,
-              },
-            ]}
-          >
-            Previous
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          disabled={currentPage >= totalPages || isFetching}
-          onPress={onNext}
-        >
-          <Text
-            style={[
-              styles.link,
-              {
-                color: currentPage >= totalPages ? c.muted : c.primary,
-                opacity: currentPage >= totalPages ? 0.5 : 1,
-              },
-            ]}
-          >
-            Next
-          </Text>
-        </TouchableOpacity>
+      <View style={styles.row}>
+        <View style={styles.half}>
+          <Button
+            title="Previous"
+            variant="outline"
+            size="sm"
+            disabled={currentPage <= 1 || isFetching}
+            onPress={onPrev}
+          />
+        </View>
+        <View style={styles.half}>
+          <Button
+            title="Next"
+            variant="soft"
+            size="sm"
+            disabled={currentPage >= totalPages || isFetching}
+            onPress={onNext}
+          />
+        </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  pager: { alignItems: "center", paddingVertical: spacing.md },
-  pagerRow: {
-    flexDirection: "row",
-    gap: 24,
-    justifyContent: "center",
+  pager: { paddingVertical: spacing.md },
+  label: {
+    textAlign: "center",
+    marginBottom: spacing.sm,
+    fontSize: typography.sizes.xs,
+    fontWeight: "600",
   },
-  link: { fontWeight: "700", marginTop: 8 },
+  row: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  half: { flex: 1 },
 });

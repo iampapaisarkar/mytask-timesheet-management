@@ -1,12 +1,5 @@
 import { useMemo } from "react";
-import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authApi, organisationsApi } from "@mytask/api";
@@ -19,6 +12,7 @@ import { useAuthStore } from "../store/authStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 import { decodeInvitationToken } from "../utils/decodeInvitationToken";
+import { Button, Card, ErrorState } from "../ui";
 
 type Props = NativeStackScreenProps<RootStackParamList, "OrgInvitation">;
 
@@ -108,28 +102,20 @@ export function OrgInvitationScreen({ navigation, route }: Props) {
 
   if (verifyQuery.isError) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg, padding: spacing.lg }]}>
-        <Text style={{ color: c.text, textAlign: "center", fontWeight: "700" }}>
-          Invalid invitation
-        </Text>
-        <Text style={{ color: c.muted, textAlign: "center", marginTop: 8 }}>
-          {getErrorMessage(
+      <View style={{ flex: 1, backgroundColor: c.bg }}>
+        <ErrorState
+          title="Invalid invitation"
+          description={getErrorMessage(
             verifyQuery.error,
             "Invitation code is invalid or expired.",
           )}
-        </Text>
-        <TouchableOpacity
-          style={[styles.btn, { backgroundColor: c.primary, marginTop: 20 }]}
-          onPress={() =>
+          retryLabel={isLoggedIn ? "Back home" : "Back to login"}
+          onRetry={() =>
             isLoggedIn
               ? navigation.replace("Home")
               : navigation.replace("Login")
           }
-        >
-          <Text style={styles.btnText}>
-            {isLoggedIn ? "Back home" : "Back to login"}
-          </Text>
-        </TouchableOpacity>
+        />
       </View>
     );
   }
@@ -154,12 +140,7 @@ export function OrgInvitationScreen({ navigation, route }: Props) {
       style={{ flex: 1, backgroundColor: c.bg }}
       contentContainerStyle={styles.container}
     >
-      <View
-        style={[
-          styles.card,
-          { backgroundColor: c.surface, borderColor: c.border },
-        ]}
-      >
+      <Card style={styles.card}>
         <Text style={[styles.title, { color: c.text }]}>{orgName}</Text>
         <Text style={{ color: c.muted, marginTop: 8, lineHeight: 20 }}>
           {invitedBy} invited you
@@ -168,55 +149,35 @@ export function OrgInvitationScreen({ navigation, route }: Props) {
             : ""}
           {decoded?.employee_email ? `\n${decoded.employee_email}` : ""}
         </Text>
-      </View>
+      </Card>
 
       {!isLoggedIn ? (
-        <View style={{ gap: 10 }}>
+        <View style={styles.actionGap}>
           <Text style={{ color: c.muted, marginBottom: 4 }}>
             Sign in or create an account to accept this invitation.
           </Text>
-          <TouchableOpacity
-            style={[styles.btn, { backgroundColor: c.primary }]}
+          <Button
+            title="Sign in"
             onPress={() =>
               navigation.navigate("Login", { invitationToken: token })
             }
-          >
-            <Text style={styles.btnText}>Sign in</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.btn,
-              { backgroundColor: c.surface, borderWidth: 1, borderColor: c.border },
-            ]}
+          />
+          <Button
+            title="Create account"
+            variant="outline"
             onPress={() =>
               navigation.navigate("Signup", { invitationToken: token })
             }
-          >
-            <Text style={[styles.btnText, { color: c.text }]}>
-              Create account
-            </Text>
-          </TouchableOpacity>
+          />
         </View>
       ) : invitationsQuery.isLoading ? (
         <ActivityIndicator color={c.primary} />
       ) : matchingInvite ? (
-        <TouchableOpacity
-          style={[
-            styles.btn,
-            {
-              backgroundColor: c.primary,
-              opacity: acceptMutation.isPending ? 0.7 : 1,
-            },
-          ]}
-          disabled={acceptMutation.isPending}
+        <Button
+          title="Accept invitation"
+          loading={acceptMutation.isPending}
           onPress={() => acceptMutation.mutate(matchingInvite)}
-        >
-          {acceptMutation.isPending ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.btnText}>Accept invitation</Text>
-          )}
-        </TouchableOpacity>
+        />
       ) : (
         <Text style={{ color: c.muted, lineHeight: 20 }}>
           This invitation is not pending for your account. It may already have
@@ -230,17 +191,7 @@ export function OrgInvitationScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   container: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  card: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
-  },
+  card: { marginBottom: spacing.lg },
   title: { fontSize: 22, fontWeight: "700" },
-  btn: {
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  btnText: { color: "#fff", fontWeight: "700" },
+  actionGap: { gap: 10 },
 });

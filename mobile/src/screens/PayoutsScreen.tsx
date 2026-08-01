@@ -4,11 +4,9 @@ import {
   Alert,
   FlatList,
   RefreshControl,
-  ScrollView,
   Share,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
@@ -26,7 +24,7 @@ import {
 } from "@mytask/hooks";
 import { DEFAULT_LIST_PAGE_SIZE, formatMoney } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
-import { spacing } from "@mytask/theme";
+import { radii, spacing, typography } from "@mytask/theme";
 import { getErrorMessage, listPagination, listRows } from "@mytask/utils";
 import { AccessDenied } from "../components/AccessDenied";
 import { ListPager } from "../components/ListPager";
@@ -36,7 +34,17 @@ import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 import { triggerHaptic } from "../utils/haptics";
-import { AppBottomSheet } from "../ui";
+import {
+  AppBottomSheet,
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  FilterChips,
+  ScreenHeader,
+  StatusBadge,
+  WalletIcon,
+} from "../ui";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "Payouts">;
 
@@ -204,73 +212,70 @@ export function PayoutsScreen({ navigation, route }: Props) {
     return (
       <View style={styles.actions}>
         {s === "DRAFT" ? (
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: c.primary + "22" }]}
+          <Button
+            title="Submit"
+            variant="soft"
+            size="sm"
+            fullWidth={false}
             disabled={actionPending}
             onPress={() =>
               void runAction("Submitted for approval", () =>
                 submitMutation.mutateAsync({ id }),
               )
             }
-          >
-            <Text style={[styles.actionText, { color: c.primary }]}>Submit</Text>
-          </TouchableOpacity>
+          />
         ) : null}
         {s === "PENDING_APPROVAL" ? (
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: c.primary + "22" }]}
+          <Button
+            title="Approve"
+            variant="soft"
+            size="sm"
+            fullWidth={false}
             disabled={actionPending}
             onPress={() =>
               void runAction("Payout approved", () =>
                 approveMutation.mutateAsync({ id }),
               )
             }
-          >
-            <Text style={[styles.actionText, { color: c.primary }]}>
-              Approve
-            </Text>
-          </TouchableOpacity>
+          />
         ) : null}
         {s === "APPROVED" ? (
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: c.primary + "22" }]}
+          <Button
+            title="Release"
+            variant="soft"
+            size="sm"
+            fullWidth={false}
             disabled={actionPending}
             onPress={() =>
               void runAction("Ready for payout", () =>
                 releaseMutation.mutateAsync({ id }),
               )
             }
-          >
-            <Text style={[styles.actionText, { color: c.primary }]}>
-              Release
-            </Text>
-          </TouchableOpacity>
+          />
         ) : null}
         {s === "READY_FOR_PAYOUT" || s === "ELIGIBLE" ? (
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: c.primary + "22" }]}
+          <Button
+            title="Mark paid"
+            variant="soft"
+            size="sm"
+            fullWidth={false}
             disabled={actionPending}
             onPress={() =>
               void runAction("Marked as paid", () =>
                 markPaidMutation.mutateAsync({ id }),
               )
             }
-          >
-            <Text style={[styles.actionText, { color: c.primary }]}>
-              Mark paid
-            </Text>
-          </TouchableOpacity>
+          />
         ) : null}
         {s !== "PAID" && s !== "CANCELLED" ? (
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: c.negative + "18" }]}
+          <Button
+            title="Cancel"
+            variant="danger"
+            size="sm"
+            fullWidth={false}
             disabled={actionPending}
             onPress={() => confirmCancel(id)}
-          >
-            <Text style={[styles.actionText, { color: c.negative }]}>
-              Cancel
-            </Text>
-          </TouchableOpacity>
+          />
         ) : null}
       </View>
     );
@@ -282,93 +287,75 @@ export function PayoutsScreen({ navigation, route }: Props) {
 
   if (isError && !data) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <Text style={{ color: c.text }}>Failed to load payouts</Text>
-        <TouchableOpacity onPress={() => void refetch()}>
-          <Text style={[styles.link, { color: c.primary }]}>Try again</Text>
-        </TouchableOpacity>
+      <View style={[styles.flex, { backgroundColor: c.bg }]}>
+        <ErrorState
+          title="Failed to load payouts"
+          description="Check your connection and try again."
+          onRetry={() => void refetch()}
+        />
       </View>
     );
   }
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <View style={styles.toolbar}>
-        {canCreate ? (
-          <TouchableOpacity
-            style={[styles.createBtn, { backgroundColor: c.primary }]}
-            onPress={() => createSheetRef.current?.present()}
-          >
-            <Text style={styles.createBtnText}>Create from eligible</Text>
-          </TouchableOpacity>
-        ) : null}
-        <TouchableOpacity
-          style={[styles.exportBtn, { borderColor: c.primary }]}
-          disabled={exportMutation.isPending}
-          onPress={() => {
-            void runAction("Export ready", async () => {
-              const blob = await exportMutation.mutateAsync(listParams);
-              const base64 = await new Response(blob as Blob).arrayBuffer().then(
-                (buf) => {
-                  const bytes = new Uint8Array(buf);
-                  let binary = "";
-                  for (let i = 0; i < bytes.length; i += 1) {
-                    binary += String.fromCharCode(bytes[i]!);
-                  }
-                  // Prefer Share with CSV text for RN without file FS.
-                  return binary;
-                },
-              );
-              await Share.share({
-                title: "payouts.csv",
-                message: base64,
+      <View style={styles.header}>
+        <ScreenHeader title="Payouts" subtitle="Payroll payouts" />
+        <View style={styles.toolbar}>
+          {canCreate ? (
+            <Button
+              title="Create from eligible"
+              size="sm"
+              fullWidth={false}
+              onPress={() => createSheetRef.current?.present()}
+              style={styles.toolbarBtn}
+            />
+          ) : null}
+          <Button
+            title={exportMutation.isPending ? "Exporting…" : "Export CSV"}
+            variant="outline"
+            size="sm"
+            fullWidth={false}
+            loading={exportMutation.isPending}
+            onPress={() => {
+              void runAction("Export ready", async () => {
+                const blob = await exportMutation.mutateAsync(listParams);
+                const base64 = await new Response(blob as Blob).arrayBuffer().then(
+                  (buf) => {
+                    const bytes = new Uint8Array(buf);
+                    let binary = "";
+                    for (let i = 0; i < bytes.length; i += 1) {
+                      binary += String.fromCharCode(bytes[i]!);
+                    }
+                    // Prefer Share with CSV text for RN without file FS.
+                    return binary;
+                  },
+                );
+                await Share.share({
+                  title: "payouts.csv",
+                  message: base64,
+                });
               });
-            });
-          }}
-        >
-          <Text style={[styles.exportBtnText, { color: c.primary }]}>
-            {exportMutation.isPending ? "Exporting…" : "Export CSV"}
-          </Text>
-        </TouchableOpacity>
-      </View>
+            }}
+            style={styles.toolbarBtn}
+          />
+        </View>
 
-      <View style={styles.filters}>
-        {STATUS_FILTERS.map((item) => {
-          const selected = status === item.value;
-          return (
-            <TouchableOpacity
-              key={item.value || "all"}
-              style={[
-                styles.filterChip,
-                {
-                  borderColor: selected ? c.primary : c.border,
-                  backgroundColor: selected ? c.primary + "18" : c.surface,
-                },
-              ]}
-              onPress={() => {
-                setStatus(item.value);
-                setPage(1);
-              }}
-            >
-              <Text
-                style={{
-                  color: selected ? c.primary : c.text,
-                  fontWeight: "600",
-                  fontSize: 12,
-                }}
-              >
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+        <FilterChips
+          value={status}
+          onChange={(next) => {
+            setStatus(next);
+            setPage(1);
+          }}
+          options={STATUS_FILTERS}
+        />
       </View>
 
       {isLoading && !data ? (
         <SkeletonList rows={6} />
       ) : (
         <FlatList
-          contentContainerStyle={{ padding: spacing.md, paddingTop: canCreate ? 0 : spacing.md }}
+          contentContainerStyle={styles.list}
           data={rows}
           keyExtractor={(item, index) => String(item.id ?? index)}
           showsHorizontalScrollIndicator={false}
@@ -383,9 +370,11 @@ export function PayoutsScreen({ navigation, route }: Props) {
             />
           }
           ListEmptyComponent={
-            <Text style={[styles.empty, { color: c.muted }]}>
-              No payouts found
-            </Text>
+            <EmptyState
+              icon={<WalletIcon color={c.primary} size={28} />}
+              title="No payouts found"
+              description="Payouts you create or approve will appear here."
+            />
           }
           ListFooterComponent={
             <ListPager
@@ -400,55 +389,41 @@ export function PayoutsScreen({ navigation, route }: Props) {
           renderItem={({ item }) => {
             const amount = item.net_amount ?? item.amount;
             return (
-              <View
-                style={[
-                  styles.card,
-                  { backgroundColor: c.surface, borderColor: c.border },
-                ]}
+              <Card
+                style={styles.card}
+                onPress={() => {
+                  if (item.id == null) return;
+                  navigation.navigate("PayoutDetail", {
+                    orgCode,
+                    id: String(item.id),
+                  });
+                }}
               >
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  onPress={() => {
-                    if (item.id == null) return;
-                    navigation.navigate("PayoutDetail", {
-                      orgCode,
-                      id: String(item.id),
-                    });
-                  }}
-                >
-                  <Text style={[styles.id, { color: c.text }]}>
+                <View style={styles.cardTop}>
+                  <Text style={[styles.id, { color: c.text }]} numberOfLines={1}>
                     {item.payout_number ||
                       (item.id != null ? `Payout #${item.id}` : "Payout")}
                   </Text>
-                  <Text style={{ color: c.muted }}>
-                    {employeeName(item.employee)}
+                  <StatusBadge
+                    status={statusCode(item.status)}
+                    label={statusLabel(item.status)}
+                  />
+                </View>
+                <Text style={{ color: c.muted }} numberOfLines={1}>
+                  {employeeName(item.employee)}
+                </Text>
+                <Text style={[styles.amount, { color: c.text }]}>
+                  {amount != null
+                    ? formatMoney(Number(amount), item.currency || "AUD")
+                    : "—"}
+                </Text>
+                {item.period_start_date && item.period_end_date ? (
+                  <Text style={{ color: c.subtle, marginTop: 2, fontSize: 12 }}>
+                    {item.period_start_date} → {item.period_end_date}
                   </Text>
-                  <Text
-                    style={{ color: c.text, marginTop: 4, fontWeight: "600" }}
-                  >
-                    {amount != null
-                      ? formatMoney(Number(amount), item.currency || "AUD")
-                      : "—"}
-                  </Text>
-                  <Text style={{ color: c.muted, marginTop: 2 }}>
-                    {statusLabel(item.status)}
-                    {item.period_start_date && item.period_end_date
-                      ? ` · ${item.period_start_date} → ${item.period_end_date}`
-                      : ""}
-                  </Text>
-                  <Text
-                    style={{
-                      color: c.primary,
-                      marginTop: 8,
-                      fontWeight: "700",
-                      fontSize: 12,
-                    }}
-                  >
-                    View detail
-                  </Text>
-                </TouchableOpacity>
+                ) : null}
                 {renderActions(item)}
-              </View>
+              </Card>
             );
           }}
         />
@@ -462,9 +437,10 @@ export function PayoutsScreen({ navigation, route }: Props) {
         {eligibleQuery.isLoading ? (
           <ActivityIndicator color={c.primary} style={{ marginTop: 24 }} />
         ) : eligible.length === 0 ? (
-          <Text style={{ color: c.muted, marginTop: 12 }}>
-            No approved timesheets waiting for payout
-          </Text>
+          <EmptyState
+            title="No eligible timesheets"
+            description="Approved timesheets waiting for payout will appear here."
+          />
         ) : (
           eligible.map((row) => (
             <View
@@ -487,8 +463,11 @@ export function PayoutsScreen({ navigation, route }: Props) {
                     : "—")}
               </Text>
               <View style={styles.actions}>
-                <TouchableOpacity
-                  style={[styles.actionBtn, { borderColor: c.border, borderWidth: 1 }]}
+                <Button
+                  title="Save draft"
+                  variant="outline"
+                  size="sm"
+                  fullWidth={false}
                   disabled={createMutation.isPending}
                   onPress={() => {
                     if (row.id == null) return;
@@ -499,13 +478,11 @@ export function PayoutsScreen({ navigation, route }: Props) {
                       }),
                     ).then(() => createSheetRef.current?.dismiss());
                   }}
-                >
-                  <Text style={[styles.actionText, { color: c.text }]}>
-                    Save draft
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.actionBtn, { backgroundColor: c.primary }]}
+                />
+                <Button
+                  title="Create payout"
+                  size="sm"
+                  fullWidth={false}
                   disabled={createMutation.isPending}
                   onPress={() => {
                     if (row.id == null) return;
@@ -513,11 +490,7 @@ export function PayoutsScreen({ navigation, route }: Props) {
                       createMutation.mutateAsync({ timesheet_id: row.id! }),
                     ).then(() => createSheetRef.current?.dismiss());
                   }}
-                >
-                  <Text style={[styles.actionText, { color: "#fff" }]}>
-                    Create payout
-                  </Text>
-                </TouchableOpacity>
+                />
               </View>
             </View>
           ))
@@ -528,69 +501,45 @@ export function PayoutsScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  card: {
-    borderRadius: 16,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    borderWidth: 1,
-  },
-  id: { fontWeight: "700", marginBottom: 4 },
-  empty: { textAlign: "center", marginTop: 40 },
-  link: { fontWeight: "700", marginTop: 8 },
-  createBtn: {
-    flex: 1,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  createBtnText: { color: "#fff", fontWeight: "700" },
-  toolbar: {
-    flexDirection: "row",
-    gap: 8,
+  flex: { flex: 1 },
+  header: {
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
-    marginBottom: spacing.sm,
+    gap: spacing.sm,
   },
-  exportBtn: {
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    alignItems: "center",
-    justifyContent: "center",
+  list: {
+    padding: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xxl,
   },
-  exportBtnText: { fontWeight: "700", fontSize: 13 },
-  filters: {
+  card: { marginBottom: spacing.sm },
+  cardTop: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  filterChip: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    minHeight: 40,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+    marginBottom: 4,
   },
+  id: {
+    flex: 1,
+    fontSize: typography.sizes.md,
+    fontWeight: "700",
+    letterSpacing: -0.2,
+  },
+  amount: { marginTop: 6, fontWeight: "700", fontSize: typography.sizes.lg },
+  toolbar: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  toolbarBtn: { flex: 1 },
   actions: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
     marginTop: spacing.sm,
   },
-  actionBtn: {
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  actionText: { fontWeight: "700", fontSize: 12 },
   eligibleCard: {
-    borderRadius: 14,
+    borderRadius: radii.lg,
     borderWidth: 1,
     padding: spacing.md,
     marginBottom: spacing.sm,

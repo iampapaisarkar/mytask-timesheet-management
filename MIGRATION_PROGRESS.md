@@ -39,6 +39,7 @@
 | Mobile parity phase 2 | ✅ Done | 2026-08-01 | Org invitation deep links + pending inbox; Login/Signup invitation_token; payout workflow + eligible create; holiday/payroll calendar create/edit; Places address; employee/customer/job create+edit |
 | Mobile ↔ web feature alignment | ✅ Done | 2026-08-01 | Removed non-web earning rates from mobile settings; Help/Terms/Privacy on main app (web+mobile, shared copy); payout detail; reports history/table/PDF/email; Universal Links host `mytaskapp.iampapaisarkar.dev` |
 | Mobile org navigation UX | ✅ Done | 2026-08-01 | Root Home without tabs; org-only premium bottom tabs; custom OrgHeader; swipe-back only on detail screens |
+| Mobile premium design system | ✅ Done | 2026-08-01 | Shared tokens + `src/ui` component library; all screens redesigned (cards, badges, empty/error states, auth, lists, details); light/dark semantic palette |
 
 ## Vue ↔ Web ↔ Mobile gap matrix
 
@@ -71,4 +72,4 @@
 
 ## Current focus
 
-Organisation navigation shell shipped (root home + org tabs + OrgHeader). Remaining: FCM push on mobile; payout date-range filters polish.
+Organisation navigation shell + premium mobile design system shipped. Remaining: FCM push on mobile; payout date-range filters polish.

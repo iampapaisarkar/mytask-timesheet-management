@@ -1,23 +1,16 @@
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { organisationsApi } from "@mytask/api";
 import { can, getOrganisationAcl } from "@mytask/services";
-import { spacing } from "@mytask/theme";
+import { spacing, typography } from "@mytask/theme";
 import { getErrorMessage } from "@mytask/utils";
 import { AccessDenied } from "../components/AccessDenied";
 import type { MoreStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
+import { Button, Card, ScreenHeader, TextField } from "../ui";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "OrganisationDetails">;
 
@@ -66,99 +59,66 @@ export function OrganisationDetailsScreen({ route }: Props) {
       style={{ flex: 1, backgroundColor: c.bg }}
       contentContainerStyle={styles.container}
     >
-      <View
-        style={[
-          styles.card,
-          { backgroundColor: c.surface, borderColor: c.border },
-        ]}
-      >
-        <Text style={[styles.label, { color: c.muted }]}>Code</Text>
-        <Text style={[styles.value, { color: c.text }]}>
-          {organisation?.code || orgCode}
-        </Text>
-      </View>
+      <ScreenHeader
+        title="Organisation"
+        subtitle="Identity and workspace settings"
+      />
 
-      <View
-        style={[
-          styles.card,
-          { backgroundColor: c.surface, borderColor: c.border },
-        ]}
-      >
-        <Text style={[styles.label, { color: c.muted }]}>Your role</Text>
-        <Text style={[styles.value, { color: c.text }]}>
-          {String(role || "—")}
-        </Text>
-      </View>
+      <Card style={styles.card}>
+        <View style={styles.row}>
+          <View style={styles.rowItem}>
+            <Text style={[styles.label, { color: c.muted }]}>Code</Text>
+            <Text style={[styles.value, { color: c.text }]}>
+              {organisation?.code || orgCode}
+            </Text>
+          </View>
+          <View style={styles.rowItem}>
+            <Text style={[styles.label, { color: c.muted }]}>Your role</Text>
+            <Text style={[styles.value, { color: c.text }]}>
+              {String(role || "—")}
+            </Text>
+          </View>
+        </View>
+      </Card>
 
-      <View
-        style={[
-          styles.card,
-          { backgroundColor: c.surface, borderColor: c.border },
-        ]}
-      >
+      <Card style={styles.card}>
         <Text style={[styles.label, { color: c.muted }]}>Name</Text>
         {canEdit ? (
           <>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  borderColor: c.border,
-                  backgroundColor: c.bg,
-                  color: c.text,
-                },
-              ]}
+            <TextField
               value={name}
               onChangeText={setName}
               editable={!saving}
-              placeholderTextColor={c.muted}
+              containerStyle={styles.nameField}
             />
-            <TouchableOpacity
-              style={[
-                styles.button,
-                { backgroundColor: c.primary, opacity: saving ? 0.7 : 1 },
-              ]}
+            <Button
+              title="Save name"
               onPress={() => void saveName()}
-              disabled={saving}
-            >
-              {saving ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>Save name</Text>
-              )}
-            </TouchableOpacity>
+              loading={saving}
+            />
           </>
         ) : (
-          <Text style={[styles.value, { color: c.text }]}>
+          <Text style={[styles.value, { color: c.text, marginTop: 6 }]}>
             {organisation?.name || "—"}
           </Text>
         )}
-      </View>
+      </Card>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
-  card: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: spacing.md,
+  container: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  card: { marginBottom: spacing.md },
+  row: { flexDirection: "row", gap: spacing.lg },
+  rowItem: { flex: 1 },
+  label: {
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+    marginBottom: 6,
   },
-  label: { fontSize: 12, fontWeight: "600", marginBottom: 6 },
-  value: { fontSize: 16, fontWeight: "700" },
-  input: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
-  },
-  button: {
-    marginTop: spacing.md,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  buttonText: { color: "#fff", fontWeight: "700" },
+  value: { fontSize: typography.sizes.md, fontWeight: "700" },
+  nameField: { marginTop: 6 },
 });

@@ -233,3 +233,192 @@ export function PlusIcon({ color, size = 20 }: { color: string; size?: number })
 export function IconSlot({ size = 24 }: { size?: number }) {
   return <Rect width={size} height={size} fill="transparent" />;
 }
+
+type SimpleIcon = { color: string; size?: number };
+
+export function UsersIcon({ color, size = 22 }: SimpleIcon) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx={9} cy={8} r={3} stroke={color} strokeWidth={1.9} />
+      <Path
+        d="M3.5 18.5c1.2-2.6 3.2-3.9 5.5-3.9s4.3 1.3 5.5 3.9"
+        stroke={color}
+        strokeWidth={1.9}
+        strokeLinecap="round"
+      />
+      <Circle cx={17} cy={8.5} r={2.4} stroke={color} strokeWidth={1.8} />
+      <Path
+        d="M15.2 14.2c1.7-.3 3.2.4 4.3 2.3"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+export function BriefcaseIcon({ color, size = 22 }: SimpleIcon) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Rect
+        x={3.5}
+        y={7}
+        width={17}
+        height={12}
+        rx={2}
+        stroke={color}
+        strokeWidth={1.9}
+      />
+      <Path
+        d="M9 7V5.8A1.8 1.8 0 0 1 10.8 4h2.4A1.8 1.8 0 0 1 15 5.8V7"
+        stroke={color}
+        strokeWidth={1.9}
+      />
+      <Path d="M3.5 12h17" stroke={color} strokeWidth={1.9} />
+    </Svg>
+  );
+}
+
+export function BuildingIcon({ color, size = 22 }: SimpleIcon) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M4.5 20.5V6.5A1.5 1.5 0 0 1 6 5h8a1.5 1.5 0 0 1 1.5 1.5v14"
+        stroke={color}
+        strokeWidth={1.9}
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M15.5 10.5H18a1.5 1.5 0 0 1 1.5 1.5v8.5"
+        stroke={color}
+        strokeWidth={1.9}
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M8 9h2.5M8 12.5h2.5M8 16h2.5"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+export function ChartIcon({ color, size = 22 }: SimpleIcon) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M4.5 19.5h15"
+        stroke={color}
+        strokeWidth={1.9}
+        strokeLinecap="round"
+      />
+      <Path
+        d="M7 16V11M12 16V7.5M17 16v-5"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+export function WalletIcon({ color, size = 22 }: SimpleIcon) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M4 8.5A2.5 2.5 0 0 1 6.5 6h11A2.5 2.5 0 0 1 20 8.5v9A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5v-9Z"
+        stroke={color}
+        strokeWidth={1.9}
+      />
+      <Path
+        d="M20 12.5h-3.2a1.8 1.8 0 0 0 0 3.6H20"
+        stroke={color}
+        strokeWidth={1.9}
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+export function SettingsIcon({ color, size = 22 }: SimpleIcon) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={12} r={3} stroke={color} strokeWidth={1.9} />
+      <Path
+        d="M12 3.8v1.8M12 18.4v1.8M4.8 7.2l1.5 1M17.7 15.8l1.5 1M4.8 16.8l1.5-1M17.7 8.2l1.5-1"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+export function LogIcon({ color, size = 22 }: SimpleIcon) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M7 4.5h8.5L18.5 7.5V19a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 19V6A1.5 1.5 0 0 1 7 4.5Z"
+        stroke={color}
+        strokeWidth={1.9}
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M8.5 10.5h7M8.5 14h5"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+export function ClockIcon({ color, size = 22 }: SimpleIcon) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={12} r={8} stroke={color} strokeWidth={1.9} />
+      <Path
+        d="M12 8v4.5l3 2"
+        stroke={color}
+        strokeWidth={1.9}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+export function CheckCircleIcon({ color, size = 22 }: SimpleIcon) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={12} r={8} stroke={color} strokeWidth={1.9} />
+      <Path
+        d="M8.5 12.2 11 14.7 15.5 9.8"
+        stroke={color}
+        strokeWidth={1.9}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+export function AlertIcon({ color, size = 22 }: SimpleIcon) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 4.5 20 19H4L12 4.5Z"
+        stroke={color}
+        strokeWidth={1.9}
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M12 10v4M12 16.5v.5"
+        stroke={color}
+        strokeWidth={1.9}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}

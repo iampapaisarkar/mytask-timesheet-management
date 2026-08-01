@@ -1,11 +1,4 @@
-import {
-  Linking,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Linking, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useMemo, useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -20,7 +13,9 @@ import type { RootStackParamList } from "../navigation/RootNavigator";
 import { SkeletonDetail } from "../components/Skeleton";
 import { useAuthStore } from "../store/authStore";
 import { useThemeStore } from "../store/themeStore";
+import type { AppColors } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
+import { Button, Card, ErrorState, ScreenHeader } from "../ui";
 
 export function PricingScreen() {
   const navigation =
@@ -62,11 +57,8 @@ export function PricingScreen() {
 
   if (isError) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <Text style={{ color: c.text }}>Failed to load pricing</Text>
-        <TouchableOpacity onPress={() => refetch()}>
-          <Text style={{ color: c.primary, marginTop: 8 }}>Try again</Text>
-        </TouchableOpacity>
+      <View style={{ flex: 1, backgroundColor: c.bg }}>
+        <ErrorState title="Failed to load pricing" onRetry={() => refetch()} />
       </View>
     );
   }
@@ -76,58 +68,40 @@ export function PricingScreen() {
       style={{ flex: 1, backgroundColor: c.bg }}
       contentContainerStyle={styles.pad}
     >
-      <Text style={[styles.title, { color: c.text }]}>Pricing</Text>
-      <Text style={[styles.sub, { color: c.muted }]}>
-        Subscriptions belong to you — not shared with invited teammates.
-      </Text>
+      <ScreenHeader
+        title="Pricing"
+        subtitle="Subscriptions belong to you — not shared with invited teammates."
+      />
 
       {current ? (
-        <View
-          style={[
-            styles.card,
-            { backgroundColor: c.surface, borderColor: c.border },
-          ]}
-        >
-          <Text style={{ color: c.primary, fontWeight: "700", fontSize: 12 }}>
+        <Card style={styles.card}>
+          <Text style={[styles.eyebrow, { color: c.primary }]}>
             CURRENT PLAN
           </Text>
           <Text style={[styles.planName, { color: c.text }]}>
             {current.plan?.name}
             {current.is_pro ? " · Active" : ""}
           </Text>
-          <TouchableOpacity
+          <Button
+            title="Manage subscription"
+            variant="ghost"
+            fullWidth={false}
             onPress={() => navigation.navigate("Subscription")}
-            style={{ marginTop: 8 }}
-          >
-            <Text style={{ color: c.primary, fontWeight: "600" }}>
-              Manage subscription →
-            </Text>
-          </TouchableOpacity>
-        </View>
+            style={styles.manageBtn}
+          />
+        </Card>
       ) : null}
 
-      <View style={styles.toggleRow}>
+      <View style={[styles.toggleRow, { backgroundColor: c.bgMuted }]}>
         {(["month", "year"] as const).map((key) => (
-          <TouchableOpacity
+          <Button
             key={key}
+            title={key === "month" ? "Monthly" : "Yearly"}
+            variant={interval === key ? "primary" : "ghost"}
+            size="sm"
             onPress={() => setInterval(key)}
-            style={[
-              styles.toggle,
-              {
-                backgroundColor: interval === key ? c.primary : c.surface,
-                borderColor: c.border,
-              },
-            ]}
-          >
-            <Text
-              style={{
-                color: interval === key ? "#fff" : c.text,
-                fontWeight: "700",
-              }}
-            >
-              {key === "month" ? "Monthly" : "Yearly"}
-            </Text>
-          </TouchableOpacity>
+            style={styles.toggleBtn}
+          />
         ))}
       </View>
 
@@ -177,16 +151,12 @@ export function PricingScreen() {
       />
 
       {token ? (
-        <TouchableOpacity
+        <Button
+          title="Billing history"
+          variant="ghost"
           onPress={() => navigation.navigate("BillingHistory")}
-          style={{ marginTop: 16 }}
-        >
-          <Text
-            style={{ color: c.primary, fontWeight: "600", textAlign: "center" }}
-          >
-            Billing history
-          </Text>
-        </TouchableOpacity>
+          style={styles.historyBtn}
+        />
       ) : null}
     </ScrollView>
   );
@@ -207,22 +177,16 @@ function PlanBlock({
   price: string;
   hint: string;
   features?: Record<string, number | boolean | undefined>;
-  colors: { surface: string; border: string; text: string; muted: string; primary: string };
+  colors: AppColors;
   highlight?: boolean;
   cta?: string;
   ctaLoading?: boolean;
   onCta?: () => void;
 }) {
   return (
-    <View
-      style={[
-        styles.card,
-        {
-          backgroundColor: c.surface,
-          borderColor: highlight ? c.primary : c.border,
-          borderWidth: highlight ? 2 : 1,
-        },
-      ]}
+    <Card
+      style={styles.card}
+      accentBorder={highlight ? c.primary : undefined}
     >
       <Text style={[styles.planName, { color: c.text }]}>{title}</Text>
       <Text style={{ color: c.text, fontSize: 28, fontWeight: "800" }}>{price}</Text>
@@ -236,39 +200,31 @@ function PlanBlock({
           </Text>
         ))}
       {cta && onCta ? (
-        <TouchableOpacity
+        <Button
+          title={ctaLoading ? "Please wait…" : cta}
           onPress={onCta}
-          disabled={ctaLoading}
-          style={[styles.cta, { backgroundColor: c.primary, opacity: ctaLoading ? 0.6 : 1 }]}
-        >
-          <Text style={{ color: "#fff", fontWeight: "700", textAlign: "center" }}>
-            {ctaLoading ? "Please wait…" : cta}
-          </Text>
-        </TouchableOpacity>
+          loading={ctaLoading}
+          style={styles.cta}
+        />
       ) : null}
-    </View>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
   pad: { padding: spacing.lg, paddingBottom: 40 },
-  title: { fontSize: 24, fontWeight: "800" },
-  sub: { marginTop: 6, marginBottom: 16, fontSize: 14 },
-  card: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    marginBottom: 14,
-  },
+  card: { marginBottom: spacing.md },
+  eyebrow: { fontWeight: "700", fontSize: 12, letterSpacing: 0.4 },
   planName: { fontSize: 18, fontWeight: "700", marginBottom: 4 },
-  toggleRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
-  toggle: {
-    flex: 1,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingVertical: 10,
-    alignItems: "center",
+  manageBtn: { marginTop: spacing.sm, alignSelf: "flex-start", paddingHorizontal: 0 },
+  toggleRow: {
+    flexDirection: "row",
+    gap: 4,
+    marginBottom: spacing.md,
+    borderRadius: 14,
+    padding: 4,
   },
-  cta: { marginTop: 14, borderRadius: 12, paddingVertical: 12 },
+  toggleBtn: { flex: 1 },
+  cta: { marginTop: 14 },
+  historyBtn: { marginTop: spacing.sm },
 });

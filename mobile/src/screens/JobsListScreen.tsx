@@ -4,7 +4,6 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
@@ -46,7 +45,18 @@ import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 import { triggerHaptic } from "../utils/haptics";
-import { AppBottomSheet, BottomSheetTextInput } from "../ui";
+import {
+  AppBottomSheet,
+  BottomSheetTextInput,
+  BriefcaseIcon,
+  Button,
+  Card,
+  ChevronIcon,
+  EmptyState,
+  ErrorState,
+  PlusIcon,
+  ScreenHeader,
+} from "../ui";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "JobsList">;
 
@@ -247,11 +257,12 @@ export function JobsListScreen(_props: Props) {
 
   if (isError && !data) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <Text style={{ color: c.text }}>Failed to load jobs</Text>
-        <TouchableOpacity onPress={() => void refetch()}>
-          <Text style={[styles.link, { color: c.primary }]}>Try again</Text>
-        </TouchableOpacity>
+      <View style={[styles.flex, { backgroundColor: c.bg }]}>
+        <ErrorState
+          title="Failed to load jobs"
+          description="Check your connection and try again."
+          onRetry={() => void refetch()}
+        />
       </View>
     );
   }
@@ -265,6 +276,7 @@ export function JobsListScreen(_props: Props) {
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <View style={styles.header}>
+        <ScreenHeader title="Jobs" subtitle="Work sites and jobs" />
         <SearchBar
           value={search}
           onChangeText={setSearch}
@@ -276,22 +288,23 @@ export function JobsListScreen(_props: Props) {
           options={filterOptions}
           onChange={setCustomerId}
           placeholder="All customers"
-          style={{ marginTop: spacing.sm }}
         />
+        {canCreate ? (
+          <Button
+            title="Add job"
+            onPress={openCreate}
+            size="sm"
+            fullWidth={false}
+            leftIcon={<PlusIcon color={c.white} size={16} />}
+            style={styles.addBtn}
+          />
+        ) : null}
       </View>
-      {canCreate ? (
-        <TouchableOpacity
-          style={[styles.createBtn, { backgroundColor: c.primary }]}
-          onPress={openCreate}
-        >
-          <Text style={styles.createBtnText}>Create job</Text>
-        </TouchableOpacity>
-      ) : null}
       {isLoading && !data ? (
         <SkeletonList rows={6} />
       ) : (
         <FlatList
-          contentContainerStyle={{ padding: spacing.md, paddingTop: 0 }}
+          contentContainerStyle={styles.list}
           data={rows}
           keyExtractor={(item, index) =>
             String(item.details?.id ?? item.id ?? index)
@@ -308,11 +321,29 @@ export function JobsListScreen(_props: Props) {
             />
           }
           ListEmptyComponent={
-            <Text style={[styles.empty, { color: c.muted }]}>
-              {debouncedSearch || customerId
-                ? "No jobs match your filters"
-                : "No jobs"}
-            </Text>
+            <EmptyState
+              icon={<BriefcaseIcon color={c.primary} size={28} />}
+              title={
+                debouncedSearch || customerId
+                  ? "No matching jobs"
+                  : "No jobs yet"
+              }
+              description={
+                debouncedSearch || customerId
+                  ? "Try a different search or clear filters."
+                  : "Add your first job site to start tracking time."
+              }
+              actionLabel={
+                !debouncedSearch && !customerId && canCreate
+                  ? "Add job"
+                  : undefined
+              }
+              onAction={
+                !debouncedSearch && !customerId && canCreate
+                  ? openCreate
+                  : undefined
+              }
+            />
           }
           ListFooterComponent={
             <ListPager
@@ -327,33 +358,26 @@ export function JobsListScreen(_props: Props) {
           renderItem={({ item }) => {
             const name = jobName(item) || `Job #${jobId(item) ?? ""}`;
             return (
-              <TouchableOpacity
-                style={[
-                  styles.card,
-                  { backgroundColor: c.surface, borderColor: c.border },
-                ]}
-                disabled={!canEdit}
-                onPress={() => openEdit(item)}
+              <Card
+                style={styles.card}
+                accessibilityLabel={`Job ${name}`}
+                onPress={canEdit ? () => openEdit(item) : undefined}
               >
-                <Text style={[styles.name, { color: c.text }]}>{name}</Text>
-                <Text style={{ color: c.muted }}>
-                  {item.customer?.name || "No customer"}
-                  {item.site_contact_name
-                    ? ` · ${item.site_contact_name}`
-                    : ""}
-                </Text>
-                {canEdit ? (
-                  <Text
-                    style={{
-                      color: c.primary,
-                      marginTop: 8,
-                      fontWeight: "600",
-                    }}
-                  >
-                    Edit
-                  </Text>
-                ) : null}
-              </TouchableOpacity>
+                <View style={styles.row}>
+                  <View style={styles.textCol}>
+                    <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>
+                      {name}
+                    </Text>
+                    <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>
+                      {item.customer?.name || "No customer"}
+                      {item.site_contact_name
+                        ? ` · ${item.site_contact_name}`
+                        : ""}
+                    </Text>
+                  </View>
+                  {canEdit ? <ChevronIcon color={c.subtle} /> : null}
+                </View>
+              </Card>
             );
           }}
         />
@@ -367,24 +391,20 @@ export function JobsListScreen(_props: Props) {
           setEditing(null);
         }}
         footer={
-          <TouchableOpacity
-            style={[
-              styles.submitBtn,
-              { backgroundColor: c.primary, opacity: pending ? 0.6 : 1 },
-            ]}
-            disabled={pending}
-            onPress={() => void handleSubmit()}
-          >
-            <Text style={styles.createBtnText}>
-              {pending
+          <Button
+            title={
+              pending
                 ? isEdit
                   ? "Saving…"
                   : "Creating…"
                 : isEdit
                   ? "Save"
-                  : "Create"}
-            </Text>
-          </TouchableOpacity>
+                  : "Create"
+            }
+            disabled={pending}
+            loading={pending}
+            onPress={() => void handleSubmit()}
+          />
         }
       >
         <Text style={[styles.fieldLabel, { color: c.muted }]}>Name *</Text>
@@ -452,25 +472,27 @@ export function JobsListScreen(_props: Props) {
 }
 
 const styles = StyleSheet.create({
-  header: { paddingHorizontal: spacing.md, paddingTop: spacing.md },
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  card: {
-    borderRadius: 16,
+  flex: { flex: 1 },
+  header: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    gap: spacing.sm,
+  },
+  addBtn: { alignSelf: "flex-end" },
+  list: {
     padding: spacing.md,
-    marginBottom: spacing.sm,
-    borderWidth: 1,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xxl,
   },
-  name: { fontWeight: "700", marginBottom: 4 },
-  empty: { textAlign: "center", marginTop: 40 },
-  link: { fontWeight: "700", marginTop: 8 },
-  createBtn: {
-    marginHorizontal: spacing.md,
-    marginBottom: spacing.sm,
-    borderRadius: 12,
-    paddingVertical: 12,
+  card: { marginBottom: spacing.sm },
+  row: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: spacing.sm,
   },
-  createBtnText: { color: "#fff", fontWeight: "700" },
+  textCol: { flex: 1, minWidth: 0 },
+  name: { fontWeight: "700", marginBottom: 4, letterSpacing: -0.2 },
+  meta: { marginTop: 2, fontSize: 12, fontWeight: "500" },
   fieldLabel: {
     fontWeight: "600",
     fontSize: 13,
@@ -484,10 +506,5 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
     marginBottom: 4,
-  },
-  submitBtn: {
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
   },
 });

@@ -1,10 +1,23 @@
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import type { ReactNode } from "react";
+import { ScrollView, StyleSheet, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { can, getOrganisationAcl } from "@mytask/services";
-import { spacing } from "@mytask/theme";
-import { ChevronIcon } from "../ui";
+import { radii, spacing } from "@mytask/theme";
+import {
+  BriefcaseIcon,
+  BuildingIcon,
+  Button,
+  ChartIcon,
+  ListTile,
+  LogIcon,
+  ScreenHeader,
+  SectionHeader,
+  SettingsIcon,
+  UsersIcon,
+  WalletIcon,
+} from "../ui";
 import type { MoreStackParamList, RootStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
@@ -12,6 +25,14 @@ import { useThemeStore } from "../store/themeStore";
 type Props = NativeStackScreenProps<MoreStackParamList, "MoreHome">;
 
 type MoreRoute = Exclude<keyof MoreStackParamList, "MoreHome">;
+
+type MoreItem = {
+  label: string;
+  hint: string;
+  route: MoreRoute;
+  group: "Management" | "Business" | "Settings";
+  icon: (color: string) => ReactNode;
+};
 
 export function MoreScreen({ navigation, route }: Props) {
   const { orgCode } = route.params;
@@ -22,13 +43,15 @@ export function MoreScreen({ navigation, route }: Props) {
   const c = useThemeStore((s) => s.colors);
   const acl = getOrganisationAcl(organisation?.role || organisation?.role_code);
 
-  const items: Array<{ label: string; hint: string; route: MoreRoute }> = [
+  const items: MoreItem[] = [
     ...(can(acl, "employee", "list")
       ? [
           {
             label: "Employees",
             hint: "Team members and invitations",
             route: "EmployeesList" as const,
+            group: "Management" as const,
+            icon: (color: string) => <UsersIcon color={color} size={20} />,
           },
         ]
       : []),
@@ -38,11 +61,21 @@ export function MoreScreen({ navigation, route }: Props) {
             label: "Customers",
             hint: "Client directory",
             route: "CustomersList" as const,
+            group: "Management" as const,
+            icon: (color: string) => <BuildingIcon color={color} size={20} />,
           },
         ]
       : []),
     ...(can(acl, "job", "list")
-      ? [{ label: "Jobs", hint: "Work sites and jobs", route: "JobsList" as const }]
+      ? [
+          {
+            label: "Jobs",
+            hint: "Work sites and jobs",
+            route: "JobsList" as const,
+            group: "Management" as const,
+            icon: (color: string) => <BriefcaseIcon color={color} size={20} />,
+          },
+        ]
       : []),
     ...(can(acl, "report", "view")
       ? [
@@ -50,6 +83,8 @@ export function MoreScreen({ navigation, route }: Props) {
             label: "Reports",
             hint: "Pay reports and PDF",
             route: "Reports" as const,
+            group: "Business" as const,
+            icon: (color: string) => <ChartIcon color={color} size={20} />,
           },
         ]
       : []),
@@ -59,6 +94,8 @@ export function MoreScreen({ navigation, route }: Props) {
             label: "Payouts",
             hint: "Payroll payouts",
             route: "Payouts" as const,
+            group: "Business" as const,
+            icon: (color: string) => <WalletIcon color={color} size={20} />,
           },
         ]
       : []),
@@ -68,6 +105,8 @@ export function MoreScreen({ navigation, route }: Props) {
             label: "System logs",
             hint: "Audit trail",
             route: "SystemLogs" as const,
+            group: "Settings" as const,
+            icon: (color: string) => <LogIcon color={color} size={20} />,
           },
         ]
       : []),
@@ -77,10 +116,16 @@ export function MoreScreen({ navigation, route }: Props) {
             label: "Settings",
             hint: "Organisation configuration",
             route: "SettingsHub" as const,
+            group: "Settings" as const,
+            icon: (color: string) => <SettingsIcon color={color} size={20} />,
           },
         ]
       : []),
   ];
+
+  const groups = (["Management", "Business", "Settings"] as const).filter(
+    (g) => items.some((i) => i.group === g),
+  );
 
   async function leaveOrganisation() {
     await clear();
@@ -90,95 +135,90 @@ export function MoreScreen({ navigation, route }: Props) {
     });
   }
 
+  function navigateTo(itemRoute: MoreRoute) {
+    switch (itemRoute) {
+      case "EmployeesList":
+        navigation.navigate("EmployeesList", { orgCode });
+        break;
+      case "CustomersList":
+        navigation.navigate("CustomersList", { orgCode });
+        break;
+      case "JobsList":
+        navigation.navigate("JobsList", { orgCode });
+        break;
+      case "Reports":
+        navigation.navigate("Reports", { orgCode });
+        break;
+      case "Payouts":
+        navigation.navigate("Payouts", { orgCode });
+        break;
+      case "SystemLogs":
+        navigation.navigate("SystemLogs", { orgCode });
+        break;
+      case "SettingsHub":
+        navigation.navigate("SettingsHub", { orgCode });
+        break;
+      default:
+        break;
+    }
+  }
+
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: c.bg }}
       contentContainerStyle={styles.container}
     >
-      <Text style={[styles.title, { color: c.text }]}>More</Text>
-      <Text style={[styles.sub, { color: c.muted }]}>
-        Organisation tools and settings
-      </Text>
+      <ScreenHeader
+        title="More"
+        subtitle="Organisation tools and settings"
+      />
 
-      {items.map((item) => (
-        <TouchableOpacity
-          key={item.route}
-          style={[
-            styles.card,
-            { backgroundColor: c.surface, borderColor: c.border },
-          ]}
-          onPress={() => {
-            // Narrow per-route for the More stack navigator.
-            switch (item.route) {
-              case "EmployeesList":
-                navigation.navigate("EmployeesList", { orgCode });
-                break;
-              case "CustomersList":
-                navigation.navigate("CustomersList", { orgCode });
-                break;
-              case "JobsList":
-                navigation.navigate("JobsList", { orgCode });
-                break;
-              case "Reports":
-                navigation.navigate("Reports", { orgCode });
-                break;
-              case "Payouts":
-                navigation.navigate("Payouts", { orgCode });
-                break;
-              case "SystemLogs":
-                navigation.navigate("SystemLogs", { orgCode });
-                break;
-              case "SettingsHub":
-                navigation.navigate("SettingsHub", { orgCode });
-                break;
-              default:
-                break;
-            }
-          }}
-          activeOpacity={0.85}
-        >
-          <View style={styles.cardText}>
-            <Text style={[styles.label, { color: c.text }]}>{item.label}</Text>
-            <Text style={[styles.hint, { color: c.muted }]}>{item.hint}</Text>
-          </View>
-          <ChevronIcon color={c.muted} />
-        </TouchableOpacity>
+      {groups.map((group) => (
+        <View key={group} style={styles.group}>
+          <SectionHeader title={group} />
+          {items
+            .filter((item) => item.group === group)
+            .map((item) => (
+              <ListTile
+                key={item.route}
+                title={item.label}
+                subtitle={item.hint}
+                onPress={() => navigateTo(item.route)}
+                left={
+                  <View
+                    style={[
+                      styles.iconWrap,
+                      { backgroundColor: c.primarySoft },
+                    ]}
+                  >
+                    {item.icon(c.primary)}
+                  </View>
+                }
+              />
+            ))}
+        </View>
       ))}
 
-      <TouchableOpacity
-        style={[styles.leave, { borderColor: c.border }]}
-        onPress={() => void leaveOrganisation()}
-      >
-        <Text style={[styles.leaveText, { color: c.primary }]}>
-          Back to myTask
-        </Text>
-      </TouchableOpacity>
+      <View style={styles.leaveWrap}>
+        <Button
+          title="Back to myTask"
+          variant="outline"
+          onPress={() => void leaveOrganisation()}
+        />
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  title: { fontSize: 22, fontWeight: "700" },
-  sub: { marginTop: 4, marginBottom: spacing.lg, fontSize: 13 },
-  card: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    flexDirection: "row",
+  group: { marginBottom: spacing.md },
+  iconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.md,
     alignItems: "center",
-    gap: spacing.sm,
+    justifyContent: "center",
   },
-  cardText: { flex: 1, minWidth: 0 },
-  label: { fontSize: 15, fontWeight: "700" },
-  hint: { marginTop: 4, fontSize: 12 },
-  leave: {
-    marginTop: spacing.lg,
-    borderRadius: 14,
-    borderWidth: 1,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  leaveText: { fontWeight: "700", fontSize: 15 },
+  leaveWrap: { marginTop: spacing.md },
 });

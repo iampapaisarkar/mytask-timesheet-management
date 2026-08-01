@@ -18,6 +18,7 @@ import {
 import { spacing } from "@mytask/theme";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { useThemeStore } from "../store/themeStore";
+import { Card, ChevronIcon, ScreenHeader } from "../ui";
 
 if (
   Platform.OS === "android" &&
@@ -39,12 +40,7 @@ function FaqAccordion({
   const [openId, setOpenId] = useState<string | null>(null);
 
   return (
-    <View
-      style={[
-        styles.sectionCard,
-        { backgroundColor: c.surface, borderColor: c.border },
-      ]}
-    >
+    <Card style={styles.sectionCard}>
       <Text style={[styles.sectionTitle, { color: c.text }]}>{title}</Text>
       {items.map((item) => {
         const open = openId === item.q;
@@ -61,8 +57,12 @@ function FaqAccordion({
                 setOpenId(open ? null : item.q);
               }}
               accessibilityRole="button"
+              style={styles.faqQRow}
             >
               <Text style={[styles.faqQ, { color: c.text }]}>{item.q}</Text>
+              <View style={open ? styles.chevronOpen : undefined}>
+                <ChevronIcon color={c.subtle} size={16} />
+              </View>
             </TouchableOpacity>
             {open ? (
               <Text style={[styles.faqA, { color: c.muted }]}>{item.a}</Text>
@@ -70,7 +70,7 @@ function FaqAccordion({
           </View>
         );
       })}
-    </View>
+    </Card>
   );
 }
 
@@ -97,9 +97,8 @@ export function LegalScreen({ route }: Props) {
       style={{ flex: 1, backgroundColor: c.bg }}
       contentContainerStyle={styles.container}
     >
-      <Text style={[styles.title, { color: c.text }]}>{title}</Text>
       <Text style={[styles.brand, { color: c.primary }]}>myTask</Text>
-      <Text style={[styles.desc, { color: c.muted }]}>{description}</Text>
+      <ScreenHeader title={title} subtitle={description} />
 
       {kind === "help"
         ? FAQ_SECTIONS.map((section) => (
@@ -111,20 +110,14 @@ export function LegalScreen({ route }: Props) {
           ))
         : (kind === "terms" ? TERMS_SECTIONS : PRIVACY_SECTIONS).map(
             (section) => (
-              <View
-                key={section.title}
-                style={[
-                  styles.sectionCard,
-                  { backgroundColor: c.surface, borderColor: c.border },
-                ]}
-              >
+              <Card key={section.title} style={styles.sectionCard}>
                 <Text style={[styles.sectionTitle, { color: c.text }]}>
                   {section.title}
                 </Text>
                 <Text style={[styles.body, { color: c.muted }]}>
                   {section.body}
                 </Text>
-              </View>
+              </Card>
             ),
           )}
     </ScrollView>
@@ -133,21 +126,27 @@ export function LegalScreen({ route }: Props) {
 
 const styles = StyleSheet.create({
   container: { padding: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
-  title: { fontSize: 22, fontWeight: "700" },
-  brand: { fontSize: 14, fontWeight: "700" },
-  desc: { fontSize: 13, lineHeight: 18, marginBottom: spacing.sm },
-  sectionCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: spacing.md,
+  brand: {
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
   },
+  sectionCard: { marginBottom: 0 },
   sectionTitle: { fontSize: 15, fontWeight: "700", marginBottom: 8 },
   faqItem: {
     borderTopWidth: StyleSheet.hairlineWidth,
     paddingTop: 10,
     marginTop: 10,
   },
-  faqQ: { fontSize: 14, fontWeight: "600", lineHeight: 20 },
+  faqQRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
+  faqQ: { flex: 1, fontSize: 14, fontWeight: "600", lineHeight: 20 },
+  chevronOpen: { transform: [{ rotate: "90deg" }] },
   faqA: { marginTop: 8, fontSize: 13, lineHeight: 20 },
   body: { fontSize: 14, lineHeight: 22 },
 });

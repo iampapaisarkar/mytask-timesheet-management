@@ -1,10 +1,19 @@
-import { ScrollView, StyleSheet, Text, TouchableOpacity } from "react-native";
+import type { ReactNode } from "react";
+import { ScrollView, StyleSheet, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { spacing } from "@mytask/theme";
+import { radii, spacing } from "@mytask/theme";
 import { AccessDenied } from "../components/AccessDenied";
 import { useOrgAcl } from "../hooks/useOrgAcl";
 import type { MoreStackParamList } from "../navigation/types";
 import { useThemeStore } from "../store/themeStore";
+import {
+  BuildingIcon,
+  ClockIcon,
+  EmptyState,
+  ScreenHeader,
+  SettingsIcon,
+  ListTile,
+} from "../ui";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "SettingsHub">;
 
@@ -26,6 +35,7 @@ export function SettingsHubScreen({ navigation, route }: Props) {
     label: string;
     hint: string;
     route: SettingsRoute;
+    icon: (color: string) => ReactNode;
   }> = [
     ...(can("organisationSetting", "view")
       ? [
@@ -33,6 +43,7 @@ export function SettingsHubScreen({ navigation, route }: Props) {
             label: "Organisation details",
             hint: "Name, code, your role",
             route: "OrganisationDetails" as const,
+            icon: (color: string) => <BuildingIcon color={color} size={20} />,
           },
         ]
       : []),
@@ -42,6 +53,7 @@ export function SettingsHubScreen({ navigation, route }: Props) {
             label: "Holiday calendars",
             hint: "Public holidays",
             route: "HolidayCalendars" as const,
+            icon: (color: string) => <SettingsIcon color={color} size={20} />,
           },
         ]
       : []),
@@ -51,6 +63,7 @@ export function SettingsHubScreen({ navigation, route }: Props) {
             label: "Payroll calendars",
             hint: "Pay periods",
             route: "PayrollCalendars" as const,
+            icon: (color: string) => <ClockIcon color={color} size={20} />,
           },
         ]
       : []),
@@ -61,28 +74,31 @@ export function SettingsHubScreen({ navigation, route }: Props) {
       style={{ flex: 1, backgroundColor: c.bg }}
       contentContainerStyle={styles.container}
     >
-      <Text style={[styles.title, { color: c.text }]}>Settings</Text>
-      <Text style={[styles.sub, { color: c.muted }]}>
-        Organisation configuration
-      </Text>
+      <ScreenHeader
+        title="Settings"
+        subtitle="Organisation configuration"
+      />
       {links.length === 0 ? (
-        <Text style={{ color: c.muted }}>
-          No settings are available for your role.
-        </Text>
+        <EmptyState
+          icon={<SettingsIcon color={c.primary} size={28} />}
+          title="No settings available"
+          description="Settings for your role will appear here once granted."
+        />
       ) : (
         links.map((item) => (
-          <TouchableOpacity
+          <ListTile
             key={item.route}
-            style={[
-              styles.card,
-              { backgroundColor: c.surface, borderColor: c.border },
-            ]}
+            title={item.label}
+            subtitle={item.hint}
             onPress={() => navigation.navigate(item.route, { orgCode })}
-          >
-            <Text style={[styles.label, { color: c.text }]}>{item.label}</Text>
-            <Text style={[styles.hint, { color: c.muted }]}>{item.hint}</Text>
-            <Text style={[styles.chevron, { color: c.primary }]}>Open</Text>
-          </TouchableOpacity>
+            left={
+              <View
+                style={[styles.iconWrap, { backgroundColor: c.primarySoft }]}
+              >
+                {item.icon(c.primary)}
+              </View>
+            }
+          />
         ))
       )}
     </ScrollView>
@@ -91,15 +107,11 @@ export function SettingsHubScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   container: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  title: { fontSize: 22, fontWeight: "700" },
-  sub: { marginTop: 4, marginBottom: spacing.lg, fontSize: 13 },
-  card: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
+  iconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.md,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  label: { fontSize: 15, fontWeight: "700" },
-  hint: { marginTop: 4, fontSize: 12 },
-  chevron: { marginTop: 8, fontWeight: "700", fontSize: 12 },
 });

@@ -1,16 +1,9 @@
 import { useState } from "react";
-import {
-  FlatList,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { FlatList, StyleSheet, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useSubmitTimesheet, useTimesheet } from "@mytask/hooks";
 import { can, getOrganisationAcl } from "@mytask/services";
-import { spacing } from "@mytask/theme";
+import { spacing, typography } from "@mytask/theme";
 import { formatTimesheetLabel, getErrorMessage } from "@mytask/utils";
 import type { SheetsStackParamList } from "../navigation/types";
 import { AccessDenied } from "../components/AccessDenied";
@@ -19,6 +12,18 @@ import { SkeletonDetail } from "../components/Skeleton";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
+import {
+  BriefcaseIcon,
+  Button,
+  Card,
+  ChevronIcon,
+  EmptyState,
+  ErrorState,
+  ScreenHeader,
+  SheetsIcon,
+  StatusBadge,
+  TextField,
+} from "../ui";
 
 type Props = NativeStackScreenProps<SheetsStackParamList, "TimesheetDetail">;
 
@@ -67,6 +72,11 @@ export function TimesheetDetailScreen({ navigation, route }: Props) {
     ? "Reject remarks"
     : "Approval remarks";
 
+  const jobsLabel =
+    Array.isArray(data?.jobs) && data.jobs.length
+      ? data.jobs.map((j) => j.name).filter(Boolean).join(", ")
+      : data?.job?.name || "";
+
   function openSubmitRemarks() {
     setRemarks("");
     setRemarksError(undefined);
@@ -109,11 +119,11 @@ export function TimesheetDetailScreen({ navigation, route }: Props) {
 
   if (query.isError) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <Text style={{ color: c.text }}>Failed to load timesheet</Text>
-        <TouchableOpacity onPress={() => void query.refetch()}>
-          <Text style={[styles.link, { color: c.primary }]}>Try again</Text>
-        </TouchableOpacity>
+      <View style={[styles.flex, { backgroundColor: c.bg }]}>
+        <ErrorState
+          title="Failed to load timesheet"
+          onRetry={() => void query.refetch()}
+        />
       </View>
     );
   }
@@ -121,51 +131,49 @@ export function TimesheetDetailScreen({ navigation, route }: Props) {
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <View style={styles.header}>
-        <Text style={[styles.title, { color: c.text }]}>
-          {formatTimesheetLabel(
+        <ScreenHeader
+          title={formatTimesheetLabel(
             { code: data?.code, id: data?.id ?? id },
             { prefix: true },
           )}
-        </Text>
-        <Text style={[styles.meta, { color: c.muted }]}>
-          {data?.period_range ||
+          subtitle={
+            data?.period_range ||
             [data?.period_start_date, data?.period_end_date]
               .filter(Boolean)
               .join(" → ") ||
-            "—"}
-          {Array.isArray(data?.jobs) && data.jobs.length
-            ? ` · ${data.jobs.map((j) => j.name).filter(Boolean).join(", ")}`
-            : data?.job?.name
-              ? ` · ${data.job.name}`
-              : ""}
-        </Text>
-        <Text style={[styles.status, { color: c.primary }]}>
-          {data?.status?.name || data?.status?.code || "—"}
-        </Text>
+            "—"
+          }
+        />
+
+        <View style={styles.metaRow}>
+          <StatusBadge status={data?.status} size="md" />
+          {jobsLabel ? (
+            <View style={styles.jobRow}>
+              <BriefcaseIcon color={c.subtle} size={14} />
+              <Text style={[styles.jobText, { color: c.muted }]} numberOfLines={1}>
+                {jobsLabel}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
         {existingRemarks && !canSubmit ? (
-          <View
-            style={[
-              styles.remarksBox,
-              { backgroundColor: c.surface, borderColor: c.border },
-            ]}
-          >
+          <Card style={styles.remarksCard}>
             <Text style={[styles.remarksLabel, { color: c.muted }]}>
               {existingRemarksLabel}
             </Text>
             <Text style={{ color: c.text }}>{existingRemarks}</Text>
-          </View>
+          </Card>
         ) : null}
+
         {canSubmit ? (
-          <TouchableOpacity
-            style={[
-              styles.submit,
-              { backgroundColor: c.primary, opacity: submit.isPending ? 0.7 : 1 },
-            ]}
-            disabled={submit.isPending}
-            onPress={openSubmitRemarks}
-          >
-            <Text style={styles.submitText}>Submit for approval</Text>
-          </TouchableOpacity>
+          <View style={styles.submitWrap}>
+            <Button
+              title="Submit for approval"
+              onPress={openSubmitRemarks}
+              loading={submit.isPending}
+            />
+          </View>
         ) : null}
       </View>
 
@@ -178,36 +186,44 @@ export function TimesheetDetailScreen({ navigation, route }: Props) {
           <Text style={[styles.section, { color: c.text }]}>Days</Text>
         }
         ListEmptyComponent={
-          <Text style={[styles.empty, { color: c.muted }]}>
-            No days on this timesheet
-          </Text>
+          <EmptyState
+            icon={<SheetsIcon color={c.primary} size={28} />}
+            title="No days on this timesheet"
+          />
         }
         renderItem={({ item }) => (
-          <TouchableOpacity
-            style={[
-              styles.card,
-              { backgroundColor: c.surface, borderColor: c.border },
-            ]}
-            disabled={item.id == null}
-            onPress={() => {
-              if (item.id == null) return;
-              navigation.navigate("TimesheetDayDetail", {
-                orgCode,
-                timesheetId: id,
-                dayId: String(item.id),
-                mode: "self",
-              });
-            }}
+          <Card
+            style={styles.dayCard}
+            onPress={
+              item.id == null
+                ? undefined
+                : () => {
+                    navigation.navigate("TimesheetDayDetail", {
+                      orgCode,
+                      timesheetId: id,
+                      dayId: String(item.id),
+                      mode: "self",
+                    });
+                  }
+            }
+            accessibilityLabel={`Day ${item.date || ""}`}
           >
-            <Text style={[styles.dayTitle, { color: c.text }]}>
-              {item.date || "—"}
-              {item.day_name ? ` · ${item.day_name}` : ""}
-            </Text>
-            <Text style={{ color: c.muted }}>
-              {item.total_hours != null ? `${item.total_hours} hrs` : "—"}
-              {item.is_public_holiday ? " · Holiday" : ""}
-            </Text>
-          </TouchableOpacity>
+            <View style={styles.dayRow}>
+              <View style={styles.dayTextCol}>
+                <Text style={[styles.dayTitle, { color: c.text }]}>
+                  {item.date || "—"}
+                  {item.day_name ? ` · ${item.day_name}` : ""}
+                </Text>
+                <Text style={{ color: c.muted, marginTop: 2 }}>
+                  {item.total_hours != null ? `${item.total_hours} hrs` : "—"}
+                  {item.is_public_holiday ? " · Holiday" : ""}
+                </Text>
+              </View>
+              {item.id != null ? (
+                <ChevronIcon color={c.subtle} />
+              ) : null}
+            </View>
+          </Card>
         )}
       />
 
@@ -217,58 +233,41 @@ export function TimesheetDetailScreen({ navigation, route }: Props) {
         title="Submit for approval"
         footer={
           <View style={styles.footerRow}>
-            <TouchableOpacity
-              style={[styles.footerBtn, { borderColor: c.border }]}
-              onPress={closeSubmitRemarks}
-              disabled={submit.isPending}
-            >
-              <Text style={{ color: c.text, fontWeight: "700" }}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.footerBtn,
-                styles.footerPrimary,
-                {
-                  backgroundColor: c.primary,
-                  opacity: submit.isPending ? 0.7 : 1,
-                },
-              ]}
-              disabled={submit.isPending}
-              onPress={() => void confirmSubmit()}
-            >
-              <Text style={styles.submitText}>
-                {submit.isPending ? "Submitting…" : "Submit"}
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.footerHalf}>
+              <Button
+                title="Cancel"
+                variant="outline"
+                onPress={closeSubmitRemarks}
+                disabled={submit.isPending}
+              />
+            </View>
+            <View style={styles.footerHalf}>
+              <Button
+                title={submit.isPending ? "Submitting…" : "Submit"}
+                onPress={() => void confirmSubmit()}
+                loading={submit.isPending}
+              />
+            </View>
           </View>
         }
       >
         <View style={{ padding: spacing.lg }}>
-          <Text style={{ color: c.muted, marginBottom: spacing.sm }}>
+          <Text style={{ color: c.muted, marginBottom: spacing.md }}>
             Remarks are required before this status change can proceed.
           </Text>
-          <Text style={[styles.inputLabel, { color: c.text }]}>Remarks</Text>
-          <TextInput
+          <TextField
+            label="Remarks"
             value={remarks}
             onChangeText={(value) => {
               setRemarks(value);
               if (remarksError) setRemarksError(undefined);
             }}
             placeholder="Enter remarks"
-            placeholderTextColor={c.muted}
             multiline
-            style={[
-              styles.input,
-              {
-                color: c.text,
-                borderColor: remarksError ? "#ef4444" : c.border,
-                backgroundColor: c.surface,
-              },
-            ]}
+            numberOfLines={5}
+            style={styles.textArea}
+            error={remarksError}
           />
-          {remarksError ? (
-            <Text style={styles.errorText}>{remarksError}</Text>
-          ) : null}
         </View>
       </FullScreenSheet>
     </View>
@@ -276,61 +275,51 @@ export function TimesheetDetailScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  flex: { flex: 1 },
   header: { padding: spacing.lg, paddingBottom: spacing.sm },
-  title: { fontSize: 22, fontWeight: "700" },
-  meta: { marginTop: 4, fontSize: 13 },
-  status: { marginTop: 8, fontWeight: "700", fontSize: 13 },
-  remarksBox: {
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    marginTop: 4,
+  },
+  jobRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flexShrink: 1,
+  },
+  jobText: {
+    fontSize: typography.sizes.sm,
+    fontWeight: "500",
+  },
+  remarksCard: {
     marginTop: spacing.md,
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: spacing.md,
   },
   remarksLabel: {
     fontSize: 11,
     fontWeight: "700",
     textTransform: "uppercase",
+    letterSpacing: 0.4,
     marginBottom: 6,
   },
-  submit: {
-    marginTop: spacing.md,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  submitText: { color: "#fff", fontWeight: "700" },
+  submitWrap: { marginTop: spacing.md },
   section: {
     fontSize: 15,
     fontWeight: "700",
     marginBottom: spacing.sm,
   },
-  card: {
-    borderRadius: 16,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    borderWidth: 1,
-  },
-  dayTitle: { fontWeight: "700", marginBottom: 4 },
-  empty: { textAlign: "center", marginTop: 24 },
-  link: { fontWeight: "700", marginTop: 8 },
-  inputLabel: { fontWeight: "600", marginBottom: 8 },
-  input: {
-    minHeight: 120,
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    textAlignVertical: "top",
-  },
-  errorText: { color: "#ef4444", marginTop: 8, fontSize: 13 },
-  footerRow: { flexDirection: "row", gap: 10 },
-  footerBtn: {
-    flex: 1,
-    borderRadius: 14,
-    paddingVertical: 14,
+  dayCard: { marginBottom: spacing.sm },
+  dayRow: {
+    flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1,
+    justifyContent: "space-between",
+    gap: spacing.sm,
   },
-  footerPrimary: { borderWidth: 0 },
+  dayTextCol: { flex: 1, minWidth: 0 },
+  dayTitle: { fontWeight: "700" },
+  footerRow: { flexDirection: "row", gap: spacing.sm },
+  footerHalf: { flex: 1 },
+  textArea: { minHeight: 120, textAlignVertical: "top", paddingTop: 12 },
 });

@@ -1,11 +1,4 @@
-import {
-  Linking,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Linking, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
@@ -20,6 +13,15 @@ import type { RootStackParamList } from "../navigation/RootNavigator";
 import { SkeletonDetail } from "../components/Skeleton";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
+import {
+  Button,
+  Card,
+  Divider,
+  ErrorState,
+  ScreenHeader,
+  SectionHeader,
+  StatCard,
+} from "../ui";
 
 function formatDate(value?: string | null) {
   if (!value) return "—";
@@ -63,11 +65,11 @@ export function SubscriptionScreen() {
 
   if (isError || !data) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <Text style={{ color: c.text }}>Failed to load subscription</Text>
-        <TouchableOpacity onPress={() => refetch()}>
-          <Text style={{ color: c.primary, marginTop: 8 }}>Try again</Text>
-        </TouchableOpacity>
+      <View style={{ flex: 1, backgroundColor: c.bg }}>
+        <ErrorState
+          title="Failed to load subscription"
+          onRetry={() => refetch()}
+        />
       </View>
     );
   }
@@ -141,60 +143,55 @@ export function SubscriptionScreen() {
       style={{ flex: 1, backgroundColor: c.bg }}
       contentContainerStyle={styles.pad}
     >
-      <Text style={[styles.title, { color: c.text }]}>Subscription</Text>
+      <ScreenHeader title="Subscription" subtitle="Plan, billing, and usage" />
 
       {data.cancel_at_period_end ? (
-        <View
-          style={[
-            styles.card,
-            { backgroundColor: "#FEF3C7", borderColor: "#F59E0B" },
-          ]}
+        <Card
+          style={styles.card}
+          accentBorder={c.warning}
         >
-          <Text style={{ color: "#92400E", fontWeight: "700" }}>
-            Cancellation scheduled
-          </Text>
-          <Text style={{ color: "#92400E", marginTop: 6 }}>
-            Pro access until{" "}
-            {formatDateOnly(data.access_ends_at || data.current_period_end)}
-            {data.days_until_period_end != null
-              ? ` (${data.days_until_period_end} day(s) left)`
-              : ""}
-            . Then Free limits apply.
-          </Text>
-        </View>
+          <View
+            style={[styles.bannerFill, { backgroundColor: c.warningSoft }]}
+          >
+            <Text style={{ color: c.warningText, fontWeight: "700" }}>
+              Cancellation scheduled
+            </Text>
+            <Text style={{ color: c.warningText, marginTop: 6 }}>
+              Pro access until{" "}
+              {formatDateOnly(data.access_ends_at || data.current_period_end)}
+              {data.days_until_period_end != null
+                ? ` (${data.days_until_period_end} day(s) left)`
+                : ""}
+              . Then Free limits apply.
+            </Text>
+          </View>
+        </Card>
       ) : null}
 
       {!data.is_pro && data.end_reason_message ? (
-        <View
-          style={[
-            styles.card,
-            { backgroundColor: "#FEE2E2", borderColor: "#EF4444" },
-          ]}
-        >
-          <Text style={{ color: "#991B1B", fontWeight: "700" }}>
-            {data.end_reason === "payment_failed" || data.end_reason === "unpaid"
-              ? "Pro disabled — payment issue"
-              : "Moved to Free plan"}
-          </Text>
-          <Text style={{ color: "#991B1B", marginTop: 6, lineHeight: 20 }}>
-            {data.end_reason_message}
-          </Text>
-          <TouchableOpacity
-            style={[styles.btn, { backgroundColor: c.primary, marginTop: 12 }]}
-            onPress={() => navigation.navigate("Pricing")}
+        <Card style={styles.card} accentBorder={c.negative}>
+          <View
+            style={[styles.bannerFill, { backgroundColor: c.negativeSoft }]}
           >
-            <Text style={{ color: "#fff", fontWeight: "700" }}>Resubscribe to Pro</Text>
-          </TouchableOpacity>
-        </View>
+            <Text style={{ color: c.negativeText, fontWeight: "700" }}>
+              {data.end_reason === "payment_failed" || data.end_reason === "unpaid"
+                ? "Pro disabled — payment issue"
+                : "Moved to Free plan"}
+            </Text>
+            <Text style={{ color: c.negativeText, marginTop: 6, lineHeight: 20 }}>
+              {data.end_reason_message}
+            </Text>
+            <Button
+              title="Resubscribe to Pro"
+              onPress={() => navigation.navigate("Pricing")}
+              style={styles.resubscribeBtn}
+            />
+          </View>
+        </Card>
       ) : null}
 
-      <View
-        style={[
-          styles.card,
-          { backgroundColor: c.surface, borderColor: c.border },
-        ]}
-      >
-        <Text style={{ color: c.primary, fontWeight: "700", fontSize: 12 }}>
+      <Card style={styles.card}>
+        <Text style={[styles.eyebrow, { color: c.primary }]}>
           CURRENT PLAN
         </Text>
         <Text style={[styles.plan, { color: c.text }]}>{data.plan.name}</Text>
@@ -205,9 +202,10 @@ export function SubscriptionScreen() {
             : " forever"}
         </Text>
 
-        <View style={{ marginTop: 14, gap: 10 }}>
-          {detailRows.map((row) => (
+        <View style={styles.detailList}>
+          {detailRows.map((row, idx) => (
             <View key={row.label}>
+              {idx > 0 ? <Divider style={styles.rowDivider} /> : null}
               <Text style={{ color: c.muted, fontSize: 11, fontWeight: "700" }}>
                 {row.label.toUpperCase()}
               </Text>
@@ -218,16 +216,16 @@ export function SubscriptionScreen() {
 
         <View style={styles.row}>
           {!data.is_pro ? (
-            <Btn
-              label="Upgrade plan"
-              color={c.primary}
+            <Button
+              title="Upgrade plan"
+              fullWidth={false}
               onPress={() => navigation.navigate("Pricing")}
             />
           ) : (
             <>
-              <Btn
-                label="Billing portal"
-                color={c.primary}
+              <Button
+                title="Billing portal"
+                fullWidth={false}
                 loading={portal.isPending}
                 onPress={async () => {
                   try {
@@ -239,9 +237,10 @@ export function SubscriptionScreen() {
                 }}
               />
               {!data.cancel_at_period_end ? (
-                <Btn
-                  label="Cancel"
-                  color="#DC2626"
+                <Button
+                  title="Cancel"
+                  variant="danger"
+                  fullWidth={false}
                   loading={cancelSub.isPending}
                   onPress={async () => {
                     try {
@@ -261,9 +260,10 @@ export function SubscriptionScreen() {
               ) : null}
             </>
           )}
-          <Btn
-            label="Sync"
-            color={c.muted}
+          <Button
+            title="Sync"
+            variant="outline"
+            fullWidth={false}
             loading={sync.isPending}
             onPress={async () => {
               try {
@@ -276,70 +276,50 @@ export function SubscriptionScreen() {
             }}
           />
         </View>
+      </Card>
+
+      <SectionHeader title="Usage" />
+      <View style={styles.statsGrid}>
+        <StatCard
+          label="Organisations"
+          value={`${usage?.organisations?.used ?? 0} / ${usage?.organisations?.limit ?? "∞"}`}
+        />
+        <StatCard
+          label="Reports today"
+          value={`${usage?.reports_today?.used ?? 0} / ${usage?.reports_today?.limit ?? "∞"}`}
+        />
       </View>
 
-      <Text style={[styles.section, { color: c.text }]}>Usage</Text>
-      <View
-        style={[
-          styles.card,
-          { backgroundColor: c.surface, borderColor: c.border },
-        ]}
-      >
-        <Text style={{ color: c.text }}>
-          Organisations: {usage?.organisations?.used ?? 0} /{" "}
-          {usage?.organisations?.limit ?? "∞"}
-        </Text>
-        <Text style={{ color: c.text, marginTop: 8 }}>
-          Reports today: {usage?.reports_today?.used ?? 0} /{" "}
-          {usage?.reports_today?.limit ?? "∞"}
-        </Text>
-      </View>
-
-      <TouchableOpacity onPress={() => navigation.navigate("BillingHistory")}>
-        <Text style={{ color: c.primary, fontWeight: "600", marginTop: 8 }}>
-          Billing history →
-        </Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={() => navigation.navigate("Pricing")}>
-        <Text style={{ color: c.primary, fontWeight: "600", marginTop: 12 }}>
-          See pricing →
-        </Text>
-      </TouchableOpacity>
+      <Button
+        title="Billing history"
+        variant="ghost"
+        onPress={() => navigation.navigate("BillingHistory")}
+        style={styles.linkBtn}
+      />
+      <Button
+        title="See pricing"
+        variant="ghost"
+        onPress={() => navigation.navigate("Pricing")}
+        style={styles.linkBtn}
+      />
     </ScrollView>
   );
 }
 
-function Btn({
-  label,
-  color,
-  onPress,
-  loading,
-}: {
-  label: string;
-  color: string;
-  onPress: () => void;
-  loading?: boolean;
-}) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={loading}
-      style={[styles.btn, { backgroundColor: color, opacity: loading ? 0.6 : 1 }]}
-    >
-      <Text style={{ color: "#fff", fontWeight: "700" }}>
-        {loading ? "…" : label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
   pad: { padding: spacing.lg, paddingBottom: 40 },
-  title: { fontSize: 24, fontWeight: "800", marginBottom: 16 },
-  card: { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 14 },
+  card: { marginBottom: spacing.md },
+  bannerFill: { margin: -spacing.md, padding: spacing.md, borderRadius: 12 },
+  resubscribeBtn: { marginTop: 12 },
+  eyebrow: { fontWeight: "700", fontSize: 12, letterSpacing: 0.4 },
   plan: { fontSize: 22, fontWeight: "800", marginTop: 4 },
-  section: { fontSize: 16, fontWeight: "700", marginBottom: 8 },
+  detailList: { marginTop: 14 },
+  rowDivider: { marginVertical: spacing.sm },
   row: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 14 },
-  btn: { borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 },
+  statsGrid: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  linkBtn: { alignSelf: "flex-start", paddingHorizontal: 0, marginTop: 4 },
 });

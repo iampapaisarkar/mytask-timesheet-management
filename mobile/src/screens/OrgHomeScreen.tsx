@@ -4,20 +4,34 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { formatMoney } from "@mytask/constants";
 import { useDashboardParallel } from "@mytask/hooks";
 import { can, getOrganisationAcl } from "@mytask/services";
-import { spacing } from "@mytask/theme";
+import { radii, spacing, typography } from "@mytask/theme";
 import { getOrganisationRoleCode } from "@mytask/utils";
 import { ClockInOut } from "../components/ClockInOut";
 import { SkeletonBlock, SkeletonDashboard } from "../components/Skeleton";
 import type { DashboardStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
+import {
+  AlertIcon,
+  Card,
+  ChartIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  EmptyState,
+  ErrorState,
+  ScreenHeader,
+  SectionHeader,
+  StatCard,
+  UsersIcon,
+  WalletIcon,
+  elevation,
+} from "../ui";
 import { triggerHaptic } from "../utils/haptics";
 
 type Props = NativeStackScreenProps<DashboardStackParamList, "OrgDashboard">;
@@ -46,63 +60,20 @@ function roleDescription(role?: string | null, source?: string): string {
     : "Overview of your timesheets and activity";
 }
 
-function StatCard({
-  label,
-  value,
-  hint,
-  surface,
-  border,
-  text,
-  muted,
-  accent,
-}: {
-  label: string;
-  value: string;
-  hint: string;
-  surface: string;
-  border: string;
-  text: string;
-  muted: string;
-  accent: string;
-}) {
-  return (
-    <View style={[styles.stat, { backgroundColor: surface, borderColor: border }]}>
-      <Text style={[styles.statLabel, { color: muted }]}>{label}</Text>
-      <Text style={[styles.statValue, { color: text }]} numberOfLines={1}>
-        {value}
-      </Text>
-      <Text style={[styles.statHint, { color: accent }]} numberOfLines={2}>
-        {hint}
-      </Text>
-    </View>
-  );
-}
-
-function CardShell({
+function ChartCard({
   title,
   subtitle,
   children,
-  surface,
-  border,
-  text,
-  muted,
 }: {
   title: string;
   subtitle?: string;
   children: ReactNode;
-  surface: string;
-  border: string;
-  text: string;
-  muted: string;
 }) {
   return (
-    <View style={[styles.chartCard, { backgroundColor: surface, borderColor: border }]}>
-      <Text style={[styles.cardTitle, { color: text }]}>{title}</Text>
-      {subtitle ? (
-        <Text style={[styles.cardSub, { color: muted }]}>{subtitle}</Text>
-      ) : null}
+    <Card style={styles.chartCard}>
+      <SectionHeader title={title} subtitle={subtitle} />
       {children}
-    </View>
+    </Card>
   );
 }
 
@@ -166,11 +137,15 @@ export function OrgHomeScreen({ route }: Props) {
           label: "Worked hours",
           value: `${worked_hours_month}h`,
           hint: "This calendar month",
+          icon: <ClockIcon color={c.primary} size={16} />,
+          accent: c.primary,
         },
         {
           label: "Approved hours",
           value: `${approved_hours_month}h`,
           hint: `${pending_hours_month}h pending`,
+          icon: <CheckCircleIcon color={c.positive} size={16} />,
+          accent: c.positive,
         },
         {
           label: "Latest payout",
@@ -184,11 +159,15 @@ export function OrgHomeScreen({ route }: Props) {
           hint:
             overview?.latest_payout?.status ||
             (canPayout ? "No payout yet" : "Payouts unavailable"),
+          icon: <WalletIcon color={c.info} size={16} />,
+          accent: c.info,
         },
         {
           label: "Paid this month",
           value: formatMoney(payroll_this_month, displayCurrency),
           hint: `${paid_payouts} paid · ${pending_payouts} pending`,
+          icon: <ChartIcon color={c.secondary} size={16} />,
+          accent: c.secondary,
         },
       ];
     }
@@ -201,6 +180,8 @@ export function OrgHomeScreen({ route }: Props) {
           overview?.source === "management"
             ? "In your management scope"
             : "In view",
+        icon: <UsersIcon color={c.primary} size={16} />,
+        accent: c.primary,
       },
       {
         label: "Approved",
@@ -208,11 +189,15 @@ export function OrgHomeScreen({ route }: Props) {
         hint: total
           ? `${total} total · ${approval_rate_pct}% rate`
           : "No timesheets yet",
+        icon: <CheckCircleIcon color={c.positive} size={16} />,
+        accent: c.positive,
       },
       {
         label: "Pending",
         value: String(pending),
         hint: "Draft or submitted",
+        icon: <AlertIcon color={c.warning} size={16} />,
+        accent: c.warning,
       },
       {
         label: "Payroll this month",
@@ -220,9 +205,11 @@ export function OrgHomeScreen({ route }: Props) {
         hint: canPayout
           ? `${formatMoney(pending_payout_amount, displayCurrency)} pending`
           : "Payout access required",
+        icon: <WalletIcon color={c.info} size={16} />,
+        accent: c.info,
       },
     ];
-  }, [kpis, isStaff, isManager, overview, displayCurrency, canPayout]);
+  }, [kpis, isStaff, isManager, overview, displayCurrency, canPayout, c]);
 
   const payoutStats =
     canPayout && !isStaff && kpis
@@ -231,16 +218,19 @@ export function OrgHomeScreen({ route }: Props) {
             label: "Pending payouts",
             value: String(kpis.pending_payouts ?? 0),
             hint: formatMoney(kpis.pending_payout_amount, displayCurrency),
+            accent: c.warning,
           },
           {
             label: "Paid payouts",
             value: String(kpis.paid_payouts ?? 0),
             hint: "All-time in scope",
+            accent: c.positive,
           },
           {
             label: "Hours this month",
             value: `${kpis.worked_hours_month ?? 0}h`,
             hint: `${kpis.approved_hours_month ?? 0}h approved`,
+            accent: c.primary,
           },
         ]
       : [];
@@ -264,6 +254,10 @@ export function OrgHomeScreen({ route }: Props) {
           pending: 0,
         }));
 
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: c.bg }}
@@ -280,66 +274,44 @@ export function OrgHomeScreen({ route }: Props) {
         />
       }
     >
-      <Text style={[styles.title, { color: c.text }]}>Dashboard</Text>
-      <Text style={[styles.sub, { color: c.muted }]}>
-        {organisation?.name || orgCode}
-      </Text>
-      <Text style={[styles.roleLine, { color: c.muted }]}>
-        {roleDescription(overview?.role || roleCode, overview?.source)}
-      </Text>
+      <ScreenHeader
+        title={greeting}
+        subtitle={`${organisation?.name || orgCode} · ${roleDescription(
+          overview?.role || roleCode,
+          overview?.source,
+        )}`}
+      />
 
       <ClockInOut />
 
       {dashboard.summaryQuery.isLoading && !kpis ? (
         <SkeletonDashboard />
       ) : dashboard.isError && !overview ? (
-        <View style={styles.errorBox}>
-          <Text style={{ color: c.text }}>Unable to load dashboard</Text>
-          <TouchableOpacity onPress={() => void dashboard.refetch()}>
-            <Text style={{ color: c.primary, fontWeight: "700", marginTop: 8 }}>
-              Try again
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <ErrorState
+          title="Unable to load dashboard"
+          description="Pull to refresh or try again in a moment."
+          onRetry={() => void dashboard.refetch()}
+        />
       ) : (
         <>
+          <SectionHeader title="Overview" subtitle="Key metrics this month" />
           <View style={styles.grid}>
             {primaryStats.map((stat) => (
-              <StatCard
-                key={stat.label}
-                {...stat}
-                surface={c.surface}
-                border={c.border}
-                text={c.text}
-                muted={c.muted}
-                accent={c.primary}
-              />
+              <StatCard key={stat.label} {...stat} />
             ))}
           </View>
 
           {payoutStats.length > 0 ? (
             <View style={[styles.grid, { marginTop: 10 }]}>
               {payoutStats.map((stat) => (
-                <StatCard
-                  key={stat.label}
-                  {...stat}
-                  surface={c.surface}
-                  border={c.border}
-                  text={c.text}
-                  muted={c.muted}
-                  accent={c.primary}
-                />
+                <StatCard key={stat.label} {...stat} />
               ))}
             </View>
           ) : null}
 
-          <CardShell
+          <ChartCard
             title="Weekly progress"
             subtitle="Completed vs pending"
-            surface={c.surface}
-            border={c.border}
-            text={c.text}
-            muted={c.muted}
           >
             {dashboard.graphsQuery.isLoading && weekly.length === 0 ? (
               <View style={styles.bars}>
@@ -374,7 +346,7 @@ export function OrgHomeScreen({ route }: Props) {
                               style={{
                                 height: pendingH,
                                 width: 18,
-                                backgroundColor: c.border,
+                                backgroundColor: c.warningSoft,
                                 borderTopLeftRadius: completedH > 0 ? 0 : 8,
                                 borderTopRightRadius: completedH > 0 ? 0 : 8,
                               }}
@@ -412,7 +384,10 @@ export function OrgHomeScreen({ route }: Props) {
                   </View>
                   <View style={styles.legendItem}>
                     <View
-                      style={[styles.legendDot, { backgroundColor: c.border }]}
+                      style={[
+                        styles.legendDot,
+                        { backgroundColor: c.warningSoft },
+                      ]}
                     />
                     <Text style={{ color: c.muted, fontSize: 11 }}>
                       Pending
@@ -421,20 +396,19 @@ export function OrgHomeScreen({ route }: Props) {
                 </View>
               </>
             )}
-          </CardShell>
+          </ChartCard>
 
-          <CardShell
+          <ChartCard
             title="Timesheet status"
             subtitle="Current breakdown"
-            surface={c.surface}
-            border={c.border}
-            text={c.text}
-            muted={c.muted}
           >
             {dashboard.graphsQuery.isLoading && statusDonut.length === 0 ? (
               <SkeletonBlock height={72} radius={12} />
             ) : statusDonut.length === 0 ? (
-              <Text style={{ color: c.muted }}>No timesheet data yet</Text>
+              <EmptyState
+                title="No timesheet data yet"
+                description="Status breakdown will appear once timesheets are created."
+              />
             ) : (
               <>
                 <View style={styles.statusTrack}>
@@ -471,7 +445,7 @@ export function OrgHomeScreen({ route }: Props) {
                       >
                         {row.name}
                       </Text>
-                      <Text style={{ color: c.muted, fontWeight: "600" }}>
+                      <Text style={{ color: c.muted, fontWeight: "700" }}>
                         {row.count}
                       </Text>
                     </View>
@@ -479,16 +453,9 @@ export function OrgHomeScreen({ route }: Props) {
                 </View>
               </>
             )}
-          </CardShell>
+          </ChartCard>
 
-          <CardShell
-            title={trend.title}
-            subtitle={trend.subtitle}
-            surface={c.surface}
-            border={c.border}
-            text={c.text}
-            muted={c.muted}
-          >
+          <ChartCard title={trend.title} subtitle={trend.subtitle}>
             {dashboard.graphsQuery.isLoading && trend.rows.length === 0 ? (
               <View style={styles.trendBars}>
                 {Array.from({ length: 6 }).map((_, i) => (
@@ -501,7 +468,10 @@ export function OrgHomeScreen({ route }: Props) {
                 ))}
               </View>
             ) : trend.rows.length === 0 ? (
-              <Text style={{ color: c.muted }}>No trend data yet</Text>
+              <EmptyState
+                title="No trend data yet"
+                description="Trends appear after enough approved activity."
+              />
             ) : (
               <View style={styles.trendBars}>
                 {trend.rows.map((row) => {
@@ -520,6 +490,7 @@ export function OrgHomeScreen({ route }: Props) {
                       <View
                         style={[
                           styles.trendBar,
+                          elevation.soft,
                           { height: h, backgroundColor: c.primary },
                         ]}
                       />
@@ -531,15 +502,11 @@ export function OrgHomeScreen({ route }: Props) {
                 })}
               </View>
             )}
-          </CardShell>
+          </ChartCard>
 
-          <CardShell
+          <ChartCard
             title="Recent activity"
             subtitle="Latest notifications in this organisation"
-            surface={c.surface}
-            border={c.border}
-            text={c.text}
-            muted={c.muted}
           >
             {dashboard.recentQuery.isLoading && recent.length === 0 ? (
               <View style={{ gap: 10 }}>
@@ -548,7 +515,10 @@ export function OrgHomeScreen({ route }: Props) {
                 ))}
               </View>
             ) : recent.length === 0 ? (
-              <Text style={{ color: c.muted }}>No recent activity</Text>
+              <EmptyState
+                title="No recent activity"
+                description="Notifications and updates will show up here."
+              />
             ) : (
               recent.slice(0, 8).map((item, index) => (
                 <View
@@ -561,22 +531,37 @@ export function OrgHomeScreen({ route }: Props) {
                     },
                   ]}
                 >
-                  <Text
-                    style={[styles.activityTitle, { color: c.text }]}
-                    numberOfLines={2}
+                  <View
+                    style={[
+                      styles.activityDot,
+                      { backgroundColor: c.primarySoft },
+                    ]}
                   >
-                    {item.title}
-                  </Text>
-                  <Text
-                    style={[styles.activityMeta, { color: c.muted }]}
-                    numberOfLines={1}
-                  >
-                    {[item.meta, item.at].filter(Boolean).join(" · ")}
-                  </Text>
+                    <View
+                      style={[
+                        styles.activityDotInner,
+                        { backgroundColor: c.primary },
+                      ]}
+                    />
+                  </View>
+                  <View style={styles.activityText}>
+                    <Text
+                      style={[styles.activityTitle, { color: c.text }]}
+                      numberOfLines={2}
+                    >
+                      {item.title}
+                    </Text>
+                    <Text
+                      style={[styles.activityMeta, { color: c.muted }]}
+                      numberOfLines={1}
+                    >
+                      {[item.meta, item.at].filter(Boolean).join(" · ")}
+                    </Text>
+                  </View>
                 </View>
               ))
             )}
-          </CardShell>
+          </ChartCard>
         </>
       )}
     </ScrollView>
@@ -585,31 +570,10 @@ export function OrgHomeScreen({ route }: Props) {
 
 const styles = StyleSheet.create({
   container: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  title: { fontSize: 24, fontWeight: "700" },
-  sub: { marginTop: 4, fontSize: 14, fontWeight: "600" },
-  roleLine: { marginTop: 2, marginBottom: spacing.lg, fontSize: 13 },
-  errorBox: { paddingVertical: spacing.xl, alignItems: "center" },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  stat: {
-    width: "48%",
-    flexGrow: 1,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: spacing.md,
-    minWidth: "46%",
-  },
-  statLabel: { fontSize: 11, fontWeight: "600", textTransform: "uppercase" },
-  statValue: { fontSize: 22, fontWeight: "700", marginTop: 6 },
-  statHint: { fontSize: 11, marginTop: 4, fontWeight: "600" },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 4 },
   chartCard: {
     marginTop: spacing.md,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: spacing.md,
-    overflow: "hidden",
   },
-  cardTitle: { fontSize: 15, fontWeight: "700" },
-  cardSub: { fontSize: 12, marginTop: 2, marginBottom: spacing.sm },
   bars: {
     flexDirection: "row",
     alignItems: "flex-end",
@@ -623,7 +587,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: "hidden",
   },
-  barLabel: { fontSize: 10, marginTop: 6 },
+  barLabel: { fontSize: 10, marginTop: 6, fontWeight: "600" },
   legendRow: {
     flexDirection: "row",
     gap: 16,
@@ -653,9 +617,28 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   trendCol: { flex: 1, alignItems: "center", minWidth: 0 },
-  trendValue: { fontSize: 9, marginBottom: 4 },
-  trendBar: { width: 22, borderRadius: 8, marginBottom: 4 },
-  activityRow: { paddingVertical: 10 },
-  activityTitle: { fontSize: 14, fontWeight: "600" },
-  activityMeta: { fontSize: 12, marginTop: 3 },
+  trendValue: { fontSize: 9, marginBottom: 4, fontWeight: "600" },
+  trendBar: { width: 22, borderRadius: radii.sm, marginBottom: 4 },
+  activityRow: {
+    paddingVertical: 12,
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "flex-start",
+  },
+  activityDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
+  },
+  activityDotInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  activityText: { flex: 1, minWidth: 0 },
+  activityTitle: { fontSize: typography.sizes.sm, fontWeight: "600" },
+  activityMeta: { fontSize: typography.sizes.xs, marginTop: 3 },
 });

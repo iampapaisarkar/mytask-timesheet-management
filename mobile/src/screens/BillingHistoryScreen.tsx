@@ -1,11 +1,4 @@
-import {
-  FlatList,
-  Linking,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { FlatList, Linking, StyleSheet, Text, View } from "react-native";
 import { useBillingHistory, useSyncSubscription } from "@mytask/hooks";
 import { spacing } from "@mytask/theme";
 import { getErrorMessage } from "@mytask/utils";
@@ -13,6 +6,14 @@ import type { BillingHistoryItem } from "@mytask/types";
 import { SkeletonList } from "../components/Skeleton";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
+import {
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  ScreenHeader,
+  WalletIcon,
+} from "../ui";
 
 export function BillingHistoryScreen() {
   const c = useThemeStore((s) => s.colors);
@@ -33,52 +34,48 @@ export function BillingHistoryScreen() {
 
   if (isError) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <Text style={{ color: c.text }}>Failed to load billing history</Text>
-        <TouchableOpacity onPress={() => refetch()}>
-          <Text style={{ color: c.primary, marginTop: 8 }}>Try again</Text>
-        </TouchableOpacity>
+      <View style={{ flex: 1, backgroundColor: c.bg }}>
+        <ErrorState
+          title="Failed to load billing history"
+          onRetry={() => refetch()}
+        />
       </View>
     );
   }
 
   return (
     <View style={[styles.container, { backgroundColor: c.bg }]}>
-      <TouchableOpacity
-        style={[styles.syncBtn, { backgroundColor: c.primary }]}
-        disabled={sync.isPending}
-        onPress={async () => {
-          try {
-            await sync.mutateAsync();
-            toast.success("Invoices synced");
-            void refetch();
-          } catch (err) {
-            toast.error("Sync failed", getErrorMessage(err));
-          }
-        }}
-      >
-        <Text style={{ color: "#fff", fontWeight: "700", textAlign: "center" }}>
-          {sync.isPending ? "Syncing…" : "Sync invoices from Stripe"}
-        </Text>
-      </TouchableOpacity>
+      <View style={styles.header}>
+        <ScreenHeader title="Billing history" subtitle="Invoices and receipts" />
+        <Button
+          title={sync.isPending ? "Syncing…" : "Sync invoices from Stripe"}
+          loading={sync.isPending}
+          onPress={async () => {
+            try {
+              await sync.mutateAsync();
+              toast.success("Invoices synced");
+              void refetch();
+            } catch (err) {
+              toast.error("Sync failed", getErrorMessage(err));
+            }
+          }}
+        />
+      </View>
 
       <FlatList
         data={rows}
         keyExtractor={(item) => String(item.id)}
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ padding: spacing.lg, paddingBottom: 40 }}
+        contentContainerStyle={styles.list}
         ListEmptyComponent={
-          <Text style={{ color: c.muted, textAlign: "center", marginTop: 40 }}>
-            No invoices yet. Tap sync if you already paid.
-          </Text>
+          <EmptyState
+            icon={<WalletIcon color={c.primary} size={28} />}
+            title="No invoices yet"
+            description="Tap sync if you already paid."
+          />
         }
         renderItem={({ item }) => (
-          <View
-            style={[
-              styles.card,
-              { backgroundColor: c.surface, borderColor: c.border },
-            ]}
-          >
+          <Card style={styles.card}>
             <Text style={{ color: c.text, fontWeight: "700" }}>
               {item.invoice_number || `INV-${item.id}`}
             </Text>
@@ -96,26 +93,22 @@ export function BillingHistoryScreen() {
                 : null}
             </Text>
             {item.invoice_pdf_url ? (
-              <TouchableOpacity
+              <Button
+                title="Download PDF"
+                variant="soft"
                 onPress={() => void Linking.openURL(item.invoice_pdf_url!)}
-                style={[styles.download, { backgroundColor: c.primary }]}
-              >
-                <Text style={{ color: "#fff", fontWeight: "700" }}>
-                  Download PDF
-                </Text>
-              </TouchableOpacity>
+                style={styles.download}
+              />
             ) : null}
             {item.hosted_invoice_url ? (
-              <TouchableOpacity
+              <Button
+                title="View invoice"
+                variant="ghost"
                 onPress={() => void Linking.openURL(item.hosted_invoice_url!)}
-                style={{ marginTop: 8 }}
-              >
-                <Text style={{ color: c.primary, fontWeight: "600" }}>
-                  View invoice
-                </Text>
-              </TouchableOpacity>
+                style={styles.viewLink}
+              />
             ) : null}
-          </View>
+          </Card>
         )}
       />
     </View>
@@ -124,23 +117,13 @@ export function BillingHistoryScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  syncBtn: {
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.md,
-    borderRadius: 12,
-    paddingVertical: 12,
+  header: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    gap: spacing.sm,
   },
-  card: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 14,
-    marginBottom: 10,
-  },
-  download: {
-    marginTop: 10,
-    borderRadius: 10,
-    paddingVertical: 10,
-    alignItems: "center",
-  },
+  list: { padding: spacing.lg, paddingTop: spacing.sm, paddingBottom: 40 },
+  card: { marginBottom: spacing.sm },
+  download: { marginTop: 10 },
+  viewLink: { marginTop: 4, alignSelf: "flex-start", paddingHorizontal: 0 },
 });

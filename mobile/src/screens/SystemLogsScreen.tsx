@@ -1,11 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useQuery } from "@tanstack/react-query";
 import { systemLogsApi } from "@mytask/api";
@@ -24,7 +18,7 @@ import type { MoreStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { triggerHaptic } from "../utils/haptics";
-import { SegmentedControl } from "../ui";
+import { Card, EmptyState, LogIcon, SegmentedControl, StatusBadge } from "../ui";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "SystemLogs">;
 type LogKind = "internal" | "external" | "email";
@@ -39,12 +33,6 @@ type LogRow = {
   created_at?: string;
   actor?: { email?: string; full_name?: string };
 };
-
-function statusText(status: LogRow["status"]) {
-  if (!status) return "—";
-  if (typeof status === "string") return status;
-  return status.name || status.code || "—";
-}
 
 export function SystemLogsScreen({}: Props) {
   const organisation = useOrganisationStore((s) => s.organisation);
@@ -135,7 +123,11 @@ export function SystemLogsScreen({}: Props) {
           />
         }
         ListEmptyComponent={
-          <Text style={[styles.empty, { color: c.muted }]}>No logs</Text>
+          <EmptyState
+            icon={<LogIcon color={c.primary} size={28} />}
+            title="No logs"
+            description="Activity for this category will show up here."
+          />
         }
         ListFooterComponent={
           <ListPager
@@ -148,30 +140,28 @@ export function SystemLogsScreen({}: Props) {
           />
         }
         renderItem={({ item }) => (
-          <View
-            style={[
-              styles.card,
-              { backgroundColor: c.surface, borderColor: c.border },
-            ]}
-          >
-            <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>
-              {item.action || item.event || item.subject || `Log #${item.id}`}
-            </Text>
+          <Card style={styles.card}>
+            <View style={styles.cardTop}>
+              <Text
+                style={[styles.title, { color: c.text }]}
+                numberOfLines={2}
+              >
+                {item.action || item.event || item.subject || `Log #${item.id}`}
+              </Text>
+              {item.status ? <StatusBadge status={item.status} /> : null}
+            </View>
             {item.message ? (
               <Text style={{ color: c.muted, marginTop: 4 }} numberOfLines={3}>
                 {item.message}
               </Text>
             ) : null}
             <Text style={{ color: c.muted, marginTop: 8, fontSize: 12 }}>
-              {statusText(item.status)}
-              {item.created_at
-                ? ` · ${formatDisplayDateTime(item.created_at)}`
-                : ""}
+              {item.created_at ? formatDisplayDateTime(item.created_at) : ""}
               {item.actor?.full_name || item.actor?.email
                 ? ` · ${item.actor.full_name || item.actor.email}`
                 : ""}
             </Text>
-          </View>
+          </Card>
         )}
       />
     </View>
@@ -179,13 +169,12 @@ export function SystemLogsScreen({}: Props) {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  empty: { textAlign: "center", marginTop: 32 },
-  card: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
+  card: { marginBottom: spacing.sm },
+  cardTop: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: spacing.sm,
   },
-  title: { fontSize: 15, fontWeight: "700" },
+  title: { flex: 1, fontSize: 15, fontWeight: "700" },
 });

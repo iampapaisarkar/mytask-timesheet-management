@@ -1,18 +1,10 @@
-import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Alert, FlatList, StyleSheet, Text, View } from "react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { organisationsApi } from "@mytask/api";
 import { queryKeys, useHomeBootstrap } from "@mytask/hooks";
-import { spacing } from "@mytask/theme";
+import { radii, spacing, typography } from "@mytask/theme";
 import type {
   OrganisationInvitation,
   OrganisationMembership,
@@ -24,6 +16,16 @@ import { blockOrgSwitch } from "../services/trackingSession";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
+import {
+  Button,
+  BuildingIcon,
+  Card,
+  ChevronIcon,
+  EmptyState,
+  ErrorState,
+  ScreenHeader,
+  WalletIcon,
+} from "../ui";
 
 export function HomeScreen() {
   const navigation =
@@ -101,39 +103,35 @@ export function HomeScreen() {
 
   if (isError) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <Text style={{ color: c.text }}>Failed to load organisations</Text>
-        <TouchableOpacity onPress={() => refetch()}>
-          <Text style={[styles.link, { color: c.primary }]}>Try again</Text>
-        </TouchableOpacity>
+      <View style={[styles.flex, { backgroundColor: c.bg }]}>
+        <ErrorState
+          title="Failed to load organisations"
+          description="Check your connection and try again."
+          onRetry={() => void refetch()}
+        />
       </View>
     );
   }
 
   return (
     <View style={[styles.container, { backgroundColor: c.bg }]}>
-      <Text style={[styles.heading, { color: c.text }]}>Your organisations</Text>
-      <Text style={[styles.sub, { color: c.muted }]}>
-        Select an organisation to continue
-      </Text>
-      <TouchableOpacity
-        style={[
-          styles.upgrade,
-          { backgroundColor: c.primary + "22", borderColor: c.primary },
-        ]}
+      <ScreenHeader
+        title="Your organisations"
+        subtitle="Select an organisation to continue"
+      />
+
+      <Button
+        title="Upgrade plan"
+        variant="soft"
         onPress={() => navigation.navigate("Pricing")}
-      >
-        <Text style={{ color: c.primary, fontWeight: "700" }}>Upgrade Plan</Text>
-        <Text style={{ color: c.muted, marginTop: 2, fontSize: 12 }}>
-          Unlock Pro limits and features
-        </Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.createOrg, { backgroundColor: c.primary }]}
+        leftIcon={<WalletIcon color={c.secondary} size={16} />}
+        style={styles.upgrade}
+      />
+      <Button
+        title="Create organisation"
         onPress={() => navigation.navigate("CreateOrganisation")}
-      >
-        <Text style={styles.createOrgText}>Create organisation</Text>
-      </TouchableOpacity>
+        style={styles.createOrg}
+      />
 
       {invitations.length > 0 ? (
         <View style={styles.invitesSection}>
@@ -153,59 +151,34 @@ export function HomeScreen() {
             const orgName = invite.organisation?.name || "Organisation";
             const isBusy = busyId === invite.id;
             return (
-              <View
-                key={String(invite.id)}
-                style={[
-                  styles.inviteCard,
-                  { backgroundColor: c.surface, borderColor: c.border },
-                ]}
-              >
+              <Card key={String(invite.id)} style={styles.inviteCard}>
                 <Text style={[styles.name, { color: c.text }]}>{orgName}</Text>
-                <Text style={{ color: c.muted, marginTop: 4, fontSize: 13 }}>
+                <Text style={[styles.inviteMeta, { color: c.muted }]}>
                   {invitedBy} invited you
                   {invite.role?.name ? ` as ${invite.role.name}` : ""}
                 </Text>
                 <View style={styles.inviteActions}>
-                  <TouchableOpacity
-                    style={[
-                      styles.inviteBtn,
-                      {
-                        backgroundColor: c.primary,
-                        opacity: busyId && !isBusy ? 0.5 : 1,
-                      },
-                    ]}
-                    disabled={Boolean(busyId)}
-                    onPress={() => acceptMutation.mutate(invite)}
-                  >
-                    {isBusy && acceptMutation.isPending ? (
-                      <ActivityIndicator color="#fff" size="small" />
-                    ) : (
-                      <Text style={styles.inviteBtnText}>Accept</Text>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.inviteBtn,
-                      {
-                        backgroundColor: c.surface,
-                        borderWidth: 1,
-                        borderColor: c.border,
-                        opacity: busyId && !isBusy ? 0.5 : 1,
-                      },
-                    ]}
-                    disabled={Boolean(busyId)}
-                    onPress={() => rejectMutation.mutate(invite)}
-                  >
-                    {isBusy && rejectMutation.isPending ? (
-                      <ActivityIndicator color={c.text} size="small" />
-                    ) : (
-                      <Text style={[styles.inviteBtnText, { color: c.text }]}>
-                        Reject
-                      </Text>
-                    )}
-                  </TouchableOpacity>
+                  <View style={styles.inviteActionHalf}>
+                    <Button
+                      title="Reject"
+                      variant="outline"
+                      size="sm"
+                      loading={isBusy && rejectMutation.isPending}
+                      disabled={Boolean(busyId)}
+                      onPress={() => rejectMutation.mutate(invite)}
+                    />
+                  </View>
+                  <View style={styles.inviteActionHalf}>
+                    <Button
+                      title="Accept"
+                      size="sm"
+                      loading={isBusy && acceptMutation.isPending}
+                      disabled={Boolean(busyId)}
+                      onPress={() => acceptMutation.mutate(invite)}
+                    />
+                  </View>
                 </View>
-              </View>
+              </Card>
             );
           })}
         </View>
@@ -215,18 +188,18 @@ export function HomeScreen() {
         data={organisations}
         keyExtractor={(item) => String(item.id)}
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 24 }}
+        contentContainerStyle={styles.list}
         ListEmptyComponent={
-          <Text style={[styles.empty, { color: c.muted }]}>
-            No organisations yet
-          </Text>
+          <EmptyState
+            icon={<BuildingIcon color={c.primary} size={28} />}
+            title="No organisations yet"
+            description="Create an organisation or accept an invitation to get started."
+          />
         }
         renderItem={({ item }) => (
-          <TouchableOpacity
-            style={[
-              styles.card,
-              { backgroundColor: c.surface, borderColor: c.border },
-            ]}
+          <Card
+            style={styles.card}
+            accessibilityLabel={`Organisation ${item.name}`}
             onPress={async () => {
               if (await blockOrgSwitch(item.code)) {
                 Alert.alert(
@@ -245,9 +218,21 @@ export function HomeScreen() {
               navigation.navigate("Organisation", { orgCode: item.code });
             }}
           >
-            <Text style={[styles.name, { color: c.text }]}>{item.name}</Text>
-            <Text style={[styles.code, { color: c.muted }]}>{item.code}</Text>
-          </TouchableOpacity>
+            <View style={styles.row}>
+              <View style={[styles.iconWrap, { backgroundColor: c.primarySoft }]}>
+                <BuildingIcon color={c.primary} size={20} />
+              </View>
+              <View style={styles.textCol}>
+                <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>
+                  {item.name}
+                </Text>
+                <Text style={[styles.code, { color: c.muted }]} numberOfLines={1}>
+                  {item.code}
+                </Text>
+              </View>
+              <ChevronIcon color={c.subtle} />
+            </View>
+          </Card>
         )}
       />
     </View>
@@ -255,51 +240,39 @@ export function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   container: { flex: 1, padding: spacing.lg },
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  heading: { fontSize: 22, fontWeight: "700" },
-  sub: { marginTop: 4, marginBottom: spacing.md, fontSize: 13 },
-  sectionTitle: { fontSize: 16, fontWeight: "700", marginBottom: spacing.sm },
-  invitesSection: { marginBottom: spacing.md },
-  inviteCard: {
-    borderRadius: 16,
-    padding: spacing.md,
+  sectionTitle: {
+    fontSize: typography.sizes.md,
+    fontWeight: "700",
     marginBottom: spacing.sm,
-    borderWidth: 1,
   },
+  invitesSection: { marginBottom: spacing.md },
+  inviteCard: { marginBottom: spacing.sm },
+  inviteMeta: { marginTop: 4, fontSize: typography.sizes.sm },
   inviteActions: {
     flexDirection: "row",
-    gap: 8,
+    gap: spacing.sm,
     marginTop: spacing.sm,
   },
-  inviteBtn: {
-    flex: 1,
-    borderRadius: 12,
-    paddingVertical: 12,
+  inviteActionHalf: { flex: 1 },
+  list: { paddingBottom: spacing.xxl },
+  card: { marginBottom: spacing.sm },
+  row: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: spacing.sm,
   },
-  inviteBtnText: { color: "#fff", fontWeight: "700" },
-  card: {
-    borderRadius: 16,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    borderWidth: 1,
-  },
-  name: { fontSize: 16, fontWeight: "700" },
-  code: { marginTop: 4, fontSize: 12 },
-  empty: { textAlign: "center", marginTop: 40 },
-  link: { fontWeight: "700", marginTop: 8 },
-  upgrade: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  createOrg: {
-    borderRadius: 14,
-    paddingVertical: 14,
+  iconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.md,
     alignItems: "center",
-    marginBottom: spacing.md,
+    justifyContent: "center",
   },
-  createOrgText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  textCol: { flex: 1, minWidth: 0 },
+  name: { fontSize: typography.sizes.md, fontWeight: "700", letterSpacing: -0.2 },
+  code: { marginTop: 2, fontSize: typography.sizes.xs, fontWeight: "500" },
+  upgrade: { marginBottom: spacing.sm },
+  createOrg: { marginBottom: spacing.md },
 });

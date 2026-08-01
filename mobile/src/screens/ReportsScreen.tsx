@@ -5,7 +5,6 @@ import {
   Share,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -13,7 +12,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { reportsApi } from "@mytask/api";
 import { formatHours, formatMoney } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
-import { spacing } from "@mytask/theme";
+import { spacing, typography } from "@mytask/theme";
 import {
   formatDisplayTime,
   formatTimesheetLabel,
@@ -27,6 +26,14 @@ import { FormKeyboardScroll } from "../components/FormKeyboardScroll";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
+import {
+  Button,
+  Card,
+  Divider,
+  ScreenHeader,
+  SectionHeader,
+  StatCard,
+} from "../ui";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "Reports">;
 
@@ -338,19 +345,13 @@ export function ReportsScreen({}: Props) {
 
   return (
     <FormKeyboardScroll contentContainerStyle={styles.container}>
-      <Text style={[styles.title, { color: c.text }]}>Reports</Text>
-      <Text style={[styles.sub, { color: c.muted }]}>
-        Generate a pay report for one approved timesheet, then download or email
-        the PDF.
-      </Text>
+      <ScreenHeader
+        title="Reports"
+        subtitle="Generate a pay report for one approved timesheet, then download or email the PDF."
+      />
 
-      <View
-        style={[
-          styles.card,
-          { backgroundColor: c.surface, borderColor: c.border },
-        ]}
-      >
-        <Text style={[styles.cardTitle, { color: c.text }]}>Generate report</Text>
+      <Card style={styles.card}>
+        <SectionHeader title="Generate report" />
 
         {employeesQuery.isLoading ? (
           <SkeletonList rows={2} />
@@ -411,28 +412,15 @@ export function ReportsScreen({}: Props) {
         )}
 
         {canCreate ? (
-          <TouchableOpacity
-            style={[
-              styles.button,
-              {
-                backgroundColor: c.primary,
-                opacity:
-                  createMutation.isPending || !employeeId || !timesheetId
-                    ? 0.5
-                    : 1,
-              },
-            ]}
+          <Button
+            title="Generate report"
+            onPress={handleGenerate}
+            loading={createMutation.isPending}
             disabled={
               createMutation.isPending || !employeeId || !timesheetId
             }
-            onPress={handleGenerate}
-          >
-            {createMutation.isPending ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Generate report</Text>
-            )}
-          </TouchableOpacity>
+            style={styles.generateBtn}
+          />
         ) : null}
 
         {activeStatus.data ? (
@@ -443,7 +431,7 @@ export function ReportsScreen({}: Props) {
               : ""}
           </Text>
         ) : null}
-      </View>
+      </Card>
 
       {processing ? (
         <View style={styles.statusRow}>
@@ -461,12 +449,7 @@ export function ReportsScreen({}: Props) {
       ) : null}
 
       {result ? (
-        <View
-          style={[
-            styles.card,
-            { backgroundColor: c.surface, borderColor: c.border },
-          ]}
-        >
+        <Card style={styles.card}>
           <Text style={[styles.cardTitle, { color: c.text }]}>
             {result.employee?.name || "Employee"}
           </Text>
@@ -484,112 +467,90 @@ export function ReportsScreen({}: Props) {
           </Text>
 
           <View style={styles.actionRow}>
-            <TouchableOpacity
-              style={[styles.secondaryBtn, { borderColor: c.primary }]}
-              disabled={downloadMutation.isPending || !activeRequestId}
+            <Button
+              title="Download PDF"
+              variant="outline"
+              fullWidth={false}
+              loading={downloadMutation.isPending}
+              disabled={!activeRequestId}
               onPress={() => downloadMutation.mutate()}
-            >
-              {downloadMutation.isPending ? (
-                <ActivityIndicator color={c.primary} />
-              ) : (
-                <Text style={[styles.secondaryBtnText, { color: c.primary }]}>
-                  Download PDF
-                </Text>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.secondaryBtn, { borderColor: c.primary }]}
-              disabled={emailMutation.isPending || !activeRequestId}
+            />
+            <Button
+              title="Email Report"
+              variant="outline"
+              fullWidth={false}
+              loading={emailMutation.isPending}
+              disabled={!activeRequestId}
               onPress={() => emailMutation.mutate()}
-            >
-              {emailMutation.isPending ? (
-                <ActivityIndicator color={c.primary} />
-              ) : (
-                <Text style={[styles.secondaryBtnText, { color: c.primary }]}>
-                  Email Report
-                </Text>
-              )}
-            </TouchableOpacity>
+            />
           </View>
 
           <View style={styles.totalsGrid}>
-            <View style={[styles.stat, { borderColor: c.border }]}>
-              <Text style={{ color: c.muted, fontSize: 11 }}>Working</Text>
-              <Text style={[styles.statValue, { color: c.text }]}>
-                {formatHours(result.totals?.working_hours ?? 0)}
-              </Text>
-            </View>
-            <View style={[styles.stat, { borderColor: c.border }]}>
-              <Text style={{ color: c.muted, fontSize: 11 }}>Break</Text>
-              <Text style={[styles.statValue, { color: c.text }]}>
-                {formatHours(result.totals?.break_hours ?? 0)}
-              </Text>
-            </View>
-            <View style={[styles.stat, { borderColor: c.border }]}>
-              <Text style={{ color: c.muted, fontSize: 11 }}>Travel</Text>
-              <Text style={[styles.statValue, { color: c.text }]}>
-                {formatHours(result.totals?.travel_hours ?? 0)}
-              </Text>
-            </View>
-            <View style={[styles.stat, { borderColor: c.border }]}>
-              <Text style={{ color: c.muted, fontSize: 11 }}>Pay cycle</Text>
-              <Text style={[styles.statValue, { color: c.primary }]}>
-                {formatMoney(
-                  result.pay_cycle?.total_amount ?? result.totals?.amount,
-                  currency,
-                )}
-              </Text>
-            </View>
-            <View style={[styles.stat, { borderColor: c.border }]}>
-              <Text style={{ color: c.muted, fontSize: 11 }}>Payment</Text>
-              <Text style={[styles.statValue, { color: c.text }]}>
-                {result.pay_cycle?.paid_label ||
-                  (result.pay_cycle?.is_paid ? "Paid" : "Not paid")}
-              </Text>
-            </View>
+            <StatCard
+              label="Working"
+              value={formatHours(result.totals?.working_hours ?? 0)}
+            />
+            <StatCard
+              label="Break"
+              value={formatHours(result.totals?.break_hours ?? 0)}
+            />
+            <StatCard
+              label="Travel"
+              value={formatHours(result.totals?.travel_hours ?? 0)}
+            />
+            <StatCard
+              label="Pay cycle"
+              value={formatMoney(
+                result.pay_cycle?.total_amount ?? result.totals?.amount,
+                currency,
+              )}
+              accent={c.primary}
+            />
+            <StatCard
+              label="Payment"
+              value={
+                result.pay_cycle?.paid_label ||
+                (result.pay_cycle?.is_paid ? "Paid" : "Not paid")
+              }
+            />
           </View>
 
-          <Text style={[styles.cardTitle, { color: c.text, marginTop: spacing.md }]}>
-            Daily breakdown
-          </Text>
+          <SectionHeader title="Daily breakdown" />
           {(result.days || []).length === 0 ? (
             <Text style={{ color: c.muted }}>No day rows</Text>
           ) : (
-            (result.days || []).map((d) => (
-              <View
-                key={String(d.date)}
-                style={[styles.dayRow, { borderColor: c.border }]}
-              >
-                <Text style={[styles.dayTitle, { color: c.text }]}>
-                  {d.date}
-                  {d.day_name ? ` · ${d.day_name}` : ""}
-                  {d.is_public_holiday ? " · PH" : ""}
-                </Text>
-                <Text style={{ color: c.muted, fontSize: 12 }}>
-                  In {formatDisplayTime(d.clock_in)} · Out{" "}
-                  {formatDisplayTime(d.clock_out)}
-                </Text>
-                <Text style={{ color: c.text, fontSize: 13, marginTop: 4 }}>
-                  Work {formatHours(d.working_hours ?? 0)} · Break{" "}
-                  {formatHours(d.break_hours ?? 0)} · Travel{" "}
-                  {formatHours(d.travel_hours ?? 0)}
-                </Text>
-                <Text style={{ color: c.primary, fontWeight: "700", marginTop: 4 }}>
-                  {formatMoney(d.amount, currency)}
-                </Text>
+            (result.days || []).map((d, idx) => (
+              <View key={String(d.date)}>
+                {idx > 0 ? <Divider /> : null}
+                <View style={styles.dayRow}>
+                  <Text style={[styles.dayTitle, { color: c.text }]}>
+                    {d.date}
+                    {d.day_name ? ` · ${d.day_name}` : ""}
+                    {d.is_public_holiday ? " · PH" : ""}
+                  </Text>
+                  <Text style={{ color: c.muted, fontSize: 12 }}>
+                    In {formatDisplayTime(d.clock_in)} · Out{" "}
+                    {formatDisplayTime(d.clock_out)}
+                  </Text>
+                  <Text style={{ color: c.text, fontSize: 13, marginTop: 4 }}>
+                    Work {formatHours(d.working_hours ?? 0)} · Break{" "}
+                    {formatHours(d.break_hours ?? 0)} · Travel{" "}
+                    {formatHours(d.travel_hours ?? 0)}
+                  </Text>
+                  <Text
+                    style={{ color: c.primary, fontWeight: "700", marginTop: 4 }}
+                  >
+                    {formatMoney(d.amount, currency)}
+                  </Text>
+                </View>
               </View>
             ))
           )}
-        </View>
+        </Card>
       ) : null}
 
-      <View
-        style={[
-          styles.card,
-          { backgroundColor: c.surface, borderColor: c.border },
-        ]}
-      >
-        <Text style={[styles.cardTitle, { color: c.text }]}>History</Text>
+      <Card style={styles.card}>
+        <SectionHeader title="History" />
         {historyQuery.isLoading && requestItems.length === 0 ? (
           <SkeletonList rows={3} />
         ) : requestItems.length === 0 ? (
@@ -598,15 +559,13 @@ export function ReportsScreen({}: Props) {
           requestItems.map((item) => {
             const selected = String(item.id) === activeRequestId;
             return (
-              <TouchableOpacity
+              <Card
                 key={item.id}
                 style={[
                   styles.historyItem,
-                  {
-                    borderColor: selected ? c.primary : c.border,
-                    backgroundColor: c.bg,
-                  },
+                  selected ? { borderColor: c.primary } : null,
                 ]}
+                accentBorder={selected ? c.primary : undefined}
                 onPress={() => setActiveRequestId(String(item.id))}
               >
                 <Text style={{ color: c.text, fontWeight: "700" }}>
@@ -616,90 +575,47 @@ export function ReportsScreen({}: Props) {
                   {item.status || "—"}
                   {item.created_at ? ` · ${item.created_at}` : ""}
                 </Text>
-              </TouchableOpacity>
+              </Card>
             );
           })
         )}
         {requestsHasMore ? (
-          <TouchableOpacity
-            style={{ marginTop: spacing.sm }}
+          <Button
+            title={historyQuery.isFetching ? "Loading…" : "Load more"}
+            variant="ghost"
             disabled={historyQuery.isFetching}
             onPress={() => setRequestsPage((p) => p + 1)}
-          >
-            <Text style={{ color: c.primary, fontWeight: "700" }}>
-              {historyQuery.isFetching ? "Loading…" : "Load more"}
-            </Text>
-          </TouchableOpacity>
+            style={styles.loadMoreBtn}
+          />
         ) : null}
-      </View>
+      </Card>
     </FormKeyboardScroll>
   );
 }
 
 const styles = StyleSheet.create({
   container: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  center: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: spacing.lg,
+  card: { marginBottom: spacing.md },
+  cardTitle: {
+    fontSize: typography.sizes.md,
+    fontWeight: "700",
+    marginBottom: spacing.sm,
   },
-  title: { fontSize: 22, fontWeight: "700" },
-  sub: { marginTop: 4, marginBottom: spacing.lg, fontSize: 13 },
-  card: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  cardTitle: { fontSize: 16, fontWeight: "700", marginBottom: spacing.sm },
-  label: { fontWeight: "700", marginTop: spacing.sm, marginBottom: 8 },
-  option: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-  },
-  button: {
-    borderRadius: 14,
-    paddingVertical: 15,
-    alignItems: "center",
-    marginTop: spacing.md,
-  },
-  buttonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  generateBtn: { marginTop: spacing.md },
   statusRow: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: spacing.md,
   },
-  actionRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: spacing.md },
-  secondaryBtn: {
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    minWidth: 120,
-    alignItems: "center",
+  actionRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
-  secondaryBtnText: { fontWeight: "700", fontSize: 13 },
-  totalsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  stat: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 10,
-    minWidth: "45%",
-    flexGrow: 1,
-  },
-  statValue: { marginTop: 4, fontSize: 16, fontWeight: "700" },
-  dayRow: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingVertical: 10,
-  },
+  totalsGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  dayRow: { paddingVertical: 10 },
   dayTitle: { fontWeight: "700", marginBottom: 2 },
-  historyItem: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-  },
+  historyItem: { marginBottom: spacing.sm },
+  loadMoreBtn: { marginTop: spacing.sm },
 });

@@ -1,20 +1,12 @@
 import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Alert, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { authApi } from "@mytask/api";
-import { spacing } from "@mytask/theme";
+import { spacing, typography } from "@mytask/theme";
 import type { UserProfile } from "@mytask/types";
 import { getErrorMessage, phoneValueFromE164 } from "@mytask/utils";
 import {
@@ -32,6 +24,18 @@ import { useToastStore } from "../store/toastStore";
 import { resetAllStores } from "../store/resetAllStores";
 import { signOutUser } from "../services/firebase";
 import type { RootStackParamList } from "../navigation/RootNavigator";
+import {
+  Avatar,
+  Button,
+  Card,
+  ListTile,
+  MoonIcon,
+  SectionHeader,
+  SettingsIcon,
+  SunIcon,
+  TextField,
+  WalletIcon,
+} from "../ui";
 
 function profileDefaults(user: UserProfile | null): ProfileFormValues {
   const phone = phoneValueFromE164(
@@ -132,262 +136,187 @@ export function ProfileScreen() {
     toast.info("Signed out");
   }
 
-  const inputStyle = [
-    styles.input,
-    { borderColor: c.border, backgroundColor: c.surface, color: c.text },
-  ];
+  const displayName =
+    [user?.first_name, user?.last_name].filter(Boolean).join(" ") ||
+    user?.email ||
+    "Account";
 
   return (
     <FormKeyboardScroll contentContainerStyle={styles.container}>
-        <View
-          style={[
-            styles.card,
-            { backgroundColor: c.surface, borderColor: c.border },
-          ]}
-        >
-          <Text style={[styles.label, { color: c.muted }]}>Signed in as</Text>
-          <Text style={[styles.email, { color: c.text }]}>
-            {user?.email || "Account"}
+      <Card style={styles.identityCard}>
+        <Avatar name={displayName} size={56} />
+        <View style={styles.identityText}>
+          <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>
+            {displayName}
+          </Text>
+          <Text style={{ color: c.muted }} numberOfLines={1}>
+            {user?.email || "—"}
           </Text>
         </View>
+      </Card>
 
-        <Text style={[styles.sectionTitle, { color: c.text }]}>
-          Edit profile
+      <SectionHeader title="Edit profile" />
+
+      <Controller
+        control={control}
+        name="first_name"
+        render={({ field: { onChange, onBlur, value } }) => (
+          <TextField
+            label="First name"
+            value={value}
+            onChangeText={onChange}
+            onBlur={onBlur}
+            autoCapitalize="words"
+            error={errors.first_name?.message}
+          />
+        )}
+      />
+
+      <Controller
+        control={control}
+        name="middle_name"
+        render={({ field: { onChange, onBlur, value } }) => (
+          <TextField
+            label="Middle name"
+            value={value || ""}
+            onChangeText={onChange}
+            onBlur={onBlur}
+            autoCapitalize="words"
+          />
+        )}
+      />
+
+      <Controller
+        control={control}
+        name="last_name"
+        render={({ field: { onChange, onBlur, value } }) => (
+          <TextField
+            label="Last name"
+            value={value}
+            onChangeText={onChange}
+            onBlur={onBlur}
+            autoCapitalize="words"
+            error={errors.last_name?.message}
+          />
+        )}
+      />
+
+      <Controller
+        control={control}
+        name="phone_number"
+        render={({ field: { value } }) => (
+          <View style={styles.field}>
+            <GlobalPhoneInput
+              label="Phone"
+              value={{
+                phone_number: value || null,
+                phone_country_code: phoneCountryCode || null,
+                phone_country_iso: phoneCountryIso || null,
+              }}
+              onChange={(phone) => {
+                setValue("phone_number", phone.phone_number || "", {
+                  shouldDirty: true,
+                });
+                setValue(
+                  "phone_country_code",
+                  phone.phone_country_code,
+                  { shouldDirty: true },
+                );
+                setValue("phone_country_iso", phone.phone_country_iso, {
+                  shouldDirty: true,
+                });
+              }}
+              error={errors.phone_number?.message}
+            />
+          </View>
+        )}
+      />
+
+      {formError ? (
+        <Text style={[styles.fieldError, { color: c.negative }]}>
+          {formError}
         </Text>
+      ) : null}
 
-        <Controller
-          control={control}
-          name="first_name"
-          render={({ field: { onChange, onBlur, value } }) => (
-            <View style={styles.field}>
-              <Text style={[styles.fieldLabel, { color: c.muted }]}>
-                First name
-              </Text>
-              <TextInput
-                style={inputStyle}
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                placeholderTextColor={c.muted}
-                autoCapitalize="words"
-              />
-              {errors.first_name ? (
-                <Text style={[styles.fieldError, { color: c.negative }]}>
-                  {errors.first_name.message}
-                </Text>
-              ) : null}
-            </View>
-          )}
-        />
+      <Button
+        title="Save profile"
+        onPress={() => void handleSubmit(onSubmit)()}
+        loading={isSubmitting}
+        disabled={isSubmitting || !isDirty}
+        style={styles.saveBtn}
+      />
 
-        <Controller
-          control={control}
-          name="middle_name"
-          render={({ field: { onChange, onBlur, value } }) => (
-            <View style={styles.field}>
-              <Text style={[styles.fieldLabel, { color: c.muted }]}>
-                Middle name
-              </Text>
-              <TextInput
-                style={inputStyle}
-                value={value || ""}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                placeholderTextColor={c.muted}
-                autoCapitalize="words"
-              />
-            </View>
-          )}
-        />
+      <ListTile
+        title="Subscription"
+        subtitle="Manage your plan and billing"
+        left={<WalletIcon color={c.primary} size={20} />}
+        onPress={() => navigation.navigate("Subscription")}
+      />
 
-        <Controller
-          control={control}
-          name="last_name"
-          render={({ field: { onChange, onBlur, value } }) => (
-            <View style={styles.field}>
-              <Text style={[styles.fieldLabel, { color: c.muted }]}>
-                Last name
-              </Text>
-              <TextInput
-                style={inputStyle}
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                placeholderTextColor={c.muted}
-                autoCapitalize="words"
-              />
-              {errors.last_name ? (
-                <Text style={[styles.fieldError, { color: c.negative }]}>
-                  {errors.last_name.message}
-                </Text>
-              ) : null}
-            </View>
-          )}
-        />
+      <ListTile
+        title="Upgrade plan"
+        subtitle="Compare pricing tiers"
+        left={<WalletIcon color={c.primary} size={20} />}
+        onPress={() => navigation.navigate("Pricing")}
+      />
 
-        <Controller
-          control={control}
-          name="phone_number"
-          render={({ field: { value } }) => (
-            <View style={styles.field}>
-              <GlobalPhoneInput
-                label="Phone"
-                value={{
-                  phone_number: value || null,
-                  phone_country_code: phoneCountryCode || null,
-                  phone_country_iso: phoneCountryIso || null,
-                }}
-                onChange={(phone) => {
-                  setValue("phone_number", phone.phone_number || "", {
-                    shouldDirty: true,
-                  });
-                  setValue(
-                    "phone_country_code",
-                    phone.phone_country_code,
-                    { shouldDirty: true },
-                  );
-                  setValue("phone_country_iso", phone.phone_country_iso, {
-                    shouldDirty: true,
-                  });
-                }}
-                error={errors.phone_number?.message}
-              />
-            </View>
-          )}
-        />
-
-        {formError ? (
-          <Text style={[styles.fieldError, { color: c.negative }]}>
-            {formError}
-          </Text>
-        ) : null}
-
-        <TouchableOpacity
-          style={[
-            styles.saveBtn,
-            {
-              backgroundColor: c.primary,
-              opacity: isSubmitting || !isDirty ? 0.55 : 1,
-            },
-          ]}
-          disabled={isSubmitting || !isDirty}
-          onPress={() => void handleSubmit(onSubmit)()}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator color="#fff" />
+      <ListTile
+        title="Theme"
+        subtitle={mode === "dark" ? "Dark mode" : "Light mode"}
+        left={
+          mode === "dark" ? (
+            <MoonIcon color={c.primary} size={20} />
           ) : (
-            <Text style={styles.saveBtnText}>Save profile</Text>
-          )}
-        </TouchableOpacity>
+            <SunIcon color={c.primary} size={20} />
+          )
+        }
+        onPress={() => void toggle()}
+        showChevron={false}
+      />
 
-        <TouchableOpacity
-          style={[
-            styles.row,
-            { backgroundColor: c.surface, borderColor: c.border },
-          ]}
-          onPress={() => navigation.navigate("Subscription")}
-        >
-          <Text style={[styles.rowText, { color: c.text }]}>Subscription</Text>
-          <Text style={{ color: c.primary, fontWeight: "700" }}>Manage</Text>
-        </TouchableOpacity>
+      <SectionHeader title="Support" />
 
-        <TouchableOpacity
-          style={[
-            styles.row,
-            { backgroundColor: c.surface, borderColor: c.border },
-          ]}
-          onPress={() => navigation.navigate("Pricing")}
-        >
-          <Text style={[styles.rowText, { color: c.text }]}>Upgrade Plan</Text>
-          <Text style={{ color: c.primary, fontWeight: "700" }}>Pricing</Text>
-        </TouchableOpacity>
+      {(
+        [
+          { label: "Help & FAQ", kind: "help" as const },
+          { label: "Terms & Conditions", kind: "terms" as const },
+          { label: "Privacy Policy", kind: "privacy" as const },
+        ] as const
+      ).map((item) => (
+        <ListTile
+          key={item.kind}
+          title={item.label}
+          left={<SettingsIcon color={c.primary} size={20} />}
+          onPress={() => navigation.navigate("Legal", { kind: item.kind })}
+        />
+      ))}
 
-        <TouchableOpacity
-          style={[
-            styles.row,
-            { backgroundColor: c.surface, borderColor: c.border },
-          ]}
-          onPress={() => void toggle()}
-        >
-          <Text style={[styles.rowText, { color: c.text }]}>Theme</Text>
-          <Text style={{ color: c.primary, fontWeight: "700" }}>
-            {mode === "dark" ? "Dark" : "Light"}
-          </Text>
-        </TouchableOpacity>
-
-        <Text style={[styles.sectionTitle, { color: c.text }]}>Support</Text>
-
-        {(
-          [
-            { label: "Help & FAQ", kind: "help" as const },
-            { label: "Terms & Conditions", kind: "terms" as const },
-            { label: "Privacy Policy", kind: "privacy" as const },
-          ] as const
-        ).map((item) => (
-          <TouchableOpacity
-            key={item.kind}
-            style={[
-              styles.row,
-              { backgroundColor: c.surface, borderColor: c.border },
-            ]}
-            onPress={() => navigation.navigate("Legal", { kind: item.kind })}
-          >
-            <Text style={[styles.rowText, { color: c.text }]}>{item.label}</Text>
-            <Text style={{ color: c.primary, fontWeight: "700" }}>Open</Text>
-          </TouchableOpacity>
-        ))}
-
-        <TouchableOpacity
-          style={[styles.logout, { backgroundColor: c.primary }]}
-          onPress={() => void logout()}
-        >
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
+      <Button
+        title="Logout"
+        variant="danger"
+        onPress={() => void logout()}
+        style={styles.logoutBtn}
+      />
     </FormKeyboardScroll>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: spacing.lg, gap: spacing.md, paddingBottom: 40 },
-  card: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: spacing.lg,
-  },
-  label: { fontSize: 12, fontWeight: "600", marginBottom: 4 },
-  email: { fontSize: 18, fontWeight: "700" },
-  sectionTitle: { fontSize: 16, fontWeight: "700", marginTop: spacing.sm },
-  field: { marginBottom: 4 },
-  fieldLabel: { marginBottom: 6, fontWeight: "600", fontSize: 13 },
-  fieldError: { marginTop: 4, fontSize: 13 },
-  input: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-  },
-  saveBtn: {
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-    marginBottom: spacing.sm,
-  },
-  saveBtnText: { color: "#fff", fontWeight: "700" },
-  row: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: spacing.md,
+  container: { padding: spacing.lg, paddingBottom: 40 },
+  identityCard: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    gap: spacing.md,
+    marginBottom: spacing.md,
   },
-  rowText: { fontWeight: "600" },
-  logout: {
-    marginTop: spacing.md,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
+  identityText: { flex: 1, minWidth: 0 },
+  name: {
+    fontSize: typography.sizes.lg,
+    fontWeight: "700",
+    marginBottom: 2,
   },
-  logoutText: { color: "#fff", fontWeight: "700" },
+  field: { marginBottom: spacing.md },
+  fieldError: { marginTop: -4, marginBottom: spacing.sm, fontSize: 13 },
+  saveBtn: { marginBottom: spacing.md },
+  logoutBtn: { marginTop: spacing.md },
 });

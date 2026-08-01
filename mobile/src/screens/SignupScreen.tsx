@@ -1,18 +1,10 @@
-import {
-  ActivityIndicator,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signupSchema, type SignupFormValues } from "@mytask/validation";
 import { authApi } from "@mytask/api";
-import { spacing } from "@mytask/theme";
+import { radii, spacing, typography } from "@mytask/theme";
 import { getErrorMessage, getTimezone } from "@mytask/utils";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { FormKeyboardScroll } from "../components/FormKeyboardScroll";
@@ -23,6 +15,7 @@ import { useToastStore } from "../store/toastStore";
 import { signUpWithEmail } from "../services/firebase";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { setPendingOrgInvitationToken } from "../navigation/navigationRef";
+import { Button, TextField } from "../ui";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Signup">;
 
@@ -96,13 +89,21 @@ export function SignupScreen({ navigation, route }: Props) {
 
   return (
     <FormKeyboardScroll contentContainerStyle={styles.container} bottomOffset={32}>
+      <View style={styles.hero}>
         <Text style={[styles.title, { color: c.text }]}>Create your account</Text>
         <Text style={[styles.subtitle, { color: c.muted }]}>
           {invitationToken
             ? "Create an account to accept your organisation invitation."
-            : "Join myTask"}
+            : "Join myTask and start tracking work in minutes."}
         </Text>
+      </View>
 
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: c.surface, borderColor: c.border },
+        ]}
+      >
         {(
           [
             { name: "first_name", label: "First name", autoCapitalize: "words" },
@@ -123,33 +124,18 @@ export function SignupScreen({ navigation, route }: Props) {
             control={control}
             name={field.name}
             render={({ field: { onChange, value }, fieldState }) => (
-              <View style={styles.field}>
-                <Text style={[styles.label, { color: c.muted }]}>{field.label}</Text>
-                <TextInput
-                  autoCapitalize={"autoCapitalize" in field ? field.autoCapitalize : "none"}
-                  keyboardType={
-                    "keyboardType" in field ? field.keyboardType : "default"
-                  }
-                  secureTextEntry={"secure" in field ? field.secure : false}
-                  style={[
-                    styles.input,
-                    {
-                      borderColor: c.border,
-                      backgroundColor: c.surface,
-                      color: c.text,
-                    },
-                  ]}
-                  value={value ?? ""}
-                  onChangeText={onChange}
-                  placeholderTextColor={c.muted}
-                  editable={!loading}
-                />
-                {fieldState.error ? (
-                  <Text style={[styles.error, { color: c.negative }]}>
-                    {fieldState.error.message}
-                  </Text>
-                ) : null}
-              </View>
+              <TextField
+                label={field.label}
+                autoCapitalize={"autoCapitalize" in field ? field.autoCapitalize : "none"}
+                keyboardType={
+                  "keyboardType" in field ? field.keyboardType : "default"
+                }
+                secureTextEntry={"secure" in field ? field.secure : false}
+                value={value ?? ""}
+                onChangeText={onChange}
+                editable={!loading}
+                error={fieldState.error?.message}
+              />
             )}
           />
         ))}
@@ -158,7 +144,7 @@ export function SignupScreen({ navigation, route }: Props) {
           control={control}
           name="phone_number"
           render={({ field: { value } }) => (
-            <View style={styles.field}>
+            <View style={styles.phoneField}>
               <GlobalPhoneInput
                 label="Phone"
                 value={{
@@ -186,69 +172,70 @@ export function SignupScreen({ navigation, route }: Props) {
         />
 
         {error ? (
-          <Text style={[styles.errorBanner, { color: c.negative }]}>{error}</Text>
+          <View style={[styles.errorBanner, { backgroundColor: c.negativeSoft }]}>
+            <Text style={[styles.errorBannerText, { color: c.negativeText }]}>
+              {error}
+            </Text>
+          </View>
         ) : null}
 
-        <TouchableOpacity
-          style={[
-            styles.button,
-            { backgroundColor: c.primary, opacity: loading ? 0.7 : 1 },
-          ]}
+        <Button
+          title="Create account"
           onPress={handleSubmit(onSubmit)}
           disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Create account</Text>
-          )}
-        </TouchableOpacity>
+          loading={loading}
+          style={styles.submitBtn}
+        />
+      </View>
 
-        <TouchableOpacity
-          style={styles.linkRow}
-          onPress={() =>
-            navigation.navigate(
-              "Login",
-              invitationToken ? { invitationToken } : undefined,
-            )
-          }
-          disabled={loading}
-        >
-          <Text style={{ color: c.muted }}>
-            Already have an account?{" "}
-            <Text style={{ color: c.primary, fontWeight: "700" }}>Login</Text>
-          </Text>
-        </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.linkRow}
+        onPress={() =>
+          navigation.navigate(
+            "Login",
+            invitationToken ? { invitationToken } : undefined,
+          )
+        }
+        disabled={loading}
+      >
+        <Text style={{ color: c.muted, fontSize: 13 }}>
+          Already have an account?{" "}
+          <Text style={{ color: c.primary, fontWeight: "700" }}>Login</Text>
+        </Text>
+      </TouchableOpacity>
     </FormKeyboardScroll>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
   container: {
     flexGrow: 1,
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
   },
-  title: { fontSize: 22, fontWeight: "700" },
-  subtitle: { marginTop: 6, marginBottom: spacing.lg, fontSize: 14 },
-  field: { marginBottom: spacing.md },
-  label: { marginBottom: 6, fontWeight: "600", fontSize: 13 },
-  input: {
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    fontSize: 16,
+  hero: { marginBottom: spacing.lg },
+  title: {
+    fontSize: typography.sizes.xxl,
+    fontWeight: "700",
+    letterSpacing: -0.4,
   },
-  error: { marginTop: 4, fontSize: 12 },
-  errorBanner: { marginBottom: spacing.sm, fontSize: 13 },
-  button: {
-    borderRadius: 14,
-    paddingVertical: 15,
-    alignItems: "center",
-    marginTop: spacing.sm,
+  subtitle: {
+    marginTop: 6,
+    fontSize: typography.sizes.sm,
+    lineHeight: 20,
   },
-  buttonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  card: {
+    borderRadius: radii.xxl,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: spacing.lg,
+  },
+  phoneField: { marginBottom: spacing.md },
+  errorBanner: {
+    borderRadius: radii.md,
+    padding: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  errorBannerText: { fontSize: typography.sizes.sm, fontWeight: "500" },
+  submitBtn: { marginTop: spacing.xs },
   linkRow: { marginTop: spacing.lg, alignItems: "center" },
 });

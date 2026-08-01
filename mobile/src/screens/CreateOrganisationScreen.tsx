@@ -1,12 +1,5 @@
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { StyleSheet, Text } from "react-native";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -35,6 +28,7 @@ import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 import type { RootStackParamList } from "../navigation/RootNavigator";
+import { Button, ScreenHeader, TextField } from "../ui";
 
 export function CreateOrganisationScreen() {
   const navigation =
@@ -191,42 +185,24 @@ export function CreateOrganisationScreen() {
 
   return (
     <FormKeyboardScroll contentContainerStyle={styles.container}>
-        <Text style={[styles.title, { color: c.text }]}>
-          Create organisation
-        </Text>
-        <Text style={[styles.sub, { color: c.muted }]}>
-          Set up a new workspace on myTask
-        </Text>
+        <ScreenHeader
+          title="Create organisation"
+          subtitle="Set up a new workspace on myTask"
+        />
 
         <Controller
           control={control}
           name="name"
           render={({ field: { onChange, value }, fieldState }) => (
-            <View style={styles.field}>
-              <Text style={[styles.label, { color: c.muted }]}>
-                Organisation name
-              </Text>
-              <TextInput
-                autoCapitalize="words"
-                style={[
-                  styles.input,
-                  {
-                    borderColor: c.border,
-                    backgroundColor: c.surface,
-                    color: c.text,
-                  },
-                ]}
-                value={value}
-                onChangeText={onChange}
-                placeholderTextColor={c.muted}
-                editable={!busy}
-              />
-              {fieldState.error ? (
-                <Text style={[styles.error, { color: c.negative }]}>
-                  {fieldState.error.message}
-                </Text>
-              ) : null}
-            </View>
+            <TextField
+              label="Organisation name"
+              autoCapitalize="words"
+              value={value}
+              onChangeText={onChange}
+              editable={!busy}
+              error={fieldState.error?.message}
+              containerStyle={styles.field}
+            />
           )}
         />
 
@@ -234,32 +210,16 @@ export function CreateOrganisationScreen() {
           control={control}
           name="email"
           render={({ field: { onChange, value }, fieldState }) => (
-            <View style={styles.field}>
-              <Text style={[styles.label, { color: c.muted }]}>
-                Contact email
-              </Text>
-              <TextInput
-                autoCapitalize="none"
-                keyboardType="email-address"
-                style={[
-                  styles.input,
-                  {
-                    borderColor: c.border,
-                    backgroundColor: c.surface,
-                    color: c.text,
-                  },
-                ]}
-                value={value}
-                onChangeText={onChange}
-                placeholderTextColor={c.muted}
-                editable={!busy}
-              />
-              {fieldState.error ? (
-                <Text style={[styles.error, { color: c.negative }]}>
-                  {fieldState.error.message}
-                </Text>
-              ) : null}
-            </View>
+            <TextField
+              label="Contact email"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              value={value}
+              onChangeText={onChange}
+              editable={!busy}
+              error={fieldState.error?.message}
+              containerStyle={styles.field}
+            />
           )}
         />
 
@@ -267,31 +227,29 @@ export function CreateOrganisationScreen() {
           control={control}
           name="phone_number"
           render={({ field: { value }, fieldState }) => (
-            <View style={styles.field}>
-              <GlobalPhoneInput
-                label="Phone"
-                value={{
-                  phone_number: value || null,
-                  phone_country_code: phoneCountryCode || null,
-                  phone_country_iso: phoneCountryIso || null,
-                }}
-                onChange={(phone) => {
-                  setValue("phone_number", phone.phone_number || "", {
-                    shouldValidate: true,
-                    shouldDirty: true,
-                  });
-                  setValue("phone_country_code", phone.phone_country_code, {
-                    shouldDirty: true,
-                  });
-                  setValue("phone_country_iso", phone.phone_country_iso, {
-                    shouldDirty: true,
-                  });
-                }}
-                required
-                disabled={busy}
-                error={fieldState.error?.message}
-              />
-            </View>
+            <GlobalPhoneInput
+              label="Phone"
+              value={{
+                phone_number: value || null,
+                phone_country_code: phoneCountryCode || null,
+                phone_country_iso: phoneCountryIso || null,
+              }}
+              onChange={(phone) => {
+                setValue("phone_number", phone.phone_number || "", {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                });
+                setValue("phone_country_code", phone.phone_country_code, {
+                  shouldDirty: true,
+                });
+                setValue("phone_country_iso", phone.phone_country_iso, {
+                  shouldDirty: true,
+                });
+              }}
+              required
+              disabled={busy}
+              error={fieldState.error?.message}
+            />
           )}
         />
 
@@ -305,49 +263,23 @@ export function CreateOrganisationScreen() {
           <Text style={[styles.errorBanner, { color: c.negative }]}>{error}</Text>
         ) : null}
 
-        <TouchableOpacity
-          style={[
-            styles.button,
-            { backgroundColor: c.primary, opacity: busy ? 0.7 : 1 },
-          ]}
+        <Button
+          title="Create organisation"
           onPress={handleSubmit(onSubmit)}
-          disabled={busy}
-        >
-          {busy ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Create organisation</Text>
-          )}
-        </TouchableOpacity>
+          loading={busy}
+          style={styles.button}
+        />
     </FormKeyboardScroll>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
   container: {
     flexGrow: 1,
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
   },
-  title: { fontSize: 22, fontWeight: "700" },
-  sub: { marginTop: 4, marginBottom: spacing.lg, fontSize: 13 },
   field: { marginBottom: spacing.md },
-  label: { marginBottom: 6, fontWeight: "600", fontSize: 13 },
-  input: {
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    fontSize: 16,
-  },
-  error: { marginTop: 4, fontSize: 12 },
   errorBanner: { marginBottom: spacing.sm, fontSize: 13 },
-  button: {
-    borderRadius: 14,
-    paddingVertical: 15,
-    alignItems: "center",
-    marginTop: spacing.sm,
-  },
-  buttonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  button: { marginTop: spacing.sm },
 });
