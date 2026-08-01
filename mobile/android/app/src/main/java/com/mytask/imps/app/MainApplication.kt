@@ -1,4 +1,4 @@
-package com.mytask.app
+package com.mytask.imps.app
 
 import android.app.Application
 import com.facebook.react.PackageList

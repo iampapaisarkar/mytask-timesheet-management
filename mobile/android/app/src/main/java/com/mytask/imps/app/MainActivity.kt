@@ -1,4 +1,4 @@
-package com.mytask.app
+package com.mytask.imps.app
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

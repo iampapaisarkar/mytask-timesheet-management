@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1069285546437:android:25e36785a55087f72513ac",
+        "mobilesdk_app_id": "1:1069285546437:android:bc7a73c8b99879742513ac",
         "android_client_info": {
-          "package_name": "com.mytask.app"
+          "package_name": "com.mytask.imps.app"
         }
       },
       "oauth_client": [
@@ -31,10 +31,10 @@
               "client_type": 3
             },
             {
-              "client_id": "1069285546437-rpt985gcc4d9ftgnm59gftrivctsngdr.apps.googleusercontent.com",
+              "client_id": "1069285546437-ibmdsf73sop9dp8oll6ltspmknrgcit9.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.mytask.app"
+                "bundle_id": "com.mytask.imps.app"
               }
             }
           ]

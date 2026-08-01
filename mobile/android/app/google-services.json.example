@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:REPLACE:android:REPLACE",
         "android_client_info": {
-          "package_name": "com.mytask.app"
+          "package_name": "com.mytask.imps.app"
         }
       },
       "oauth_client": [],

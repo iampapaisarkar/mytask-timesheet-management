@@ -82,7 +82,8 @@ Paths:
 ## Firebase Console steps (required)
 
 1. **Authentication → Sign-in method → Google → Enable**
-2. Add **Web**, **Android** (`com.mytask.app`), and **iOS** apps under Project settings.
+2. Add **Web**, **Android** (`com.mytask.imps.app`), and **iOS** (`com.mytask.imps.app`) apps under Project settings.
+   If you previously registered `com.mytask.app`, add **new** Android/iOS apps with the updated bundle ID and re-download `google-services.json` / `GoogleService-Info.plist`.
 3. **Android:** add SHA-1 and SHA-256 (debug + release). Download `google-services.json` → `mobile/android/app/google-services.json`.
 4. **iOS:** download `GoogleService-Info.plist` → `mobile/ios/GoogleService-Info.plist` (and add to Xcode target). Copy `REVERSED_CLIENT_ID` into `Info.plist` → `CFBundleURLSchemes`.
 5. **Authorized domains** (Web): add `localhost`, production host, staging host.

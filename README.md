@@ -242,7 +242,7 @@ npx react-native run-ios --device
 ```
 
 You can also open `mobile/ios/MyTaskMobile.xcworkspace` in Xcode (after `pod install`) and press Run.
-(Xcode project / scheme name is **MyTaskMobile**; display name and bundle ID are **myTask** / `com.mytask.app`.)
+(Xcode project / scheme name is **MyTaskMobile**; display name and bundle ID are **myTask** / `com.mytask.imps.app`.)
 
 ### 4.5 Run on Android (Emulator or device)
 
