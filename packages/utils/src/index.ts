@@ -103,7 +103,8 @@ export function listPagination(queryData: unknown): ListPagination | null {
   if (!queryData || typeof queryData !== "object" || Array.isArray(queryData)) {
     return null;
   }
-  return (queryData as PaginatedList).pagination ?? null;
+  const record = queryData as PaginatedList;
+  return record.pagination ?? extractPagination(queryData);
 }
 
 /** Normalize org list / user.organisations items into OrganisationContext fields. */

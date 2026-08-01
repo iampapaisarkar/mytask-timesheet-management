@@ -78,16 +78,18 @@ export async function list(req, res, next) {
       offset,
       limit: rowsPerPage,
       order: [[sortBy, sortDirection]],
+      distinct: true,
       raw: false,
       nest: true,
     });
 
-    const total_pages = Math.ceil(jobs.length / rowsPerPage);
+    const totalRows = Array.isArray(count) ? count.length : count;
+    const total_pages = Math.ceil(totalRows / rowsPerPage) || 0;
 
     return res.status(200).json({
       data: jobs,
       pagination: {
-        total_rows: jobs.length,
+        total_rows: totalRows,
         rows_per_page: rowsPerPage,
         page_number: pageNumber,
         total_pages,

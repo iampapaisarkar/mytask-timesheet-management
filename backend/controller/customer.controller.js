@@ -47,12 +47,13 @@ export async function list(req, res, next) {
       nest: true,
     });
 
-    const total_pages = Math.ceil(customers.length / rowsPerPage);
+    const totalRows = Array.isArray(count) ? count.length : count;
+    const total_pages = Math.ceil(totalRows / rowsPerPage) || 0;
 
     return res.status(200).json({
       data: customers,
       pagination: {
-        total_rows: customers.length,
+        total_rows: totalRows,
         rows_per_page: rowsPerPage,
         page_number: pageNumber,
         total_pages,

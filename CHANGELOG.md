@@ -2,6 +2,10 @@
 
 ## 2026-08-01
 
+### Fixed
+
+- **List pagination totals:** Jobs, Customers, Holiday calendars, and Payroll calendars list APIs now use the Sequelize `count` for `total_rows` / `total_pages` (were incorrectly using the current page length, so Next stayed disabled after a full page of 10).
+
 ### Added
 
 - **Firebase Google Sign-In (web + Android + iOS):** reusable `services/firebase` auth modules; web popup with redirect fallback; native `@react-native-google-signin/google-signin` → Firebase credential; RN Auth persistence via `getReactNativePersistence`; logout clears Firebase (+ Google on native). See `docs/GOOGLE_SIGN_IN.md`.

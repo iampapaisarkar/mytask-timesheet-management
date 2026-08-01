@@ -1,16 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useQuery } from "@tanstack/react-query";
-import { systemLogsApi } from "@mytask/api";
+import {
+  useSystemLogsEmail,
+  useSystemLogsExternal,
+  useSystemLogsInternal,
+} from "@mytask/hooks";
 import { DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing } from "@mytask/theme";
-import {
-  formatDisplayDateTime,
-  listPagination,
-  listRows,
-} from "@mytask/utils";
+import { formatDisplayDateTime } from "@mytask/utils";
 import { AccessDenied } from "../components/AccessDenied";
 import { ListPager } from "../components/ListPager";
 import { SkeletonList } from "../components/Skeleton";
@@ -47,27 +46,25 @@ export function SystemLogsScreen({}: Props) {
     setPage(1);
   }, [kind]);
 
-  const query = useQuery({
-    queryKey: ["system-logs", kind, page] as const,
-    queryFn: async () => {
-      const params = {
-        rows_per_page: DEFAULT_LIST_PAGE_SIZE,
-        page_number: page,
-        sort_by: "id",
-      };
-      if (kind === "internal") return systemLogsApi.listInternal(params);
-      if (kind === "external") return systemLogsApi.listExternal(params);
-      return systemLogsApi.listEmail(params);
-    },
-    enabled: canList,
-  });
+  const listParams = {
+    rows_per_page: DEFAULT_LIST_PAGE_SIZE,
+    page_number: page,
+    sort_by: "id",
+  };
 
-  const payload = query.data?.data;
-  const rows = useMemo(
-    () => listRows<LogRow>(payload as never),
-    [payload],
-  );
-  const pagination = listPagination(payload as never);
+  const internalQuery = useSystemLogsInternal(listParams, canList && kind === "internal");
+  const externalQuery = useSystemLogsExternal(listParams, canList && kind === "external");
+  const emailQuery = useSystemLogsEmail(listParams, canList && kind === "email");
+
+  const query =
+    kind === "internal"
+      ? internalQuery
+      : kind === "external"
+        ? externalQuery
+        : emailQuery;
+
+  const rows = (query.data?.rows ?? []) as LogRow[];
+  const pagination = query.data?.pagination ?? null;
   const totalPages = Math.max(1, Number(pagination?.total_pages) || 1);
   const currentPage = Number(pagination?.page_number) || page;
 
