@@ -1,6 +1,9 @@
-import { useEffect, type ReactNode } from "react";
+import { useContext, useEffect, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import {
+  BottomTabBarHeightCallbackContext,
+  type BottomTabBarProps,
+} from "@react-navigation/bottom-tabs";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -65,11 +68,7 @@ function TabItem({
         <View style={styles.iconWrap}>
           {icon({ color, focused, size: 22 })}
           <Animated.View
-            style={[
-              styles.pill,
-              { backgroundColor: color },
-              pillStyle,
-            ]}
+            style={[styles.pill, { backgroundColor: color }, pillStyle]}
           />
         </View>
         <Text
@@ -91,23 +90,22 @@ function TabItem({
 }
 
 /**
- * Premium organisation tab bar — floating surface, spring micro-interactions,
- * pill indicator under the active icon.
+ * Floating org tab bar — overlays content with a transparent chrome shell.
+ * Reports its height so tab screens can pad scroll content underneath.
  */
 export function OrgTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const c = useThemeStore((s) => s.colors);
+  const onHeightChange = useContext(BottomTabBarHeightCallbackContext);
   const bottomPad = Math.max(insets.bottom, 10);
 
   return (
     <View
-      style={[
-        styles.shell,
-        {
-          paddingBottom: bottomPad,
-          backgroundColor: c.bg,
-        },
-      ]}
+      pointerEvents="box-none"
+      style={[styles.shell, { paddingBottom: bottomPad }]}
+      onLayout={(e) => {
+        onHeightChange?.(e.nativeEvent.layout.height);
+      }}
     >
       <View
         style={[
@@ -127,9 +125,7 @@ export function OrgTabBar({ state, descriptors, navigation }: BottomTabBarProps)
               ? options.tabBarLabel
               : options.title || route.name;
           const color = focused ? c.primary : c.muted;
-          const icon =
-            options.tabBarIcon ||
-            (() => null);
+          const icon = options.tabBarIcon || (() => null);
 
           const onPress = () => {
             const event = navigation.emit({
@@ -170,8 +166,13 @@ export function OrgTabBar({ state, descriptors, navigation }: BottomTabBarProps)
 
 const styles = StyleSheet.create({
   shell: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
     paddingHorizontal: spacing.md,
     paddingTop: 8,
+    backgroundColor: "transparent",
   },
   bar: {
     flexDirection: "row",

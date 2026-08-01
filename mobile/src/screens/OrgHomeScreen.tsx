@@ -15,6 +15,7 @@ import { getOrganisationRoleCode } from "@mytask/utils";
 import { ClockInOut } from "../components/ClockInOut";
 import { SkeletonBlock, SkeletonDashboard } from "../components/Skeleton";
 import type { DashboardStackParamList } from "../navigation/types";
+import { useOrgTabBarScrollInset } from "../navigation/useOrgTabBarScrollInset";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import {
@@ -80,6 +81,7 @@ export function OrgHomeScreen({ route }: Props) {
   const organisation = useOrganisationStore((s) => s.organisation);
   const { orgCode } = route.params;
   const c = useThemeStore((s) => s.colors);
+  const tabScrollInset = useOrgTabBarScrollInset();
   const acl = getOrganisationAcl(organisation?.role || organisation?.role_code);
   const roleCode = getOrganisationRoleCode(organisation || {});
   const canPayout = can(acl, "payout", "list");
@@ -256,7 +258,10 @@ export function OrgHomeScreen({ route }: Props) {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: c.bg }}
-      contentContainerStyle={styles.container}
+      contentContainerStyle={[
+        styles.container,
+        { paddingBottom: tabScrollInset },
+      ]}
       showsHorizontalScrollIndicator={false}
       refreshControl={
         <RefreshControl
@@ -560,7 +565,7 @@ export function OrgHomeScreen({ route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  container: { padding: spacing.lg },
   roleLine: {
     fontSize: typography.sizes.sm,
     fontWeight: "500",

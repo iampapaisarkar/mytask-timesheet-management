@@ -19,6 +19,7 @@ import {
 import type { MoreStackParamList, OrgStackParamList } from "../navigation/types";
 import { useLeaveOrganisation } from "../navigation/LeaveOrganisationContext";
 import { useOrgNavigate } from "../navigation/useOrgNavigate";
+import { useOrgTabBarScrollInset } from "../navigation/useOrgTabBarScrollInset";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 
@@ -48,6 +49,7 @@ export function MoreScreen({ route }: Props) {
   const leaveOrganisation = useLeaveOrganisation();
   const organisation = useOrganisationStore((s) => s.organisation);
   const c = useThemeStore((s) => s.colors);
+  const tabScrollInset = useOrgTabBarScrollInset();
   const acl = getOrganisationAcl(organisation?.role || organisation?.role_code);
 
   const items: MoreItem[] = [
@@ -137,7 +139,10 @@ export function MoreScreen({ route }: Props) {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: c.bg }}
-      contentContainerStyle={styles.container}
+      contentContainerStyle={[
+        styles.container,
+        { paddingBottom: tabScrollInset },
+      ]}
     >
       <ScreenHeader
         title="More"
@@ -182,7 +187,7 @@ export function MoreScreen({ route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  container: { padding: spacing.lg },
   group: { marginBottom: spacing.md },
   iconWrap: {
     width: 40,

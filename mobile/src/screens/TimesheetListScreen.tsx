@@ -23,6 +23,7 @@ import { SkeletonList } from "../components/Skeleton";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import type { SheetsStackParamList } from "../navigation/types";
 import { useOrgNavigate } from "../navigation/useOrgNavigate";
+import { useOrgTabBarScrollInset } from "../navigation/useOrgTabBarScrollInset";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import {
@@ -74,6 +75,7 @@ export function TimesheetListScreen({ route }: Props) {
   const [filter, setFilter] = useState<TimesheetStatusFilter>("all");
   const debouncedSearch = useDebouncedValue(search.trim(), 400);
   const c = useThemeStore((s) => s.colors);
+  const tabScrollInset = useOrgTabBarScrollInset();
   const statusCode = timesheetStatusCodeParam(filter);
 
   useEffect(() => {
@@ -133,7 +135,7 @@ export function TimesheetListScreen({ route }: Props) {
         <SkeletonList rows={6} />
       ) : (
         <FlatList
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: tabScrollInset }]}
           data={rows}
           keyExtractor={(item, index) => String(item.id ?? index)}
           showsHorizontalScrollIndicator={false}
@@ -237,7 +239,6 @@ const styles = StyleSheet.create({
   list: {
     padding: spacing.md,
     paddingTop: spacing.sm,
-    paddingBottom: spacing.xxl,
   },
   card: {
     marginBottom: spacing.sm,
