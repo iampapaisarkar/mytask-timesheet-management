@@ -35,7 +35,7 @@ export const FAQ_SECTIONS: FaqSection[] = [
       },
       {
         q: "Where do I manage billing or download invoices?",
-        a: "Go to Subscription for plan details, renewal/cancel dates, and Manage billing (Stripe Customer Portal). Billing history lists paid invoices with Download PDF and View invoice links. Receipt emails are sent to your account email when payments succeed.",
+        a: "Go to Subscription for plan details, renewal/cancel dates, and Manage billing (Stripe Customer Portal). Billing history lists paid invoices with Download PDF and View invoice for your myTask-generated invoice. Receipt emails are sent to your account email when payments succeed.",
       },
       {
         q: "How do I cancel?",

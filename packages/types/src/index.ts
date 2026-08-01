@@ -392,12 +392,21 @@ export type BillingHistoryItem = {
   currency: string;
   status: string;
   payment_method?: string | null;
+  /** Always true for rows from billing history — use download/view APIs by id. */
+  has_invoice?: boolean;
+  /** @deprecated Stripe URL — clients should use myTask invoice PDF API */
   invoice_pdf_url?: string | null;
+  /** @deprecated Stripe URL — clients should use myTask invoice view */
   hosted_invoice_url?: string | null;
   paid_at?: string | null;
   period_start?: string | null;
   period_end?: string | null;
   created_at?: string | null;
+  /** Present on single-invoice GET — same fields as PDF/HTML. */
+  bill_to_name?: string;
+  bill_to_email?: string;
+  line_description?: string;
+  billing_cycle?: string;
 };
 
 export type PlansCatalogueResponse = {

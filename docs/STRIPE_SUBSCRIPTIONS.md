@@ -83,7 +83,10 @@ Backfill Free for existing users (optional one-liner via API): each user gets Fr
 | GET | `/current` | required | Active subscription |
 | GET | `/usage` | required | Usage snapshot |
 | GET | `/feature-limits` | required | Limits map |
-| GET | `/billing-history` | required | Invoices |
+| GET | `/billing-history` | required | Invoices (myTask records; no Stripe PDF URLs) |
+| GET | `/billing-history/:id` | required | Single invoice JSON |
+| GET | `/billing-history/:id/pdf` | required | myTask-branded invoice PDF |
+| GET | `/billing-history/:id/view` | required | myTask-branded HTML invoice |
 | POST | `/checkout` | required | Stripe Checkout (Pro) |
 | POST | `/portal` | required | Billing Portal |
 | POST | `/cancel` | required | Cancel at period end / immediate |

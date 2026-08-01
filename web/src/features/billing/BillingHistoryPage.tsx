@@ -1,7 +1,10 @@
 import { Link } from "react-router-dom";
+import { useState } from "react";
 import { useBillingHistory, useSyncSubscription } from "@mytask/hooks";
+import { subscriptionApi } from "@mytask/api";
 import { ROUTES } from "@mytask/constants";
 import { getErrorMessage } from "@mytask/utils";
+import type { BillingHistoryItem } from "@mytask/types";
 import { Button } from "@/components/ui/Button";
 import { Card, PageHeader } from "@/components/ui/Card";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
@@ -15,39 +18,53 @@ function formatMoney(cents: number, currency = "usd") {
   }).format(cents / 100);
 }
 
+async function downloadInvoicePdf(id: string | number) {
+  const res = await subscriptionApi.downloadInvoicePdf(id);
+  const blob = res.data as Blob;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `invoice-${id}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 function InvoiceActions({
   row,
 }: {
-  row: {
-    invoice_pdf_url?: string | null;
-    hosted_invoice_url?: string | null;
-  };
+  row: BillingHistoryItem;
 }) {
+  const toast = useToastStore();
+  const [downloading, setDownloading] = useState(false);
+
   return (
     <div className="flex flex-wrap gap-2">
-      {row.invoice_pdf_url ? (
-        <a
-          href={row.invoice_pdf_url}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex min-h-10 items-center gap-1 rounded-lg bg-primary px-2.5 py-1.5 text-xs font-semibold text-white"
-        >
-          <Download size={12} /> Download PDF
-        </a>
-      ) : null}
-      {row.hosted_invoice_url ? (
-        <a
-          href={row.hosted_invoice_url}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex min-h-10 items-center gap-1 text-xs font-semibold text-primary"
-        >
-          View <ExternalLink size={12} />
-        </a>
-      ) : null}
-      {!row.invoice_pdf_url && !row.hosted_invoice_url ? (
-        <span className="text-xs text-muted">Unavailable</span>
-      ) : null}
+      <button
+        type="button"
+        disabled={downloading}
+        onClick={async () => {
+          try {
+            setDownloading(true);
+            await downloadInvoicePdf(row.id);
+            toast.success("Invoice PDF downloaded");
+          } catch (err) {
+            toast.error("Download failed", getErrorMessage(err));
+          } finally {
+            setDownloading(false);
+          }
+        }}
+        className="inline-flex min-h-10 items-center gap-1 rounded-lg bg-primary px-2.5 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+      >
+        <Download size={12} /> {downloading ? "Downloading…" : "Download PDF"}
+      </button>
+      <Link
+        to={ROUTES.billingInvoice(row.id)}
+        className="inline-flex min-h-10 items-center gap-1 text-xs font-semibold text-primary"
+      >
+        View <ExternalLink size={12} />
+      </Link>
     </div>
   );
 }

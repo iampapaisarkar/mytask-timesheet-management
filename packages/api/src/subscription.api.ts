@@ -53,6 +53,24 @@ export const subscriptionApi = {
       req(options, buildListQuery(params)),
     );
   },
+  getInvoice(id: string | number, options?: RequestOptions) {
+    return getApiClient().get<ApiResponse<unknown>>(
+      `/subscriptions/billing-history/${id}`,
+      req(options),
+    );
+  },
+  downloadInvoicePdf(id: string | number, options?: RequestOptions) {
+    return getApiClient().get(`/subscriptions/billing-history/${id}/pdf`, {
+      ...req(options),
+      responseType: "blob",
+    });
+  },
+  viewInvoiceHtml(id: string | number, options?: RequestOptions) {
+    return getApiClient().get(`/subscriptions/billing-history/${id}/view`, {
+      ...req(options),
+      responseType: "text",
+    });
+  },
   checkout(
     payload: {
       billing_interval: "month" | "year";

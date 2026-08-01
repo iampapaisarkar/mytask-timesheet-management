@@ -132,6 +132,9 @@ export const SubscriptionPage = lazyRoute(() =>
 export const BillingHistoryPage = lazyRoute(() =>
   import("@/features/billing").then((m) => ({ default: m.BillingHistoryPage })),
 );
+export const BillingInvoicePage = lazyRoute(() =>
+  import("@/features/billing").then((m) => ({ default: m.BillingInvoicePage })),
+);
 export const BillingSuccessPage = lazyRoute(() =>
   import("@/features/billing").then((m) => ({ default: m.BillingSuccessPage })),
 );

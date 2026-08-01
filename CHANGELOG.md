@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-08-02
+
+### Changed
+
+- **Billing invoices (web + mobile):** Download PDF / View invoice now use **myTask-generated** invoices (PDFKit + branded HTML/detail screens), not Stripe hosted PDF/receipt URLs. Receipt emails attach the myTask PDF and link to `/billing/:id`.
+- **Invoice view parity:** Web and mobile invoice detail screens share the same content model as the PDF (bill-to, period, line description, total) from `GET /billing-history/:id`.
+
+### API
+
+- `GET /api/subscriptions/billing-history/:id` — invoice JSON
+- `GET /api/subscriptions/billing-history/:id/pdf` — myTask invoice PDF
+- `GET /api/subscriptions/billing-history/:id/view` — branded HTML invoice
+- Billing history list no longer exposes Stripe `invoice_pdf_url` / `hosted_invoice_url` to clients (`has_invoice: true` instead).
+
 ## 2026-08-01
 
 ### Changed

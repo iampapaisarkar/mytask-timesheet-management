@@ -31,6 +31,7 @@ export const ROUTES = {
   pricing: "/pricing",
   subscription: "/subscription",
   billingHistory: "/billing",
+  billingInvoice: (id: string | number) => `/billing/${id}`,
   billingSuccess: "/billing/success",
   org: (orgCode: string) => `/org/${orgCode}`,
   orgHome: (orgCode: string) => `/org/${orgCode}`,

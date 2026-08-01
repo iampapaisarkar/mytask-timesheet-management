@@ -34,6 +34,7 @@ const linkingConfig = {
     Pricing: "pricing",
     Subscription: "subscription",
     BillingHistory: "billing",
+    BillingInvoice: "billing/:id",
     Home: "",
     Profile: "profile",
     CreateOrganisation: "organisations/create",

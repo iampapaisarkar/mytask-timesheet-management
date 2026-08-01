@@ -13,6 +13,10 @@ import {
 import subscriptionService from "../subscription/subscription.service.js";
 import { enqueueSubscriptionNotify } from "../../queue-jobs/subscription-notify.job.js";
 import { enqueueSendEmail } from "../../queue-jobs/send-email.job.js";
+import {
+  buildInvoiceHtml,
+  buildInvoicePdfBuffer,
+} from "./invoice-pdf.service.js";
 
 const {
   Users,
@@ -361,6 +365,65 @@ export async function cancelSubscription(user, { immediate = false } = {}) {
   return subscriptionService.serializeSubscriptionForApi(user.id);
 }
 
+function serializeBillingRow(plain) {
+  return {
+    id: plain.id,
+    invoice_number: plain.invoice_number,
+    plan: plain.plan
+      ? { id: plain.plan.id, code: plain.plan.code, name: plain.plan.name }
+      : null,
+    amount_cents: plain.amount_cents,
+    currency: plain.currency,
+    status: plain.status,
+    payment_method:
+      plain.payment_method ||
+      (plain.payment_method_brand && plain.payment_method_last4
+        ? `${plain.payment_method_brand} •••• ${plain.payment_method_last4}`
+        : null),
+    payment_method_brand: plain.payment_method_brand || null,
+    payment_method_last4: plain.payment_method_last4 || null,
+    // myTask-generated invoice (not Stripe hosted PDF / receipt page)
+    has_invoice: true,
+    invoice_pdf_url: null,
+    hosted_invoice_url: null,
+    paid_at: plain.paid_at,
+    period_start: plain.period_start,
+    period_end: plain.period_end,
+    created_at: plain.created_at,
+    metadata: plain.metadata || null,
+  };
+}
+
+/** Same fields the PDF / HTML invoice use — shared by web + mobile view screens. */
+function enrichInvoiceView(invoice, user) {
+  const meta =
+    invoice.metadata && typeof invoice.metadata === "object"
+      ? invoice.metadata
+      : {};
+  const billingCycle =
+    meta.billing_interval === "year"
+      ? "Yearly"
+      : meta.billing_interval === "month"
+        ? "Monthly"
+        : /year/i.test(String(meta.line_description || ""))
+          ? "Yearly"
+          : "Monthly";
+  const planName = invoice.plan?.name || "Pro";
+  return {
+    ...invoice,
+    bill_to_name: user
+      ? [user.first_name, user.last_name].filter(Boolean).join(" ") ||
+        user.email ||
+        "—"
+      : "—",
+    bill_to_email: user?.email || "—",
+    line_description:
+      meta.line_description ||
+      `${planName} subscription (${billingCycle.toLowerCase()})`,
+    billing_cycle: billingCycle,
+  };
+}
+
 export async function listBillingHistory(userId, { page = 1, limit = 20 } = {}) {
   const offset = (Math.max(1, page) - 1) * limit;
   const { count, rows } = await BillingHistory.findAndCountAll({
@@ -372,29 +435,7 @@ export async function listBillingHistory(userId, { page = 1, limit = 20 } = {}) 
   });
 
   return {
-    data: rows.map((r) => {
-      const plain = r.get({ plain: true });
-      return {
-        id: plain.id,
-        invoice_number: plain.invoice_number,
-        plan: plain.plan
-          ? { id: plain.plan.id, code: plain.plan.code, name: plain.plan.name }
-          : null,
-        amount_cents: plain.amount_cents,
-        currency: plain.currency,
-        status: plain.status,
-        payment_method:
-          plain.payment_method_brand && plain.payment_method_last4
-            ? `${plain.payment_method_brand} •••• ${plain.payment_method_last4}`
-            : null,
-        invoice_pdf_url: plain.invoice_pdf_url,
-        hosted_invoice_url: plain.hosted_invoice_url,
-        paid_at: plain.paid_at,
-        period_start: plain.period_start,
-        period_end: plain.period_end,
-        created_at: plain.created_at,
-      };
-    }),
+    data: rows.map((r) => serializeBillingRow(r.get({ plain: true }))),
     pagination: {
       total_rows: count,
       rows_per_page: limit,
@@ -402,6 +443,60 @@ export async function listBillingHistory(userId, { page = 1, limit = 20 } = {}) 
       total_pages: Math.ceil(count / limit) || 1,
     },
   };
+}
+
+/**
+ * Load a billing history row owned by the user (for myTask invoice PDF / view).
+ */
+export async function getBillingInvoiceForUser(userId, billingId) {
+  const row = await BillingHistory.findOne({
+    where: { id: billingId, user_id: userId, deleted_at: null },
+    include: [
+      { model: Plans, as: "plan", required: false },
+      { model: Users, as: "user", required: false },
+    ],
+  });
+  if (!row) {
+    const err = new Error("Invoice not found");
+    err.statusCode = 404;
+    throw err;
+  }
+  const plain = row.get({ plain: true });
+  const user = plain.user
+    ? {
+        id: plain.user.id,
+        first_name: plain.user.first_name,
+        last_name: plain.user.last_name,
+        email: plain.user.email,
+      }
+    : null;
+  return {
+    invoice: enrichInvoiceView(serializeBillingRow(plain), user),
+    user,
+    raw: plain,
+  };
+}
+
+export async function buildMyTaskInvoicePdf(userId, billingId) {
+  const { invoice, user, raw } = await getBillingInvoiceForUser(userId, billingId);
+  const buffer = await buildInvoicePdfBuffer({
+    invoice: { ...invoice, ...raw, plan: invoice.plan },
+    user,
+  });
+  const filename = `${invoice.invoice_number || `INV-${invoice.id}`}.pdf`.replace(
+    /[^\w.\-]+/g,
+    "_",
+  );
+  return { buffer, filename, invoice };
+}
+
+export async function buildMyTaskInvoiceHtml(userId, billingId) {
+  const { invoice, user, raw } = await getBillingInvoiceForUser(userId, billingId);
+  const html = buildInvoiceHtml({
+    invoice: { ...invoice, ...raw, plan: invoice.plan },
+    user,
+  });
+  return { html, invoice };
 }
 
 export async function upsertBillingFromInvoice(invoice, userId, subscriptionId, options = {}) {
@@ -521,26 +616,21 @@ async function sendInvoiceReceiptEmail(userId, invoice, billingRow) {
     invoice.lines?.data?.[0]?.description || "myTask Pro subscription";
   const billingCycle = /year/i.test(lineDesc) ? "Yearly" : "Monthly";
   const appName = process.env.APP_NAME || "myTask";
-  const downloadUrl =
-    invoice.invoice_pdf ||
-    invoice.hosted_invoice_url ||
-    `${process.env.CLIENT_URL || ""}/billing`;
+  const downloadUrl = `${process.env.CLIENT_URL || ""}/billing/${billingRow.id}`;
 
   const attachments = [];
-  if (invoice.invoice_pdf) {
-    try {
-      const pdfRes = await fetch(invoice.invoice_pdf);
-      if (pdfRes.ok) {
-        const buf = Buffer.from(await pdfRes.arrayBuffer());
-        attachments.push({
-          filename: `${invoice.number || "invoice"}.pdf`,
-          content: buf,
-          contentType: "application/pdf",
-        });
-      }
-    } catch (err) {
-      console.error("invoice pdf attach failed:", err?.message || err);
-    }
+  try {
+    const { buffer, filename } = await buildMyTaskInvoicePdf(
+      userId,
+      billingRow.id,
+    );
+    attachments.push({
+      filename,
+      content: buffer,
+      contentType: "application/pdf",
+    });
+  } catch (err) {
+    console.error("myTask invoice pdf attach failed:", err?.message || err);
   }
 
   await enqueueSendEmail({
@@ -562,7 +652,7 @@ async function sendInvoiceReceiptEmail(userId, invoice, billingRow) {
         paid_on: paidOn,
         period_label: `${periodStart} → ${periodEnd}`,
         button_url: downloadUrl,
-        button_label: invoice.invoice_pdf ? "Download invoice PDF" : "View invoice",
+        button_label: "View invoice",
       },
       attachments,
     },
@@ -889,6 +979,9 @@ export default {
   createBillingPortalSession,
   cancelSubscription,
   listBillingHistory,
+  getBillingInvoiceForUser,
+  buildMyTaskInvoicePdf,
+  buildMyTaskInvoiceHtml,
   upsertBillingFromInvoice,
   recordPaymentAttempt,
   syncSubscriptionFromStripe,

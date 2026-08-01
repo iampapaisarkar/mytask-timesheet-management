@@ -12,6 +12,21 @@ router.get("/current", TokenValidate, controller.getCurrentSubscription);
 router.get("/usage", TokenValidate, controller.getUsage);
 router.get("/feature-limits", TokenValidate, controller.getFeatureLimits);
 router.get("/billing-history", TokenValidate, controller.billingHistory);
+router.get(
+  "/billing-history/:id",
+  TokenValidate,
+  controller.getBillingInvoice,
+);
+router.get(
+  "/billing-history/:id/pdf",
+  TokenValidate,
+  controller.downloadBillingInvoicePdf,
+);
+router.get(
+  "/billing-history/:id/view",
+  TokenValidate,
+  controller.viewBillingInvoiceHtml,
+);
 router.post("/checkout", TokenValidate, controller.createCheckout);
 router.post("/confirm-checkout", TokenValidate, controller.confirmCheckout);
 router.post("/sync", TokenValidate, controller.syncFromStripe);

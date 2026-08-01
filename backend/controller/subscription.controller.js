@@ -185,6 +185,63 @@ export async function billingHistory(req, res) {
   }
 }
 
+export async function getBillingInvoice(req, res) {
+  try {
+    const { user } = req.body;
+    const id = req.params.id;
+    const { invoice } = await billingService.getBillingInvoiceForUser(
+      user.id,
+      id,
+    );
+    return res.status(200).json({
+      data: invoice,
+      message: "Invoice loaded",
+    });
+  } catch (err) {
+    console.error("getBillingInvoice:", err);
+    return res.status(err.statusCode || 500).json({
+      message: err.message || "Unable to load invoice",
+    });
+  }
+}
+
+export async function downloadBillingInvoicePdf(req, res) {
+  try {
+    const { user } = req.body;
+    const id = req.params.id;
+    const { buffer, filename } = await billingService.buildMyTaskInvoicePdf(
+      user.id,
+      id,
+    );
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${filename}"`,
+    );
+    return res.status(200).send(buffer);
+  } catch (err) {
+    console.error("downloadBillingInvoicePdf:", err);
+    return res.status(err.statusCode || 500).json({
+      message: err.message || "Unable to download invoice PDF",
+    });
+  }
+}
+
+export async function viewBillingInvoiceHtml(req, res) {
+  try {
+    const { user } = req.body;
+    const id = req.params.id;
+    const { html } = await billingService.buildMyTaskInvoiceHtml(user.id, id);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    return res.status(200).send(html);
+  } catch (err) {
+    console.error("viewBillingInvoiceHtml:", err);
+    return res.status(err.statusCode || 500).json({
+      message: err.message || "Unable to view invoice",
+    });
+  }
+}
+
 export async function planComparison(req, res) {
   try {
     const plans = await subscriptionService.listActivePlans();

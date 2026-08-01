@@ -389,7 +389,7 @@ test("5. Full Pro payment → sync → invoices → Pro limits → portal → ca
     assert.ok(history.data.length >= 1, "billing history should have invoice");
     const inv = history.data[0];
     assert.equal(inv.status, "paid");
-    assert.ok(inv.invoice_pdf_url || inv.hosted_invoice_url, "invoice URLs");
+    assert.ok(inv.has_invoice || inv.id, "myTask invoice available");
     assert.ok(inv.amount_cents > 0);
 
     // Already subscribed → checkout blocked

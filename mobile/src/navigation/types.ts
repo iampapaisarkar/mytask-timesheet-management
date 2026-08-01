@@ -88,4 +88,5 @@ export type RootStackParamList = {
   Pricing: undefined;
   Subscription: undefined;
   BillingHistory: undefined;
+  BillingInvoice: { id: string };
 };

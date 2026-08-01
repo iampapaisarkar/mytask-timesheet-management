@@ -17,6 +17,7 @@ import {
   PricingScreen,
   SubscriptionScreen,
   BillingHistoryScreen,
+  BillingInvoiceScreen,
 } from "../features/billing";
 import { OrgNavigator } from "./OrgNavigator";
 import { nativeBackScreenOptions } from "./standaloneOptions";
@@ -182,6 +183,11 @@ export function RootNavigator() {
             name="BillingHistory"
             component={BillingHistoryScreen}
             options={{ title: "Billing history" }}
+          />
+          <Stack.Screen
+            name="BillingInvoice"
+            component={BillingInvoiceScreen}
+            options={{ title: "Invoice" }}
           />
         </>
       )}

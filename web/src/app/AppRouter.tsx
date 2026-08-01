@@ -4,6 +4,7 @@ import { GuestRoute, OrgAclRoute, ProtectedRoute } from "@/app/guards";
 import {
   AuthActionsPage,
   BillingHistoryPage,
+  BillingInvoicePage,
   BillingSuccessPage,
   CreateOrganisationPage,
   CustomersPage,
@@ -104,6 +105,10 @@ export function AppRouter() {
                   <Route
                     path="/billing/success"
                     element={<BillingSuccessPage />}
+                  />
+                  <Route
+                    path="/billing/:id"
+                    element={<BillingInvoicePage />}
                   />
                   <Route
                     path="/organisations/create"
