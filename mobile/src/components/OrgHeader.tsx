@@ -1,32 +1,43 @@
-import { Image, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
 import { useNotifications } from "@mytask/hooks";
-import { spacing } from "@mytask/theme";
+import { spacing, typography } from "@mytask/theme";
 import { HeaderIconButton } from "./HeaderIconButton";
 import type { RootStackParamList } from "../navigation/types";
+import { useAuthStore } from "../store/authStore";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { BellIcon, MoonIcon, SunIcon } from "../ui";
 import { elevation } from "../ui/tokens";
-
-const logo = require("../../mytasklogo.png");
 
 type Props = {
   orgCode: string;
   onLeaveOrganisation?: () => void;
 };
 
+function firstNameFromUser(user: {
+  first_name?: string;
+  full_name?: unknown;
+} | null): string {
+  const first = user?.first_name?.trim();
+  if (first) return first;
+  if (typeof user?.full_name === "string" && user.full_name.trim()) {
+    return user.full_name.trim().split(/\s+/)[0] || "there";
+  }
+  return "there";
+}
+
 /**
- * Organisation chrome — logo + org identity on the left; notifications + theme on the right.
- * Mirrors web OrgLayout header actions without duplicating the default stack header.
+ * Organisation chrome — greeting + org code on the left; notifications + theme on the right.
  */
 export function OrgHeader({ orgCode, onLeaveOrganisation }: Props) {
   const insets = useSafeAreaInsets();
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const user = useAuthStore((s) => s.user);
   const organisation = useOrganisationStore((s) => s.organisation);
   const c = useThemeStore((s) => s.colors);
   const mode = useThemeStore((s) => s.mode);
@@ -47,7 +58,7 @@ export function OrgHeader({ orgCode, onLeaveOrganisation }: Props) {
   const unreadLabel = unread > 99 ? "99+" : unread > 0 ? String(unread) : null;
 
   const code = organisation?.code || orgCode;
-  const name = organisation?.name || "Organisation";
+  const firstName = firstNameFromUser(user);
 
   return (
     <View
@@ -62,22 +73,19 @@ export function OrgHeader({ orgCode, onLeaveOrganisation }: Props) {
       ]}
     >
       <View style={styles.row}>
-        <HeaderIconButton
-          accessibilityLabel="Back to myTask home"
+        <Pressable
+          style={styles.identity}
           onPress={() => onLeaveOrganisation?.()}
-          style={[styles.logoBtn, { backgroundColor: c.primarySoft }]}
+          accessibilityRole="button"
+          accessibilityLabel="Back to myTask home"
         >
-          <Image source={logo} style={styles.logo} accessibilityIgnoresInvertColors />
-        </HeaderIconButton>
-
-        <View style={styles.identity}>
+          <Text style={[styles.greeting, { color: c.text }]} numberOfLines={1}>
+            Hi, {firstName}
+          </Text>
           <Text style={[styles.code, { color: c.text }]} numberOfLines={1}>
             {code}
           </Text>
-          <Text style={[styles.name, { color: c.muted }]} numberOfLines={1}>
-            {name}
-          </Text>
-        </View>
+        </Pressable>
 
         <View style={styles.actions}>
           <HeaderIconButton
@@ -130,31 +138,22 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     minHeight: 52,
   },
-  logoBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    overflow: "hidden",
-  },
-  logo: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-  },
   identity: {
     flex: 1,
     minWidth: 0,
     paddingRight: spacing.sm,
+    justifyContent: "center",
+  },
+  greeting: {
+    fontSize: typography.sizes.lg,
+    fontWeight: "700",
+    letterSpacing: -0.2,
   },
   code: {
-    fontSize: 16,
-    fontWeight: "800",
-    letterSpacing: 0.2,
-  },
-  name: {
     marginTop: 2,
-    fontSize: 12,
-    fontWeight: "500",
+    fontSize: typography.sizes.xs,
+    fontWeight: "800",
+    letterSpacing: 0.3,
   },
   actions: {
     flexDirection: "row",

@@ -25,7 +25,6 @@ import {
   ClockIcon,
   EmptyState,
   ErrorState,
-  ScreenHeader,
   SectionHeader,
   StatCard,
   UsersIcon,
@@ -254,10 +253,6 @@ export function OrgHomeScreen({ route }: Props) {
           pending: 0,
         }));
 
-  const hour = new Date().getHours();
-  const greeting =
-    hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: c.bg }}
@@ -274,13 +269,9 @@ export function OrgHomeScreen({ route }: Props) {
         />
       }
     >
-      <ScreenHeader
-        title={greeting}
-        subtitle={`${organisation?.name || orgCode} · ${roleDescription(
-          overview?.role || roleCode,
-          overview?.source,
-        )}`}
-      />
+      <Text style={[styles.roleLine, { color: c.muted }]}>
+        {roleDescription(overview?.role || roleCode, overview?.source)}
+      </Text>
 
       <ClockInOut />
 
@@ -570,6 +561,12 @@ export function OrgHomeScreen({ route }: Props) {
 
 const styles = StyleSheet.create({
   container: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  roleLine: {
+    fontSize: typography.sizes.sm,
+    fontWeight: "500",
+    marginBottom: spacing.md,
+    lineHeight: 18,
+  },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 4 },
   chartCard: {
     marginTop: spacing.md,
