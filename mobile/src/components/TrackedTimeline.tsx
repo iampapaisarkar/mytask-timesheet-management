@@ -7,6 +7,7 @@ import {
   View,
 } from "react-native";
 import { formatMinutesAsDisplayTime } from "@mytask/utils";
+import { radii, spacing, typography } from "@mytask/theme";
 import { useThemeStore } from "../store/themeStore";
 
 export type TimelineTaskType = "working" | "break" | "travel";
@@ -25,7 +26,8 @@ const TYPE_COLORS: Record<TimelineTaskType, string> = {
   travel: "#5B8DEF",
 };
 
-const PX_PER_MIN = 1.05;
+const PX_PER_MIN = 1.15;
+const AXIS_WIDTH = 72;
 
 function parseMinutes(value?: string | null): number | null {
   if (!value) return null;
@@ -51,6 +53,19 @@ export function formatMinutesAsHm(mins: number) {
   return `${h}h ${String(m).padStart(2, "0")}m`;
 }
 
+function compactAxisTime(mins: number): string {
+  const label = formatMinutesAsDisplayTime(mins);
+  // Keep "9:00 AM" on one line — slightly tighter spacing via NBSP-free string
+  return label.replace(/\s+/g, " ");
+}
+
+function barTimeRange(start: string, end: string): string {
+  const a = parseMinutes(start);
+  const b = parseMinutes(end);
+  if (a == null || b == null) return "";
+  return `${compactAxisTime(a)} – ${compactAxisTime(b)}`;
+}
+
 export function TrackedTimeline({
   tasks,
   selectedKey,
@@ -62,7 +77,7 @@ export function TrackedTimeline({
 }) {
   const c = useThemeStore((s) => s.colors);
 
-  const { rangeStart, rangeEnd, height, ticks } = useMemo(() => {
+  const { rangeStart, height, ticks } = useMemo(() => {
     const starts = tasks
       .map((t) => parseMinutes(t.start_time))
       .filter((n): n is number => n != null);
@@ -78,24 +93,40 @@ export function TrackedTimeline({
     for (let t = rs; t <= re; t += 30) list.push(t);
     return {
       rangeStart: rs,
-      rangeEnd: re,
-      height: Math.max(280, (re - rs) * PX_PER_MIN),
+      height: Math.max(320, (re - rs) * PX_PER_MIN),
       ticks: list,
     };
   }, [tasks]);
 
-  function labelFor(mins: number) {
-    return formatMinutesAsDisplayTime(mins);
-  }
-
   return (
-    <View style={styles.wrap}>
-      <Text style={[styles.heading, { color: c.text }]}>Tracked Timeline</Text>
+    <View style={[styles.wrap, { backgroundColor: c.bg }]}>
+      <View style={styles.headingRow}>
+        <Text style={[styles.heading, { color: c.text }]}>Tracked timeline</Text>
+        <View style={styles.legend}>
+          {(
+            [
+              ["working", "Work"],
+              ["break", "Break"],
+              ["travel", "Travel"],
+            ] as const
+          ).map(([type, label]) => (
+            <View key={type} style={styles.legendItem}>
+              <View
+                style={[styles.legendDot, { backgroundColor: TYPE_COLORS[type] }]}
+              />
+              <Text style={[styles.legendText, { color: c.muted }]}>{label}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
       <ScrollView
-        style={[styles.scroll, { borderColor: c.border, backgroundColor: c.surface }]}
+        style={[styles.scroll, { backgroundColor: c.surface }]}
+        contentContainerStyle={styles.scrollContent}
         nestedScrollEnabled
+        showsVerticalScrollIndicator={false}
       >
-        <View style={{ height, minWidth: 260 }}>
+        <View style={{ height }}>
           {ticks.map((t) => {
             const top = (t - rangeStart) * PX_PER_MIN;
             const isHour = t % 60 === 0;
@@ -104,30 +135,45 @@ export function TrackedTimeline({
                 <Text
                   style={[
                     styles.tickLabel,
-                    { color: isHour ? c.text : c.muted },
+                    {
+                      color: isHour ? c.text : c.muted,
+                      fontWeight: isHour ? "700" : "500",
+                    },
                   ]}
+                  numberOfLines={1}
                 >
-                  {labelFor(t)}
+                  {compactAxisTime(t)}
                 </Text>
                 <View
                   style={[
                     styles.tickLine,
-                    { borderTopColor: c.border, opacity: isHour ? 1 : 0.5 },
+                    {
+                      borderTopColor: isHour ? c.borderStrong : c.border,
+                      opacity: isHour ? 1 : 0.55,
+                    },
                   ]}
                 />
               </View>
             );
           })}
+
           {tasks.map((task) => {
             const a = parseMinutes(task.start_time);
             const b = parseMinutes(task.end_time);
             if (a == null || b == null || b <= a) return null;
             const top = (a - rangeStart) * PX_PER_MIN;
-            const barH = Math.max(24, (b - a) * PX_PER_MIN);
+            const barH = Math.max(28, (b - a) * PX_PER_MIN);
             const selected = selectedKey === task.key;
+            const range = barTimeRange(task.start_time, task.end_time);
+            const line =
+              barH >= 34 && range
+                ? `${task.label}  ·  ${range}`
+                : range || task.label;
             return (
               <Pressable
                 key={task.key}
+                accessibilityRole="button"
+                accessibilityLabel={`${task.label} ${range}`}
                 onPress={() => onSelect(task.key)}
                 style={[
                   styles.bar,
@@ -135,13 +181,13 @@ export function TrackedTimeline({
                     top,
                     height: barH,
                     backgroundColor: TYPE_COLORS[task.type],
+                    borderColor: selected ? c.white : "transparent",
                     borderWidth: selected ? 2 : 0,
-                    borderColor: "#fff",
                   },
                 ]}
               >
                 <Text style={styles.barLabel} numberOfLines={1}>
-                  {task.label}
+                  {line}
                 </Text>
               </Pressable>
             );
@@ -154,37 +200,79 @@ export function TrackedTimeline({
 
 const styles = StyleSheet.create({
   wrap: { flex: 1 },
-  heading: { fontSize: 16, fontWeight: "700", marginBottom: 10 },
+  headingRow: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
+    gap: 8,
+  },
+  heading: {
+    fontSize: typography.sizes.md,
+    fontWeight: "700",
+    letterSpacing: -0.2,
+  },
+  legend: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  legendText: {
+    fontSize: typography.sizes.xs,
+    fontWeight: "600",
+  },
   scroll: {
     flex: 1,
-    borderRadius: 12,
-    borderWidth: 1,
+  },
+  scrollContent: {
+    paddingBottom: spacing.xl,
   },
   tickRow: {
     position: "absolute",
     left: 0,
     right: 0,
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
+    height: 18,
+    marginTop: -9,
   },
   tickLabel: {
-    width: 48,
-    fontSize: 10,
+    width: AXIS_WIDTH,
+    fontSize: 11,
     textAlign: "right",
-    paddingRight: 6,
+    paddingRight: 10,
+    fontVariant: ["tabular-nums"],
   },
   tickLine: {
     flex: 1,
     borderTopWidth: StyleSheet.hairlineWidth,
-    marginTop: 6,
   },
   bar: {
     position: "absolute",
-    left: 56,
-    right: 10,
-    borderRadius: 8,
-    paddingHorizontal: 10,
+    left: AXIS_WIDTH,
+    right: 0,
+    borderTopLeftRadius: radii.sm,
+    borderBottomLeftRadius: radii.sm,
+    borderTopRightRadius: 0,
+    borderBottomRightRadius: 0,
+    paddingHorizontal: 12,
     justifyContent: "center",
+    gap: 2,
   },
-  barLabel: { color: "#fff", fontSize: 12, fontWeight: "700" },
+  barLabel: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.1,
+    fontVariant: ["tabular-nums"],
+  },
 });

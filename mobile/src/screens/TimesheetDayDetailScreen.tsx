@@ -479,7 +479,7 @@ export function TimesheetDayDetailScreen({ route }: Props) {
                         <Text style={styles.sheetSub}>Job: {jobName}</Text>
                       ) : null}
                       {!expanded ? (
-                        <Text style={styles.sheetMeta}>
+                        <Text style={styles.sheetMeta} numberOfLines={1}>
                           {formatDisplayTimeRange(
                             task.start_time,
                             task.end_time,
@@ -508,7 +508,7 @@ export function TimesheetDayDetailScreen({ route }: Props) {
                           />
                         ) : (
                           <>
-                            <Text style={styles.sheetMeta}>
+                            <Text style={styles.sheetMeta} numberOfLines={1}>
                               {formatDisplayTimeRange(
                                 task.start_time,
                                 task.end_time,
@@ -546,7 +546,7 @@ export function TimesheetDayDetailScreen({ route }: Props) {
         ) : null}
 
         {tab === "timeline" ? (
-          <View style={styles.tabPane}>
+          <View style={styles.timelinePane}>
             <TrackedTimeline
               tasks={timelineTasks}
               selectedKey={expandedKey}
@@ -783,6 +783,7 @@ const styles = StyleSheet.create({
   },
   body: { flex: 1 },
   tabPane: { flex: 1, padding: spacing.md },
+  timelinePane: { flex: 1 },
   sheetCard: {
     borderRadius: 18,
     padding: 14,
@@ -792,12 +793,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    gap: 12,
   },
-  sheetName: { color: "#fff", fontSize: 17, fontWeight: "700" },
+  sheetName: {
+    color: "#fff",
+    fontSize: 17,
+    fontWeight: "700",
+    flexShrink: 1,
+  },
   sheetDur: {
     color: "rgba(255,255,255,0.9)",
     fontSize: 12,
     fontWeight: "600",
+    fontVariant: ["tabular-nums"],
   },
   sheetSub: { color: "rgba(255,255,255,0.9)", marginTop: 4, fontSize: 13 },
   sheetExpand: {
@@ -806,7 +814,12 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "rgba(255,255,255,0.25)",
   },
-  sheetMeta: { color: "rgba(255,255,255,0.95)", fontSize: 12, marginTop: 4 },
+  sheetMeta: {
+    color: "rgba(255,255,255,0.95)",
+    fontSize: 12,
+    marginTop: 4,
+    fontVariant: ["tabular-nums"],
+  },
   addBtn: { marginTop: 4 },
   footer: {
     borderTopWidth: StyleSheet.hairlineWidth,
