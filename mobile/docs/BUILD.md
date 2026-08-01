@@ -70,7 +70,7 @@ Android emulator → host machine API:
 API_BASE_URL: 'http://10.0.2.2:3002/api'
 ```
 
-Physical device → use your computer’s LAN IP:
+Physical device → use your computer’s LAN IP in `src/config/env.local.ts`:
 
 ```ts
 API_BASE_URL: 'http://192.168.x.x:3002/api'

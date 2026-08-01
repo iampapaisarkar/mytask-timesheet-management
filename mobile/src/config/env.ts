@@ -1,33 +1,55 @@
 /**
  * Mobile env config (React Native CLI).
- * Edit values here — never commit real production secrets to shared branches.
+ *
+ * Committed defaults are empty / safe placeholders.
+ * Put real values in `env.local.ts` (gitignored) — see `env.local.ts.example`.
  */
-export const ENV = {
-  API_BASE_URL: "http://localhost:8080/api",
+export type MobileEnv = {
+  API_BASE_URL: string;
+  FIREBASE_API_KEY: string;
+  FIREBASE_AUTH_DOMAIN: string;
+  FIREBASE_PROJECT_ID: string;
+  FIREBASE_STORAGE_BUCKET: string;
+  FIREBASE_MESSAGING_SENDER_ID: string;
+  FIREBASE_APP_ID: string;
+  /** Web OAuth client ID — required for native Google ID tokens. */
+  GOOGLE_WEB_CLIENT_ID: string;
+  /** iOS OAuth client ID from GoogleService-Info.plist `CLIENT_ID`. */
+  GOOGLE_IOS_CLIENT_ID: string;
+  STRIPE_PUBLISHABLE_KEY: string;
+};
 
-  // Firebase web-style config (JS SDK). Same project as web / Admin.
+const defaults: MobileEnv = {
+  API_BASE_URL: "http://localhost:8080/api",
   FIREBASE_API_KEY: "",
   FIREBASE_AUTH_DOMAIN: "",
   FIREBASE_PROJECT_ID: "",
   FIREBASE_STORAGE_BUCKET: "",
   FIREBASE_MESSAGING_SENDER_ID: "",
   FIREBASE_APP_ID: "",
-
-  /**
-   * OAuth 2.0 Web Client ID from Google Cloud Console / Firebase
-   * (Authentication → Sign-in method → Google → Web client ID).
-   * Required for `@react-native-google-signin` to return an ID token.
-   */
   GOOGLE_WEB_CLIENT_ID: "",
-
-  /**
-   * iOS OAuth client ID (optional if GoogleService-Info.plist is present).
-   * From GoogleService-Info.plist `CLIENT_ID`.
-   */
   GOOGLE_IOS_CLIENT_ID: "",
-
   STRIPE_PUBLISHABLE_KEY: "",
-} as const;
+};
+
+function loadLocalOverrides(): Partial<MobileEnv> {
+  try {
+    // Optional — file is gitignored. Metro/Node throw if missing.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require("./env.local") as {
+      ENV_LOCAL?: Partial<MobileEnv>;
+      default?: Partial<MobileEnv>;
+    };
+    return mod.ENV_LOCAL ?? mod.default ?? {};
+  } catch {
+    return {};
+  }
+}
+
+export const ENV: MobileEnv = {
+  ...defaults,
+  ...loadLocalOverrides(),
+};
 
 export function isFirebaseConfigured(): boolean {
   return Boolean(

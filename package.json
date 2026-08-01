@@ -21,6 +21,10 @@
   },
   "overrides": {
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "semver": "^7.7.3"
+  },
+  "devDependencies": {
+    "semver": "^7.7.3"
   }
 }

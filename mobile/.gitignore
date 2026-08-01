@@ -66,6 +66,9 @@ yarn-error.log
 # testing
 /coverage
 
+# Local mobile secrets (copy from src/config/env.local.ts.example)
+src/config/env.local.ts
+
 # Yarn
 .yarn/*
 !.yarn/patches
