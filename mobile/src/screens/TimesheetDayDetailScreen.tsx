@@ -559,10 +559,9 @@ export function TimesheetDayDetailScreen({ route }: Props) {
         ) : null}
 
         {tab === "map" ? (
-          <ScrollView contentContainerStyle={styles.tabPane}>
+          <View style={styles.mapPane}>
             <TrackingMap
               trackingLogs={day.tracking_logs}
-              height={420}
               selectedType={
                 expandedKey
                   ? timelineTasks.find((t) => t.key === expandedKey)?.type ??
@@ -570,7 +569,7 @@ export function TimesheetDayDetailScreen({ route }: Props) {
                   : null
               }
             />
-          </ScrollView>
+          </View>
         ) : null}
       </View>
 
@@ -784,6 +783,7 @@ const styles = StyleSheet.create({
   body: { flex: 1 },
   tabPane: { flex: 1, padding: spacing.md },
   timelinePane: { flex: 1 },
+  mapPane: { flex: 1 },
   sheetCard: {
     borderRadius: 18,
     padding: 14,

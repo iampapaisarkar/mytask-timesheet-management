@@ -161,11 +161,9 @@ function PointsList({ points }: { points: FlatPoint[] }) {
 
 export function TrackingMap({
   trackingLogs,
-  height = 280,
   selectedType = null,
 }: {
   trackingLogs?: TrackingLogs | null;
-  height?: number;
   selectedType?: FlatPoint["type"] | null;
 }) {
   const c = useThemeStore((s) => s.colors);
@@ -185,16 +183,7 @@ export function TrackingMap({
 
   if (!canRenderMap || !MapView || !Marker) {
     return (
-      <View
-        style={[
-          styles.fallback,
-          {
-            height,
-            backgroundColor: c.surface,
-            borderColor: c.border,
-          },
-        ]}
-      >
+      <View style={[styles.fallback, { backgroundColor: c.surface }]}>
         <Text style={[styles.fallbackTitle, { color: c.text }]}>
           Tracking points
         </Text>
@@ -219,12 +208,7 @@ export function TrackingMap({
   );
 
   return (
-    <View
-      style={[
-        styles.mapWrap,
-        { height, borderColor: c.border, backgroundColor: c.surface },
-      ]}
-    >
+    <View style={[styles.mapWrap, { backgroundColor: c.surface }]}>
       <MapView
         style={StyleSheet.absoluteFill}
         provider={provider}
@@ -286,18 +270,16 @@ export function hasTrackingMapData(logs?: TrackingLogs | null) {
 
 const styles = StyleSheet.create({
   mapWrap: {
-    borderRadius: 16,
-    borderWidth: 1,
+    flex: 1,
     overflow: "hidden",
   },
   fallback: {
-    borderRadius: 16,
-    borderWidth: 1,
+    flex: 1,
     padding: spacing.md,
   },
   fallbackTitle: { fontSize: 14, fontWeight: "700", marginBottom: 4 },
   hint: { fontSize: 11, marginBottom: spacing.sm },
-  list: { flexGrow: 0 },
+  list: { flex: 1 },
   row: {
     flexDirection: "row",
     alignItems: "center",
