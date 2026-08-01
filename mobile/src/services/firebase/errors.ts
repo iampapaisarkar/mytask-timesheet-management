@@ -29,7 +29,7 @@ export function mapAuthError(error: unknown): string {
     case "auth/invalid-api-key":
     case "auth/configuration-not-found":
     case "auth/invalid-credential":
-      return "Firebase is misconfigured. Check FIREBASE_* values in env.ts.";
+      return "Firebase is misconfigured. Check FIREBASE_* values in env.local.ts.";
     case "auth/operation-not-allowed":
       return "Google Sign-In is not enabled for this Firebase project.";
     case "auth/account-exists-with-different-credential":

@@ -32,7 +32,7 @@ export function initFirebase(): Auth {
   if (auth) return auth;
   if (!isFirebaseConfigured()) {
     throw new Error(
-      "Firebase is not configured. Set FIREBASE_* values in mobile/src/config/env.ts.",
+      "Firebase is not configured. Set FIREBASE_* values in mobile/src/config/env.local.ts.",
     );
   }
 

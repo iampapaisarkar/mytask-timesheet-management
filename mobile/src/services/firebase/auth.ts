@@ -24,7 +24,7 @@ function ensureGoogleConfigured(): void {
   if (googleConfigured) return;
   if (!isGoogleSignInConfigured()) {
     throw new Error(
-      "Google Sign-In is not configured. Set GOOGLE_WEB_CLIENT_ID in mobile/src/config/env.ts.",
+      "Google Sign-In is not configured. Set GOOGLE_WEB_CLIENT_ID in mobile/src/config/env.local.ts.",
     );
   }
   GoogleSignin.configure({
@@ -52,7 +52,7 @@ export async function signInWithEmail(
 export async function signInWithGoogle(): Promise<UserCredential> {
   if (!isFirebaseConfigured()) {
     throw new Error(
-      "Firebase is not configured. Set FIREBASE_* values in mobile/src/config/env.ts.",
+      "Firebase is not configured. Set FIREBASE_* values in mobile/src/config/env.local.ts.",
     );
   }
 
