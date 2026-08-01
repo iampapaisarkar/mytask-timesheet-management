@@ -24,6 +24,7 @@ import type { RootStackParamList } from "./types";
 export type { RootStackParamList } from "./types";
 export type {
   OrgTabParamList,
+  OrgStackParamList,
   SheetsStackParamList,
   ManageStackParamList,
   MoreStackParamList,

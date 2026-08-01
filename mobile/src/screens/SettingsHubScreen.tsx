@@ -4,26 +4,27 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { radii, spacing } from "@mytask/theme";
 import { AccessDenied } from "../components/AccessDenied";
 import { useOrgAcl } from "../hooks/useOrgAcl";
-import type { MoreStackParamList } from "../navigation/types";
+import type { OrgStackParamList } from "../navigation/types";
+import { useOrgNavigate } from "../navigation/useOrgNavigate";
 import { useThemeStore } from "../store/themeStore";
 import {
   BuildingIcon,
   ClockIcon,
   EmptyState,
-  ScreenHeader,
   SettingsIcon,
   ListTile,
 } from "../ui";
 
-type Props = NativeStackScreenProps<MoreStackParamList, "SettingsHub">;
+type Props = NativeStackScreenProps<OrgStackParamList, "SettingsHub">;
 
 type SettingsRoute =
   | "OrganisationDetails"
   | "HolidayCalendars"
   | "PayrollCalendars";
 
-export function SettingsHubScreen({ navigation, route }: Props) {
+export function SettingsHubScreen({ route }: Props) {
   const { orgCode } = route.params;
+  const navigateOrg = useOrgNavigate();
   const c = useThemeStore((s) => s.colors);
   const { can } = useOrgAcl();
 
@@ -74,10 +75,6 @@ export function SettingsHubScreen({ navigation, route }: Props) {
       style={{ flex: 1, backgroundColor: c.bg }}
       contentContainerStyle={styles.container}
     >
-      <ScreenHeader
-        title="Settings"
-        subtitle="Organisation configuration"
-      />
       {links.length === 0 ? (
         <EmptyState
           icon={<SettingsIcon color={c.primary} size={28} />}
@@ -90,7 +87,7 @@ export function SettingsHubScreen({ navigation, route }: Props) {
             key={item.route}
             title={item.label}
             subtitle={item.hint}
-            onPress={() => navigation.navigate(item.route, { orgCode })}
+            onPress={() => navigateOrg(item.route, { orgCode })}
             left={
               <View
                 style={[styles.iconWrap, { backgroundColor: c.primarySoft }]}

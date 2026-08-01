@@ -14,13 +14,13 @@ import {
 import { AccessDenied } from "../components/AccessDenied";
 import { ListPager } from "../components/ListPager";
 import { SkeletonList } from "../components/Skeleton";
-import type { MoreStackParamList } from "../navigation/types";
+import type { OrgStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { triggerHaptic } from "../utils/haptics";
 import { Card, EmptyState, LogIcon, SegmentedControl, StatusBadge } from "../ui";
 
-type Props = NativeStackScreenProps<MoreStackParamList, "SystemLogs">;
+type Props = NativeStackScreenProps<OrgStackParamList, "SystemLogs">;
 type LogKind = "internal" | "external" | "email";
 
 type LogRow = {

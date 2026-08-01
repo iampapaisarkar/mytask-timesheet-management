@@ -26,7 +26,6 @@ import {
   ChevronIcon,
   EmptyState,
   ErrorState,
-  ScreenHeader,
   StatusBadge,
   UsersIcon,
 } from "../ui";
@@ -148,10 +147,9 @@ export function EmployeesListScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <View style={styles.header}>
-        <ScreenHeader
-          title="Employees"
-          subtitle="Team members in this organisation"
-        />
+        <Text style={[styles.pageSub, { color: c.muted }]}>
+          Team members in this organisation
+        </Text>
         <SearchBar
           value={search}
           onChangeText={setSearch}
@@ -267,6 +265,7 @@ export function EmployeesListScreen() {
 }
 
 const styles = StyleSheet.create({
+  pageSub: { fontSize: 13, marginBottom: 8 },
   flex: { flex: 1 },
   header: {
     paddingHorizontal: spacing.md,

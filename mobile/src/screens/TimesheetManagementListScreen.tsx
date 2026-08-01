@@ -32,6 +32,7 @@ import { SearchBar } from "../components/SearchBar";
 import { SkeletonList } from "../components/Skeleton";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import type { ManageStackParamList } from "../navigation/types";
+import { useOrgNavigate } from "../navigation/useOrgNavigate";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
@@ -86,8 +87,9 @@ function jobNames(item: ManagementRow) {
   return item.job?.name || "No jobs";
 }
 
-export function TimesheetManagementListScreen({ navigation, route }: Props) {
+export function TimesheetManagementListScreen({ route }: Props) {
   const { orgCode } = route.params;
+  const navigateOrg = useOrgNavigate();
   const organisation = useOrganisationStore((s) => s.organisation);
   const role = organisation?.role || organisation?.role_code;
   const acl = getOrganisationAcl(role);
@@ -310,9 +312,14 @@ export function TimesheetManagementListScreen({ navigation, route }: Props) {
                 item.id == null
                   ? undefined
                   : () => {
-                      navigation.navigate("TimesheetManagementDetail", {
+                      void triggerHaptic("selection");
+                      navigateOrg("TimesheetManagementDetail", {
                         orgCode,
                         id: String(item.id),
+                        timesheetCode: formatTimesheetLabel({
+                          code: item.code,
+                          id: item.id,
+                        }),
                       });
                     }
               }

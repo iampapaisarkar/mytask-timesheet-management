@@ -8,26 +8,33 @@ Authenticated root is a **native stack**:
 |--------|--------|
 | `Home` | Organisation picker — profile icon in header only |
 | `Profile` | Account / subscription / legal |
-| `Organisation` | Org shell (custom header + bottom tabs) |
+| `Organisation` | Org shell (`OrgStack`) |
 | `NotificationsList` | Modal from org header |
 | Billing / Legal / Create org | Personal workspace flows |
 
-## Organisation shell
+## Organisation shell (`OrgStack`)
 
-`Organisation` mounts `OrgNavigator`:
+`Organisation` mounts an **org-level native stack**:
 
-- **OrgHeader** — logo (leave), org code + name, notifications, theme toggle
-- **Bottom tabs** (premium floating bar) — only inside an organisation
+| Screen | Chrome |
+|--------|--------|
+| `OrgTabs` | **OrgHeader** + premium bottom tabs |
+| `TimesheetDayDetail` | Standalone `← Back · TS-…` header (no tabs) |
+| `EmployeesList`, `CustomersList`, `JobsList`, … | Standalone `← Back · Title` (no tabs) |
+| Settings / calendars / payout detail | Same standalone pattern |
+
+### Tabs (only under `OrgTabs`)
 
 | Tab | Stack |
 |-----|--------|
 | Home | Dashboard |
-| Sheets | My timesheets + detail + day editor |
-| Manage | Timesheet management (ACL gated) |
-| More | Employees, customers, jobs, reports, payouts, settings, logs |
+| Sheets | List only → period detail on OrgStack |
+| Manage | TM list only → period detail on OrgStack |
+| More | Hub only — destinations push onto `OrgStack` |
 
-Tab roots have **no back button** and **swipe-back disabled**. Detail screens show a back control and allow the gesture.
+Tab roots have **no back button** and **swipe-back disabled**.  
+Standalone org-stack screens (`TimesheetDetail`, `TimesheetManagementDetail`, day editor, More destinations) use `StandaloneHeader` (`← Back · TS-…` / title), enable iOS/Android swipe-back, and hide OrgHeader + tab bar by architecture (siblings of `OrgTabs`).
 
 ## Deep links
 
-HTTPS host `mytaskapp.iampapaisarkar.dev` + `mytask://` map through `navigation/linking.ts` into the nested org tab stacks.
+HTTPS host `mytaskapp.iampapaisarkar.dev` + `mytask://` map through `navigation/linking.ts` into `Organisation → OrgTabs | standalone screens`.

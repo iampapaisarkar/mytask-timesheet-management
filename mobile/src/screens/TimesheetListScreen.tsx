@@ -22,6 +22,7 @@ import { ListPager } from "../components/ListPager";
 import { SkeletonList } from "../components/Skeleton";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import type { SheetsStackParamList } from "../navigation/types";
+import { useOrgNavigate } from "../navigation/useOrgNavigate";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import {
@@ -66,8 +67,9 @@ function jobLabel(item: TimesheetRow) {
   return item.job?.name || "";
 }
 
-export function TimesheetListScreen({ navigation, route }: Props) {
+export function TimesheetListScreen({ route }: Props) {
   const { orgCode } = route.params;
+  const navigateOrg = useOrgNavigate();
   const organisation = useOrganisationStore((s) => s.organisation);
   const role = organisation?.role || organisation?.role_code;
   const acl = getOrganisationAcl(role);
@@ -206,9 +208,13 @@ export function TimesheetListScreen({ navigation, route }: Props) {
                 onPress={() => {
                   if (item.id == null) return;
                   void triggerHaptic("selection");
-                  navigation.navigate("TimesheetDetail", {
+                  navigateOrg("TimesheetDetail", {
                     orgCode,
                     id: String(item.id),
+                    timesheetCode: formatTimesheetLabel({
+                      code: item.code,
+                      id: item.id,
+                    }),
                   });
                 }}
               >

@@ -41,40 +41,46 @@ const linkingConfig = {
     Organisation: {
       path: "org/:orgCode",
       screens: {
-        Dashboard: {
+        OrgTabs: {
           path: "",
           screens: {
-            OrgDashboard: "",
+            Dashboard: {
+              path: "",
+              screens: {
+                OrgDashboard: "",
+              },
+            },
+            Sheets: {
+              screens: {
+                TimesheetList: "timesheet",
+              },
+            },
+            Manage: {
+              screens: {
+                TimesheetManagementList: "timesheet-management",
+              },
+            },
+            More: {
+              screens: {
+                MoreHome: "more",
+              },
+            },
           },
         },
-        Sheets: {
-          screens: {
-            TimesheetList: "timesheet",
-            TimesheetDetail: "timesheet/:id/details",
-          },
-        },
-        Manage: {
-          screens: {
-            TimesheetManagementList: "timesheet-management",
-            TimesheetManagementDetail: "timesheet-management/:id/details",
-          },
-        },
-        More: {
-          screens: {
-            MoreHome: "more",
-            EmployeesList: "employees",
-            CustomersList: "customers",
-            JobsList: "jobs",
-            Reports: "reports",
-            Payouts: "payouts",
-            PayoutDetail: "payouts/:id",
-            SystemLogs: "system-logs",
-            SettingsHub: "settings",
-            OrganisationDetails: "settings/organisation-details",
-            HolidayCalendars: "settings/holiday-calendars",
-            PayrollCalendars: "settings/payroll-calendars",
-          },
-        },
+        TimesheetDetail: "timesheet/:id/details",
+        TimesheetManagementDetail: "timesheet-management/:id/details",
+        TimesheetDayDetail: "timesheet/:timesheetId/days/:dayId",
+        EmployeesList: "employees",
+        CustomersList: "customers",
+        JobsList: "jobs",
+        Reports: "reports",
+        Payouts: "payouts",
+        PayoutDetail: "payouts/:id",
+        SystemLogs: "system-logs",
+        SettingsHub: "settings",
+        OrganisationDetails: "settings/organisation-details",
+        HolidayCalendars: "settings/holiday-calendars",
+        PayrollCalendars: "settings/payroll-calendars",
       },
     },
     Login: "login",

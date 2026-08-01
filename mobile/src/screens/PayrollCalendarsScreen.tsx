@@ -12,7 +12,7 @@ import { AccessDenied } from "../components/AccessDenied";
 import { ListPager } from "../components/ListPager";
 import { MobileSelect } from "../components/MobileSelect";
 import { SkeletonList } from "../components/Skeleton";
-import type { MoreStackParamList } from "../navigation/types";
+import type { OrgStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
@@ -24,11 +24,10 @@ import {
   Card,
   EmptyState,
   ErrorState,
-  ScreenHeader,
   SheetsIcon,
 } from "../ui";
 
-type Props = NativeStackScreenProps<MoreStackParamList, "PayrollCalendars">;
+type Props = NativeStackScreenProps<OrgStackParamList, "PayrollCalendars">;
 
 type PayCycle = { id: number; name: string; code: string };
 
@@ -189,10 +188,9 @@ export function PayrollCalendarsScreen({}: Props) {
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <View style={styles.header}>
-        <ScreenHeader
-          title="Payroll calendars"
-          subtitle="Pay cycles and payment schedules"
-        />
+        <Text style={[styles.pageSub, { color: c.muted }]}>
+          Pay cycles and payment schedules
+        </Text>
         {canCreate ? (
           <Button title="Create calendar" onPress={openCreate} size="md" />
         ) : null}
@@ -324,6 +322,7 @@ export function PayrollCalendarsScreen({}: Props) {
 }
 
 const styles = StyleSheet.create({
+  pageSub: { fontSize: 13, marginBottom: 8 },
   flex: { flex: 1 },
   header: {
     paddingHorizontal: spacing.md,

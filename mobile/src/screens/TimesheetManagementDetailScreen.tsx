@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import {
@@ -11,10 +11,12 @@ import {
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing, typography } from "@mytask/theme";
 import { formatTimesheetLabel, getErrorMessage } from "@mytask/utils";
-import type { ManageStackParamList } from "../navigation/types";
+import type { OrgStackParamList } from "../navigation/types";
+import { useOrgNavigate } from "../navigation/useOrgNavigate";
 import { AccessDenied } from "../components/AccessDenied";
 import { FullScreenSheet } from "../components/FullScreenSheet";
 import { SkeletonDetail } from "../components/Skeleton";
+import { StandaloneHeader } from "../components/StandaloneHeader";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
@@ -25,14 +27,13 @@ import {
   ChevronIcon,
   EmptyState,
   ErrorState,
-  ScreenHeader,
   SheetsIcon,
   StatusBadge,
   TextField,
 } from "../ui";
 
 type Props = NativeStackScreenProps<
-  ManageStackParamList,
+  OrgStackParamList,
   "TimesheetManagementDetail"
 >;
 
@@ -72,7 +73,8 @@ type TimesheetDetail = {
 type StatusAction = "submit" | "approve" | "reject" | "revert";
 
 export function TimesheetManagementDetailScreen({ navigation, route }: Props) {
-  const { id, orgCode } = route.params;
+  const { id, orgCode, timesheetCode: codeParam } = route.params;
+  const navigateOrg = useOrgNavigate();
   const organisation = useOrganisationStore((s) => s.organisation);
   const role = organisation?.role || organisation?.role_code;
   const acl = getOrganisationAcl(role);
@@ -97,6 +99,27 @@ export function TimesheetManagementDetailScreen({ navigation, route }: Props) {
     data?.employee?.details?.full_name ||
     "Employee";
   const employeeId = data?.employee?.details?.id ?? data?.employee?.id;
+
+  const headerCode =
+    formatTimesheetLabel(
+      { code: data?.code, id: data?.id ?? id },
+      { prefix: true },
+    ) ||
+    codeParam ||
+    formatTimesheetLabel({ id });
+
+  useEffect(() => {
+    navigation.setOptions({
+      header: () => (
+        <StandaloneHeader
+          title={headerCode}
+          onBack={() => {
+            if (navigation.canGoBack()) navigation.goBack();
+          }}
+        />
+      ),
+    });
+  }, [headerCode, navigation]);
 
   const jobsLabel =
     Array.isArray(data?.jobs) && data.jobs.length
@@ -195,15 +218,11 @@ export function TimesheetManagementDetailScreen({ navigation, route }: Props) {
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <View style={styles.header}>
-        <ScreenHeader
-          title={formatTimesheetLabel(
-            { code: data?.code, id: data?.id ?? id },
-            { prefix: true },
-          )}
-          subtitle={`${employeeName}${
+        <Text style={[styles.pageSub, { color: c.muted }]}>
+          {`${employeeName}${
             data?.period_range ? ` · ${data.period_range}` : ""
           }`}
-        />
+        </Text>
 
         <View style={styles.metaRow}>
           <StatusBadge status={data?.status} size="md" />
@@ -291,13 +310,17 @@ export function TimesheetManagementDetailScreen({ navigation, route }: Props) {
               item.id == null
                 ? undefined
                 : () => {
-                    navigation.navigate("TimesheetDayDetail", {
+                    navigateOrg("TimesheetDayDetail", {
                       orgCode,
                       timesheetId: id,
                       dayId: String(item.id),
                       mode: "management",
                       employeeId:
                         employeeId != null ? String(employeeId) : undefined,
+                      timesheetCode: formatTimesheetLabel({
+                        code: data?.code,
+                        id: data?.id ?? id,
+                      }),
                     });
                   }
             }
@@ -369,6 +392,11 @@ export function TimesheetManagementDetailScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   header: { padding: spacing.lg, paddingBottom: spacing.sm },
+  pageSub: {
+    fontSize: typography.sizes.sm,
+    fontWeight: "500",
+    marginBottom: 4,
+  },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",

@@ -29,7 +29,7 @@ import { getErrorMessage, listPagination, listRows } from "@mytask/utils";
 import { AccessDenied } from "../components/AccessDenied";
 import { ListPager } from "../components/ListPager";
 import { SkeletonList } from "../components/Skeleton";
-import type { MoreStackParamList } from "../navigation/types";
+import type { OrgStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
@@ -41,12 +41,11 @@ import {
   EmptyState,
   ErrorState,
   FilterChips,
-  ScreenHeader,
   StatusBadge,
   WalletIcon,
 } from "../ui";
 
-type Props = NativeStackScreenProps<MoreStackParamList, "Payouts">;
+type Props = NativeStackScreenProps<OrgStackParamList, "Payouts">;
 
 type StatusLike = string | { code?: string; name?: string } | null | undefined;
 
@@ -300,7 +299,7 @@ export function PayoutsScreen({ navigation, route }: Props) {
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <View style={styles.header}>
-        <ScreenHeader title="Payouts" subtitle="Payroll payouts" />
+        <Text style={[styles.pageSub, { color: c.muted }]}>Payroll payouts</Text>
         <View style={styles.toolbar}>
           {canCreate ? (
             <Button
@@ -501,6 +500,7 @@ export function PayoutsScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
+  pageSub: { fontSize: 13, marginBottom: 8 },
   flex: { flex: 1 },
   header: {
     paddingHorizontal: spacing.md,

@@ -18,7 +18,7 @@ import {
   formatTimesheetLabel,
   getErrorMessage,
 } from "@mytask/utils";
-import type { MoreStackParamList } from "../navigation/types";
+import type { OrgStackParamList } from "../navigation/types";
 import { AccessDenied } from "../components/AccessDenied";
 import { SkeletonList } from "../components/Skeleton";
 import { MobileSelect } from "../components/MobileSelect";
@@ -30,12 +30,11 @@ import {
   Button,
   Card,
   Divider,
-  ScreenHeader,
   SectionHeader,
   StatCard,
 } from "../ui";
 
-type Props = NativeStackScreenProps<MoreStackParamList, "Reports">;
+type Props = NativeStackScreenProps<OrgStackParamList, "Reports">;
 
 type EmpOption = {
   id: number;
@@ -345,10 +344,10 @@ export function ReportsScreen({}: Props) {
 
   return (
     <FormKeyboardScroll contentContainerStyle={styles.container}>
-      <ScreenHeader
-        title="Reports"
-        subtitle="Generate a pay report for one approved timesheet, then download or email the PDF."
-      />
+      <Text style={[styles.pageSub, { color: c.muted }]}>
+        Generate a pay report for one approved timesheet, then download or email
+        the PDF.
+      </Text>
 
       <Card style={styles.card}>
         <SectionHeader title="Generate report" />
@@ -594,6 +593,7 @@ export function ReportsScreen({}: Props) {
 }
 
 const styles = StyleSheet.create({
+  pageSub: { fontSize: 13, marginBottom: 8 },
   container: { padding: spacing.lg, paddingBottom: spacing.xxl },
   card: { marginBottom: spacing.md },
   cardTitle: {

@@ -6,13 +6,13 @@ import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing, typography } from "@mytask/theme";
 import { getErrorMessage } from "@mytask/utils";
 import { AccessDenied } from "../components/AccessDenied";
-import type { MoreStackParamList } from "../navigation/types";
+import type { OrgStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
-import { Button, Card, ScreenHeader, TextField } from "../ui";
+import { Button, Card, TextField } from "../ui";
 
-type Props = NativeStackScreenProps<MoreStackParamList, "OrganisationDetails">;
+type Props = NativeStackScreenProps<OrgStackParamList, "OrganisationDetails">;
 
 export function OrganisationDetailsScreen({ route }: Props) {
   const { orgCode } = route.params;
@@ -59,10 +59,9 @@ export function OrganisationDetailsScreen({ route }: Props) {
       style={{ flex: 1, backgroundColor: c.bg }}
       contentContainerStyle={styles.container}
     >
-      <ScreenHeader
-        title="Organisation"
-        subtitle="Identity and workspace settings"
-      />
+      <Text style={[styles.pageSub, { color: c.muted }]}>
+        Identity and workspace settings
+      </Text>
 
       <Card style={styles.card}>
         <View style={styles.row}>
@@ -108,6 +107,7 @@ export function OrganisationDetailsScreen({ route }: Props) {
 }
 
 const styles = StyleSheet.create({
+  pageSub: { fontSize: 13, marginBottom: 8 },
   container: { padding: spacing.lg, paddingBottom: spacing.xxl },
   card: { marginBottom: spacing.md },
   row: { flexDirection: "row", gap: spacing.lg },

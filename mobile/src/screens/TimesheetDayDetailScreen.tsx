@@ -30,22 +30,20 @@ import {
   type TimelineTask,
   type TimelineTaskType,
 } from "../components/TrackedTimeline";
-import type { SheetsStackParamList } from "../navigation/types";
+import type { OrgStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore, type AppColors } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 import {
   Button,
-  CloseIcon,
   EmptyState,
   ErrorState,
-  IconButton,
   PlusIcon,
   SegmentedControl,
   statusVisual,
 } from "../ui";
 
-type Props = NativeStackScreenProps<SheetsStackParamList, "TimesheetDayDetail">;
+type Props = NativeStackScreenProps<OrgStackParamList, "TimesheetDayDetail">;
 
 type TaskType = TimelineTaskType;
 
@@ -190,7 +188,7 @@ function durationLabel(start?: string | null, end?: string | null) {
   return formatMinutesAsHm(b - a);
 }
 
-export function TimesheetDayDetailScreen({ route, navigation }: Props) {
+export function TimesheetDayDetailScreen({ route }: Props) {
   const { dayId, timesheetId, mode: modeParam, employeeId: employeeParam } =
     route.params;
   const mode = modeParam ?? "self";
@@ -362,7 +360,6 @@ export function TimesheetDayDetailScreen({ route, navigation }: Props) {
         style={[
           styles.header,
           {
-            paddingTop: insets.top + 8,
             backgroundColor: c.surface,
             borderBottomColor: c.border,
           },
@@ -373,12 +370,6 @@ export function TimesheetDayDetailScreen({ route, navigation }: Props) {
             <Text style={[styles.dateTitle, { color: c.text }]}>{title}</Text>
             <Text style={{ color: c.muted, fontSize: 13 }}>{subtitle}</Text>
           </View>
-          <IconButton
-            icon={<CloseIcon color={c.muted} />}
-            onPress={() => navigation.goBack()}
-            accessibilityLabel="Close"
-            soft
-          />
         </View>
 
         <ScrollView
@@ -760,6 +751,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   header: {
     paddingHorizontal: 16,
+    paddingTop: 16,
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: 12,

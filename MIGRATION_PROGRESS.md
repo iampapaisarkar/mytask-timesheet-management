@@ -40,6 +40,7 @@
 | Mobile ↔ web feature alignment | ✅ Done | 2026-08-01 | Removed non-web earning rates from mobile settings; Help/Terms/Privacy on main app (web+mobile, shared copy); payout detail; reports history/table/PDF/email; Universal Links host `mytaskapp.iampapaisarkar.dev` |
 | Mobile org navigation UX | ✅ Done | 2026-08-01 | Root Home without tabs; org-only premium bottom tabs; custom OrgHeader; swipe-back only on detail screens |
 | Mobile premium design system | ✅ Done | 2026-08-01 | Shared tokens + `src/ui` component library; all screens redesigned (cards, badges, empty/error states, auth, lists, details); light/dark semantic palette |
+| Mobile standalone org navigation | ✅ Done | 2026-08-01 | OrgStack siblings hide OrgHeader+tabs; Timesheet Day + More destinations use StandaloneHeader; swipe-back enabled |
 
 ## Vue ↔ Web ↔ Mobile gap matrix
 

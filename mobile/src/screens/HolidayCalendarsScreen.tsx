@@ -17,7 +17,7 @@ import { getErrorMessage, listPagination, listRows } from "@mytask/utils";
 import { AccessDenied } from "../components/AccessDenied";
 import { ListPager } from "../components/ListPager";
 import { SkeletonList } from "../components/Skeleton";
-import type { MoreStackParamList } from "../navigation/types";
+import type { OrgStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
@@ -30,11 +30,10 @@ import {
   ChevronIcon,
   EmptyState,
   ErrorState,
-  ScreenHeader,
   SheetsIcon,
 } from "../ui";
 
-type Props = NativeStackScreenProps<MoreStackParamList, "HolidayCalendars">;
+type Props = NativeStackScreenProps<OrgStackParamList, "HolidayCalendars">;
 
 type HolidayCalendarRow = {
   id?: number | string;
@@ -166,10 +165,9 @@ export function HolidayCalendarsScreen({}: Props) {
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <View style={styles.header}>
-        <ScreenHeader
-          title="Holiday calendars"
-          subtitle="Public holidays observed by your organisation"
-        />
+        <Text style={[styles.pageSub, { color: c.muted }]}>
+          Public holidays observed by your organisation
+        </Text>
         {canCreate ? (
           <Button title="Create holiday" onPress={openCreate} size="md" />
         ) : null}
@@ -267,6 +265,7 @@ export function HolidayCalendarsScreen({}: Props) {
 }
 
 const styles = StyleSheet.create({
+  pageSub: { fontSize: 13, marginBottom: 8 },
   flex: { flex: 1 },
   header: {
     paddingHorizontal: spacing.md,

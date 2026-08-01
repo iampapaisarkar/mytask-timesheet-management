@@ -1,14 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useSubmitTimesheet, useTimesheet } from "@mytask/hooks";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing, typography } from "@mytask/theme";
 import { formatTimesheetLabel, getErrorMessage } from "@mytask/utils";
-import type { SheetsStackParamList } from "../navigation/types";
+import type { OrgStackParamList } from "../navigation/types";
+import { useOrgNavigate } from "../navigation/useOrgNavigate";
 import { AccessDenied } from "../components/AccessDenied";
 import { FullScreenSheet } from "../components/FullScreenSheet";
 import { SkeletonDetail } from "../components/Skeleton";
+import { StandaloneHeader } from "../components/StandaloneHeader";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
@@ -19,13 +21,12 @@ import {
   ChevronIcon,
   EmptyState,
   ErrorState,
-  ScreenHeader,
   SheetsIcon,
   StatusBadge,
   TextField,
 } from "../ui";
 
-type Props = NativeStackScreenProps<SheetsStackParamList, "TimesheetDetail">;
+type Props = NativeStackScreenProps<OrgStackParamList, "TimesheetDetail">;
 
 type TimesheetDay = {
   id?: number;
@@ -51,7 +52,8 @@ type TimesheetDetail = {
 };
 
 export function TimesheetDetailScreen({ navigation, route }: Props) {
-  const { id, orgCode } = route.params;
+  const { id, orgCode, timesheetCode: codeParam } = route.params;
+  const navigateOrg = useOrgNavigate();
   const organisation = useOrganisationStore((s) => s.organisation);
   const role = organisation?.role || organisation?.role_code;
   const acl = getOrganisationAcl(role);
@@ -71,6 +73,27 @@ export function TimesheetDetailScreen({ navigation, route }: Props) {
   const existingRemarksLabel = data?.reject_reason
     ? "Reject remarks"
     : "Approval remarks";
+
+  const headerCode =
+    formatTimesheetLabel(
+      { code: data?.code, id: data?.id ?? id },
+      { prefix: true },
+    ) ||
+    codeParam ||
+    formatTimesheetLabel({ id });
+
+  useEffect(() => {
+    navigation.setOptions({
+      header: () => (
+        <StandaloneHeader
+          title={headerCode}
+          onBack={() => {
+            if (navigation.canGoBack()) navigation.goBack();
+          }}
+        />
+      ),
+    });
+  }, [headerCode, navigation]);
 
   const jobsLabel =
     Array.isArray(data?.jobs) && data.jobs.length
@@ -131,19 +154,13 @@ export function TimesheetDetailScreen({ navigation, route }: Props) {
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <View style={styles.header}>
-        <ScreenHeader
-          title={formatTimesheetLabel(
-            { code: data?.code, id: data?.id ?? id },
-            { prefix: true },
-          )}
-          subtitle={
-            data?.period_range ||
+        <Text style={[styles.pageSub, { color: c.muted }]}>
+          {data?.period_range ||
             [data?.period_start_date, data?.period_end_date]
               .filter(Boolean)
               .join(" → ") ||
-            "—"
-          }
-        />
+            "—"}
+        </Text>
 
         <View style={styles.metaRow}>
           <StatusBadge status={data?.status} size="md" />
@@ -198,11 +215,15 @@ export function TimesheetDetailScreen({ navigation, route }: Props) {
               item.id == null
                 ? undefined
                 : () => {
-                    navigation.navigate("TimesheetDayDetail", {
+                    navigateOrg("TimesheetDayDetail", {
                       orgCode,
                       timesheetId: id,
                       dayId: String(item.id),
                       mode: "self",
+                      timesheetCode: formatTimesheetLabel({
+                        code: data?.code,
+                        id: data?.id ?? id,
+                      }),
                     });
                   }
             }
@@ -277,6 +298,11 @@ export function TimesheetDetailScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   header: { padding: spacing.lg, paddingBottom: spacing.sm },
+  pageSub: {
+    fontSize: typography.sizes.sm,
+    fontWeight: "500",
+    marginBottom: 4,
+  },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",

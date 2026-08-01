@@ -40,7 +40,7 @@ import { PlacesAddressInput } from "../components/PlacesAddressInput";
 import { SearchBar } from "../components/SearchBar";
 import { SkeletonList } from "../components/Skeleton";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
-import type { MoreStackParamList } from "../navigation/types";
+import type { OrgStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
@@ -55,10 +55,9 @@ import {
   EmptyState,
   ErrorState,
   PlusIcon,
-  ScreenHeader,
 } from "../ui";
 
-type Props = NativeStackScreenProps<MoreStackParamList, "JobsList">;
+type Props = NativeStackScreenProps<OrgStackParamList, "JobsList">;
 
 type JobRow = {
   id?: number | string;
@@ -276,7 +275,7 @@ export function JobsListScreen(_props: Props) {
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <View style={styles.header}>
-        <ScreenHeader title="Jobs" subtitle="Work sites and jobs" />
+        <Text style={[styles.pageSub, { color: c.muted }]}>Work sites and jobs</Text>
         <SearchBar
           value={search}
           onChangeText={setSearch}
@@ -472,6 +471,7 @@ export function JobsListScreen(_props: Props) {
 }
 
 const styles = StyleSheet.create({
+  pageSub: { fontSize: 13, marginBottom: 8 },
   flex: { flex: 1 },
   header: {
     paddingHorizontal: spacing.md,

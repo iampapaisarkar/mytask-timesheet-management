@@ -13,7 +13,7 @@ import { formatMoney } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing, typography } from "@mytask/theme";
 import { getErrorMessage } from "@mytask/utils";
-import type { MoreStackParamList } from "../navigation/types";
+import type { OrgStackParamList } from "../navigation/types";
 import { AccessDenied } from "../components/AccessDenied";
 import { SkeletonDetail } from "../components/Skeleton";
 import { useOrganisationStore } from "../store/organisationStore";
@@ -30,7 +30,7 @@ import {
   StatusBadge,
 } from "../ui";
 
-type Props = NativeStackScreenProps<MoreStackParamList, "PayoutDetail">;
+type Props = NativeStackScreenProps<OrgStackParamList, "PayoutDetail">;
 
 type StatusLike = string | { code?: string; name?: string } | null | undefined;
 

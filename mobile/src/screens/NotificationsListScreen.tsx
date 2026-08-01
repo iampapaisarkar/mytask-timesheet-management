@@ -120,11 +120,8 @@ export function NotificationsListScreen({ navigation, route }: Props) {
       }
       navigation.navigate("Organisation", {
         orgCode,
-        screen: "Sheets",
-        params: {
-          screen: "TimesheetDetail",
-          params: { orgCode, id: timesheetMatch[1] },
-        },
+        screen: "TimesheetDetail",
+        params: { orgCode, id: timesheetMatch[1] },
       });
       return;
     }
@@ -141,11 +138,8 @@ export function NotificationsListScreen({ navigation, route }: Props) {
       }
       navigation.navigate("Organisation", {
         orgCode,
-        screen: "Manage",
-        params: {
-          screen: "TimesheetManagementDetail",
-          params: { orgCode, id: managementMatch[1] },
-        },
+        screen: "TimesheetManagementDetail",
+        params: { orgCode, id: managementMatch[1] },
       });
       return;
     }

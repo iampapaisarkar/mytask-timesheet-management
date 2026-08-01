@@ -1,8 +1,9 @@
-import { createContext, useContext, useMemo } from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import { createContext, useCallback, useContext, useMemo } from "react";
+import { StyleSheet, View } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { formatTimesheetLabel } from "@mytask/utils";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { OrgHeader } from "../components/OrgHeader";
 import { OrgHomeScreen } from "../features/organisation";
@@ -30,11 +31,18 @@ import { MoreScreen } from "../screens/MoreScreen";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { HomeIcon, ManageIcon, MoreIcon, SheetsIcon } from "../ui";
+import { LeaveOrganisationProvider } from "./LeaveOrganisationContext";
+import { useLeaveOrganisation } from "./LeaveOrganisationContext";
 import { OrgTabBar } from "./OrgTabBar";
+import {
+  orgStackAnimation,
+  standaloneScreenOptions,
+} from "./standaloneOptions";
 import type {
   DashboardStackParamList,
   ManageStackParamList,
   MoreStackParamList,
+  OrgStackParamList,
   OrgTabParamList,
   RootStackParamList,
   SheetsStackParamList,
@@ -46,27 +54,12 @@ function useOrgCodeParam() {
   return useContext(OrgCodeContext);
 }
 
+const OrgStack = createNativeStackNavigator<OrgStackParamList>();
 const Tab = createBottomTabNavigator<OrgTabParamList>();
 const DashboardStack = createNativeStackNavigator<DashboardStackParamList>();
 const SheetsStack = createNativeStackNavigator<SheetsStackParamList>();
 const ManageStack = createNativeStackNavigator<ManageStackParamList>();
 const MoreStackNav = createNativeStackNavigator<MoreStackParamList>();
-
-const stackAnimation = Platform.select<
-  "default" | "slide_from_right" | "fade_from_bottom"
->({
-  ios: "default",
-  android: "slide_from_right",
-  default: "default",
-});
-
-const detailScreenOptions = {
-  headerShown: true as const,
-  gestureEnabled: true,
-  fullScreenGestureEnabled: false,
-  animation: stackAnimation,
-  headerBackTitle: "",
-};
 
 const rootTabScreenOptions = {
   headerShown: false as const,
@@ -114,23 +107,6 @@ function SheetsStackScreen() {
         component={TimesheetListScreen}
         initialParams={{ orgCode }}
       />
-      <SheetsStack.Screen
-        name="TimesheetDetail"
-        component={TimesheetDetailScreen}
-        options={{ ...detailScreenOptions, title: "Timesheet" }}
-      />
-      <SheetsStack.Screen
-        name="TimesheetDayDetail"
-        component={TimesheetDayDetailScreen}
-        options={{
-          ...detailScreenOptions,
-          title: "Day detail",
-          presentation: "fullScreenModal",
-          animation: "slide_from_bottom",
-          headerShown: false,
-          gestureEnabled: true,
-        }}
-      />
     </SheetsStack.Navigator>
   );
 }
@@ -144,23 +120,6 @@ function ManageStackScreen() {
         name="TimesheetManagementList"
         component={TimesheetManagementListScreen}
         initialParams={{ orgCode }}
-      />
-      <ManageStack.Screen
-        name="TimesheetManagementDetail"
-        component={TimesheetManagementDetailScreen}
-        options={{ ...detailScreenOptions, title: "Manage timesheet" }}
-      />
-      <ManageStack.Screen
-        name="TimesheetDayDetail"
-        component={TimesheetDayDetailScreen}
-        options={{
-          ...detailScreenOptions,
-          title: "Day detail",
-          presentation: "fullScreenModal",
-          animation: "slide_from_bottom",
-          headerShown: false,
-          gestureEnabled: true,
-        }}
       />
     </ManageStack.Navigator>
   );
@@ -178,149 +137,212 @@ function MoreStackScreen() {
         component={MoreScreen}
         initialParams={{ orgCode }}
       />
-      <MoreStackNav.Screen
-        name="EmployeesList"
-        component={EmployeesListScreen}
-        options={{ ...detailScreenOptions, title: "Employees" }}
-      />
-      <MoreStackNav.Screen
-        name="CustomersList"
-        component={CustomersListScreen}
-        options={{ ...detailScreenOptions, title: "Customers" }}
-      />
-      <MoreStackNav.Screen
-        name="JobsList"
-        component={JobsListScreen}
-        options={{ ...detailScreenOptions, title: "Jobs" }}
-      />
-      <MoreStackNav.Screen
-        name="Reports"
-        component={ReportsScreen}
-        options={{ ...detailScreenOptions, title: "Reports" }}
-      />
-      <MoreStackNav.Screen
-        name="Payouts"
-        component={PayoutsScreen}
-        options={{ ...detailScreenOptions, title: "Payouts" }}
-      />
-      <MoreStackNav.Screen
-        name="PayoutDetail"
-        component={PayoutDetailScreen}
-        options={{ ...detailScreenOptions, title: "Payout detail" }}
-      />
-      <MoreStackNav.Screen
-        name="SystemLogs"
-        component={SystemLogsScreen}
-        options={{ ...detailScreenOptions, title: "System logs" }}
-      />
-      <MoreStackNav.Screen
-        name="SettingsHub"
-        component={SettingsHubScreen}
-        options={{ ...detailScreenOptions, title: "Settings" }}
-      />
-      <MoreStackNav.Screen
-        name="OrganisationDetails"
-        component={OrganisationDetailsScreen}
-        options={{ ...detailScreenOptions, title: "Organisation" }}
-      />
-      <MoreStackNav.Screen
-        name="HolidayCalendars"
-        component={HolidayCalendarsScreen}
-        options={{ ...detailScreenOptions, title: "Holiday calendars" }}
-      />
-      <MoreStackNav.Screen
-        name="PayrollCalendars"
-        component={PayrollCalendarsScreen}
-        options={{ ...detailScreenOptions, title: "Payroll calendars" }}
-      />
     </MoreStackNav.Navigator>
+  );
+}
+
+/**
+ * Organisation chrome + bottom tabs. Pushed org-stack screens cover this
+ * entirely so header and tab bar disappear without display hacks.
+ */
+function OrgTabsScreen() {
+  const orgCode = useOrgCodeParam();
+  const leaveOrganisation = useLeaveOrganisation();
+  const organisation = useOrganisationStore((s) => s.organisation);
+  const c = useThemeStore((s) => s.colors);
+  const acl = getOrganisationAcl(organisation?.role || organisation?.role_code);
+  const canManage = can(acl, "timesheetManagement", "list");
+  const canSheets = can(acl, "timesheet", "list");
+
+  return (
+    <View style={[styles.root, { backgroundColor: c.bg }]}>
+      <OrgHeader
+        orgCode={orgCode}
+        onLeaveOrganisation={leaveOrganisation}
+      />
+      <View style={styles.tabs}>
+        <Tab.Navigator
+          tabBar={(props) => <OrgTabBar {...props} />}
+          screenOptions={{
+            headerShown: false,
+            sceneStyle: { backgroundColor: c.bg },
+          }}
+        >
+          <Tab.Screen
+            name="Dashboard"
+            component={DashboardStackScreen}
+            options={{
+              title: "Home",
+              tabBarLabel: "Home",
+              tabBarIcon: ({ color, focused, size }) => (
+                <HomeIcon color={color} focused={focused} size={size} />
+              ),
+            }}
+          />
+          {canSheets ? (
+            <Tab.Screen
+              name="Sheets"
+              component={SheetsStackScreen}
+              options={{
+                title: "Sheets",
+                tabBarLabel: "Sheets",
+                tabBarIcon: ({ color, focused, size }) => (
+                  <SheetsIcon color={color} focused={focused} size={size} />
+                ),
+              }}
+            />
+          ) : null}
+          {canManage ? (
+            <Tab.Screen
+              name="Manage"
+              component={ManageStackScreen}
+              options={{
+                title: "Manage",
+                tabBarLabel: "Manage",
+                tabBarIcon: ({ color, focused, size }) => (
+                  <ManageIcon color={color} focused={focused} size={size} />
+                ),
+              }}
+            />
+          ) : null}
+          <Tab.Screen
+            name="More"
+            component={MoreStackScreen}
+            options={{
+              title: "More",
+              tabBarLabel: "More",
+              tabBarIcon: ({ color, focused, size }) => (
+                <MoreIcon color={color} focused={focused} size={size} />
+              ),
+            }}
+          />
+        </Tab.Navigator>
+      </View>
+    </View>
   );
 }
 
 export function OrgNavigator({ navigation, route }: OrgProps) {
   const { orgCode } = route.params;
-  const organisation = useOrganisationStore((s) => s.organisation);
   const clearOrganisation = useOrganisationStore((s) => s.clear);
   const c = useThemeStore((s) => s.colors);
-  const acl = getOrganisationAcl(organisation?.role || organisation?.role_code);
-  const canManage = can(acl, "timesheetManagement", "list");
-  const canSheets = can(acl, "timesheet", "list");
   const codeValue = useMemo(() => orgCode, [orgCode]);
 
-  async function leaveOrganisation() {
-    await clearOrganisation();
-    navigation.reset({
-      index: 0,
-      routes: [{ name: "Home" }],
-    });
-  }
+  const leaveOrganisation = useCallback(() => {
+    void (async () => {
+      await clearOrganisation();
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "Home" }],
+      });
+    })();
+  }, [clearOrganisation, navigation]);
 
   return (
     <OrgCodeContext.Provider value={codeValue}>
-      <View style={[styles.root, { backgroundColor: c.bg }]}>
-        <OrgHeader
-          orgCode={orgCode}
-          onLeaveOrganisation={() => void leaveOrganisation()}
-        />
-        <View style={styles.tabs}>
-          <Tab.Navigator
-            tabBar={(props) => <OrgTabBar {...props} />}
-            screenOptions={{
-              headerShown: false,
-              sceneStyle: { backgroundColor: c.bg },
-            }}
-          >
-            <Tab.Screen
-              name="Dashboard"
-              component={DashboardStackScreen}
-              options={{
-                title: "Home",
-                tabBarLabel: "Home",
-                tabBarIcon: ({ color, focused, size }) => (
-                  <HomeIcon color={color} focused={focused} size={size} />
-                ),
-              }}
-            />
-            {canSheets ? (
-              <Tab.Screen
-                name="Sheets"
-                component={SheetsStackScreen}
-                options={{
-                  title: "Sheets",
-                  tabBarLabel: "Sheets",
-                  tabBarIcon: ({ color, focused, size }) => (
-                    <SheetsIcon color={color} focused={focused} size={size} />
-                  ),
-                }}
-              />
-            ) : null}
-            {canManage ? (
-              <Tab.Screen
-                name="Manage"
-                component={ManageStackScreen}
-                options={{
-                  title: "Manage",
-                  tabBarLabel: "Manage",
-                  tabBarIcon: ({ color, focused, size }) => (
-                    <ManageIcon color={color} focused={focused} size={size} />
-                  ),
-                }}
-              />
-            ) : null}
-            <Tab.Screen
-              name="More"
-              component={MoreStackScreen}
-              options={{
-                title: "More",
-                tabBarLabel: "More",
-                tabBarIcon: ({ color, focused, size }) => (
-                  <MoreIcon color={color} focused={focused} size={size} />
-                ),
-              }}
-            />
-          </Tab.Navigator>
-        </View>
-      </View>
+      <LeaveOrganisationProvider value={leaveOrganisation}>
+        <OrgStack.Navigator
+          screenOptions={{
+            contentStyle: { backgroundColor: c.bg },
+            headerShown: false,
+            animation: orgStackAnimation,
+          }}
+        >
+          <OrgStack.Screen
+            name="OrgTabs"
+            component={OrgTabsScreen}
+            options={{ gestureEnabled: false }}
+          />
+
+          <OrgStack.Screen
+            name="TimesheetDetail"
+            component={TimesheetDetailScreen}
+            options={({ route: detailRoute }) =>
+              standaloneScreenOptions(
+                detailRoute.params.timesheetCode ||
+                  formatTimesheetLabel({ id: detailRoute.params.id }),
+              )
+            }
+          />
+          <OrgStack.Screen
+            name="TimesheetManagementDetail"
+            component={TimesheetManagementDetailScreen}
+            options={({ route: detailRoute }) =>
+              standaloneScreenOptions(
+                detailRoute.params.timesheetCode ||
+                  formatTimesheetLabel({ id: detailRoute.params.id }),
+              )
+            }
+          />
+          <OrgStack.Screen
+            name="TimesheetDayDetail"
+            component={TimesheetDayDetailScreen}
+            options={({ route: dayRoute }) =>
+              standaloneScreenOptions(
+                dayRoute.params.timesheetCode ||
+                  formatTimesheetLabel({
+                    id: dayRoute.params.timesheetId,
+                  }),
+              )
+            }
+          />
+          <OrgStack.Screen
+            name="EmployeesList"
+            component={EmployeesListScreen}
+            options={standaloneScreenOptions("Employees")}
+          />
+          <OrgStack.Screen
+            name="CustomersList"
+            component={CustomersListScreen}
+            options={standaloneScreenOptions("Customers")}
+          />
+          <OrgStack.Screen
+            name="JobsList"
+            component={JobsListScreen}
+            options={standaloneScreenOptions("Jobs")}
+          />
+          <OrgStack.Screen
+            name="Reports"
+            component={ReportsScreen}
+            options={standaloneScreenOptions("Reports")}
+          />
+          <OrgStack.Screen
+            name="Payouts"
+            component={PayoutsScreen}
+            options={standaloneScreenOptions("Payouts")}
+          />
+          <OrgStack.Screen
+            name="PayoutDetail"
+            component={PayoutDetailScreen}
+            options={standaloneScreenOptions("Payout detail")}
+          />
+          <OrgStack.Screen
+            name="SystemLogs"
+            component={SystemLogsScreen}
+            options={standaloneScreenOptions("System logs")}
+          />
+          <OrgStack.Screen
+            name="SettingsHub"
+            component={SettingsHubScreen}
+            options={standaloneScreenOptions("Settings")}
+          />
+          <OrgStack.Screen
+            name="OrganisationDetails"
+            component={OrganisationDetailsScreen}
+            options={standaloneScreenOptions("Organisation")}
+          />
+          <OrgStack.Screen
+            name="HolidayCalendars"
+            component={HolidayCalendarsScreen}
+            options={standaloneScreenOptions("Holiday calendars")}
+          />
+          <OrgStack.Screen
+            name="PayrollCalendars"
+            component={PayrollCalendarsScreen}
+            options={standaloneScreenOptions("Payroll calendars")}
+          />
+        </OrgStack.Navigator>
+      </LeaveOrganisationProvider>
     </OrgCodeContext.Provider>
   );
 }

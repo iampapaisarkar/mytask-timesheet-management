@@ -1,8 +1,6 @@
 import type { ReactNode } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useNavigation } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { radii, spacing } from "@mytask/theme";
 import {
@@ -18,28 +16,37 @@ import {
   UsersIcon,
   WalletIcon,
 } from "../ui";
-import type { MoreStackParamList, RootStackParamList } from "../navigation/types";
+import type { MoreStackParamList, OrgStackParamList } from "../navigation/types";
+import { useLeaveOrganisation } from "../navigation/LeaveOrganisationContext";
+import { useOrgNavigate } from "../navigation/useOrgNavigate";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 
 type Props = NativeStackScreenProps<MoreStackParamList, "MoreHome">;
 
-type MoreRoute = Exclude<keyof MoreStackParamList, "MoreHome">;
+type MoreDestination = Exclude<
+  keyof OrgStackParamList,
+  | "OrgTabs"
+  | "TimesheetDayDetail"
+  | "PayoutDetail"
+  | "OrganisationDetails"
+  | "HolidayCalendars"
+  | "PayrollCalendars"
+>;
 
 type MoreItem = {
   label: string;
   hint: string;
-  route: MoreRoute;
+  route: MoreDestination;
   group: "Management" | "Business" | "Settings";
   icon: (color: string) => ReactNode;
 };
 
-export function MoreScreen({ navigation, route }: Props) {
+export function MoreScreen({ route }: Props) {
   const { orgCode } = route.params;
-  const rootNav =
-    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigateOrg = useOrgNavigate();
+  const leaveOrganisation = useLeaveOrganisation();
   const organisation = useOrganisationStore((s) => s.organisation);
-  const clear = useOrganisationStore((s) => s.clear);
   const c = useThemeStore((s) => s.colors);
   const acl = getOrganisationAcl(organisation?.role || organisation?.role_code);
 
@@ -127,42 +134,6 @@ export function MoreScreen({ navigation, route }: Props) {
     (g) => items.some((i) => i.group === g),
   );
 
-  async function leaveOrganisation() {
-    await clear();
-    rootNav.reset({
-      index: 0,
-      routes: [{ name: "Home" }],
-    });
-  }
-
-  function navigateTo(itemRoute: MoreRoute) {
-    switch (itemRoute) {
-      case "EmployeesList":
-        navigation.navigate("EmployeesList", { orgCode });
-        break;
-      case "CustomersList":
-        navigation.navigate("CustomersList", { orgCode });
-        break;
-      case "JobsList":
-        navigation.navigate("JobsList", { orgCode });
-        break;
-      case "Reports":
-        navigation.navigate("Reports", { orgCode });
-        break;
-      case "Payouts":
-        navigation.navigate("Payouts", { orgCode });
-        break;
-      case "SystemLogs":
-        navigation.navigate("SystemLogs", { orgCode });
-        break;
-      case "SettingsHub":
-        navigation.navigate("SettingsHub", { orgCode });
-        break;
-      default:
-        break;
-    }
-  }
-
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: c.bg }}
@@ -183,7 +154,7 @@ export function MoreScreen({ navigation, route }: Props) {
                 key={item.route}
                 title={item.label}
                 subtitle={item.hint}
-                onPress={() => navigateTo(item.route)}
+                onPress={() => navigateOrg(item.route, { orgCode })}
                 left={
                   <View
                     style={[
@@ -203,7 +174,7 @@ export function MoreScreen({ navigation, route }: Props) {
         <Button
           title="Back to myTask"
           variant="outline"
-          onPress={() => void leaveOrganisation()}
+          onPress={leaveOrganisation}
         />
       </View>
     </ScrollView>
