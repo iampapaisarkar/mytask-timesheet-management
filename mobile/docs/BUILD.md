@@ -104,3 +104,8 @@ cd mobile/ios && pod install
 
 `AppDelegate.swift` calls `GMSServices.provideAPIKey` from `GMSApiKey`.
 Maps use a minimal custom style (`mobile/src/components/mapStyle.ts`).
+
+**New Architecture note:** `react-native-maps` must remain autolinked on iOS so Fabric
+registers `RNMapsGoogleMapView`. The Podfile still adds `react-native-maps/Google`
+(same relative path) for the Google Maps SDK. Do not set `ios: null` for maps in
+`react-native.config.js` — that causes `Unimplemented component <RNMapsGoogleMapView>`.

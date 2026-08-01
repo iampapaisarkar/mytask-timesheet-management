@@ -6,8 +6,9 @@
  * the private TSLocationManager CocoaPods source or a Transistorsoft license.
  * Enable native linking when ready — see mobile/docs/TRACKING.md.
  *
- * `react-native-maps` iOS is linked manually via Podfile (`react-native-maps/Google`)
- * so Apple Maps is not used. Android still autolinks (Google Maps).
+ * `react-native-maps` must stay autolinked on iOS so New Architecture codegen
+ * registers Fabric components (RNMapsGoogleMapView, etc.). Google Maps is added
+ * via the Podfile Google subspec.
  */
 module.exports = {
   dependencies: {
@@ -15,11 +16,6 @@ module.exports = {
       platforms: {
         ios: null,
         android: null,
-      },
-    },
-    'react-native-maps': {
-      platforms: {
-        ios: null,
       },
     },
   },

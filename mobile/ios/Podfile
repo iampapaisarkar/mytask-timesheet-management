@@ -23,8 +23,8 @@ target 'MyTaskMobile' do
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
 
-  # Google Maps only on iOS (Apple Maps disabled). Autolinking for maps is
-  # turned off in react-native.config.js so this is the sole maps pod.
+  # Google Maps provider for iOS (same path as autolinking — required for
+  # Fabric RNMapsGoogleMapView). Do not use Apple Maps.
   pod 'react-native-maps/Google', :path => '../../node_modules/react-native-maps'
 
   post_install do |installer|
