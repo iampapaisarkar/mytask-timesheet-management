@@ -22,24 +22,38 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>GoogleSignIn</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.1069285546437-rpt985gcc4d9ftgnm59gftrivctsngdr</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-	  <!-- Do not change NSAllowsArbitraryLoads to true, or you will risk app rejection! -->
 		<key>NSAllowsArbitraryLoads</key>
 		<false/>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>myTask needs your location while you use the app to record timesheet travel and work activity.</string>
-	<key>NSLocationAlwaysUsageDescription</key>
-	<string>myTask needs always-on location access to continue tracking your timesheet while the app is in the background.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>myTask uses your location to track travel and work time for your organisation, including when the app is in the background.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>myTask needs always-on location access to continue tracking your timesheet while the app is in the background.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>myTask needs your location while you use the app to record timesheet travel and work activity.</string>
+	<key>RCTNewArchEnabled</key>
+	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
@@ -65,23 +79,5 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
-	<!--
-	  Google Sign-In URL scheme.
-	  Replace REVERSED_CLIENT_ID with the value from GoogleService-Info.plist
-	  (e.g. com.googleusercontent.apps.123456789-abcdef).
-	-->
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLName</key>
-			<string>GoogleSignIn</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>com.googleusercontent.apps.1069285546437-rpt985gcc4d9ftgnm59gftrivctsngdr</string>
-			</array>
-		</dict>
-	</array>
 </dict>
 </plist>
