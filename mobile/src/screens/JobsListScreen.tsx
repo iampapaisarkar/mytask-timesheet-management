@@ -479,6 +479,7 @@ export function JobsListScreen(_props: Props) {
                 onChange={handleAddressChange}
                 label="Site address"
                 requireCoordinates
+                showMap
                 inBottomSheet
               />
               <FormFieldError message={fieldState.error?.message} />

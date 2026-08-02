@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { BottomSheetTextInput } from "../ui/AppBottomSheet";
 import {
+  emptyGlobalAddress,
   hasAddressContent,
   normalizeAddress,
   parseGooglePlaceComponents,
@@ -19,6 +20,7 @@ import { spacing } from "@mytask/theme";
 import { ENV } from "../config/env";
 import { useThemeStore } from "../store/themeStore";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
+import { MapLocationPicker } from "./MapLocationPicker";
 
 type Prediction = {
   place_id: string;
@@ -46,6 +48,50 @@ type AutocompleteResponse = {
   status?: string;
 };
 
+function DetailField({
+  label,
+  value,
+  onChangeText,
+  Input,
+  editable,
+  colors,
+  keyboardType,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (text: string) => void;
+  Input: typeof TextInput;
+  editable: boolean;
+  colors: { muted: string; border: string; text: string; bg: string };
+  keyboardType?: "default" | "numeric" | "decimal-pad";
+}) {
+  return (
+    <View style={styles.detailField}>
+      <Text style={[styles.detailLabel, { color: colors.muted }]}>{label}</Text>
+      <Input
+        value={value}
+        onChangeText={onChangeText}
+        editable={editable}
+        placeholderTextColor={colors.muted}
+        keyboardType={keyboardType}
+        style={[
+          styles.input,
+          {
+            borderColor: colors.border,
+            color: colors.text,
+            backgroundColor: colors.bg,
+            opacity: editable ? 1 : 0.7,
+          },
+        ]}
+      />
+    </View>
+  );
+}
+
+/**
+ * Worldwide Google Places address input + editable structured fields.
+ * Optionally embeds MapLocationPicker for geolocation / pin drag (jobs).
+ */
 export function PlacesAddressInput({
   value,
   onChange,
@@ -53,6 +99,9 @@ export function PlacesAddressInput({
   label = "Address",
   requireCoordinates = false,
   inBottomSheet = false,
+  showMap = false,
+  alwaysShowDetails = false,
+  allowManualEdit = true,
 }: {
   value?: Partial<GlobalAddress> | null;
   onChange: (next: GlobalAddress) => void;
@@ -61,6 +110,12 @@ export function PlacesAddressInput({
   requireCoordinates?: boolean;
   /** Use BottomSheetTextInput so the sheet scrolls the field above the keyboard. */
   inBottomSheet?: boolean;
+  /** Embed interactive map (geolocation + pin drag). Jobs typically enable this. */
+  showMap?: boolean;
+  /** Force showing detail fields even before selection. */
+  alwaysShowDetails?: boolean;
+  /** Allow editing populated fields after selection. Default true. */
+  allowManualEdit?: boolean;
 }) {
   const c = useThemeStore((s) => s.colors);
   const Input = inBottomSheet ? BottomSheetTextInput : TextInput;
@@ -74,7 +129,17 @@ export function PlacesAddressInput({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState(() => hasAddressContent(value));
   const skipNextFetch = useRef(false);
+
+  useEffect(() => {
+    if (hasAddressContent(value)) setSelected(true);
+  }, [
+    value?.place_id,
+    value?.formatted_address,
+    value?.address_line_1,
+    value?.address_1,
+  ]);
 
   useEffect(() => {
     const next = address.formatted_address || address.address_line_1 || "";
@@ -83,7 +148,21 @@ export function PlacesAddressInput({
       setQuery(next);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sync external value only
-  }, [address.place_id, address.formatted_address]);
+  }, [address.place_id, address.formatted_address, address.latitude, address.longitude]);
+
+  function emit(partial: Partial<GlobalAddress>) {
+    onChange(normalizeAddress({ ...address, ...partial }));
+  }
+
+  function clearAddress() {
+    skipNextFetch.current = true;
+    setQuery("");
+    setPredictions([]);
+    setOpen(false);
+    setSelected(false);
+    setError(null);
+    onChange(emptyGlobalAddress());
+  }
 
   const fetchPredictions = useCallback(
     async (input: string) => {
@@ -161,6 +240,7 @@ export function PlacesAddressInput({
       skipNextFetch.current = true;
       setQuery(parsed.formatted_address || prediction.description);
       setPredictions([]);
+      setSelected(true);
       onChange(parsed);
     } catch {
       setError("Unable to load place details");
@@ -169,65 +249,52 @@ export function PlacesAddressInput({
     }
   }
 
-  if (!apiKey) {
-    return (
-      <View style={styles.wrap}>
-        <Text style={[styles.label, { color: c.muted }]}>{label}</Text>
-        <Text style={{ color: c.muted, fontSize: 12, marginBottom: 8 }}>
-          Set GOOGLE_MAPS_API_KEY (Places API enabled) for address autofill.
-        </Text>
-        <Input
-          value={query}
-          onChangeText={(text: string) => {
-            setQuery(text);
-            onChange(
-              normalizeAddress({
-                ...address,
-                address_line_1: text,
-                formatted_address: text,
-              }),
-            );
-          }}
-          placeholder={placeholder}
-          placeholderTextColor={c.muted}
-          style={[
-            styles.input,
-            { borderColor: c.border, color: c.text, backgroundColor: c.bg },
-          ]}
-        />
-      </View>
-    );
-  }
+  const showDetails =
+    alwaysShowDetails || selected || hasAddressContent(address) || !apiKey;
+  const fieldColors = {
+    muted: c.muted,
+    border: c.border,
+    text: c.text,
+    bg: c.bg,
+  };
 
   return (
     <View style={styles.wrap}>
       <Text style={[styles.label, { color: c.muted }]}>{label}</Text>
-      <View style={{ position: "relative" }}>
-        <Input
-          value={query}
-          onChangeText={(text: string) => {
-            setQuery(text);
-            setOpen(true);
-            if (!text.trim()) {
-              onChange(normalizeAddress({}));
-            }
-          }}
-          placeholder={placeholder}
-          placeholderTextColor={c.muted}
-          style={[
-            styles.input,
-            { borderColor: c.border, color: c.text, backgroundColor: c.bg },
-          ]}
-          autoCorrect={false}
-        />
-        {loading ? (
-          <ActivityIndicator
-            style={styles.spinner}
-            color={c.primary}
-            size="small"
+      {apiKey ? (
+        <View style={{ position: "relative" }}>
+          <Input
+            value={query}
+            onChangeText={(text: string) => {
+              setQuery(text);
+              setOpen(true);
+              if (!text.trim()) {
+                setSelected(false);
+                onChange(emptyGlobalAddress());
+              }
+            }}
+            placeholder={placeholder}
+            placeholderTextColor={c.muted}
+            style={[
+              styles.input,
+              { borderColor: c.border, color: c.text, backgroundColor: c.bg },
+            ]}
+            autoCorrect={false}
           />
-        ) : null}
-      </View>
+          {loading ? (
+            <ActivityIndicator
+              style={styles.spinner}
+              color={c.primary}
+              size="small"
+            />
+          ) : null}
+        </View>
+      ) : (
+        <Text style={{ color: c.muted, fontSize: 12, marginBottom: 8 }}>
+          Set GOOGLE_MAPS_API_KEY (Places API enabled) for address autofill. You
+          can still enter address fields manually below.
+        </Text>
+      )}
       {error ? (
         <Text style={{ color: c.negative, marginTop: 6, fontSize: 12 }}>
           {error}
@@ -240,7 +307,6 @@ export function PlacesAddressInput({
             { backgroundColor: c.surface, borderColor: c.border },
           ]}
         >
-          {/* ScrollView (not FlatList) — this field sits inside form ScrollViews / sheets. */}
           <ScrollView
             keyboardShouldPersistTaps="handled"
             nestedScrollEnabled
@@ -260,17 +326,142 @@ export function PlacesAddressInput({
           </ScrollView>
         </View>
       ) : null}
-      {hasAddressContent(address) ? (
-        <Text style={{ color: c.muted, marginTop: 8, fontSize: 12 }}>
-          {[address.city, address.state_region_province, address.country]
-            .filter(Boolean)
-            .join(", ")}
-          {requireCoordinates &&
-          address.latitude != null &&
-          address.longitude != null
-            ? ` · ${Number(address.latitude).toFixed(5)}, ${Number(address.longitude).toFixed(5)}`
-            : ""}
-        </Text>
+
+      {showMap ? (
+        <MapLocationPicker value={address} onChange={onChange} />
+      ) : null}
+
+      {showDetails ? (
+        <View
+          style={[
+            styles.details,
+            { borderColor: c.border, backgroundColor: c.surface },
+          ]}
+        >
+          <View style={styles.detailsHeader}>
+            <Text style={[styles.detailsTitle, { color: c.muted }]}>
+              Address details
+            </Text>
+            {apiKey ? (
+              <Pressable onPress={clearAddress} hitSlop={8}>
+                <Text style={{ color: c.primary, fontSize: 12, fontWeight: "600" }}>
+                  Clear address
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+
+          <DetailField
+            label="Address Line 1"
+            value={address.address_line_1}
+            onChangeText={(text) =>
+              emit({ address_line_1: text, address_1: text })
+            }
+            Input={Input}
+            editable={allowManualEdit}
+            colors={fieldColors}
+          />
+          <DetailField
+            label="Address Line 2 (optional)"
+            value={address.address_line_2}
+            onChangeText={(text) =>
+              emit({ address_line_2: text, address_2: text })
+            }
+            Input={Input}
+            editable={allowManualEdit}
+            colors={fieldColors}
+          />
+          <DetailField
+            label="Street"
+            value={address.street}
+            onChangeText={(text) =>
+              emit({ street: text, street_address: text })
+            }
+            Input={Input}
+            editable={allowManualEdit}
+            colors={fieldColors}
+          />
+          <DetailField
+            label="City"
+            value={address.city}
+            onChangeText={(text) => emit({ city: text })}
+            Input={Input}
+            editable={allowManualEdit}
+            colors={fieldColors}
+          />
+          <DetailField
+            label="State / Region / Province"
+            value={address.state_region_province}
+            onChangeText={(text) =>
+              emit({
+                state_region_province: text,
+                administrative_area: text,
+                state: text ? { name: text } : null,
+              })
+            }
+            Input={Input}
+            editable={allowManualEdit}
+            colors={fieldColors}
+          />
+          <DetailField
+            label="Postal Code"
+            value={address.postal_code}
+            onChangeText={(text) =>
+              emit({ postal_code: text, postcode: text })
+            }
+            Input={Input}
+            editable={allowManualEdit}
+            colors={fieldColors}
+          />
+          <DetailField
+            label="Country"
+            value={address.country}
+            onChangeText={(text) => emit({ country: text })}
+            Input={Input}
+            editable={allowManualEdit}
+            colors={fieldColors}
+          />
+
+          {requireCoordinates ? (
+            <View style={styles.coordsRow}>
+              <View style={styles.coordsHalf}>
+                <DetailField
+                  label="Latitude"
+                  value={
+                    address.latitude === null || address.latitude === undefined
+                      ? ""
+                      : String(address.latitude)
+                  }
+                  onChangeText={(text) =>
+                    emit({ latitude: text === "" ? null : text })
+                  }
+                  Input={Input}
+                  editable={allowManualEdit}
+                  colors={fieldColors}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+              <View style={styles.coordsHalf}>
+                <DetailField
+                  label="Longitude"
+                  value={
+                    address.longitude === null ||
+                    address.longitude === undefined
+                      ? ""
+                      : String(address.longitude)
+                  }
+                  onChangeText={(text) =>
+                    emit({ longitude: text === "" ? null : text })
+                  }
+                  Input={Input}
+                  editable={allowManualEdit}
+                  colors={fieldColors}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+            </View>
+          ) : null}
+        </View>
       ) : null}
     </View>
   );
@@ -301,4 +492,27 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
+  details: {
+    marginTop: 10,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    gap: 4,
+  },
+  detailsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  detailsTitle: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+  },
+  detailField: { marginBottom: 8 },
+  detailLabel: { fontSize: 12, fontWeight: "600", marginBottom: 4 },
+  coordsRow: { flexDirection: "row", gap: 8 },
+  coordsHalf: { flex: 1 },
 });
