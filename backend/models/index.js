@@ -63,6 +63,7 @@ import WebhookLogs from "./webhookLogs.js";
 import UsageCounters from "./usageCounters.js";
 import SubscriptionNotifications from "./subscriptionNotifications.js";
 import SystemLogsAccess from "./systemLogsAccess.js";
+import TrackingAuthTokens from "./trackingAuthTokens.js";
 
 const models = {
   Users,
@@ -129,6 +130,7 @@ const models = {
   UsageCounters,
   SubscriptionNotifications,
   SystemLogsAccess,
+  TrackingAuthTokens,
 };
 
 Object.values(models).forEach((model) => {

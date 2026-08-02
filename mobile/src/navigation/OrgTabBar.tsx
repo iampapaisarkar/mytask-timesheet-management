@@ -8,11 +8,18 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withRepeat,
+  withTiming,
+  Easing,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { spacing } from "@mytask/theme";
+import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
-import { elevation, touchTarget } from "../ui";
+import { useOrgNavigate } from "./useOrgNavigate";
+import { elevation, touchTarget, ClockIcon } from "../ui";
+import { getTrackingOrganisationCode } from "../services/trackingSession";
+import { useState } from "react";
 
 const SPRING = { damping: 18, stiffness: 220, mass: 0.7 };
 
@@ -89,15 +96,126 @@ function TabItem({
   );
 }
 
+function TrackingFab({
+  orgCode,
+  active,
+}: {
+  orgCode: string;
+  active: boolean;
+}) {
+  const c = useThemeStore((s) => s.colors);
+  const navigate = useOrgNavigate();
+  const pulse = useSharedValue(0);
+
+  useEffect(() => {
+    if (active) {
+      pulse.value = withRepeat(
+        withTiming(1, { duration: 1400, easing: Easing.inOut(Easing.ease) }),
+        -1,
+        true,
+      );
+    } else {
+      pulse.value = withTiming(0, { duration: 200 });
+    }
+  }, [active, pulse]);
+
+  const fabStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 + pulse.value * 0.06 }],
+  }));
+
+  return (
+    <View style={styles.fabSlot} pointerEvents="box-none">
+      <Animated.View style={fabStyle}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open time tracking"
+          onPress={() => navigate("Tracking", { orgCode })}
+          style={({ pressed }) => [
+            styles.fab,
+            elevation.fab,
+            {
+              backgroundColor: active ? c.primary : c.primary,
+              opacity: pressed ? 0.92 : 1,
+            },
+          ]}
+        >
+          <ClockIcon color="#FFFFFF" size={28} />
+        </Pressable>
+      </Animated.View>
+    </View>
+  );
+}
+
 /**
- * Floating org tab bar — overlays content with a transparent chrome shell.
- * Reports its height so tab screens can pad scroll content underneath.
+ * Floating org tab bar with center tracking FAB.
  */
 export function OrgTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const c = useThemeStore((s) => s.colors);
+  const orgCode = useOrganisationStore((s) => s.organisation?.code) || "";
   const onHeightChange = useContext(BottomTabBarHeightCallbackContext);
   const bottomPad = Math.max(insets.bottom, 10);
+  const [trackingActive, setTrackingActive] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    void (async () => {
+      const code = await getTrackingOrganisationCode();
+      if (mounted) {
+        setTrackingActive(Boolean(code) && code === orgCode);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [orgCode, state.index]);
+
+  const mid = Math.floor(state.routes.length / 2);
+  const left = state.routes.slice(0, mid);
+  const right = state.routes.slice(mid);
+
+  function renderRoute(route: (typeof state.routes)[number], index: number) {
+    const focused = state.index === index;
+    const { options } = descriptors[route.key];
+    const label =
+      typeof options.tabBarLabel === "string"
+        ? options.tabBarLabel
+        : options.title || route.name;
+    const color = focused ? c.primary : c.muted;
+    const icon = options.tabBarIcon || (() => null);
+
+    const onPress = () => {
+      const event = navigation.emit({
+        type: "tabPress",
+        target: route.key,
+        canPreventDefault: true,
+      });
+      if (!focused && !event.defaultPrevented) {
+        navigation.navigate(route.name, route.params);
+      }
+    };
+
+    const onLongPress = () => {
+      navigation.emit({
+        type: "tabLongPress",
+        target: route.key,
+      });
+    };
+
+    return (
+      <TabItem
+        key={route.key}
+        label={String(label)}
+        focused={focused}
+        color={color}
+        onPress={onPress}
+        onLongPress={onLongPress}
+        icon={({ color: iconColor, focused: isFocused, size }) =>
+          icon({ focused: isFocused, color: iconColor, size })
+        }
+      />
+    );
+  }
 
   return (
     <View
@@ -117,48 +235,13 @@ export function OrgTabBar({ state, descriptors, navigation }: BottomTabBarProps)
           elevation.tabBar,
         ]}
       >
-        {state.routes.map((route, index) => {
-          const focused = state.index === index;
-          const { options } = descriptors[route.key];
-          const label =
-            typeof options.tabBarLabel === "string"
-              ? options.tabBarLabel
-              : options.title || route.name;
-          const color = focused ? c.primary : c.muted;
-          const icon = options.tabBarIcon || (() => null);
-
-          const onPress = () => {
-            const event = navigation.emit({
-              type: "tabPress",
-              target: route.key,
-              canPreventDefault: true,
-            });
-            if (!focused && !event.defaultPrevented) {
-              navigation.navigate(route.name, route.params);
-            }
-          };
-
-          const onLongPress = () => {
-            navigation.emit({
-              type: "tabLongPress",
-              target: route.key,
-            });
-          };
-
-          return (
-            <TabItem
-              key={route.key}
-              label={String(label)}
-              focused={focused}
-              color={color}
-              onPress={onPress}
-              onLongPress={onLongPress}
-              icon={({ color: iconColor, focused: isFocused, size }) =>
-                icon({ focused: isFocused, color: iconColor, size })
-              }
-            />
-          );
-        })}
+        {left.map((route) =>
+          renderRoute(route, state.routes.indexOf(route)),
+        )}
+        <TrackingFab orgCode={orgCode} active={trackingActive} />
+        {right.map((route) =>
+          renderRoute(route, state.routes.indexOf(route)),
+        )}
       </View>
     </View>
   );
@@ -210,5 +293,18 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 11,
     letterSpacing: 0.15,
+  },
+  fabSlot: {
+    width: 72,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: -28,
+  },
+  fab: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

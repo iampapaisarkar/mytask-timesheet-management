@@ -4,6 +4,39 @@
 
 ### Fixed
 
+- **Tracking Start stuck on Stopped:** Activity status now treats the latest typed log as open only when it is a START row (`start_at` set). END rows no longer make Start look idempotent while the UI stays Stopped.
+
+### Added
+
+- **Live tracking UI:** Successful location / activity store emits `tracking.updated` to the organisation Socket.IO room (workers use Redis emitter). Web + mobile invalidate `screens/timesheet-day-editor` so map, timeline, and tracking tables refresh while a day is open. Continuous GPS emits are throttled (~3s); start/pause/resume/stop emit immediately.
+
+### API
+
+- **Durable tracking auth tokens:** New table `tracking_auth_tokens` (SHA-256 hash only). Mobile login/signup (`platform: ios|android`) returns `tracking_token` + `tracking_token_expires_at` (90-day TTL). `POST /api/auth/tracking-token` re-issues while Firebase session is valid. Logout revokes active tokens.
+- `POST /api/timesheet-activity/store` and `POST /api/timesheet-activity/send-location` authenticate **only** via `Authorization: Bearer mttrk_…` (`TrackingTokenValidate`). FCM identity and Firebase ID tokens are no longer accepted on these routes.
+
+### Changed
+
+- **Mobile tracking auth:** Persist tracking token in AsyncStorage; configure Transistorsoft BGL HTTP with the tracking Bearer (not Firebase). Activity store calls send the same header. Foreground Start re-issues via `/auth/tracking-token` if missing/near expiry.
+
+### Fixed
+
+- **Tracking without FCM on mobile:** Location posts no longer require an FCM token (mobile never registered push). Replaced by durable tracking tokens (see above).
+
+### Added
+
+- **Mobile background tracking:** Floating org-tab tracking FAB opens a full-screen Tracking screen (Start / Pause / Resume / Stop, elapsed timer, activity status). Uses Transistorsoft `react-native-background-geolocation` (HTTP autoSync + headless) with org-scoped sessions. Pause supports optional remarks.
+
+### API
+
+- `GET /api/timesheet-activity` — also returns `status`, `current_activity` (`code`, `name`, `job_id`)
+- `GET /api/timesheet-activity/validate` — requires draft timesheet **and** ≥1 assigned job; clearer error codes (`NO_TIMESHEET`, `NO_ASSIGNED_JOBS`, …)
+- `POST /api/timesheet-activity/store` — returns activity status snapshot; accepts optional `remarks` on `type: "pause"`; owners allowed; rejects start when another org has an open tracker (`409` / `TRACKING_OTHER_ORG_ACTIVE`)
+- Migration: `timesheet_activity_logs.job_id` for same-job / resume geofence logic
+- Geofencing uses jobs assigned to the current timesheet (`timesheet_jobs`)
+
+### Fixed
+
 - **Jobs list search:** `GET /api/jobs/list?search=` no longer references removed `jobs.address`. Search uses `job_address` fields (and customer name), matching the employee list pattern. Fixes 500 `Unknown column 'Jobs.address'` on web and mobile job search.
 
 ### Changed

@@ -17,7 +17,7 @@
 | Settings CRUD | ✅ Done | 2026-07-30 | Org edit + areas/holidays/payroll/rates/rules |
 | Reports / Notifications | ✅ Done | 2026-07-30 | Reports page, notifications bell |
 | Invitations + ACL guards | ✅ Done | 2026-07-30 | Org invitation + OrgAclRoute |
-| Mobile BGL + ClockInOut | ✅ Done | 2026-07-30 | Transistorsoft + geolocation fallback |
+| Mobile BGL + Tracking screen | ✅ Done | 2026-08-02 | FAB + Transistorsoft; durable `mttrk_` tracking tokens (not FCM/Firebase ID) for store/send-location |
 | Mobile org shell + maps | ✅ Done | 2026-07-30 | Detail/day/TM/employees/settings + TrackingMap |
 | Parity QA | ✅ Done | 2026-07-30 | Web `tsc` clean; key surfaces verified |
 | MVP Payouts | ✅ Done | 2026-07-30 | API + web list/eligible/create/mark-paid |
@@ -51,8 +51,8 @@
 | Pending invitations inbox | ✅ | ✅ | HomeScreen Accept/Reject |
 | Notifications chrome | ✅ | ✅ | List + deep-link to TM detail |
 | Route/action ACL | ✅ | Partial | OrgHome gates + create gates; stack ACL TBD |
-| `/org/:code` home + charts | ✅ | ✅ | KPIs + weekly bars + ClockInOut |
-| ClockInOut tracking | Notice (correct) | ✅ | BGL + fallback |
+| `/org/:code` home + charts | ✅ | ✅ | KPIs + weekly bars; tracking via FAB |
+| ClockInOut tracking | Notice (correct) | ✅ | Full-screen Tracking + Transistorsoft |
 | `timesheet` list/detail/day | ✅ | ✅ | Day editor + segmented Sheets/Timeline/Map |
 | `timesheet-management` | ✅ | ✅ | List + detail approve/reject/revert/submit |
 | `reports` | ✅ | ✅ | History, daily table, PDF share, email |

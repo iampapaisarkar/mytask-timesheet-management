@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { Alert, Platform, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Controller } from "react-hook-form";
@@ -129,7 +129,7 @@ export function ProfileScreen() {
       return;
     }
     try {
-      await authApi.logout();
+      await authApi.logout({ platform: Platform.OS });
     } catch {
       // still clear local session
     }

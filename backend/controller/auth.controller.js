@@ -19,6 +19,7 @@ import {
   sendFirebasePasswordResetEmail,
 } from "../utils/firebase-auth-links.js";
 import { resolvePhoneFields } from "../utils/phone.js";
+import trackingAuthService from "../service/tracking-auth.service.js";
 
 export async function login(req, res, next) {
   const { email, invitation_token, fcmToken, oldFcmToken, platform, timezone } =
@@ -114,9 +115,19 @@ export async function login(req, res, next) {
             timezone,
           );
           const userResponse = await Auth.getUser(authAttemptResponse.user.id);
+          const tracking = await trackingAuthService.maybeIssueForMobileLogin(
+            authAttemptResponse.user.id,
+            platform,
+          );
           return res.status(200).json({
             data: userResponse.user,
             message: "Successfully logged in",
+            ...(tracking
+              ? {
+                  tracking_token: tracking.tracking_token,
+                  tracking_token_expires_at: tracking.tracking_token_expires_at,
+                }
+              : {}),
           });
         } else {
           return res.status(501).json({
@@ -338,9 +349,20 @@ export async function signup(req, res, next) {
         platform,
       );
 
+      const tracking = await trackingAuthService.maybeIssueForMobileLogin(
+        userResponse.user.id,
+        platform,
+      );
+
       return res.status(200).json({
         data: userResponse.user,
         message: "Successfully signup",
+        ...(tracking
+          ? {
+              tracking_token: tracking.tracking_token,
+              tracking_token_expires_at: tracking.tracking_token_expires_at,
+            }
+          : {}),
       });
     } else {
       return res.status(501).json({ message: sessionCreationResponse.message });
@@ -430,7 +452,7 @@ export async function forgotPassword(req, res, next) {
 }
 
 export async function logout(req, res, next) {
-  const { user } = req.body;
+  const { user, platform } = req.body;
   try {
     const authHeader = req.headers["authorization"];
     const token = authHeader?.replace("Bearer ", "");
@@ -439,6 +461,16 @@ export async function logout(req, res, next) {
 
     if (response.success) {
       if (user?.id) {
+        try {
+          await trackingAuthService.revokeTrackingTokens(user.id, {
+            platform: platform || null,
+          });
+        } catch (revokeErr) {
+          console.error(
+            "auth.logout tracking token revoke failed",
+            revokeErr?.message || revokeErr,
+          );
+        }
         try {
           const { emitAuthLogout } = await import(
             "../service/realtime.service.js"
@@ -460,6 +492,37 @@ export async function logout(req, res, next) {
     return res.status(500).json({
       message: "Unable to logout. Please ty again later.",
       details: err,
+    });
+  }
+}
+
+/**
+ * Re-issue tracking token while app is in foreground (Firebase session required).
+ */
+export async function issueTrackingToken(req, res) {
+  const { user, platform } = req.body;
+  try {
+    if (!user?.id) {
+      return res.status(401).json({
+        code: "AUTH_MISSING",
+        message: "Unauthorized",
+      });
+    }
+    const issued = await trackingAuthService.issueTrackingToken(user.id, {
+      platform: platform || "ios",
+    });
+    return res.status(200).json({
+      data: {
+        tracking_token: issued.tracking_token,
+        tracking_token_expires_at: issued.tracking_token_expires_at,
+      },
+      message: "Tracking token issued",
+    });
+  } catch (err) {
+    console.error("issueTrackingToken error:", err?.message || err);
+    return res.status(500).json({
+      message: "Unable to issue tracking token",
+      details: err?.message,
     });
   }
 }

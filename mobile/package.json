@@ -8,7 +8,7 @@
     "start": "react-native start",
     "lint": "eslint .",
     "test": "jest",
-    "pods": "cd ios && pod install && cd .."
+    "pods": "cd ios && pod install --repo-update && cd .."
   },
   "dependencies": {
     "@gorhom/bottom-sheet": "^5.2.14",

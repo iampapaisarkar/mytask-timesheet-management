@@ -14,6 +14,8 @@ export const STORAGE_KEYS = {
   user: "mytask.user",
   organisation: "mytask.organisation",
   fcmToken: "mytask.fcmToken",
+  trackingToken: "mytask.trackingToken",
+  trackingTokenExpiresAt: "mytask.trackingTokenExpiresAt",
 } as const;
 
 export const ROUTES = {

@@ -6,10 +6,24 @@ const worker = new Worker(
   "locationQueue",
   async (job) => {
     if (job.name !== "store-location") return;
-    const { location, type, organisationCode, userId, fcmToken } = job.data;
+    const {
+      location,
+      type,
+      organisationCode,
+      userId,
+      remarks,
+      authenticatedUserId,
+    } = job.data;
     console.log(`Job ${job.id} processing: user=${userId}`);
 
-    await locationStore(location, type, organisationCode, userId, fcmToken);
+    await locationStore(
+      location,
+      type,
+      organisationCode,
+      userId,
+      remarks,
+      authenticatedUserId,
+    );
 
     return { success: true };
   },
@@ -29,7 +43,8 @@ async function locationStore(
   type,
   organisationCode,
   userId,
-  fcmToken
+  remarks,
+  authenticatedUserId,
 ) {
   try {
     await timesheetActivityService.storeLocation({
@@ -37,7 +52,10 @@ async function locationStore(
       type,
       organisationCode,
       userId,
-      fcmToken,
+      remarks,
+      authenticatedUser: authenticatedUserId
+        ? { id: authenticatedUserId }
+        : null,
     });
     return true;
   } catch (err) {

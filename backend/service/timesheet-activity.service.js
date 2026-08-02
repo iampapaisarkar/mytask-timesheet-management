@@ -5,11 +5,13 @@ import { db } from "../database.js";
 import models from "../models/index.js";
 import redisUtils from "../utils/redis.utils.js";
 import timeUtils from "../utils/time.utils.js";
+import { emitTrackingUpdated } from "./realtime.service.js";
 
 const {
   Organisations,
   Jobs,
-  FcmConnections,
+  Timesheets,
+  TimesheetJobs,
   TimesheetDays,
   TimesheetDayTasks,
   TimesheetActivityLogs,
@@ -17,6 +19,52 @@ const {
   TimesheetTaskActivityPairs,
   GeofenceEvents,
 } = models;
+
+/** Soft throttle continuous GPS breadcrumbs (per process; start/pause/stop always emit). */
+const TRACKING_EMIT_THROTTLE_MS = 3_000;
+const lastTrackingEmitAt = new Map();
+
+function shouldEmitTrackingLive(timesheetDayId, type) {
+  const action = String(type || "")
+    .trim()
+    .toLowerCase();
+  if (["start", "pause", "resume", "stop"].includes(action)) {
+    return true;
+  }
+  const key = String(timesheetDayId ?? "none");
+  const now = Date.now();
+  const prev = lastTrackingEmitAt.get(key) || 0;
+  if (now - prev < TRACKING_EMIT_THROTTLE_MS) {
+    return false;
+  }
+  lastTrackingEmitAt.set(key, now);
+  return true;
+}
+
+function notifyTrackingClients({ organisation, user, timesheetDay, type }) {
+  if (!organisation?.id || !user?.id) return;
+  if (!shouldEmitTrackingLive(timesheetDay?.id, type)) return;
+  try {
+    emitTrackingUpdated(
+      organisation.id,
+      {
+        id: timesheetDay?.timesheet_id ?? timesheetDay?.id ?? user.id,
+        organisation_id: organisation.id,
+        employee_id: organisation.employee?.id ?? null,
+        timesheet_id: timesheetDay?.timesheet_id ?? null,
+        timesheet_day_id: timesheetDay?.id ?? null,
+        user_id: user.id,
+        type: type || null,
+      },
+      user.id,
+    );
+  } catch (err) {
+    console.error(
+      "emitTrackingUpdated failed",
+      err?.message || err,
+    );
+  }
+}
 
 class AppError extends Error {
   constructor(message, statusCode = 400) {
@@ -76,7 +124,7 @@ async function endLastActivity(lastActivityType, ctx, t) {
   );
 }
 
-async function startNewActivity(activityType, ctx, t) {
+async function startNewActivity(activityType, ctx, t, jobId = null) {
   if (!activityType) return;
   return createActivityLog(
     {
@@ -84,6 +132,7 @@ async function startNewActivity(activityType, ctx, t) {
       start_at: ctx.currentUTCTime,
       end_at: null,
       type_id: activityType.id,
+      job_id: jobId ?? null,
     },
     t,
   );
@@ -165,6 +214,7 @@ async function createDayTask(
     is_travel,
     is_break,
     timesheet_activity_log_start_id,
+    remarks = null,
   },
   t,
 ) {
@@ -192,6 +242,9 @@ async function createDayTask(
   const total_hours =
     start_time && end_time ? timeUtils.decimalHours(start_time, end_time) : 0;
 
+  const trimmedRemarks =
+    typeof remarks === "string" && remarks.trim() ? remarks.trim() : null;
+
   const dayTask = await TimesheetDayTasks.create(
     {
       organisation_id: organisation.id,
@@ -204,6 +257,7 @@ async function createDayTask(
       total_hours,
       is_travel,
       is_break,
+      remarks: trimmedRemarks,
       original_log: {
         job_id: jobId,
         start_time,
@@ -240,32 +294,242 @@ async function createDayTask(
 /* -------------------------------------------
  * Job Helpers
  * ------------------------------------------- */
-async function fetchJobsForOrganisation(organisation, t) {
-  let employeeCondition = {};
-  if (["manager", "staff", "moderator"].includes(organisation?.role?.code)) {
-    employeeCondition.employee_id = organisation?.employee?.id;
+
+/**
+ * Geofence against jobs assigned to the employee's current timesheet
+ * (`timesheet_jobs` / legacy `job_id`). Falls back to all org jobs only when
+ * no timesheet/job assignment exists (should not happen after validate).
+ */
+async function fetchJobsForOrganisation(organisation, t, timesheetDay = null) {
+  let jobIds = [];
+
+  const timesheetId = timesheetDay?.timesheet_id;
+  if (timesheetId) {
+    const junction = await TimesheetJobs.findAll({
+      attributes: ["job_id"],
+      where: {
+        organisation_id: organisation.id,
+        timesheet_id: timesheetId,
+      },
+      transaction: t,
+      raw: true,
+    });
+    jobIds = junction.map((r) => r.job_id).filter(Boolean);
+
+    if (jobIds.length === 0) {
+      const ts = await Timesheets.findOne({
+        attributes: ["job_id"],
+        where: { id: timesheetId, organisation_id: organisation.id },
+        transaction: t,
+        raw: true,
+      });
+      if (ts?.job_id) jobIds = [ts.job_id];
+    }
   }
 
-  return Jobs.scope({ method: ["withEmployee", employeeCondition] }).findAll(
-    {
-      where: { organisation_id: organisation.id },
-      raw: true,
+  const where = { organisation_id: organisation.id };
+  if (timesheetId) {
+    if (jobIds.length === 0) {
+      return [];
+    }
+    where.id = { [Op.in]: jobIds };
+  }
+
+  return Jobs.scope({ method: ["withEmployee", {}] })
+    .findAll({
+      where,
+      transaction: t,
+    })
+    .then((rows) => rows.map((r) => r.toJSON()));
+}
+
+async function assertNoActiveTrackerInOtherOrg(userId, organisationId, t) {
+  const otherOrgRows = await TimesheetActivityLogs.findAll({
+    attributes: ["organisation_id"],
+    where: {
+      user_id: userId,
+      organisation_id: { [Op.ne]: organisationId },
+      type_id: { [Op.ne]: null },
     },
-    { transaction: t },
+    group: ["organisation_id"],
+    transaction: t,
+    raw: true,
+  });
+
+  let open = null;
+  for (const row of otherOrgRows) {
+    const candidate = await getOpenTypedActivity({
+      userId,
+      organisationId: row.organisation_id,
+      transaction: t,
+    });
+    if (candidate) {
+      open = candidate;
+      break;
+    }
+  }
+
+  if (!open) return;
+
+  const org = await Organisations.findOne({
+    attributes: ["id", "name", "code"],
+    where: { id: open.organisation_id },
+    transaction: t,
+    raw: true,
+  });
+
+  const err = new AppError(
+    "You already have an active tracker in another organisation.",
+    409,
   );
+  err.code = "TRACKING_OTHER_ORG_ACTIVE";
+  err.meta = {
+    organisation_code: org?.code || null,
+    organisation_name: org?.name || null,
+  };
+  throw err;
+}
+
+/**
+ * Activity logs are paired rows: START (start_at set, end_at null) then END
+ * (start_at null, end_at set). The current activity is open only when the
+ * latest typed row for that scope is a START row.
+ */
+function isOpenActivityRow(row) {
+  return Boolean(row && row.start_at != null && row.end_at == null);
+}
+
+async function getLatestTypedActivity({
+  userId,
+  organisationId = null,
+  organisationIdNe = null,
+  trackAtBetween = null,
+  transaction = null,
+}) {
+  const where = {
+    user_id: userId,
+    type_id: { [Op.ne]: null },
+  };
+  if (organisationId != null) {
+    where.organisation_id = organisationId;
+  } else if (organisationIdNe != null) {
+    where.organisation_id = { [Op.ne]: organisationIdNe };
+  }
+  if (trackAtBetween) {
+    where.track_at = { [Op.between]: trackAtBetween };
+  }
+
+  const row = await TimesheetActivityLogs.findOne({
+    include: [{ model: TimesheetActivityTypes, as: "type" }],
+    where,
+    order: [
+      ["id", "DESC"],
+    ],
+    transaction,
+  });
+  return row?.toJSON?.() ?? row ?? null;
+}
+
+async function getOpenTypedActivity(opts) {
+  const latest = await getLatestTypedActivity(opts);
+  return isOpenActivityRow(latest) ? latest : null;
+}
+
+/**
+ * Build timer + current activity snapshot for API responses.
+ */
+async function getActivityStatus({ userId, organisationId, userTimezone }) {
+  const userTz = userTimezone || "UTC";
+  const startOfDayUTC = moment.tz(userTz).startOf("day").utc().format();
+  const endOfDayUTC = moment.tz(userTz).endOf("day").utc().format();
+
+  const activityTypes = await TimesheetActivityTypes.findAll({
+    where: { code: ["travel", "working"] },
+    raw: true,
+  });
+  const activityTypeIds = activityTypes.map((t) => t.id);
+
+  const logs = await TimesheetActivityLogs.findAll({
+    where: {
+      user_id: userId,
+      organisation_id: organisationId,
+      type_id: activityTypeIds,
+      track_at: { [Op.between]: [startOfDayUTC, endOfDayUTC] },
+    },
+    order: [
+      ["track_at", "ASC"],
+      ["id", "ASC"],
+    ],
+    raw: true,
+  });
+
+  let totalSeconds = 0;
+  let currentStart = null;
+  for (const log of logs) {
+    if (log.start_at && !currentStart) {
+      currentStart = new Date(log.start_at);
+    }
+    if (log.end_at && currentStart) {
+      const diffSeconds = Math.round(
+        (new Date(log.end_at) - currentStart) / 1000,
+      );
+      if (diffSeconds > 0) totalSeconds += diffSeconds;
+      currentStart = null;
+    }
+  }
+  if (currentStart) {
+    const diffSeconds = Math.round((Date.now() - currentStart.getTime()) / 1000);
+    if (diffSeconds > 0) totalSeconds += diffSeconds;
+  }
+
+  const plain = await getLatestTypedActivity({
+    userId,
+    organisationId,
+    trackAtBetween: [startOfDayUTC, endOfDayUTC],
+  });
+
+  const typeCode = plain?.type?.code || null;
+  const typeName = plain?.type?.name || null;
+  const isOpen = isOpenActivityRow(plain);
+
+  let timer = "stop";
+  let status = "Stopped";
+  if (isOpen && ["travel", "working"].includes(typeCode)) {
+    timer = "running";
+    status = typeName || (typeCode === "travel" ? "Travel" : "Working");
+  } else if (isOpen && typeCode === "break") {
+    timer = "pause";
+    status = "Paused";
+  }
+
+  return {
+    total_hours: Number((totalSeconds / 3600).toFixed(3)),
+    total_seconds: totalSeconds,
+    timer,
+    status,
+    current_activity: isOpen && typeCode
+      ? {
+          code: typeCode,
+          name: typeName,
+          job_id: plain?.job_id ?? null,
+        }
+      : null,
+  };
 }
 
 function findMatchingJob(latitude, longitude, jobs) {
   for (const job of jobs) {
+    const lat = Number(job?.address?.latitude);
+    const lng = Number(job?.address?.longitude);
+    const radius = Number(job?.radius);
     if (
-      isInsideRadius(
-        latitude,
-        longitude,
-        job.address.latitude,
-        job.address.longitude,
-        job.radius,
-      )
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng) ||
+      !Number.isFinite(radius)
     ) {
+      continue;
+    }
+    if (isInsideRadius(latitude, longitude, lat, lng, radius)) {
       return job;
     }
   }
@@ -323,7 +587,7 @@ async function processAutoExit(
       { transaction: t },
     );
 
-    const startLog = await startNewActivity(travelType, ctx, t);
+    const startLog = await startNewActivity(travelType, ctx, t, null);
 
     // 4) If last task had job → create TRAVEL task
     if (timesheetDay && lastTaskMeta?.job_id) {
@@ -357,7 +621,8 @@ async function storeLocation({
   type,
   organisationCode,
   userId,
-  fcmToken,
+  remarks = null,
+  authenticatedUser = null,
 }) {
   // Start transaction early (we will rollback on any early return)
   const transaction = await db.transaction();
@@ -365,27 +630,29 @@ async function storeLocation({
   try {
     if (typeof location === "string") location = JSON.parse(location);
 
-    if (!fcmToken) {
-      await transaction.rollback();
-      throw new AppError("FCM token is required!", 400);
-    }
     if (!organisationCode) {
       await transaction.rollback();
       throw new AppError("Organisation code is required!", 400);
     }
 
-    const fcmConn = await FcmConnections.findOne({
-      attributes: ["id", "user_id"],
-      where: { token: fcmToken, user_id: userId },
-      transaction,
-    });
+    if (!authenticatedUser?.id) {
+      await transaction.rollback();
+      throw new AppError(
+        "Tracking authentication required. Sign in again on the device.",
+        401,
+      );
+    }
 
-    if (!fcmConn || !fcmConn.user_id) {
+    if (
+      userId != null &&
+      String(userId) !== "" &&
+      Number(userId) !== Number(authenticatedUser.id)
+    ) {
       await transaction.rollback();
       throw new AppError("Unauthorized request!", 400);
     }
 
-    const userResponse = await Auth.getUser(fcmConn.user_id);
+    const userResponse = await Auth.getUser(authenticatedUser.id);
     if (!userResponse?.success) {
       await transaction.rollback();
       throw new AppError("Unauthorized request!", 400);
@@ -404,7 +671,7 @@ async function storeLocation({
 
     const organisation = organisationData?.toJSON();
 
-    if (!organisation || organisation?.role?.code === "owner") {
+    if (!organisation || !organisation?.employee?.id) {
       await transaction.rollback();
       throw new AppError("Unauthorized request!", 400);
     }
@@ -455,30 +722,31 @@ async function storeLocation({
       timesheet_day_id: timesheetDay?.id ?? null,
     };
 
-    const lastActivityData = await TimesheetActivityLogs.findOne({
-      include: [{ model: TimesheetActivityTypes, as: "type" }],
-      where: {
-        user_id: user.id,
-        organisation_id: organisation.id,
-        type_id: { [Op.ne]: null },
-        end_at: null, // 🔥 ONLY OPEN ACTIVITY
-      },
-      order: [["id", "DESC"]], // 🔥 ID is safest
+    const lastActivity = await getLatestTypedActivity({
+      userId: user.id,
+      organisationId: organisation.id,
       transaction,
     });
+    const lastActivityType = lastActivity?.type || null;
+    const hasOpenActivity = isOpenActivityRow(lastActivity);
 
-    const lastActivity = lastActivityData?.toJSON();
-    const lastActivityType = lastActivity?.type;
+    const buildStatus = async () =>
+      getActivityStatus({
+        userId: user.id,
+        organisationId: organisation.id,
+        userTimezone: user?.timezone?.timezone || "UTC",
+      });
 
     /* ============================================================================
      * IF TYPE PRESENT (start / pause / resume / stop) - MANUAL ACTIONS
      * ============================================================================
      */
     if (type) {
-      // NOTE: fetchJobsForOrganisation / findMatchingJob / processAutoExit may be
-      // in other files. We pass `transaction` where helpful. Extra args won't break
-      // typical JS functions that ignore them.
-      const jobs = await fetchJobsForOrganisation(organisation, transaction);
+      const jobs = await fetchJobsForOrganisation(
+        organisation,
+        transaction,
+        timesheetDay,
+      );
       const matchedJob = findMatchingJob(latitude, longitude, jobs);
 
       const workingType = await getActivityType("working", transaction);
@@ -488,7 +756,7 @@ async function storeLocation({
       // Before handling actions -> auto EXIT check
       await processAutoExit(
         {
-          lastActivityType,
+          lastActivityType: hasOpenActivity ? lastActivityType : null,
           matchedJob,
           ctx,
           workingType,
@@ -496,22 +764,57 @@ async function storeLocation({
           organisation,
           user,
           timesheetDay,
-          lastActivity,
+          lastActivity: hasOpenActivity ? lastActivity : null,
         },
         transaction,
       );
 
       switch (type) {
         case "start": {
+          await assertNoActiveTrackerInOtherOrg(
+            user.id,
+            organisation.id,
+            transaction,
+          );
+
           // Prevent duplicate start when already working on same job
           if (
+            hasOpenActivity &&
             matchedJob &&
             lastActivityType?.code === "working" &&
             lastActivity?.job_id === matchedJob.id
           ) {
-            // already working on the same job — ignore start
-            await transaction.rollback();
-            return true;
+            await transaction.commit();
+            notifyTrackingClients({ organisation, user, timesheetDay, type });
+            return buildStatus();
+          }
+
+          // Already running travel/working in this org — treat as idempotent
+          if (
+            hasOpenActivity &&
+            lastActivityType &&
+            ["travel", "working"].includes(lastActivityType.code)
+          ) {
+            await transaction.commit();
+            notifyTrackingClients({ organisation, user, timesheetDay, type });
+            return buildStatus();
+          }
+
+          // Close a dangling break before starting fresh
+          if (hasOpenActivity && lastActivityType?.code === "break") {
+            await endLastActivity(lastActivityType, ctx, transaction);
+            if (timesheetDay) {
+              await updateLastDayTaskEndTime(
+                {
+                  organisation,
+                  user,
+                  timesheetDay,
+                  end_time: ctx.currentUTCTime,
+                  timesheet_activity_log_end_id: null,
+                },
+                transaction,
+              );
+            }
           }
 
           const activityType = matchedJob ? workingType : travelType;
@@ -519,11 +822,11 @@ async function storeLocation({
             activityType,
             ctx,
             transaction,
+            matchedJob?.id ?? null,
           );
 
           if (timesheetDay) {
             if (matchedJob) {
-              // working task with job
               await createDayTask(
                 {
                   organisation,
@@ -539,7 +842,6 @@ async function storeLocation({
                 transaction,
               );
             } else {
-              // travel task
               await createDayTask(
                 {
                   organisation,
@@ -573,14 +875,17 @@ async function storeLocation({
         }
 
         case "pause": {
-          if (!lastActivityType || ["break"].includes(lastActivityType.code))
+          if (
+            !hasOpenActivity ||
+            !lastActivityType ||
+            ["break"].includes(lastActivityType.code)
+          )
             break;
           const endLog = await endLastActivity(
             lastActivityType,
             ctx,
             transaction,
           );
-          // update last TimesheetDayTasks (end_time = now)
           if (timesheetDay) {
             await updateLastDayTaskEndTime(
               {
@@ -597,9 +902,9 @@ async function storeLocation({
               breakType,
               ctx,
               transaction,
+              null,
             );
 
-            // create new break task (end_time null)
             await createDayTask(
               {
                 organisation,
@@ -611,6 +916,7 @@ async function storeLocation({
                 is_travel: false,
                 is_break: true,
                 timesheet_activity_log_start_id: startLog.id,
+                remarks,
               },
               transaction,
             );
@@ -619,22 +925,20 @@ async function storeLocation({
         }
 
         case "resume": {
-          if (lastActivityType?.code !== "break") break;
+          if (!hasOpenActivity || lastActivityType?.code !== "break") break;
           const endLog = await endLastActivity(
             lastActivityType,
             ctx,
             transaction,
           );
-          // decide next activity type based on whether we're inside a job
-          const jobs = await fetchJobsForOrganisation(
+          const jobsNow = await fetchJobsForOrganisation(
             organisation,
             transaction,
+            timesheetDay,
           );
-          const matchedJobNow = findMatchingJob(latitude, longitude, jobs);
+          const matchedJobNow = findMatchingJob(latitude, longitude, jobsNow);
           const nextType = matchedJobNow ? workingType : travelType;
-          const startLog = await startNewActivity(nextType, ctx, transaction);
 
-          // Update last TimesheetDayTasks (end_time on break)
           if (timesheetDay) {
             const lastTaskMeta = await updateLastDayTaskEndTime(
               {
@@ -647,9 +951,6 @@ async function storeLocation({
               transaction,
             );
 
-            // Determine next task: if last active task (before break) had job → resume working for that job
-            // Fallback to matchedJob based on current location
-
             let nextJobId = null;
             let nextIsTravel = false;
 
@@ -659,20 +960,23 @@ async function storeLocation({
               !lastTaskMeta.was_break &&
               !lastTaskMeta.was_travel
             ) {
-              // Case: Resume to the job user was working on before the break (if it was working)
               nextJobId = lastTaskMeta.job_id;
               nextIsTravel = false;
             } else if (matchedJobNow) {
-              // Case: Resume working in the current location's job
               nextJobId = matchedJobNow.id;
               nextIsTravel = false;
             } else {
-              // Case: Resume to travel
               nextJobId = null;
               nextIsTravel = true;
             }
 
-            // create new task starting now
+            const startLog = await startNewActivity(
+              nextType,
+              ctx,
+              transaction,
+              nextJobId,
+            );
+
             await createDayTask(
               {
                 organisation,
@@ -687,17 +991,23 @@ async function storeLocation({
               },
               transaction,
             );
+          } else {
+            await startNewActivity(
+              nextType,
+              ctx,
+              transaction,
+              matchedJobNow?.id ?? null,
+            );
           }
           break;
         }
 
         case "stop": {
           let endLog = null;
-          if (lastActivityType) {
+          if (hasOpenActivity && lastActivityType) {
             endLog = await endLastActivity(lastActivityType, ctx, transaction);
           }
 
-          // update last TimesheetDayTasks end_time
           if (timesheetDay) {
             await updateLastDayTaskEndTime(
               {
@@ -714,25 +1024,28 @@ async function storeLocation({
         }
       }
 
-      // commit and return success for manual types
       await transaction.commit();
-      return true;
+      notifyTrackingClients({ organisation, user, timesheetDay, type });
+      return buildStatus();
     }
 
     /* ============================================================================
      * BACKGROUND TRACKING (TYPE = null) - AUTOMATIC GEO-FENCE HANDLING
      * ============================================================================
      */
-    const jobs = await fetchJobsForOrganisation(organisation, transaction);
+    const jobs = await fetchJobsForOrganisation(
+      organisation,
+      transaction,
+      timesheetDay,
+    );
     const matchedJob = findMatchingJob(latitude, longitude, jobs);
 
     const workingType = await getActivityType("working", transaction);
     const travelType = await getActivityType("travel", transaction);
 
-    // AUTO EXIT CHECK FIRST
     const exitTriggered = await processAutoExit(
       {
-        lastActivityType,
+        lastActivityType: hasOpenActivity ? lastActivityType : null,
         matchedJob,
         ctx,
         workingType,
@@ -740,31 +1053,32 @@ async function storeLocation({
         organisation,
         user,
         timesheetDay,
-        lastActivity,
+        lastActivity: hasOpenActivity ? lastActivity : null,
       },
       transaction,
     );
 
-    // If job ENTER (auto) — ONLY create enter IF user was previously outside or coming from travel
     if (!exitTriggered && matchedJob && timesheetDay) {
-      // CASE A: user is already working inside same job -> do nothing
       if (
+        hasOpenActivity &&
         lastActivityType?.code === "working" &&
         lastActivity?.job_id === matchedJob.id
       ) {
-        // already inside and working for the same job — no new rows
-      }
-      // CASE B: user was travelling -> close travel and start working
-      else if (lastActivityType?.code === "travel") {
+        // already inside same job
+      } else if (hasOpenActivity && lastActivityType?.code === "travel") {
         const endLog = await endLastActivity(
           lastActivityType,
           ctx,
           transaction,
         );
 
-        const startLog = await startNewActivity(workingType, ctx, transaction);
+        const startLog = await startNewActivity(
+          workingType,
+          ctx,
+          transaction,
+          matchedJob.id,
+        );
 
-        // close travel task
         await updateLastDayTaskEndTime(
           {
             organisation,
@@ -776,7 +1090,6 @@ async function storeLocation({
           transaction,
         );
 
-        // start working task
         await createDayTask(
           {
             organisation,
@@ -792,7 +1105,6 @@ async function storeLocation({
           transaction,
         );
 
-        // geofence enter
         await GeofenceEvents.create(
           {
             organisation_id: organisation.id,
@@ -804,10 +1116,13 @@ async function storeLocation({
           },
           { transaction },
         );
-      }
-      // CASE C: no last activity (first time) OR last activity was unrelated -> create working entry
-      else if (!lastActivityType) {
-        const startLog = await startNewActivity(workingType, ctx, transaction);
+      } else if (!hasOpenActivity) {
+        const startLog = await startNewActivity(
+          workingType,
+          ctx,
+          transaction,
+          matchedJob.id,
+        );
 
         await createDayTask(
           {
@@ -836,8 +1151,6 @@ async function storeLocation({
           { transaction },
         );
       } else {
-        // if lastActivityType exists but isn't travel/working (e.g., break) and there's no open task,
-        // create a working task only if there's no open task
         const openTask = await TimesheetDayTasks.findOne({
           where: {
             organisation_id: organisation.id,
@@ -853,6 +1166,7 @@ async function storeLocation({
             workingType,
             ctx,
             transaction,
+            matchedJob.id,
           );
 
           await createDayTask(
@@ -885,13 +1199,13 @@ async function storeLocation({
       }
     }
 
-    // RAW LOCATION ACTIVITY
     await createActivityLog(
       {
         ...ctx,
         start_at: null,
         end_at: null,
         type_id: null,
+        job_id: matchedJob?.id ?? null,
       },
       transaction,
     );
@@ -901,7 +1215,8 @@ async function storeLocation({
     );
 
     await transaction.commit();
-    return true;
+    notifyTrackingClients({ organisation, user, timesheetDay, type });
+    return buildStatus();
   } catch (err) {
     console.error("Error in timesheet store() TX:", err);
     try {
@@ -918,4 +1233,5 @@ async function storeLocation({
 
 export default {
   storeLocation,
+  getActivityStatus,
 };

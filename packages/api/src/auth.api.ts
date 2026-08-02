@@ -27,12 +27,30 @@ export const authApi = {
       timeout: options?.timeout,
     });
   },
-  logout(options?: RequestOptions) {
-    return getApiClient().post(
-      "/auth/logout",
-      {},
-      { signal: options?.signal, timeout: options?.timeout },
-    );
+  logout(
+    payload: { platform?: string } = {},
+    options?: RequestOptions,
+  ) {
+    return getApiClient().post("/auth/logout", payload, {
+      signal: options?.signal,
+      timeout: options?.timeout,
+    });
+  },
+  /** Re-issue durable tracking token (Firebase session required; foreground only). */
+  issueTrackingToken(
+    payload: { platform?: string } = {},
+    options?: RequestOptions,
+  ) {
+    return getApiClient().post<{
+      data?: {
+        tracking_token?: string;
+        tracking_token_expires_at?: string;
+      };
+      message?: string;
+    }>("/auth/tracking-token", payload, {
+      signal: options?.signal,
+      timeout: options?.timeout,
+    });
   },
   me(options?: RequestOptions) {
     return getApiClient().get<ApiResponse<UserProfile>>("/auth/user", {

@@ -34,6 +34,7 @@ import {
 import { isFirebaseConfigured, isGoogleSignInConfigured } from "../config/env";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { setPendingOrgInvitationToken } from "../navigation/navigationRef";
+import { persistTrackingTokenFromAuthResponse } from "../services/trackingAuthToken";
 import { Button, IconButton, MoonIcon, SunIcon } from "../ui";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Login">;
@@ -70,6 +71,12 @@ export function LoginScreen({ navigation, route }: Props) {
     if (invitationToken) {
       setPendingOrgInvitationToken(invitationToken);
     }
+    await persistTrackingTokenFromAuthResponse(
+      response.data as {
+        tracking_token?: string;
+        tracking_token_expires_at?: string;
+      },
+    );
     await setSession(token, response.data.data);
   }
 

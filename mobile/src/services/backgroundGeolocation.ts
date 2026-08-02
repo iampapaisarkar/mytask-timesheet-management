@@ -1,20 +1,19 @@
 /**
- * Background geolocation service — Vue `$BGL` parity.
+ * Background geolocation — Transistorsoft official path.
  *
- * Uses `react-native-background-geolocation` when the native module is linked.
- * Falls back to `@react-native-community/geolocation` + a periodic interval that
- * POSTs to `timesheetActivityApi.sendLocation`, so the app still builds without
- * a paid Transistorsoft license.
+ * Continuous tracking uses react-native-background-geolocation HTTP autoSync
+ * (distanceFilter + motion/stationary). No polling timers.
+ *
+ * When the native module is not linked, start() fails with a clear error so we
+ * never fall back to fake interval tracking.
  */
 import { NativeModules, Platform } from 'react-native';
-import { timesheetActivityApi } from '@mytask/api';
-import { STORAGE_KEYS } from '@mytask/constants';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ENV } from '../config/env';
 import {
   getTrackingOrganisationCode,
   getTrackingUserId,
 } from './trackingSession';
+import { getTrackingToken } from './trackingAuthToken';
 
 export type GeoCoords = {
   latitude: number;
@@ -55,12 +54,14 @@ type NativeBgl = {
   addGeofences: (geofences: BglGeofence[]) => Promise<unknown>;
   removeGeofences: () => Promise<unknown>;
   onLocation?: (cb: (loc: BglLocation) => void) => { remove: () => void };
-  onMotionChange?: (cb: (event: unknown) => void) => { remove: () => void };
-  onActivityChange?: (cb: (event: unknown) => void) => { remove: () => void };
-  onProviderChange?: (cb: (event: unknown) => void) => { remove: () => void };
   onHttp?: (cb: (event: unknown) => void) => { remove: () => void };
-  onGeofence?: (cb: (event: unknown) => void) => { remove: () => void };
+  onProviderChange?: (cb: (event: unknown) => void) => { remove: () => void };
+  onMotionChange?: (cb: (event: unknown) => void) => { remove: () => void };
+  registerHeadlessTask?: (task: (event: unknown) => Promise<void>) => void;
+  DESIRED_ACCURACY_HIGH?: number;
   LOG_LEVEL_VERBOSE?: number;
+  LOG_LEVEL_WARNING?: number;
+  AUTHORIZATION_STATUS_ALWAYS?: number;
 };
 
 type CommunityGeolocation = {
@@ -76,20 +77,6 @@ type CommunityGeolocation = {
       maximumAge?: number;
     },
   ) => void;
-  watchPosition: (
-    success: (position: {
-      coords: GeoCoords;
-      timestamp: number;
-    }) => void,
-    error: (error: { message?: string; code?: number }) => void,
-    options?: {
-      enableHighAccuracy?: boolean;
-      distanceFilter?: number;
-      interval?: number;
-      fastestInterval?: number;
-    },
-  ) => number;
-  clearWatch: (watchId: number) => void;
   requestAuthorization?: () => void;
   setRNConfiguration?: (config: {
     skipPermissionRequests?: boolean;
@@ -97,17 +84,23 @@ type CommunityGeolocation = {
   }) => void;
 };
 
-const FALLBACK_INTERVAL_MS = 60_000;
-
 let nativeBgl: NativeBgl | null | undefined;
 let communityGeo: CommunityGeolocation | null | undefined;
 let ready = false;
 let enabled = false;
 let permission: number | string | null = null;
 let subscriptions: Array<{ remove: () => void }> = [];
-let fallbackWatchId: number | null = null;
-let fallbackInterval: ReturnType<typeof setInterval> | null = null;
 let lastConfig: BglConfig = {};
+
+export class BackgroundGeolocationUnavailableError extends Error {
+  code = 'BGL_NATIVE_UNAVAILABLE';
+  constructor(
+    message = 'Background location tracking requires the native Transistorsoft module. Enable linking and rebuild the app.',
+  ) {
+    super(message);
+    this.name = 'BackgroundGeolocationUnavailableError';
+  }
+}
 
 function sendLocationUrl(): string {
   const base = ENV.API_BASE_URL.replace(/\/$/, '');
@@ -132,7 +125,6 @@ function tryLoadNativeBgl(): NativeBgl | null {
     return null;
   }
   try {
-    // Dynamic require — avoids hard link failure when the package is absent.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const mod = require('react-native-background-geolocation') as {
       default?: NativeBgl;
@@ -143,7 +135,7 @@ function tryLoadNativeBgl(): NativeBgl | null {
       return nativeBgl;
     }
   } catch {
-    // Native module missing or not linked — use fallback.
+    // Native module missing
   }
   nativeBgl = null;
   return null;
@@ -185,67 +177,71 @@ export function getBglPermission(): number | string | null {
 async function readHttpParams(): Promise<{
   organisationCode: string | null;
   userId: string | null;
-  fcmToken: string | null;
 }> {
-  const [organisationCode, userId, fcmToken] = await Promise.all([
+  const [organisationCode, userId] = await Promise.all([
     getTrackingOrganisationCode(),
     getTrackingUserId(),
-    AsyncStorage.getItem(STORAGE_KEYS.fcmToken),
   ]);
-  return {
-    organisationCode,
-    userId,
-    fcmToken,
-  };
+  return { organisationCode, userId };
 }
 
-function vueParityConfig(overrides: BglConfig = {}): BglConfig {
+async function trackingAuthHeaders(): Promise<Record<string, string>> {
+  try {
+    const token = await getTrackingToken();
+    if (!token || !token.startsWith('mttrk_')) return {};
+    return { Authorization: `Bearer ${token}` };
+  } catch {
+    return {};
+  }
+}
+
+/** Official Transistorsoft recommended battery-aware config. */
+function transistorConfig(overrides: BglConfig = {}): BglConfig {
+  const bgl = tryLoadNativeBgl();
   return {
     url: sendLocationUrl(),
     params: {
       organisationCode: null,
       userId: null,
-      fcmToken: null,
     },
-    trackingMode: null,
-    debug: false,
-    locationAuthorizationRequest: 'Always',
-    backgroundPermissionRationale: {
-      title:
-        "Allow {applicationName} to access this device's location even when closed or not in use.",
-      message:
-        'myTask uses location tracking for traveling purposes, but does not store your location when disabled.',
-      positiveAction: 'Change to "{backgroundPermissionOptionLabel}"',
-      negativeAction: 'Cancel',
-    },
-    distanceFilter: 10,
-    stopTimeout: 1,
+    headers: {},
+    method: 'POST',
+    autoSync: true,
+    autoSyncThreshold: 0,
+    batchSync: false,
+    maxBatchSize: 50,
+    maxDaysToPersist: 14,
+    maxRecordsToPersist: 1000,
+    locationsOrderDirection: 'ASC',
+    desiredAccuracy: bgl?.DESIRED_ACCURACY_HIGH ?? 0,
+    distanceFilter: 20,
+    stopTimeout: 5,
+    stationaryRadius: 25,
+    disableElasticity: false,
     heartbeatInterval: 60,
     preventSuspend: true,
     stopOnTerminate: false,
     startOnBoot: true,
     enableHeadless: true,
-    autoSync: true,
-    maxDaysToPersist: 14,
+    foregroundService: true,
+    notification: {
+      title: 'myTask tracking',
+      text: 'Recording timesheet location',
+      sticky: true,
+    },
+    locationAuthorizationRequest: 'Always',
+    backgroundPermissionRationale: {
+      title:
+        "Allow {applicationName} to access this device's location even when closed or not in use.",
+      message:
+        'myTask uses location while you are clocked in to detect travel and work at assigned job sites.',
+      positiveAction: 'Change to "{backgroundPermissionOptionLabel}"',
+      negativeAction: 'Cancel',
+    },
+    debug: false,
+    logLevel: bgl?.LOG_LEVEL_WARNING ?? 2,
     ...overrides,
   };
-}
-
-async function postFallbackLocation(location: BglLocation): Promise<void> {
-  const params = await readHttpParams();
-  if (!params.organisationCode || !params.userId) {
-    return;
-  }
-  try {
-    await timesheetActivityApi.sendLocation({
-      location,
-      organisationCode: params.organisationCode,
-      userId: params.userId,
-      fcmToken: params.fcmToken,
-    });
-  } catch (err) {
-    console.warn('[BGL fallback] sendLocation failed', err);
-  }
 }
 
 function communityGetCurrentPosition(
@@ -277,158 +273,96 @@ function communityGetCurrentPosition(
   });
 }
 
-function stopFallbackTracking(): void {
-  const geo = tryLoadCommunityGeo();
-  if (fallbackWatchId != null && geo) {
-    geo.clearWatch(fallbackWatchId);
-    fallbackWatchId = null;
-  }
-  if (fallbackInterval != null) {
-    clearInterval(fallbackInterval);
-    fallbackInterval = null;
-  }
-}
-
-function startFallbackTracking(): void {
-  const geo = tryLoadCommunityGeo();
-  if (!geo) {
-    console.warn('[BGL] No geolocation module available for fallback');
-    return;
-  }
-
-  stopFallbackTracking();
-
-  const tick = async () => {
-    try {
-      const loc = await communityGetCurrentPosition(geo);
-      await postFallbackLocation(loc);
-    } catch (err) {
-      console.warn('[BGL fallback] tick failed', err);
-    }
-  };
-
-  void tick();
-  fallbackInterval = setInterval(() => {
-    void tick();
-  }, FALLBACK_INTERVAL_MS);
-
-  try {
-    fallbackWatchId = geo.watchPosition(
-      (position) => {
-        void postFallbackLocation({
-          coords: {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy,
-            altitude: position.coords.altitude ?? null,
-            heading: position.coords.heading ?? null,
-            speed: position.coords.speed ?? null,
-            timestamp: position.timestamp,
-          },
-          timestamp: position.timestamp,
-        });
-      },
-      (error) => console.warn('[BGL fallback] watchPosition', error),
-      {
-        enableHighAccuracy: true,
-        distanceFilter: 10,
-        interval: FALLBACK_INTERVAL_MS,
-        fastestInterval: FALLBACK_INTERVAL_MS,
-      },
-    );
-  } catch (err) {
-    console.warn('[BGL fallback] watchPosition unavailable', err);
-  }
-}
-
-/** Vue `BGLSetup` */
 export async function setup(): Promise<void> {
   const bgl = tryLoadNativeBgl();
   const params = await readHttpParams();
-  const config = vueParityConfig({
+  const headers = await trackingAuthHeaders();
+  const config = transistorConfig({
     url: sendLocationUrl(),
+    headers,
     params: {
-      fcmToken: params.fcmToken,
       organisationCode: params.organisationCode,
       userId: params.userId,
     },
-    trackingMode: params.fcmToken ? 1 : null,
   });
   lastConfig = config;
 
-  if (bgl) {
-    try {
-      subscriptions.forEach((s) => s.remove());
-      subscriptions = [];
-      if (bgl.onLocation) {
-        subscriptions.push(bgl.onLocation(() => undefined));
-      }
-      if (bgl.onHttp) {
-        subscriptions.push(
-          bgl.onHttp((event) => console.log('[BGL HTTP]', event)),
-        );
-      }
-      if (typeof bgl.LOG_LEVEL_VERBOSE === 'number') {
-        config.logLevel = bgl.LOG_LEVEL_VERBOSE;
-      }
-      const state = await bgl.ready(config);
-      ready = true;
-      enabled = Boolean(state?.enabled);
-      return;
-    } catch (err) {
-      console.warn('[BGL] native ready failed, using fallback', err);
+  if (!bgl) {
+    const geo = tryLoadCommunityGeo();
+    if (geo?.setRNConfiguration) {
+      geo.setRNConfiguration({
+        skipPermissionRequests: false,
+        authorizationLevel: Platform.OS === 'ios' ? 'always' : 'auto',
+      });
     }
+    ready = true;
+    enabled = false;
+    return;
   }
 
-  const geo = tryLoadCommunityGeo();
-  if (geo?.setRNConfiguration) {
-    geo.setRNConfiguration({
-      skipPermissionRequests: false,
-      authorizationLevel: Platform.OS === 'ios' ? 'always' : 'auto',
-    });
+  try {
+    subscriptions.forEach((s) => s.remove());
+    subscriptions = [];
+    if (bgl.onHttp) {
+      subscriptions.push(
+        bgl.onHttp((event) => {
+          if (__DEV__) {
+            console.log('[BGL HTTP]', event);
+          }
+        }),
+      );
+    }
+    if (bgl.onProviderChange) {
+      subscriptions.push(
+        bgl.onProviderChange((event) => {
+          if (__DEV__) {
+            console.log('[BGL provider]', event);
+          }
+        }),
+      );
+    }
+    const state = await bgl.ready(config);
+    ready = true;
+    enabled = Boolean(state?.enabled);
+  } catch (err) {
+    console.warn('[BGL] ready failed', err);
+    ready = false;
+    enabled = false;
+    throw err;
   }
-  ready = true;
-  enabled = false;
 }
 
-/** Vue `BGLDestroy` */
 export async function destroy(): Promise<void> {
   subscriptions.forEach((s) => s.remove());
   subscriptions = [];
-  stopFallbackTracking();
   ready = false;
   enabled = false;
 }
 
-/** Vue `BGLStart` */
 export async function start(): Promise<boolean> {
+  const bgl = tryLoadNativeBgl();
+  if (!bgl) {
+    throw new BackgroundGeolocationUnavailableError();
+  }
   try {
     await sync();
-    const bgl = tryLoadNativeBgl();
-    if (bgl) {
-      await bgl.start();
-      enabled = true;
-      return true;
-    }
-    startFallbackTracking();
+    await bgl.start();
     enabled = true;
     return true;
   } catch (err) {
     console.warn('[BGL] start failed', err);
-    return false;
+    enabled = false;
+    throw err;
   }
 }
 
-/** Vue `BGLStop` */
 export async function stop(): Promise<void> {
   try {
     await sync();
     const bgl = tryLoadNativeBgl();
     if (bgl) {
       await bgl.stop();
-      await setConfig({ url: null, params: null, trackingMode: null });
-    } else {
-      stopFallbackTracking();
+      await setConfig({ url: undefined, params: undefined });
     }
     enabled = false;
   } catch (err) {
@@ -437,12 +371,9 @@ export async function stop(): Promise<void> {
   }
 }
 
-/** Vue sync before start/stop */
 export async function sync(): Promise<void> {
   const bgl = tryLoadNativeBgl();
-  if (!bgl) {
-    return;
-  }
+  if (!bgl) return;
   try {
     await bgl.sync();
   } catch (err) {
@@ -450,22 +381,17 @@ export async function sync(): Promise<void> {
   }
 }
 
-/** Vue `BGLSetConfig` */
 export async function setConfig(config: BglConfig): Promise<void> {
   lastConfig = { ...lastConfig, ...config };
   const bgl = tryLoadNativeBgl();
-  if (bgl) {
-    try {
-      await bgl.setConfig(config);
-    } catch (err) {
-      console.warn('[BGL] setConfig failed', err);
-    }
-    return;
+  if (!bgl) return;
+  try {
+    await bgl.setConfig(config);
+  } catch (err) {
+    console.warn('[BGL] setConfig failed', err);
   }
-  // Fallback keeps params in memory for sendLocation posts.
 }
 
-/** Vue `BGLGetCurrentLocation` */
 export async function getCurrentPosition(): Promise<BglLocation | undefined> {
   const bgl = tryLoadNativeBgl();
   if (bgl) {
@@ -482,18 +408,15 @@ export async function getCurrentPosition(): Promise<BglLocation | undefined> {
   }
 
   const geo = tryLoadCommunityGeo();
-  if (!geo) {
-    return undefined;
-  }
+  if (!geo) return undefined;
   try {
     return await communityGetCurrentPosition(geo);
   } catch (err) {
-    console.warn('[BGL fallback] getCurrentPosition failed', err);
+    console.warn('[BGL] community getCurrentPosition failed', err);
     return undefined;
   }
 }
 
-/** Vue `BGLRequestPermissions` */
 export async function requestPermissions(): Promise<number | string | null> {
   const bgl = tryLoadNativeBgl();
   if (bgl) {
@@ -509,11 +432,10 @@ export async function requestPermissions(): Promise<number | string | null> {
   if (geo?.requestAuthorization) {
     geo.requestAuthorization();
   }
-  // Community geolocation prompts on first getCurrentPosition.
   try {
     if (geo) {
       await communityGetCurrentPosition(geo);
-      permission = 3; // Vue treats 3 as granted (ALWAYS)
+      permission = 3;
     }
   } catch {
     permission = 0;
@@ -521,34 +443,33 @@ export async function requestPermissions(): Promise<number | string | null> {
   return permission;
 }
 
-/** Vue `BGLSetGeofences` */
 export async function setGeofences(geofences: BglGeofence[]): Promise<void> {
   const bgl = tryLoadNativeBgl();
-  if (!bgl) {
-    console.warn('[BGL] setGeofences skipped — native module unavailable');
-    return;
-  }
+  if (!bgl) return;
   try {
-    await bgl.addGeofences(geofences);
+    await bgl.removeGeofences();
+    if (geofences.length > 0) {
+      await bgl.addGeofences(geofences);
+    }
   } catch (err) {
     console.warn('[BGL] setGeofences failed', err);
   }
 }
 
-/** Configure HTTP target after clock-in (Vue startTracking setConfig). */
 export async function configureTrackingHttp(params: {
   organisationCode: string;
   userId: string | number;
-  fcmToken?: string | null;
+  trackingToken: string;
 }): Promise<void> {
   await setConfig({
     url: sendLocationUrl(),
+    headers: {
+      Authorization: `Bearer ${params.trackingToken}`,
+    },
     params: {
       organisationCode: params.organisationCode,
       userId: params.userId,
-      fcmToken: params.fcmToken ?? null,
     },
-    trackingMode: 1,
   });
 }
 

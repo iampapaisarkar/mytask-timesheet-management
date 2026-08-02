@@ -7,6 +7,7 @@ import { formatTimesheetLabel } from "@mytask/utils";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { OrgHeader } from "../components/OrgHeader";
 import { OrgHomeScreen } from "../features/organisation";
+import { TrackingScreen } from "../screens/TrackingScreen";
 import {
   TimesheetListScreen,
   TimesheetDetailScreen,
@@ -265,7 +266,15 @@ export function OrgNavigator({ navigation, route }: OrgProps) {
             component={OrgTabsScreen}
             options={{ gestureEnabled: false }}
           />
-
+          <OrgStack.Screen
+            name="Tracking"
+            component={TrackingScreen}
+            options={{
+              headerShown: false,
+              animation: "slide_from_bottom",
+              presentation: "fullScreenModal",
+            }}
+          />
           <OrgStack.Screen
             name="TimesheetDetail"
             component={TimesheetDetailScreen}

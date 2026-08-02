@@ -1,5 +1,18 @@
 // class/socket.io.js — Socket Gateway emit API
+import { Emitter } from "@socket.io/redis-emitter";
 import { getIO, tryGetIO } from "../functions/socket-registry.js";
+import { pubClient } from "../functions/redis-registry.js";
+import { isRedisDisabled } from "../functions/redis-config.js";
+
+let redisEmitter = null;
+
+function getRedisEmitter() {
+  if (isRedisDisabled()) return null;
+  if (!redisEmitter) {
+    redisEmitter = new Emitter(pubClient);
+  }
+  return redisEmitter;
+}
 
 function envelope(event, organisationId, data, extras = {}) {
   return {
@@ -12,12 +25,37 @@ function envelope(event, organisationId, data, extras = {}) {
   };
 }
 
-function emitSafe(fn) {
+/**
+ * Prefer in-process Socket.IO (API). Workers use Redis emitter so org rooms
+ * on the API process still receive events (same Redis adapter channel).
+ */
+function emitSafe(withIo, withEmitter) {
   try {
     const io = tryGetIO();
-    if (!io) return { success: false, message: "Socket.io not initialized" };
-    process.nextTick(fn);
-    return { success: true };
+    if (io) {
+      process.nextTick(() => {
+        try {
+          withIo(io);
+        } catch (err) {
+          console.error("Socket emit (io) error:", err?.message || err);
+        }
+      });
+      return { success: true };
+    }
+
+    const emitter = getRedisEmitter();
+    if (emitter && typeof withEmitter === "function") {
+      process.nextTick(() => {
+        try {
+          withEmitter(emitter);
+        } catch (err) {
+          console.error("Socket emit (redis) error:", err?.message || err);
+        }
+      });
+      return { success: true, via: "redis-emitter" };
+    }
+
+    return { success: false, message: "Socket.io not initialized" };
   } catch (err) {
     console.error("Socket emit error:", err);
     return { success: false };
@@ -35,9 +73,15 @@ export const SocketIO = {
       return { success: false, message: "organisationId and event required" };
     }
     const payload = envelope(event, Number(organisationId), data, extras);
-    return emitSafe(() => {
-      getIO().to(`org:${organisationId}`).emit(event, payload);
-    });
+    const room = `org:${organisationId}`;
+    return emitSafe(
+      (io) => {
+        io.to(room).emit(event, payload);
+      },
+      (emitter) => {
+        emitter.to(room).emit(event, payload);
+      },
+    );
   },
 
   emitToUsers: (userIds, event, data, extras = {}) => {
@@ -46,9 +90,14 @@ export const SocketIO = {
     }
     const rooms = userIds.map((id) => `user:${id}`);
     const payload = envelope(event, extras.organisation_id ?? null, data, extras);
-    return emitSafe(() => {
-      getIO().to(rooms).emit(event, payload);
-    });
+    return emitSafe(
+      (io) => {
+        io.to(rooms).emit(event, payload);
+      },
+      (emitter) => {
+        emitter.to(rooms).emit(event, payload);
+      },
+    );
   },
 
   emitToUser: (userId, event, data, extras = {}) => {
@@ -64,23 +113,32 @@ export const SocketIO = {
       return { success: false, message: "No userIds provided" };
     }
     const payload = envelope("notification.created", null, notification);
-    return emitSafe(() => {
-      const io = getIO();
-      const rooms = userIds.map((id) => `user:${id}`);
-      io.to(rooms).emit("notification.created", payload);
-      // Legacy alias
-      io.to(rooms).emit("receiveNotification", notification);
-    });
+    const rooms = userIds.map((id) => `user:${id}`);
+    return emitSafe(
+      (io) => {
+        io.to(rooms).emit("notification.created", payload);
+        io.to(rooms).emit("receiveNotification", notification);
+      },
+      (emitter) => {
+        emitter.to(rooms).emit("notification.created", payload);
+        emitter.to(rooms).emit("receiveNotification", notification);
+      },
+    );
   },
 
   sendMessage: async (userIds, dataMessage) => {
     if (!Array.isArray(userIds) || userIds.length === 0) {
       return { success: false, message: "No userIds provided" };
     }
-    return emitSafe(() => {
-      const rooms = userIds.map((id) => `user:${id}`);
-      getIO().to(rooms).emit("receiveMessage", dataMessage);
-    });
+    const rooms = userIds.map((id) => `user:${id}`);
+    return emitSafe(
+      (io) => {
+        io.to(rooms).emit("receiveMessage", dataMessage);
+      },
+      (emitter) => {
+        emitter.to(rooms).emit("receiveMessage", dataMessage);
+      },
+    );
   },
 };
 

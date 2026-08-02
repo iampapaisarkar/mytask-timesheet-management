@@ -33,5 +33,6 @@ export {
   timesheetActivityApi,
   systemLogsApi,
 } from "./resources.api";
+export type { TrackingActivityStatus } from "./resources.api";
 export { screensApi } from "./screens.api";
 export { subscriptionApi } from "./subscription.api";

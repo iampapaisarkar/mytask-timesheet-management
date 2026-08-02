@@ -22,6 +22,7 @@ export const REALTIME_EVENTS = {
   NOTIFICATION_CREATED: "notification.created",
   DASHBOARD_UPDATED: "dashboard.updated",
   AUDIT_LOG_CREATED: "audit.log.created",
+  TRACKING_UPDATED: "tracking.updated",
 };
 
 function toPlain(entity) {
@@ -186,6 +187,16 @@ export function emitAuditLogCreated(row, auditType) {
   return null;
 }
 
+/** Broadcast GPS / activity store so day map + timeline refresh live. */
+export function emitTrackingUpdated(organisationId, payload, actorUserId) {
+  return emitOrgEvent(
+    organisationId,
+    REALTIME_EVENTS.TRACKING_UPDATED,
+    payload,
+    { actorUserId },
+  );
+}
+
 export default {
   REALTIME_EVENTS,
   emitOrgEvent,
@@ -204,4 +215,5 @@ export default {
   emitDashboardUpdated,
   emitAuthLogout,
   emitAuditLogCreated,
+  emitTrackingUpdated,
 };

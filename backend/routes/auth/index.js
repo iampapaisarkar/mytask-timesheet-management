@@ -9,6 +9,7 @@ import {
   updateFCMToken,
   forgotPassword,
   verifyOrganisationInvitationToken,
+  issueTrackingToken,
 } from "../../controller/auth.controller.js";
 import TokenValidate from "../../middleware/tokenvalidate.js";
 
@@ -23,5 +24,6 @@ router.post("/logout", TokenValidate, logout);
 router.get("/user", TokenValidate, authUser);
 router.post("/update-profile", TokenValidate, updateProfile);
 router.post("/update-fcm-token", TokenValidate, updateFCMToken);
+router.post("/tracking-token", TokenValidate, issueTrackingToken);
 
 export default router;

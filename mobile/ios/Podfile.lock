@@ -2066,6 +2066,29 @@ PODS:
     - React-utils (= 0.86.2)
     - ReactNativeDependencies
   - ReactNativeDependencies (0.86.2)
+  - RNBackgroundGeolocation (5.4.0):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - TSLocationManager (~> 4.4.0)
+    - Yoga
   - RNCAsyncStorage (2.2.0):
     - hermes-engine
     - RCTRequired
@@ -2439,6 +2462,9 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - TSBackgroundFetch (4.1.1)
+  - TSLocationManager (4.4.1):
+    - TSBackgroundFetch (~> 4.1.0)
   - Yoga (0.0.0)
 
 DEPENDENCIES:
@@ -2522,6 +2548,7 @@ DEPENDENCIES:
   - ReactCodegen (from `build/generated/ios/ReactCodegen`)
   - ReactCommon/turbomodule/core (from `../../node_modules/react-native/ReactCommon`)
   - ReactNativeDependencies (from `../../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
+  - RNBackgroundGeolocation (from `../../node_modules/react-native-background-geolocation`)
   - "RNCAsyncStorage (from `../../node_modules/@react-native-async-storage/async-storage`)"
   - "RNDateTimePicker (from `../../node_modules/@react-native-community/datetimepicker`)"
   - RNGestureHandler (from `../../node_modules/react-native-gesture-handler`)
@@ -2544,6 +2571,8 @@ SPEC REPOS:
     - GTMAppAuth
     - GTMSessionFetcher
     - PromisesObjC
+    - TSBackgroundFetch
+    - TSLocationManager
 
 EXTERNAL SOURCES:
   FBLazyVector:
@@ -2703,6 +2732,8 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/react-native/ReactCommon"
   ReactNativeDependencies:
     :podspec: "../../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec"
+  RNBackgroundGeolocation:
+    :path: "../../node_modules/react-native-background-geolocation"
   RNCAsyncStorage:
     :path: "../../node_modules/@react-native-async-storage/async-storage"
   RNDateTimePicker:
@@ -2812,6 +2843,7 @@ SPEC CHECKSUMS:
   ReactCodegen: 8f2b77e96bcb03fe939d567a067fb097618227a1
   ReactCommon: 9002f006f571256348994183f7d4387aa7cf84e8
   ReactNativeDependencies: 2bd6854ade79bf1b60586d1ab7813a389df1b6bf
+  RNBackgroundGeolocation: b2a58c10eeb01c19dd27807f8deff5196447a894
   RNCAsyncStorage: 2ad919e88b8bc2cd80e8697ce66d04d006743283
   RNDateTimePicker: b9e20c2a3af26f4ab10646359777205bbad1fdac
   RNGestureHandler: 92172e79df6e88e0e93b6341f9dcd8b5a02746ba
@@ -2821,8 +2853,10 @@ SPEC CHECKSUMS:
   RNScreens: 7118cd7715c226856125b5bece3c4d9abec90356
   RNSVG: 6cae8d4082913be2eb43eaec2a456222c42195ed
   RNWorklets: bb6f040dd3a46ef34d7e9ca51d4c7d1b804c190c
+  TSBackgroundFetch: 18918b6449a1e3f01eb0f5b44d6d79ce6160a5a5
+  TSLocationManager: 3a1a98741387935ee2ef5b48cc8a8cde9762b03a
   Yoga: 9891cfb1c680f64de9c41b09e7453dea33454d2b
 
-PODFILE CHECKSUM: e791306a9354c446be4db0a31db2121ace5c48d7
+PODFILE CHECKSUM: 41433b7e4ac62c42c7ebc196d071f8d400336bca
 
 COCOAPODS: 1.16.2

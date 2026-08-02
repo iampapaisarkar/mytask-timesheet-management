@@ -18,6 +18,10 @@ const TimesheetActivityLogs = db.define(
     timesheet_day_id: {
       type: DataTypes.INTEGER,
     },
+    job_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
     latitude: {
       type: DataTypes.DECIMAL(17, 14),
     },
@@ -55,6 +59,10 @@ TimesheetActivityLogs.associate = (models) => {
   models.TimesheetActivityLogs.belongsTo(models.Users, {
     foreignKey: "user_id",
     as: "user",
+  });
+  models.TimesheetActivityLogs.belongsTo(models.Jobs, {
+    foreignKey: "job_id",
+    as: "job",
   });
   models.TimesheetActivityLogs.hasOne(models.GeofenceEvents, {
     foreignKey: "timesheet_activity_log_id",

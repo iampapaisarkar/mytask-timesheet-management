@@ -19,6 +19,7 @@ export const EVENT_QUERY_INVALIDATIONS: Record<
     ["timesheets"],
     ["timesheet-management"],
     ["timesheet-day"],
+    ["screens", "timesheet-day-editor"],
     ["screens", "dashboard"],
     ["screens", "home"],
   ],
@@ -26,12 +27,14 @@ export const EVENT_QUERY_INVALIDATIONS: Record<
     ["timesheets"],
     ["timesheet-management"],
     ["timesheet-day"],
+    ["screens", "timesheet-day-editor"],
     ["screens", "dashboard"],
     ["payouts", "eligible"],
   ],
   [SOCKET_EVENTS.TIMESHEET_DELETED]: [
     ["timesheets"],
     ["timesheet-management"],
+    ["screens", "timesheet-day-editor"],
     ["screens", "dashboard"],
   ],
 
@@ -60,6 +63,14 @@ export const EVENT_QUERY_INVALIDATIONS: Record<
   [SOCKET_EVENTS.DASHBOARD_UPDATED]: [["screens", "dashboard"], ["screens", "home"]],
 
   [SOCKET_EVENTS.AUDIT_LOG_CREATED]: [["system-logs"]],
+
+  /** Day map / timeline / tracking_logs — avoid thrashing list screens */
+  [SOCKET_EVENTS.TRACKING_UPDATED]: [
+    ["screens", "timesheet-day-editor"],
+    ["timesheet-day"],
+    ["screens", "dashboard"],
+    ["screens", "home"],
+  ],
 
   [SOCKET_EVENTS.AUTH_LOGOUT]: [],
 };
@@ -100,6 +111,14 @@ export function applyRealtimeEnvelopeToQueryClient(
     globalThis.setTimeout(() => {
       invalidateQueriesForEvent(queryClient, event);
     }, 350);
+    return;
+  }
+
+  // Location worker may commit slightly after emit; coalesce rapid GPS pings
+  if (event === SOCKET_EVENTS.TRACKING_UPDATED) {
+    globalThis.setTimeout(() => {
+      invalidateQueriesForEvent(queryClient, event);
+    }, 400);
     return;
   }
 

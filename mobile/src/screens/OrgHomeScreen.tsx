@@ -12,7 +12,6 @@ import { useDashboardParallel } from "@mytask/hooks";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { radii, spacing, typography } from "@mytask/theme";
 import { getOrganisationRoleCode } from "@mytask/utils";
-import { ClockInOut } from "../components/ClockInOut";
 import { SkeletonBlock, SkeletonDashboard } from "../components/Skeleton";
 import type { DashboardStackParamList } from "../navigation/types";
 import { useOrgTabBarScrollInset } from "../navigation/useOrgTabBarScrollInset";
@@ -277,8 +276,6 @@ export function OrgHomeScreen({ route }: Props) {
       <Text style={[styles.roleLine, { color: c.muted }]}>
         {roleDescription(overview?.role || roleCode, overview?.source)}
       </Text>
-
-      <ClockInOut />
 
       {dashboard.summaryQuery.isLoading && !kpis ? (
         <SkeletonDashboard />

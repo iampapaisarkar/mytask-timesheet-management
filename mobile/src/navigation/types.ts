@@ -51,6 +51,7 @@ export type OrgTabParamList = {
  */
 export type OrgStackParamList = {
   OrgTabs: NavigatorScreenParams<OrgTabParamList> | undefined;
+  Tracking: { orgCode: string };
   TimesheetDetail: TimesheetPeriodParams;
   TimesheetManagementDetail: TimesheetPeriodParams;
   TimesheetDayDetail: TimesheetDayParams;

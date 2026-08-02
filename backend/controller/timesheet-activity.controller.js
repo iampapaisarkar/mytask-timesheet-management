@@ -8,38 +8,50 @@ import { enqueueStoreLocation } from "../queue-jobs/store-location.job.js";
 const {
   Timesheets,
   TimesheetStatus,
-  TimesheetActivityLogs,
-  TimesheetActivityTypes,
+  TimesheetJobs,
 } = models;
 
+function activityErrorPayload(err) {
+  return {
+    code: err.code || undefined,
+    message:
+      err.message || "Unable to store location. Please try again later.",
+    ...(err.meta ? { meta: err.meta } : {}),
+  };
+}
+
 export async function store(req, res) {
-  let { location, type, organisationCode, userId, fcmToken } = req.body;
+  let { location, type, organisationCode, userId, remarks, user } = req.body;
   try {
-    await timesheetActivityService.storeLocation({
+    const status = await timesheetActivityService.storeLocation({
       location,
       type,
-      organisationCode,
-      userId,
-      fcmToken,
+      organisationCode: organisationCode || req.body?.organisation?.code,
+      userId: userId || user?.id,
+      remarks,
+      authenticatedUser: user || null,
     });
-    return res.status(200).json({});
+    return res.status(200).json({
+      data: status && typeof status === "object" ? status : {},
+      message: "Location stored successfully",
+    });
   } catch (err) {
-    return res.status(err.statusCode || 500).json({
-      message:
-        err.message || "Unable to store location. Please ty again later.",
-    });
+    return res
+      .status(err.statusCode || 500)
+      .json(activityErrorPayload(err));
   }
 }
 
 export async function sendLocation(req, res) {
-  let { location, type, organisationCode, userId, fcmToken } = req.body;
+  let { location, type, organisationCode, userId, remarks, user } = req.body;
   try {
     await enqueueStoreLocation({
       location,
       type,
       organisationCode,
-      userId,
-      fcmToken,
+      userId: userId || user?.id,
+      remarks,
+      authenticatedUserId: user?.id || null,
     });
     return res.status(200).json({
       message: "Location store successfully",
@@ -47,7 +59,7 @@ export async function sendLocation(req, res) {
   } catch (err) {
     return res.status(err.statusCode || 500).json({
       message:
-        err.message || "Unable to store location. Please ty again later.",
+        err.message || "Unable to store location. Please try again later.",
     });
   }
 }
@@ -55,115 +67,13 @@ export async function sendLocation(req, res) {
 export async function activity(req, res) {
   let { user, organisation } = req.body;
   try {
-    const userTz = user?.timezone?.timezone || "UTC";
-
-    // 1. Get user day start/end in their timezone
-    const startOfDayUserTZ = moment.tz(userTz).startOf("day");
-    const endOfDayUserTZ = moment.tz(userTz).endOf("day");
-
-    // 2. Convert to UTC for DB query
-    const startOfDayUTC = startOfDayUserTZ.clone().utc().format();
-    const endOfDayUTC = endOfDayUserTZ.clone().utc().format();
-
-    // 3. Get activity types
-    const activityTypes = await TimesheetActivityTypes.findAll({
-      where: { code: ["travel", "working"] },
-      raw: true,
+    const data = await timesheetActivityService.getActivityStatus({
+      userId: user.id,
+      organisationId: organisation.id,
+      userTimezone: user?.timezone?.timezone || "UTC",
     });
 
-    const activityTypeIds = activityTypes.map((t) => t.id);
-
-    // 4. Fetch logs (now filtered by user's day)
-    let logs = await TimesheetActivityLogs.findAll({
-      where: {
-        user_id: user.id,
-        organisation_id: organisation.id,
-        type_id: activityTypeIds,
-        track_at: {
-          [Op.between]: [startOfDayUTC, endOfDayUTC],
-        },
-      },
-      order: [
-        ["track_at", "ASC"],
-        ["id", "ASC"],
-      ],
-      raw: true,
-    });
-
-    // 5. Convert timestamps to user's timezone for final output
-    logs = logs.map((log) => ({
-      ...log,
-      track_at: moment(log.track_at).tz(userTz).format(),
-      start_at: log.start_at ? moment(log.start_at).tz(userTz).format() : null,
-      end_at: log.end_at ? moment(log.end_at).tz(userTz).format() : null,
-    }));
-
-    // 6. Duration calculations (no change)
-    let totalSeconds = 0;
-    let currentStart = null;
-
-    for (const log of logs) {
-      if (log.start_at && !currentStart) {
-        currentStart = new Date(log.start_at);
-      }
-
-      if (log.end_at && currentStart) {
-        const end = new Date(log.end_at);
-
-        // Round milliseconds → nearest second
-        const diffSeconds = Math.round((end - currentStart) / 1000);
-
-        if (diffSeconds > 0) totalSeconds += diffSeconds;
-        currentStart = null;
-      }
-    }
-
-    // Handle OPEN session
-    if (currentStart) {
-      const now = new Date();
-
-      const diffSeconds = Math.round((now - currentStart) / 1000);
-
-      if (diffSeconds > 0) totalSeconds += diffSeconds;
-    }
-
-    const totalHoursRounded = Number((totalSeconds / 3600).toFixed(3));
-
-    // Get CURRENT activity
-    const currentActivity = await TimesheetActivityLogs.findOne({
-      include: [{ model: TimesheetActivityTypes, as: "type" }],
-      where: {
-        user_id: user.id,
-        organisation_id: organisation.id,
-        type_id: { [Op.ne]: null },
-        track_at: {
-          [Op.between]: [startOfDayUTC, endOfDayUTC],
-        },
-      },
-      order: [
-        ["track_at", "DESC"],
-        ["id", "DESC"],
-      ],
-      raw: true,
-    });
-
-    let timer = "stop";
-
-    if (currentActivity && currentActivity?.end_at == null) {
-      if (["travel", "working"].includes(currentActivity["type.code"])) {
-        timer = "running";
-      } else if (currentActivity["type.code"] === "break") {
-        timer = "pause";
-      }
-    }
-
-    return res.status(200).json({
-      data: {
-        total_hours: totalHoursRounded,
-        total_seconds: totalSeconds,
-        timer,
-      },
-    });
+    return res.status(200).json({ data });
   } catch (err) {
     console.error("Error in activity():", err);
     return res.status(500).json({
@@ -176,6 +86,13 @@ export async function activity(req, res) {
 export async function timesheetValidation(req, res) {
   let { user, organisation } = req.body;
   try {
+    if (!organisation?.employee?.id) {
+      return res.status(400).json({
+        code: "NO_EMPLOYEE",
+        message: "No employee profile found for this organisation.",
+      });
+    }
+
     const today = moment().startOf("day").toDate();
 
     const timesheet = await Timesheets.findOne({
@@ -194,24 +111,62 @@ export async function timesheetValidation(req, res) {
           model: TimesheetStatus,
           as: "status",
         },
+        {
+          model: models.Jobs,
+          as: "jobs",
+          attributes: ["id", "name"],
+          through: { attributes: [] },
+          required: false,
+        },
       ],
-      raw: true,
-      nest: true,
     });
 
-    if (timesheet) {
-      if (timesheet.status.code == "draft") {
-        return res.status(200).json({});
-      } else {
-        return res.status(500).json({
-          message: "Timesheet already submitted.",
+    if (!timesheet) {
+      return res.status(400).json({
+        code: "NO_TIMESHEET",
+        message: "There is no timesheet available for today.",
+      });
+    }
+
+    const plain = timesheet.toJSON();
+    if (plain.status?.code !== "draft") {
+      return res.status(400).json({
+        code: "TIMESHEET_NOT_DRAFT",
+        message: "Timesheet already submitted.",
+      });
+    }
+
+    const junctionJobs = Array.isArray(plain.jobs) ? plain.jobs : [];
+    const hasJunctionJobs = junctionJobs.length > 0;
+    const hasLegacyJob = Boolean(plain.job_id);
+
+    if (!hasJunctionJobs && !hasLegacyJob) {
+      // Also check timesheet_jobs directly in case association is empty
+      const jobCount = await TimesheetJobs.count({
+        where: {
+          organisation_id: organisation.id,
+          timesheet_id: plain.id,
+        },
+      });
+      if (jobCount === 0) {
+        return res.status(400).json({
+          code: "NO_ASSIGNED_JOBS",
+          message:
+            "You need at least one assigned job on today's timesheet before tracking can start.",
         });
       }
-    } else {
-      return res
-        .status(500)
-        .json({ message: "There is no timesheet available." });
     }
+
+    return res.status(200).json({
+      data: {
+        timesheet_id: plain.id,
+        job_count: hasJunctionJobs
+          ? junctionJobs.length
+          : hasLegacyJob
+            ? 1
+            : 0,
+      },
+    });
   } catch (err) {
     console.error("Error in timesheetValidation():", err);
     return res.status(500).json({
@@ -225,7 +180,7 @@ import axios from "axios";
 import fs from "fs";
 
 const locations = JSON.parse(
-  fs.readFileSync(new URL("../simulate_locations2.json", import.meta.url))
+  fs.readFileSync(new URL("../simulate_locations2.json", import.meta.url)),
 );
 
 // Helper sleep function
@@ -236,19 +191,17 @@ function sleep(ms) {
 export async function simulate(req, res) {
   try {
     for (const location of locations) {
-      const response = await axios.post(
+      await axios.post(
         `${process.env.SERVER_URL}/timesheet-activity/send-location`,
-        location
+        location,
       );
-      // console.log("Posted location response:", response);
 
-      // Wait 1 second before next iteration
+      // Wait before next iteration
       await sleep(15000);
     }
 
     return res.status(200).json({ message: "All locations posted!" });
   } catch (err) {
-    // console.error("Error in simulateTestLocation():", err);
     return res.status(500).json({
       message: "Unable to simulate test location!",
       details: err?.message,

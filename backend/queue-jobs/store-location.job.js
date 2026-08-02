@@ -5,7 +5,8 @@ export async function enqueueStoreLocation({
   type,
   organisationCode,
   userId,
-  fcmToken,
+  remarks,
+  authenticatedUserId,
 }) {
   await locationQueue.add(
     "store-location",
@@ -14,7 +15,8 @@ export async function enqueueStoreLocation({
       type,
       organisationCode,
       userId,
-      fcmToken,
+      remarks,
+      authenticatedUserId,
     },
     {
       attempts: 5,

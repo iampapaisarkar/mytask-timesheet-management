@@ -22,6 +22,7 @@ import { useToastStore } from "../store/toastStore";
 import { signUpWithEmail } from "../services/firebase";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { setPendingOrgInvitationToken } from "../navigation/navigationRef";
+import { persistTrackingTokenFromAuthResponse } from "../services/trackingAuthToken";
 import { Button } from "../ui";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Signup">;
@@ -85,6 +86,12 @@ export function SignupScreen({ navigation, route }: Props) {
       if (invitationToken) {
         setPendingOrgInvitationToken(invitationToken);
       }
+      await persistTrackingTokenFromAuthResponse(
+        response.data as {
+          tracking_token?: string;
+          tracking_token_expires_at?: string;
+        },
+      );
       await setSession(token, response.data.data);
       toast.success("Account created", "Welcome to myTask");
     } catch (err) {

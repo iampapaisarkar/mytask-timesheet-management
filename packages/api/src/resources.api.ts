@@ -370,20 +370,23 @@ export const payoutsApi = {
 
 export const timesheetActivityApi = {
   store(payload: Record<string, unknown>, options?: RequestOptions) {
-    return getApiClient().post(
-      "/timesheet-activity/store",
-      payload,
-      req(options),
-    );
+    return getApiClient().post<{
+      data?: TrackingActivityStatus;
+      message?: string;
+    }>("/timesheet-activity/store", payload, req(options));
   },
   list(params: Record<string, unknown> = {}, options?: RequestOptions) {
-    return getApiClient().get("/timesheet-activity", req(options, params));
-  },
-  validate(params: Record<string, unknown> = {}, options?: RequestOptions) {
-    return getApiClient().get(
-      "/timesheet-activity/validate",
+    return getApiClient().get<{ data?: TrackingActivityStatus }>(
+      "/timesheet-activity",
       req(options, params),
     );
+  },
+  validate(params: Record<string, unknown> = {}, options?: RequestOptions) {
+    return getApiClient().get<{
+      data?: { timesheet_id?: number; job_count?: number };
+      code?: string;
+      message?: string;
+    }>("/timesheet-activity/validate", req(options, params));
   },
   sendLocation(payload: Record<string, unknown>, options?: RequestOptions) {
     return getApiClient().post(
@@ -392,6 +395,18 @@ export const timesheetActivityApi = {
       req(options),
     );
   },
+};
+
+export type TrackingActivityStatus = {
+  total_hours?: number;
+  total_seconds?: number;
+  timer?: "stop" | "running" | "pause" | string;
+  status?: string;
+  current_activity?: {
+    code?: string | null;
+    name?: string | null;
+    job_id?: number | null;
+  } | null;
 };
 
 export const systemLogsApi = {

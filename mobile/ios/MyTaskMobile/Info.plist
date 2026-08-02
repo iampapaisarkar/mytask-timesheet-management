@@ -64,6 +64,14 @@
 	<string>myTask needs always-on location access to continue tracking your timesheet while the app is in the background.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>myTask needs your location while you use the app to record timesheet travel and work activity.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>Motion detection helps myTask know when you are traveling or stationary during time tracking.</string>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.transistorsoft.fetch</string>
+	</array>
+	<key>TSLocationManagerLicense</key>
+	<string>YOUR_IOS_LICENSE_KEY_JWT</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UIBackgroundModes</key>

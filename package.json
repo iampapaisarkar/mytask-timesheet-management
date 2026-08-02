@@ -26,5 +26,8 @@
   },
   "devDependencies": {
     "semver": "^7.7.3"
+  },
+  "dependencies": {
+    "@socket.io/redis-emitter": "^5.1.0"
   }
 }

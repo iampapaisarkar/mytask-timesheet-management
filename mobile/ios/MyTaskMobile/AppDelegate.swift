@@ -3,6 +3,7 @@ import React
 import React_RCTAppDelegate
 import ReactAppDependencyProvider
 import GoogleMaps
+import TSBackgroundFetch
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -19,6 +20,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
        !mapsKey.isEmpty {
       GMSServices.provideAPIKey(mapsKey)
     }
+
+    // Required by Transistorsoft Background Geolocation / Background Fetch
+    TSBackgroundFetch.sharedInstance().didFinishLaunching()
 
     let delegate = ReactNativeDelegate()
     let factory = RCTReactNativeFactory(delegate: delegate)

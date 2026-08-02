@@ -14,6 +14,7 @@ Production realtime stack for myTask: shared contracts in `@mytask/realtime`, JW
 | Timesheet | `timesheet.created` | Timesheet management create | Web + Mobile |
 | Timesheet | `timesheet.updated` | Save / submit / approve / reject | Web + Mobile |
 | Timesheet | `timesheet.deleted` | Delete (when wired) | Web + Mobile |
+| Tracking | `tracking.updated` | Location store / BGL send-location (throttled ~3s; immediate on start/pause/resume/stop) | Web + Mobile day map, timeline, tracking_logs |
 | Payroll | `payroll.created` | Employee payroll create | Web + Mobile |
 | Payroll | `payroll.updated` | Employee payroll update | Web + Mobile |
 | Report | `report.generated` | Report worker completed | Web + Mobile |
@@ -41,6 +42,7 @@ Organisation rooms are joined only after server-side membership check (`user_org
 - Handshake auth uses the same session token as REST (`Auth.verifyToken` + `Auth.getUserByToken`)
 - Optional `SOCKETIO_TOKEN` remains for service/test clients only (still requires `user_id`)
 - Redis adapter retained for multi-instance
+- Workers (location queue) emit via `@socket.io/redis-emitter` when Socket.IO is not in-process
 
 ## Client architecture
 

@@ -205,10 +205,18 @@ export function createApiClient(options: CreateApiClientOptions): AxiosInstance 
   });
 
   client.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
-    const token = await optionsRef!.getToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const existingAuth = String(
+      config.headers?.Authorization || config.headers?.authorization || "",
+    );
+    const usesTrackingToken = existingAuth.includes("mttrk_");
+
+    if (!usesTrackingToken) {
+      const token = await optionsRef!.getToken();
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
+
     const org = optionsRef!.getOrganisation?.() ?? null;
     if (org) {
       config.headers[ORG_HEADERS.id] = String(org.id);
@@ -242,7 +250,20 @@ export function createApiClient(options: CreateApiClientOptions): AxiosInstance 
         }
       }
 
-      if (error.response?.status === 401 && config && !config.__mtAuthRetry) {
+      const authHeader = String(
+        config?.headers?.Authorization ||
+          config?.headers?.authorization ||
+          "",
+      );
+      const usesTrackingToken = authHeader.includes("mttrk_");
+
+      // Tracking tokens are long-lived — do not Firebase-refresh or wipe session.
+      if (
+        error.response?.status === 401 &&
+        config &&
+        !config.__mtAuthRetry &&
+        !usesTrackingToken
+      ) {
         config.__mtAuthRetry = true;
         const fresh = await forceRefreshShared();
         if (fresh) {
@@ -251,7 +272,7 @@ export function createApiClient(options: CreateApiClientOptions): AxiosInstance 
           return client!.request(config);
         }
         optionsRef?.onUnauthorized?.();
-      } else if (error.response?.status === 401) {
+      } else if (error.response?.status === 401 && !usesTrackingToken) {
         optionsRef?.onUnauthorized?.();
       }
 
