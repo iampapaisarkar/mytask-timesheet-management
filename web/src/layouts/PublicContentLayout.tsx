@@ -21,6 +21,12 @@ export function PublicContentLayout() {
           <div className="flex items-center gap-2 sm:gap-3">
             <nav className="flex items-center gap-1 text-xs font-medium text-muted sm:gap-3">
               <Link
+                to={ROUTES.howItWorks}
+                className="inline-flex min-h-10 items-center rounded-lg px-2 hover:text-primary"
+              >
+                How it works
+              </Link>
+              <Link
                 to={ROUTES.help}
                 className="inline-flex min-h-10 items-center rounded-lg px-2 hover:text-primary"
               >

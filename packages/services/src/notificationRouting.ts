@@ -27,6 +27,7 @@ const ALLOWED_PREFIXES = [
   "/help",
   "/terms",
   "/privacy",
+  "/how-it-works",
   "/",
 ] as const;
 

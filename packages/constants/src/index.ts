@@ -30,6 +30,7 @@ export const ROUTES = {
   help: "/help",
   terms: "/terms",
   privacy: "/privacy",
+  howItWorks: "/how-it-works",
   pricing: "/pricing",
   subscription: "/subscription",
   billingHistory: "/billing",
@@ -292,3 +293,13 @@ export {
   PRIVACY_SECTIONS,
 } from "./legalContent";
 export type { FaqItem, FaqSection, LegalSection } from "./legalContent";
+export {
+  HOW_IT_WORKS_INTRO,
+  HOW_IT_WORKS_PHASES,
+  howItWorksPlatformLabel,
+} from "./howItWorksContent";
+export type {
+  HowItWorksPhase,
+  HowItWorksPlatform,
+  HowItWorksStep,
+} from "./howItWorksContent";

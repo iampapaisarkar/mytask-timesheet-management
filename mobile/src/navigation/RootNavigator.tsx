@@ -13,6 +13,7 @@ import { ProfileScreen } from "../features/settings";
 import { NotificationsListScreen } from "../features/notifications";
 import { CreateOrganisationScreen } from "../screens/CreateOrganisationScreen";
 import { LegalScreen } from "../screens/LegalScreen";
+import { HowItWorksScreen } from "../screens/HowItWorksScreen";
 import { OrgInvitationScreen } from "../screens/OrgInvitationScreen";
 import {
   PricingScreen,
@@ -91,6 +92,11 @@ export function RootNavigator() {
             name="Pricing"
             component={PricingScreen}
             options={{ title: "Pricing" }}
+          />
+          <Stack.Screen
+            name="HowItWorks"
+            component={HowItWorksScreen}
+            options={{ title: "How it works" }}
           />
           <Stack.Screen
             name="Legal"
@@ -174,6 +180,11 @@ export function RootNavigator() {
                     ? "Terms & Conditions"
                     : "Privacy Policy",
             })}
+          />
+          <Stack.Screen
+            name="HowItWorks"
+            component={HowItWorksScreen}
+            options={{ title: "How it works" }}
           />
           <Stack.Screen
             name="Pricing"

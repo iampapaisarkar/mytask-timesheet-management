@@ -89,6 +89,7 @@ export type RootStackParamList = {
   };
   NotificationsList: { orgCode: string };
   Legal: { kind: "help" | "terms" | "privacy" };
+  HowItWorks: undefined;
   Pricing: undefined;
   Subscription: undefined;
   BillingHistory: undefined;

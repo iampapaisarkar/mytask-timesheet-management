@@ -237,8 +237,16 @@ export function LoginScreen({ navigation, route }: Props) {
       </View>
 
       <Button
-        title="See pricing"
+        title="How it works"
         variant="soft"
+        onPress={() => navigation.navigate("HowItWorks")}
+        disabled={busy}
+        style={styles.pricingBtn}
+      />
+
+      <Button
+        title="See pricing"
+        variant="outline"
         onPress={() => navigation.navigate("Pricing")}
         disabled={busy}
         style={styles.pricingBtn}

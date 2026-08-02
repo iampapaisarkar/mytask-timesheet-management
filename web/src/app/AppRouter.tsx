@@ -13,6 +13,7 @@ import {
   HelpFaqPage,
   HolidayCalendarsPage,
   HomePage,
+  HowItWorksPage,
   JobsPage,
   LoginPage,
   NotificationsPage,
@@ -80,6 +81,7 @@ export function AppRouter() {
 
               <Route element={<PublicContentLayout />}>
                 <Route path="/help" element={<HelpFaqPage />} />
+                <Route path="/how-it-works" element={<HowItWorksPage />} />
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/pricing" element={<PricingPage />} />

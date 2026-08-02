@@ -2,6 +2,10 @@
 
 ## 2026-08-02
 
+### Added
+
+- **How it works:** Login (web + mobile) links to a step-by-step setup guide covering account, organisation, jobs, timesheets, mobile time/location tracking, approvals, reports, and payouts. Shared copy in `@mytask/constants`; route `/how-it-works`.
+
 ### Changed
 
 - **Help / Terms / Privacy:** Documented mobile time & location tracking — what it does, Always/background location and motion permissions, data collected (GPS, session events, geofence classification), who can view live maps/timelines, and how to stop collection. Shared copy in `@mytask/constants` (`legalContent.ts`) for web and mobile; iOS Info.plist usage strings aligned.

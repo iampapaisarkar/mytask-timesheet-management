@@ -79,6 +79,10 @@ export function navigateNotificationPath(options: NavigateOptions): boolean {
     navigation.navigate("OrgInvitation", { token });
     return true;
   }
+  if (pathname === "/how-it-works") {
+    navigation.navigate("HowItWorks");
+    return true;
+  }
   if (pathname === "/help" || pathname === "/terms" || pathname === "/privacy") {
     navigation.navigate("Legal", {
       kind: pathname.slice(1) as "help" | "terms" | "privacy",

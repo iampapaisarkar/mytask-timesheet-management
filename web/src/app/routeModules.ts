@@ -117,6 +117,9 @@ export const NotificationsPage = lazyRoute(() =>
 export const HelpFaqPage = lazyRoute(() =>
   import("@/features/legal").then((m) => ({ default: m.HelpFaqPage })),
 );
+export const HowItWorksPage = lazyRoute(() =>
+  import("@/features/legal").then((m) => ({ default: m.HowItWorksPage })),
+);
 export const PrivacyPage = lazyRoute(() =>
   import("@/features/legal").then((m) => ({ default: m.PrivacyPage })),
 );

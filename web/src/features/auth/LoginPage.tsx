@@ -215,6 +215,14 @@ export function LoginPage() {
         </Link>
       </div>
       <Link
+        to={ROUTES.howItWorks}
+        className="w-full"
+      >
+        <Button type="button" variant="soft" className="w-full" disabled={busy}>
+          How it works
+        </Button>
+      </Link>
+      <Link
         to={
           redirectTo
             ? `${ROUTES.pricing}?redirect=${encodeURIComponent(redirectTo)}`

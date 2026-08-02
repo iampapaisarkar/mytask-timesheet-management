@@ -31,6 +31,7 @@ const linkingConfig = {
         },
       },
     },
+    HowItWorks: "how-it-works",
     Pricing: "pricing",
     Subscription: "subscription",
     BillingSuccess: {
