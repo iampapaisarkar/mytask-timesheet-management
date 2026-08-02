@@ -16,10 +16,7 @@ import { useThemeStore } from "@/store/themeStore";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { useLogout } from "@/hooks/useLogout";
 import {
-  HelpFaqPage,
-  PrivacyPage,
   ProfilePage,
-  TermsPage,
   preloadOrgNavKey,
   scheduleIdleRoutePrefetch,
 } from "@/app/routeModules";
@@ -31,15 +28,12 @@ import {
   ChevronRight,
   ClipboardList,
   FileBarChart2,
-  HelpCircle,
   Home,
   LogOut,
   Menu,
   Moon,
   Settings,
   ScrollText,
-  FileText,
-  Shield,
   Sun,
   Users,
   Wallet,
@@ -280,54 +274,6 @@ export function OrgLayout() {
             )}
           >
             {user ? displayName(user) : "Profile"}
-          </Link>
-          <Link
-            to={ROUTES.help}
-            title="Help & FAQ"
-            onClick={() => setMobileOpen(false)}
-            onMouseEnter={() => void HelpFaqPage.preload()}
-            onFocus={() => void HelpFaqPage.preload()}
-            className={clsx(
-              "mt-focus mt-0.5 flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium text-white/60 transition hover:bg-white/10 hover:text-white",
-              collapsed && "md:justify-center md:px-2",
-            )}
-          >
-            <HelpCircle size={16} className="shrink-0" />
-            <span className={clsx("truncate", collapsed && "md:hidden")}>
-              Help & FAQ
-            </span>
-          </Link>
-          <Link
-            to={ROUTES.terms}
-            title="Terms & Conditions"
-            onClick={() => setMobileOpen(false)}
-            onMouseEnter={() => void TermsPage.preload()}
-            onFocus={() => void TermsPage.preload()}
-            className={clsx(
-              "mt-focus flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium text-white/60 transition hover:bg-white/10 hover:text-white",
-              collapsed && "md:justify-center md:px-2",
-            )}
-          >
-            <FileText size={16} className="shrink-0" />
-            <span className={clsx("truncate", collapsed && "md:hidden")}>
-              Terms & Conditions
-            </span>
-          </Link>
-          <Link
-            to={ROUTES.privacy}
-            title="Privacy Policy"
-            onClick={() => setMobileOpen(false)}
-            onMouseEnter={() => void PrivacyPage.preload()}
-            onFocus={() => void PrivacyPage.preload()}
-            className={clsx(
-              "mt-focus flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium text-white/60 transition hover:bg-white/10 hover:text-white",
-              collapsed && "md:justify-center md:px-2",
-            )}
-          >
-            <Shield size={16} className="shrink-0" />
-            <span className={clsx("truncate", collapsed && "md:hidden")}>
-              Privacy Policy
-            </span>
           </Link>
 
           {/* Mobile-only: theme + logout live in the drawer so the top bar stays clean */}

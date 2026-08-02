@@ -14,7 +14,7 @@ export function MainLayout() {
   const handleLogout = useLogout();
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-page">
+    <div className="flex min-h-screen flex-col overflow-x-clip bg-page">
       <header className="sticky top-0 z-40 border-b border-border bg-[var(--mt-surface)]/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2.5 sm:gap-4 sm:px-6 sm:py-3">
           <Link
@@ -65,10 +65,10 @@ export function MainLayout() {
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-3 py-6 sm:px-6 sm:py-8">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-3 py-6 sm:px-6 sm:py-8">
         <Outlet />
       </main>
-      <footer className="border-t border-border bg-[var(--mt-surface)]/60">
+      <footer className="mt-auto border-t border-border bg-[var(--mt-surface)]/60">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-3 py-4 text-xs text-muted sm:px-6">
           <Link to={ROUTES.help} className="hover:text-primary">
             Help & FAQ
