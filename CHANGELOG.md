@@ -4,6 +4,8 @@
 
 ### Added
 
+- **Database hot-path indexes:** Migrations `178790…` / `178791…` add idempotent indexes on timesheets/days/tasks/activity logs/pairs, geofence events, employees, jobs, customers, invitations, notifications/FCM, payouts, sessions, ops logs, and related FK lookup columns (skips missing tables and existing index names).
+
 - **How it works:** Login (web + mobile) links to a step-by-step setup guide covering account, organisation, jobs, timesheets, mobile time/location tracking, approvals, reports, and payouts. Shared copy in `@mytask/constants`; route `/how-it-works`.
 
 ### Changed
