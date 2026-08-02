@@ -8,7 +8,7 @@ type Props = {
 };
 
 /**
- * Blinking green cue that realtime GPS / clock-in tracking is active.
+ * Blinking primary-color cue that realtime GPS / clock-in tracking is active.
  */
 export function LiveTrackingIndicator({
   label = "Live",

@@ -16,10 +16,8 @@ type Props = {
   compact?: boolean;
 };
 
-const LIVE_GREEN = "#22C55E";
-
 /**
- * Blinking green cue that clock-in / background tracking is active.
+ * Blinking primary-color cue that clock-in / background tracking is active.
  */
 export function LiveTrackingIndicator({
   label = "Tracking live",
@@ -49,9 +47,9 @@ export function LiveTrackingIndicator({
         accessibilityLabel={label}
       >
         <Animated.View
-          style={[styles.ring, { backgroundColor: LIVE_GREEN }, ringStyle]}
+          style={[styles.ring, { backgroundColor: c.primary }, ringStyle]}
         />
-        <View style={[styles.dot, { backgroundColor: LIVE_GREEN }]} />
+        <View style={[styles.dot, { backgroundColor: c.primary }]} />
       </View>
     );
   }
@@ -61,8 +59,8 @@ export function LiveTrackingIndicator({
       style={[
         styles.badge,
         {
-          backgroundColor: "rgba(34,197,94,0.12)",
-          borderColor: "rgba(34,197,94,0.35)",
+          backgroundColor: c.primarySoft,
+          borderColor: c.primary,
         },
       ]}
       accessibilityRole="text"
@@ -70,11 +68,11 @@ export function LiveTrackingIndicator({
     >
       <View style={styles.compactWrap}>
         <Animated.View
-          style={[styles.ring, { backgroundColor: LIVE_GREEN }, ringStyle]}
+          style={[styles.ring, { backgroundColor: c.primary }, ringStyle]}
         />
-        <View style={[styles.dot, { backgroundColor: LIVE_GREEN }]} />
+        <View style={[styles.dot, { backgroundColor: c.primary }]} />
       </View>
-      <Text style={[styles.label, { color: c.text }]}>{label}</Text>
+      <Text style={[styles.label, { color: c.primary }]}>{label}</Text>
     </View>
   );
 }
@@ -90,12 +88,12 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: 12,
     height: 12,
-    borderRadius: 6,
+    borderRadius: radii.full,
   },
   dot: {
     width: 8,
     height: 8,
-    borderRadius: 4,
+    borderRadius: radii.full,
   },
   badge: {
     flexDirection: "row",
@@ -104,7 +102,7 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: radii.pill,
+    borderRadius: radii.full,
     borderWidth: StyleSheet.hairlineWidth,
   },
   label: {

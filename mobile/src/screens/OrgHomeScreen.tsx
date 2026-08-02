@@ -282,7 +282,7 @@ export function OrgHomeScreen({ route }: Props) {
 
       {trackingLive ? (
         <View style={styles.liveRow}>
-          <LiveTrackingIndicator label="Location tracking is on" />
+          <LiveTrackingIndicator label="Timer and Location tracking is on" />
         </View>
       ) : null}
 
