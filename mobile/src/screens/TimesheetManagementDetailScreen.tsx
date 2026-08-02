@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import {
@@ -10,12 +10,18 @@ import {
 } from "@mytask/hooks";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing, typography } from "@mytask/theme";
-import { formatTimesheetLabel, getErrorMessage } from "@mytask/utils";
+import {
+  formatTimesheetLabel,
+  getErrorMessage,
+  sumOpenAwareTaskHours,
+} from "@mytask/utils";
 import type { OrgStackParamList } from "../navigation/types";
 import { useOrgNavigate } from "../navigation/useOrgNavigate";
 import { AccessDenied } from "../components/AccessDenied";
 import { FullScreenSheet } from "../components/FullScreenSheet";
 import { SkeletonDetail } from "../components/Skeleton";
+import { useLiveClock } from "../hooks/useLiveClock";
+import { useLocalTrackingLive } from "../hooks/useLocalTrackingLive";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
@@ -36,11 +42,19 @@ type Props = NativeStackScreenProps<
   "TimesheetManagementDetail"
 >;
 
+type DayTask = {
+  total_hours?: number | string;
+  start_time?: string | null;
+  end_time?: string | null;
+  is_open?: boolean;
+};
+
 type TimesheetDay = {
   id?: number;
   date?: string;
   day_name?: string;
   total_hours?: number | string;
+  tasks?: DayTask[];
 };
 
 type TimesheetDetail = {
@@ -91,7 +105,27 @@ export function TimesheetManagementDetailScreen({ navigation, route }: Props) {
   const [remarksError, setRemarksError] = useState<string | undefined>();
 
   const data = query.data as TimesheetDetail | undefined;
-  const days = Array.isArray(data?.days) ? data.days : [];
+  const trackingLive = useLocalTrackingLive();
+  const hasOpenSession = useMemo(() => {
+    const list = Array.isArray(data?.days) ? data.days : [];
+    return list.some((day) =>
+      (Array.isArray(day.tasks) ? day.tasks : []).some(
+        (t) => t.is_open || (Boolean(t.start_time) && !t.end_time),
+      ),
+    );
+  }, [data?.days]);
+  const liveNow = useLiveClock(Boolean(trackingLive || hasOpenSession));
+  const days = useMemo(() => {
+    const list = Array.isArray(data?.days) ? data.days : [];
+    return list.map((day) => {
+      const tasks = Array.isArray(day.tasks) ? day.tasks : [];
+      if (!tasks.length) return day;
+      return {
+        ...day,
+        total_hours: Number(sumOpenAwareTaskHours(tasks, liveNow).toFixed(2)),
+      };
+    });
+  }, [data?.days, liveNow]);
   const perms = data?.permissions;
   const employeeName =
     data?.employee?.user?.full_name ||
@@ -110,6 +144,14 @@ export function TimesheetManagementDetailScreen({ navigation, route }: Props) {
   useEffect(() => {
     navigation.setOptions({ title: headerCode });
   }, [headerCode, navigation]);
+
+  useEffect(() => {
+    if (!trackingLive) return;
+    const id = globalThis.setInterval(() => {
+      void query.refetch();
+    }, 5_000);
+    return () => globalThis.clearInterval(id);
+  }, [trackingLive, query]);
 
   const jobsLabel =
     Array.isArray(data?.jobs) && data.jobs.length

@@ -4,16 +4,24 @@ import { useQuery } from "@tanstack/react-query";
 import { timesheetsApi } from "@mytask/api";
 import { useSubmitTimesheet } from "@mytask/hooks";
 import { ROUTES } from "@mytask/constants";
-import { formatTimesheetLabel, getErrorMessage } from "@mytask/utils";
+import { formatTimesheetLabel, getErrorMessage, sumOpenAwareTaskHours } from "@mytask/utils";
 import { Card, PageHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { LiveTrackingIndicator } from "@/components/LiveTrackingIndicator";
 import { useToastStore } from "@/store/toastStore";
 import { useOrganisationStore } from "@/store/organisationStore";
+import { useLiveClock } from "@/hooks/useLiveClock";
 import { useTrackingLive } from "@/hooks/useTrackingLive";
 import { TimesheetDayEditor } from "@/features/timesheet/TimesheetDayEditor";
 import { RemarksConfirmDialog } from "@/features/timesheet/RemarksConfirmDialog";
+
+type DayTask = {
+  total_hours?: number | string;
+  start_time?: string | null;
+  end_time?: string | null;
+  is_open?: boolean;
+};
 
 type TimesheetDay = {
   id?: number;
@@ -21,7 +29,7 @@ type TimesheetDay = {
   day_name?: string;
   total_hours?: number | string;
   is_public_holiday?: boolean;
-  tasks?: Array<{ total_hours?: number | string }>;
+  tasks?: DayTask[];
 };
 
 type TimesheetDetail = {
@@ -70,6 +78,17 @@ export function TimesheetDetailPage() {
     employeeId: data?.employee?.id ?? data?.employee_id,
   });
 
+  const hasOpenSession = useMemo(() => {
+    const list = Array.isArray(data?.days) ? data.days : [];
+    return list.some((day) =>
+      (Array.isArray(day.tasks) ? day.tasks : []).some(
+        (t) => t.is_open || (Boolean(t.start_time) && !t.end_time),
+      ),
+    );
+  }, [data?.days]);
+
+  const liveNow = useLiveClock(Boolean(trackingLive || hasOpenSession));
+
   useEffect(() => {
     if (!trackingLive) return;
     const timer = globalThis.setInterval(() => {
@@ -81,15 +100,20 @@ export function TimesheetDetailPage() {
   const days = useMemo(() => {
     const list = Array.isArray(data?.days) ? data.days : [];
     return list.map((day) => {
-      if (day.total_hours != null) return day;
       const tasks = Array.isArray(day.tasks) ? day.tasks : [];
-      const sum = tasks.reduce((acc, t) => {
-        const h = parseFloat(String(t.total_hours ?? 0));
-        return acc + (Number.isFinite(h) ? h : 0);
-      }, 0);
-      return { ...day, total_hours: Number(sum.toFixed(2)) };
+      if (!tasks.length) {
+        return {
+          ...day,
+          total_hours:
+            day.total_hours != null ? day.total_hours : Number((0).toFixed(2)),
+        };
+      }
+      return {
+        ...day,
+        total_hours: Number(sumOpenAwareTaskHours(tasks, liveNow).toFixed(2)),
+      };
     });
-  }, [data?.days]);
+  }, [data?.days, liveNow]);
 
   async function confirmSubmit(remarks: string) {
     try {

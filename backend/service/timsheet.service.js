@@ -309,6 +309,8 @@ async function getTimesheetDays(
                 "timesheet_id",
                 "timesheet_day_id",
                 "job_id",
+                "start_time",
+                "end_time",
                 "total_hours",
                 "is_break",
                 "is_travel",
@@ -337,10 +339,15 @@ async function getTimesheetDays(
       return { success: false, code: 404 };
     }
 
+    const employeeTimezone =
+      timesheet.employee?.user?.timezone?.timezone || "UTC";
+
     // Enrich days for list/detail UIs (Vue TimesheetPage expects day_name + hours)
     if (Array.isArray(timesheet.days)) {
       timesheet.days = timesheet.days.map((day) => {
-        const tasks = Array.isArray(day.tasks) ? day.tasks : [];
+        const tasks = (Array.isArray(day.tasks) ? day.tasks : []).map(
+          (task) => withProvisionalOpenTaskHours(task, employeeTimezone),
+        );
         const totalHours = tasks.reduce((sum, task) => {
           const h = parseFloat(task.total_hours);
           return sum + (Number.isFinite(h) ? h : 0);
@@ -358,11 +365,10 @@ async function getTimesheetDays(
         }
         return {
           ...day,
+          tasks,
           day_name: dayName,
-          total_hours:
-            day.total_hours != null
-              ? day.total_hours
-              : Number(totalHours.toFixed(2)),
+          // Always recompute so open sessions (end_time null) tick while Live
+          total_hours: Number(totalHours.toFixed(2)),
         };
       });
     }
@@ -492,6 +498,34 @@ async function getTimesheetDay(whereCondition = null, employeeTimezone = null) {
   }
 }
 
+/**
+ * Open auto-tracked tasks store end_time=null / total_hours=0.
+ * For read APIs only, expose provisional hours through "now" so day tables
+ * keep updating while the user stays at the same location.
+ */
+function withProvisionalOpenTaskHours(task, tz = "UTC") {
+  if (!task?.start_time || task.end_time) {
+    return {
+      ...task,
+      is_open: false,
+    };
+  }
+  const startLocal = timeUtils.convertUserLocalTime(task.start_time, tz);
+  if (!startLocal) {
+    return { ...task, is_open: true };
+  }
+  const nowLocal = moment.tz(tz || "UTC").format("HH:mm");
+  const hours = parseFloat(
+    timeUtils.decimalHours(String(startLocal).slice(0, 5), nowLocal),
+  );
+  return {
+    ...task,
+    is_open: true,
+    // Keep end_time null so editors know the session is still open
+    total_hours: Number.isFinite(hours) ? Number(hours.toFixed(2)) : 0,
+  };
+}
+
 function formatDayTasks(tasks, tz) {
   if (!Array.isArray(tasks)) {
     return [];
@@ -499,6 +533,7 @@ function formatDayTasks(tasks, tz) {
 
   return tasks.map((task) => {
     const { task_timeline, original_log, ...tsk } = task;
+    const provisional = withProvisionalOpenTaskHours(task, tz || "UTC");
 
     let formattedOriginalLog = null;
     if (original_log) {
@@ -531,7 +566,12 @@ function formatDayTasks(tasks, tz) {
     return {
       ...tsk,
       start_time: timeUtils.convertUserLocalTime(task?.start_time, tz),
+      // Leave null when open so clients can tick with a local clock
       end_time: timeUtils.convertUserLocalTime(task?.end_time, tz),
+      is_open: Boolean(provisional.is_open),
+      total_hours: provisional.is_open
+        ? provisional.total_hours
+        : task?.total_hours,
       original_log: formattedOriginalLog,
       task_timeline: formattedTimeline,
     };

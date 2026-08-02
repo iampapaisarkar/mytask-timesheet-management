@@ -97,6 +97,76 @@ export function formatTimesheetLabel(
   return base;
 }
 
+/** Current local wall-clock as `HH:mm` (for open tracking session display). */
+export function formatNowHhMm(date: Date = new Date()): string {
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
+/**
+ * Open tracking tasks have no end yet. When `nowHhMm` is provided, treat "now"
+ * as the provisional end so working / travel / break durations keep ticking
+ * without requiring a GPS update.
+ */
+export function resolveOpenEndTime(
+  endTime: string | null | undefined,
+  nowHhMm?: string | null,
+): string {
+  const end = endTime == null ? "" : String(endTime).trim();
+  if (end) return end.length >= 5 ? end.slice(0, 5) : end;
+  if (nowHhMm) return String(nowHhMm).trim().slice(0, 5);
+  return "";
+}
+
+function parseClockMinutes(value?: string | null): number | null {
+  const m = String(value || "")
+    .trim()
+    .match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  return Number(m[1]) * 60 + Number(m[2]);
+}
+
+/** Decimal hours between two HH:mm values (same calendar day). */
+export function decimalHoursBetween(
+  start?: string | null,
+  end?: string | null,
+): number {
+  const a = parseClockMinutes(start);
+  const b = parseClockMinutes(end);
+  if (a == null || b == null || b <= a) return 0;
+  return (b - a) / 60;
+}
+
+export type OpenAwareTaskHours = {
+  total_hours?: number | string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  is_open?: boolean;
+};
+
+/**
+ * Sum task hours, advancing open sessions to `nowHhMm` when provided.
+ */
+export function sumOpenAwareTaskHours(
+  tasks: OpenAwareTaskHours[] | null | undefined,
+  nowHhMm?: string | null,
+): number {
+  if (!Array.isArray(tasks) || !tasks.length) return 0;
+  return tasks.reduce((acc, t) => {
+    const open = Boolean(t.is_open || (t.start_time && !t.end_time));
+    if (open && nowHhMm) {
+      return (
+        acc +
+        decimalHoursBetween(
+          t.start_time,
+          resolveOpenEndTime(t.end_time, nowHhMm),
+        )
+      );
+    }
+    const h = parseFloat(String(t.total_hours ?? 0));
+    return acc + (Number.isFinite(h) ? h : 0);
+  }, 0);
+}
+
 /** Minutes from midnight → "9:00 AM" */
 export function formatMinutesAsDisplayTime(mins: number): string {
   const day = 24 * 60;

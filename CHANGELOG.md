@@ -4,6 +4,14 @@
 
 ### Fixed
 
+- **Open session hours tick without GPS movement:** Timeline, grid, and timesheet day tables now advance working / travel / break time while a session is open even if the user stays still. Map polylines still only change when new location breadcrumbs arrive. Read APIs expose provisional `total_hours` + `is_open` for open tasks (`end_time` stays null; nothing persisted).
+
+### Changed
+
+- **Live indicators:** Use app primary color (`#04B6B1`) instead of green; mobile org home banner copy is “Timer and Location tracking is on” with a full pill radius.
+
+### Fixed
+
 - **Live tracking on web:** `tracking.updated` now also invalidates timesheet + management day tables (not only the day editor). Day sheet / timeline / grid / map refetch while GPS is streaming; org chrome and timesheet pages show a blinking green Live indicator.
 - **Tracking Start stuck on Stopped:** Activity status now treats the latest typed log as open only when it is a START row (`start_at` set). END rows no longer make Start look idempotent while the UI stays Stopped.
 

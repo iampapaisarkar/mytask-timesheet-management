@@ -17,7 +17,7 @@ import {
 } from "@mytask/api";
 import { useTimesheetDayEditorScreen } from "@mytask/hooks";
 import { spacing } from "@mytask/theme";
-import { formatDisplayTimeRange, getErrorMessage } from "@mytask/utils";
+import { formatDisplayTimeRange, getErrorMessage, resolveOpenEndTime } from "@mytask/utils";
 import { validateTimesheetDayTaskRow } from "@mytask/validation";
 import {
   TrackingMap,
@@ -31,6 +31,8 @@ import {
   type TimelineTask,
   type TimelineTaskType,
 } from "../components/TrackedTimeline";
+import { useLiveClock } from "../hooks/useLiveClock";
+import { useLocalTrackingLive } from "../hooks/useLocalTrackingLive";
 import type { OrgStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore, type AppColors } from "../store/themeStore";
@@ -116,7 +118,7 @@ function draftFromTask(
 ): TaskDraft {
   const type = taskTypeFromFlags(task);
   return {
-    key: `task-${task.id ?? index}-${Math.random().toString(36).slice(2, 7)}`,
+    key: `task-${task.id ?? index}`,
     type,
     job_id:
       type === "working"
@@ -215,6 +217,15 @@ export function TimesheetDayDetailScreen({ route }: Props) {
     true,
   );
 
+  const trackingLive = useLocalTrackingLive();
+  useEffect(() => {
+    if (!trackingLive) return;
+    const id = globalThis.setInterval(() => {
+      void dayQuery.refetch();
+    }, 5_000);
+    return () => globalThis.clearInterval(id);
+  }, [trackingLive, dayQuery]);
+
   const day = dayQuery.data as DayPayload | undefined;
   const canSave = Boolean(day?.permissions?.can_save);
 
@@ -270,8 +281,17 @@ export function TimesheetDayDetailScreen({ route }: Props) {
         ? day.tasks.map((t, i) => draftFromTask(t, i, defaultJob))
         : [];
     setTasks(drafts);
-    setExpandedKey(drafts[0]?.key ?? null);
+    setExpandedKey((prev) =>
+      prev && drafts.some((d) => d.key === prev)
+        ? prev
+        : (drafts[0]?.key ?? null),
+    );
   }, [day]);
+
+  const hasOpenTask = tasks.some(
+    (t) => Boolean(t.start_time?.trim()) && !t.end_time?.trim(),
+  );
+  const liveNow = useLiveClock(Boolean(trackingLive || hasOpenTask));
 
   const timelineTasks: TimelineTask[] = useMemo(
     () =>
@@ -285,9 +305,12 @@ export function TimesheetDayDetailScreen({ route }: Props) {
               ? "Travel"
               : "Working",
         start_time: t.start_time,
-        end_time: t.end_time,
+        end_time: resolveOpenEndTime(
+          t.end_time,
+          t.start_time?.trim() && !t.end_time?.trim() ? liveNow : null,
+        ),
       })),
-    [tasks],
+    [tasks, liveNow],
   );
 
   const totals = useMemo(
@@ -466,6 +489,12 @@ export function TimesheetDayDetailScreen({ route }: Props) {
                     ?.name ||
                   jobOptions.find((j) => String(j.id) === task.job_id)?.name;
                 const visual = statusVisual(c, task.type);
+                const displayEnd = resolveOpenEndTime(
+                  task.end_time,
+                  task.start_time?.trim() && !task.end_time?.trim()
+                    ? liveNow
+                    : null,
+                );
                 return (
                   <View
                     key={task.key}
@@ -490,7 +519,7 @@ export function TimesheetDayDetailScreen({ route }: Props) {
                               : "Working"}
                         </Text>
                         <Text style={styles.sheetDur}>
-                          {durationLabel(task.start_time, task.end_time)}
+                          {durationLabel(task.start_time, displayEnd)}
                         </Text>
                       </View>
                       {task.type === "working" && jobName ? (

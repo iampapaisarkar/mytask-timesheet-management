@@ -14,7 +14,7 @@ Production realtime stack for myTask: shared contracts in `@mytask/realtime`, JW
 | Timesheet | `timesheet.created` | Timesheet management create | Web + Mobile |
 | Timesheet | `timesheet.updated` | Save / submit / approve / reject | Web + Mobile |
 | Timesheet | `timesheet.deleted` | Delete (when wired) | Web + Mobile |
-| Tracking | `tracking.updated` | Location store / BGL send-location (throttled ~3s; immediate on start/pause/resume/stop). Payload includes `timer` + `active`. Invalidates day editor, timesheet detail tables, dashboard. Clients show Live indicator. | Web + Mobile |
+| Tracking | `tracking.updated` | Location store / BGL send-location (throttled ~3s; immediate on start/pause/resume/stop). Payload includes `timer` + `active`. Invalidates day editor, timesheet detail tables, dashboard. Clients show Live indicator. Open work/travel/break durations also tick via a local clock + provisional `total_hours` on read APIs — map polylines still only change when GPS breadcrumbs change. | Web + Mobile |
 
 | Payroll | `payroll.created` | Employee payroll create | Web + Mobile |
 | Payroll | `payroll.updated` | Employee payroll update | Web + Mobile |

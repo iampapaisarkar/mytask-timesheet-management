@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTimesheetDayEditorScreen } from "@mytask/hooks";
 import { reportsApi, timesheetsApi, timesheetManagementApi } from "@mytask/api";
 import { formatHours, formatMoney } from "@mytask/constants";
-import { formatDisplayTime, getErrorMessage } from "@mytask/utils";
+import { formatDisplayTime, getErrorMessage, resolveOpenEndTime } from "@mytask/utils";
 import { validateTimesheetDayTaskRow } from "@mytask/validation";
 import { Button } from "@/components/ui/Button";
 import { FullScreenModal } from "@/components/ui/FullScreenModal";
@@ -18,6 +18,7 @@ import {
 } from "@/components/maps/TrackingMapView";
 import { useToastStore } from "@/store/toastStore";
 import { useOrganisationStore } from "@/store/organisationStore";
+import { useLiveClock } from "@/hooks/useLiveClock";
 import { useTrackingLive } from "@/hooks/useTrackingLive";
 import {
   TrackedTimeline,
@@ -130,7 +131,7 @@ function draftFromTask(
 ): TaskDraft {
   const type = taskTypeFromFlags(task);
   return {
-    key: `task-${task.id ?? index}-${Math.random().toString(36).slice(2, 7)}`,
+    key: `task-${task.id ?? index}`,
     type,
     job_id:
       type === "working"
@@ -258,7 +259,7 @@ export function TimesheetDayEditor({
     open && dayId != null && dayId !== "",
   );
 
-  // Keep map / timeline / sheets fresh while GPS is streaming
+  // Keep day sheet fresh while tracking (map still only gains points on GPS)
   useEffect(() => {
     if (!open || !trackingLive || dayId == null) return;
     const id = globalThis.setInterval(() => {
@@ -266,6 +267,11 @@ export function TimesheetDayEditor({
     }, 5_000);
     return () => globalThis.clearInterval(id);
   }, [open, trackingLive, dayId, dayQuery]);
+
+  const hasOpenTask = tasks.some(
+    (t) => Boolean(t.start_time?.trim()) && !t.end_time?.trim(),
+  );
+  const liveNow = useLiveClock(Boolean(open && (trackingLive || hasOpenTask)));
 
   const day = dayQuery.data as
     | (DayPayload & { available_jobs?: JobRow[] })
@@ -330,7 +336,11 @@ export function TimesheetDayEditor({
         ? day.tasks.map((t, i) => draftFromTask(t, i, defaultJob))
         : [];
     setTasks(drafts);
-    setExpandedKey(drafts[0]?.key ?? null);
+    setExpandedKey((prev) =>
+      prev && drafts.some((d) => d.key === prev)
+        ? prev
+        : (drafts[0]?.key ?? null),
+    );
   }, [day]);
 
   const mapJobs: MapJob[] = useMemo(() => {
@@ -353,9 +363,12 @@ export function TimesheetDayEditor({
         type: t.type,
         label: taskLabel(t),
         start_time: t.start_time,
-        end_time: t.end_time,
+        end_time: resolveOpenEndTime(
+          t.end_time,
+          t.start_time?.trim() && !t.end_time?.trim() ? liveNow : null,
+        ),
       })),
-    [tasks],
+    [tasks, liveNow],
   );
 
   const totals = useMemo(
@@ -595,6 +608,12 @@ export function TimesheetDayEditor({
                     timesheetJobs,
                     timesheetJobName,
                   );
+                  const displayEnd = resolveOpenEndTime(
+                    task.end_time,
+                    task.start_time?.trim() && !task.end_time?.trim()
+                      ? liveNow
+                      : null,
+                  );
                   return (
                     <div
                       key={task.key}
@@ -614,7 +633,7 @@ export function TimesheetDayEditor({
                             {taskLabel(task)}
                           </span>
                           <span className="text-xs font-medium opacity-90">
-                            {durationLabel(task.start_time, task.end_time)}
+                            {durationLabel(task.start_time, displayEnd)}
                           </span>
                         </div>
                         {sub ? (
@@ -725,7 +744,7 @@ export function TimesheetDayEditor({
                                   }
                                 />
                                 <p className="mt-1 text-xs text-white/80">
-                                  {formatDisplayTime(task.end_time)}
+                                  {formatDisplayTime(displayEnd || task.end_time)}
                                 </p>
                               </div>
                             </div>
