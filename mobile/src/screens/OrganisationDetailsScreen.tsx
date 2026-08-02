@@ -226,7 +226,7 @@ export function OrganisationDetailsScreen({ route }: Props) {
             style={styles.actionBtn}
           />
           <Button
-            title="Save"
+            title="Update"
             onPress={handleSave}
             loading={saving}
             fullWidth={false}

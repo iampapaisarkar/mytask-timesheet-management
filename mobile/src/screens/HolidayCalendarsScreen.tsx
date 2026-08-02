@@ -247,7 +247,7 @@ export function HolidayCalendarsScreen({}: Props) {
         }}
         footer={
           <Button
-            title={pending ? "Saving…" : editing ? "Save" : "Create"}
+            title={pending ? (editing ? "Updating…" : "Creating…") : editing ? "Update" : "Create"}
             onPress={handleSave}
             loading={pending}
             disabled={pending}

@@ -225,7 +225,7 @@ export function ProfileScreen() {
       ) : null}
 
       <Button
-        title="Save profile"
+        title="Update profile"
         onPress={onSubmit}
         loading={saving}
         disabled={saving || !isDirty}

@@ -121,6 +121,7 @@ export function HolidayCalendarsPage() {
         onClose={() => setOpen(false)}
         onSubmit={handleSave}
         loading={createMutation.isPending || updateMutation.isPending}
+        submitLabel={editing ? "Update" : "Create"}
       >
         <TextInput
           label="Name"

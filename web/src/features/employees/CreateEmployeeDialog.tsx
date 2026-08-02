@@ -688,7 +688,7 @@ export function CreateEmployeeDialog({
                 }
                 onClick={handleCreate}
               >
-                {isEdit ? "Save changes" : "Create & invite"}
+                {isEdit ? "Update" : "Create & invite"}
               </Button>
             ) : null}
           </div>

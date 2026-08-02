@@ -9,7 +9,7 @@ export function FormDialog({
   onSubmit,
   loading,
   children,
-  submitLabel = "Save",
+  submitLabel = "Update",
   readOnly = false,
 }: {
   open: boolean;

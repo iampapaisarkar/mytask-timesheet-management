@@ -428,10 +428,10 @@ export function JobsListScreen(_props: Props) {
             title={
               pending
                 ? isEdit
-                  ? "Saving…"
+                  ? "Updating…"
                   : "Creating…"
                 : isEdit
-                  ? "Save"
+                  ? "Update"
                   : "Create"
             }
             disabled={pending}

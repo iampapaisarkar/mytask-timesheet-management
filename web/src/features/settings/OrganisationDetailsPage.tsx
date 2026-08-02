@@ -178,7 +178,7 @@ export function OrganisationDetailsPage() {
                 loading={updateOrg.isPending || updateSettings.isPending}
                 onClick={handleSave}
               >
-                Save
+                Update
               </Button>
             </div>
           }

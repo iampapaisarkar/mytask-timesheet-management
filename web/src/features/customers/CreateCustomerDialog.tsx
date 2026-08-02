@@ -204,7 +204,7 @@ export function CustomerFormDialog({
             Cancel
           </Button>
           <Button loading={pending} onClick={handleSubmit}>
-            {isEdit ? "Save" : "Create"}
+            {isEdit ? "Update" : "Create"}
           </Button>
         </>
       }

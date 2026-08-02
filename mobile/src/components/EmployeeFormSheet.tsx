@@ -65,6 +65,7 @@ type Step = "email" | "details" | "wage" | "payroll";
 type EmployeeSeed = {
   id?: number | string;
   details?: {
+    id?: number | string;
     first_name?: string;
     middle_name?: string;
     last_name?: string;
@@ -317,7 +318,8 @@ export function EmployeeFormSheet({
   open,
   onClose,
 }: Props) {
-  const isEdit = Boolean(employee?.id);
+  const employeeId = employee?.details?.id ?? employee?.id;
+  const isEdit = employeeId != null;
   const c = useThemeStore((s) => s.colors);
   const toast = useToastStore();
   const [step, setStep] = useState<Step>(isEdit ? "details" : "email");
@@ -664,8 +666,8 @@ export function EmployeeFormSheet({
     };
 
     try {
-      if (isEdit && employee?.id != null) {
-        await updateMutation.mutateAsync({ id: employee.id, payload });
+      if (isEdit && employeeId != null) {
+        await updateMutation.mutateAsync({ id: employeeId, payload });
         toast.success("Employee updated");
       } else {
         await createMutation.mutateAsync(payload);
@@ -685,7 +687,7 @@ export function EmployeeFormSheet({
     calendars,
     createMutation,
     detailsForm,
-    employee?.id,
+    employeeId,
     employmentTypes,
     isEdit,
     meta.createUser,
@@ -777,7 +779,7 @@ export function EmployeeFormSheet({
               ? "Continue"
               : step === "payroll"
                 ? isEdit
-                  ? "Save changes"
+                  ? "Update"
                   : "Create & invite"
                 : "Next"}
           </Text>
