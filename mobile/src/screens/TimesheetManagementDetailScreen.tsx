@@ -19,9 +19,10 @@ import type { OrgStackParamList } from "../navigation/types";
 import { useOrgNavigate } from "../navigation/useOrgNavigate";
 import { AccessDenied } from "../components/AccessDenied";
 import { FullScreenSheet } from "../components/FullScreenSheet";
+import { LiveTrackingIndicator } from "../components/LiveTrackingIndicator";
 import { SkeletonDetail } from "../components/Skeleton";
 import { useLiveClock } from "../hooks/useLiveClock";
-import { useLocalTrackingLive } from "../hooks/useLocalTrackingLive";
+import { useTrackingLive } from "../hooks/useTrackingLive";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
@@ -89,6 +90,7 @@ export function TimesheetManagementDetailScreen({ navigation, route }: Props) {
   const { id, orgCode, timesheetCode: codeParam } = route.params;
   const navigateOrg = useOrgNavigate();
   const organisation = useOrganisationStore((s) => s.organisation);
+  const organisationId = organisation?.id;
   const role = organisation?.role || organisation?.role_code;
   const acl = getOrganisationAcl(role);
   const canView = can(acl, "timesheetManagement", "view");
@@ -105,7 +107,15 @@ export function TimesheetManagementDetailScreen({ navigation, route }: Props) {
   const [remarksError, setRemarksError] = useState<string | undefined>();
 
   const data = query.data as TimesheetDetail | undefined;
-  const trackingLive = useLocalTrackingLive();
+  const employeeName =
+    data?.employee?.user?.full_name ||
+    data?.employee?.details?.full_name ||
+    "Employee";
+  const employeeId = data?.employee?.details?.id ?? data?.employee?.id;
+  const trackingLive = useTrackingLive(organisationId, {
+    timesheetId: id,
+    employeeId,
+  });
   const hasOpenSession = useMemo(() => {
     const list = Array.isArray(data?.days) ? data.days : [];
     return list.some((day) =>
@@ -127,11 +137,6 @@ export function TimesheetManagementDetailScreen({ navigation, route }: Props) {
     });
   }, [data?.days, liveNow]);
   const perms = data?.permissions;
-  const employeeName =
-    data?.employee?.user?.full_name ||
-    data?.employee?.details?.full_name ||
-    "Employee";
-  const employeeId = data?.employee?.details?.id ?? data?.employee?.id;
 
   const headerCode =
     formatTimesheetLabel(
@@ -327,7 +332,10 @@ export function TimesheetManagementDetailScreen({ navigation, route }: Props) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ padding: spacing.md, paddingTop: 0 }}
         ListHeaderComponent={
-          <Text style={[styles.section, { color: c.text }]}>Days</Text>
+          <View style={styles.sectionRow}>
+            <Text style={[styles.section, { color: c.text }]}>Days</Text>
+            {trackingLive ? <LiveTrackingIndicator compact /> : null}
+          </View>
         }
         ListEmptyComponent={
           <EmptyState
@@ -464,6 +472,11 @@ const styles = StyleSheet.create({
   section: {
     fontSize: 15,
     fontWeight: "700",
+  },
+  sectionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
     marginBottom: spacing.sm,
   },
   dayCard: { marginBottom: spacing.sm },

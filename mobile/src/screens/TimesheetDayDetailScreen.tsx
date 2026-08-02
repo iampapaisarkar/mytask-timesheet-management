@@ -23,6 +23,7 @@ import {
   TrackingMap,
   type TrackingLogs,
 } from "../components/TrackingMap";
+import { LiveTrackingIndicator } from "../components/LiveTrackingIndicator";
 import { SkeletonDetail } from "../components/Skeleton";
 import {
   TrackedTimeline,
@@ -32,7 +33,7 @@ import {
   type TimelineTaskType,
 } from "../components/TrackedTimeline";
 import { useLiveClock } from "../hooks/useLiveClock";
-import { useLocalTrackingLive } from "../hooks/useLocalTrackingLive";
+import { useTrackingLive } from "../hooks/useTrackingLive";
 import type { OrgStackParamList } from "../navigation/types";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore, type AppColors } from "../store/themeStore";
@@ -201,6 +202,7 @@ export function TimesheetDayDetailScreen({ route }: Props) {
   const orgEmployeeId = useOrganisationStore(
     (s) => s.organisation?.employee?.id,
   );
+  const organisationId = useOrganisationStore((s) => s.organisation?.id);
   const resolvedEmployeeId = employeeParam ?? orgEmployeeId;
 
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
@@ -217,7 +219,12 @@ export function TimesheetDayDetailScreen({ route }: Props) {
     true,
   );
 
-  const trackingLive = useLocalTrackingLive();
+  const trackingLive = useTrackingLive(organisationId, {
+    timesheetDayId: dayId,
+    timesheetId,
+    employeeId: resolvedEmployeeId,
+  });
+
   useEffect(() => {
     if (!trackingLive) return;
     const id = globalThis.setInterval(() => {
@@ -411,6 +418,7 @@ export function TimesheetDayDetailScreen({ route }: Props) {
             <Text style={[styles.dateTitle, { color: c.text }]}>{title}</Text>
             <Text style={{ color: c.muted, fontSize: 13 }}>{subtitle}</Text>
           </View>
+          {trackingLive ? <LiveTrackingIndicator compact /> : null}
         </View>
 
         <ScrollView
@@ -529,7 +537,7 @@ export function TimesheetDayDetailScreen({ route }: Props) {
                         <Text style={styles.sheetMeta} numberOfLines={1}>
                           {formatDisplayTimeRange(
                             task.start_time,
-                            task.end_time,
+                            displayEnd || task.end_time,
                           )}
                         </Text>
                       ) : null}

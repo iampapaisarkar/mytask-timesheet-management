@@ -6,9 +6,7 @@ import { DEFAULT_LIST_PAGE_SIZE } from "@mytask/constants";
 import { useNotifications } from "@mytask/hooks";
 import { spacing, typography } from "@mytask/theme";
 import { HeaderIconButton } from "./HeaderIconButton";
-import { LiveTrackingIndicator } from "./LiveTrackingIndicator";
 import type { RootStackParamList } from "../navigation/types";
-import { useLocalTrackingLive } from "../hooks/useLocalTrackingLive";
 import { useAuthStore } from "../store/authStore";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
@@ -61,7 +59,6 @@ export function OrgHeader({ orgCode, onLeaveOrganisation }: Props) {
 
   const code = organisation?.code || orgCode;
   const firstName = firstNameFromUser(user);
-  const trackingLive = useLocalTrackingLive();
 
   return (
     <View
@@ -82,12 +79,9 @@ export function OrgHeader({ orgCode, onLeaveOrganisation }: Props) {
           accessibilityRole="button"
           accessibilityLabel="Back to myTask home"
         >
-          <View style={styles.greetingRow}>
-            <Text style={[styles.greeting, { color: c.text }]} numberOfLines={1}>
-              Hi, {firstName}
-            </Text>
-            {trackingLive ? <LiveTrackingIndicator compact /> : null}
-          </View>
+          <Text style={[styles.greeting, { color: c.text }]} numberOfLines={1}>
+            Hi, {firstName}
+          </Text>
           <Text style={[styles.code, { color: c.text }]} numberOfLines={1}>
             {code}
           </Text>
@@ -149,12 +143,6 @@ const styles = StyleSheet.create({
     minWidth: 0,
     paddingRight: spacing.sm,
     justifyContent: "center",
-  },
-  greetingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    minWidth: 0,
   },
   greeting: {
     flexShrink: 1,

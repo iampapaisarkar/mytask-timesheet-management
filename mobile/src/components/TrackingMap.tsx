@@ -209,6 +209,7 @@ export function TrackingMap({
   return (
     <View style={[styles.mapWrap, { backgroundColor: c.surface }]}>
       <MapView
+        key={`track-map-${points.length}-${points[points.length - 1]?.lat}-${points[points.length - 1]?.lng}`}
         style={StyleSheet.absoluteFill}
         provider={provider}
         customMapStyle={mapStyleForTheme(mode)}

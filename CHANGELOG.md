@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- **Mobile timesheet live parity:** Timesheet days, day editor (sheets / timeline / map) now use org Socket.IO + `GET /timesheet-activity/live` (`useTrackingLive`) like web, instead of device-local tracking only. Open hours keep ticking; map refreshes when GPS breadcrumbs change.
+
+### Fixed
+
 - **Open session hours tick without GPS movement:** Timeline, grid, and timesheet day tables now advance working / travel / break time while a session is open even if the user stays still. Map polylines still only change when new location breadcrumbs arrive. Read APIs expose provisional `total_hours` + `is_open` for open tasks (`end_time` stays null; nothing persisted).
 
 ### Changed
