@@ -18,7 +18,7 @@ import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
 import { useLocalTrackingLive } from "../hooks/useLocalTrackingLive";
 import { useOrgNavigate } from "./useOrgNavigate";
-import { elevation, touchTarget, ClockIcon } from "../ui";
+import { elevation, touchTarget, TrackingPinIcon } from "../ui";
 import { useEffect } from "react";
 
 const SPRING = { damping: 18, stiffness: 220, mass: 0.7 };
@@ -96,7 +96,10 @@ function TabItem({
   );
 }
 
-function TrackingFab({
+/**
+ * Centered circular tracking button — overlaps the tab bar slightly.
+ */
+function TrackingTabButton({
   orgCode,
   active,
 }: {
@@ -119,27 +122,27 @@ function TrackingFab({
     }
   }, [active, pulse]);
 
-  const fabStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 + pulse.value * 0.06 }],
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 + pulse.value * 0.05 }],
   }));
 
   return (
-    <View style={styles.fabSlot} pointerEvents="box-none">
-      <Animated.View style={fabStyle}>
+    <View style={styles.trackSlot} pointerEvents="box-none">
+      <Animated.View style={pulseStyle}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Open time tracking"
+          accessibilityLabel="Open location and time tracking"
           onPress={() => navigate("Tracking", { orgCode })}
           style={({ pressed }) => [
-            styles.fab,
+            styles.trackBtn,
             elevation.fab,
             {
-              backgroundColor: active ? c.primary : c.primary,
-              opacity: pressed ? 0.92 : 1,
+              backgroundColor: c.primary,
+              opacity: pressed ? 0.9 : 1,
             },
           ]}
         >
-          <ClockIcon color="#FFFFFF" size={28} />
+          <TrackingPinIcon color="#FFFFFF" size={28} />
         </Pressable>
       </Animated.View>
     </View>
@@ -147,7 +150,7 @@ function TrackingFab({
 }
 
 /**
- * Floating org tab bar with center tracking FAB.
+ * Org bottom tab bar with a centered overlapping tracking button.
  */
 export function OrgTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
@@ -225,7 +228,7 @@ export function OrgTabBar({ state, descriptors, navigation }: BottomTabBarProps)
         {left.map((route) =>
           renderRoute(route, state.routes.indexOf(route)),
         )}
-        <TrackingFab orgCode={orgCode} active={trackingActive} />
+        <TrackingTabButton orgCode={orgCode} active={trackingActive} />
         {right.map((route) =>
           renderRoute(route, state.routes.indexOf(route)),
         )}
@@ -281,16 +284,16 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 0.15,
   },
-  fabSlot: {
-    width: 72,
+  trackSlot: {
+    width: 76,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: -28,
+    marginTop: -22,
   },
-  fab: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+  trackBtn: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     alignItems: "center",
     justifyContent: "center",
   },

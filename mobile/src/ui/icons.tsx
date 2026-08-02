@@ -409,6 +409,28 @@ export function ClockIcon({ color, size = 22 }: SimpleIcon) {
   );
 }
 
+/** Map pin with a clock face — location + time tracking. */
+export function TrackingPinIcon({ color, size = 22 }: SimpleIcon) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 21s-6.5-5.2-6.5-10.2A6.5 6.5 0 0 1 12 4.3a6.5 6.5 0 0 1 6.5 6.5C18.5 15.8 12 21 12 21Z"
+        stroke={color}
+        strokeWidth={1.9}
+        strokeLinejoin="round"
+      />
+      <Circle cx={12} cy={11} r={3.35} stroke={color} strokeWidth={1.7} />
+      <Path
+        d="M12 9.4v1.8l1.25.85"
+        stroke={color}
+        strokeWidth={1.7}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 export function CheckCircleIcon({ color, size = 22 }: SimpleIcon) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
