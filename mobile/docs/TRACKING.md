@@ -122,6 +122,11 @@ Optional remarks on pause are stored on the auto-created break
 
 While a timesheet day is open (web or mobile), org members receive
 `tracking.updated` over Socket.IO and TanStack Query refetches
-`screens/timesheet-day-editor`. The Tracking map, Tracked timeline, and
-`tracking_logs` update without a manual refresh. Requires Redis (Socket.IO
-adapter + worker redis-emitter) and an active org room join.
+`screens/timesheet-day-editor` plus timesheet / management detail queries.
+The Tracking map, Tracked timeline/grid, and Days table update without a
+manual refresh. Web shows a blinking green **Live** indicator in the org
+header and on timesheet day surfaces. Mobile shows the same cue on Org Home
+and in the organisation header while this device is tracking.
+
+Requires Redis (Socket.IO adapter + worker redis-emitter) and an active org
+room join.

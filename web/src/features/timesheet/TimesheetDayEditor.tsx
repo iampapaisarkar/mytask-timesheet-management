@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { FullScreenModal } from "@/components/ui/FullScreenModal";
 import { TextInput } from "@/components/ui/TextInput";
 import { ErrorState, LoadingState } from "@/components/ui/States";
+import { LiveTrackingIndicator } from "@/components/LiveTrackingIndicator";
 import {
   TrackingMapView,
   hasTrackingMapData,
@@ -17,6 +18,7 @@ import {
 } from "@/components/maps/TrackingMapView";
 import { useToastStore } from "@/store/toastStore";
 import { useOrganisationStore } from "@/store/organisationStore";
+import { useTrackingLive } from "@/hooks/useTrackingLive";
 import {
   TrackedTimeline,
   formatMinutesAsHm,
@@ -231,10 +233,16 @@ export function TimesheetDayEditor({
   onSaved?: () => void;
 }) {
   const toast = useToastStore();
+  const organisationId = useOrganisationStore((s) => s.organisation?.id);
   const orgEmployeeId = useOrganisationStore(
     (s) => s.organisation?.employee?.id,
   );
   const resolvedEmployeeId = employeeId ?? orgEmployeeId;
+  const trackingLive = useTrackingLive(organisationId, {
+    timesheetDayId: dayId,
+    timesheetId,
+    employeeId: resolvedEmployeeId,
+  });
   const [tasks, setTasks] = useState<TaskDraft[]>([]);
   const [taskErrors, setTaskErrors] = useState<
     Record<string, Partial<Record<"job_id" | "start_time" | "end_time", string>>>
@@ -249,6 +257,15 @@ export function TimesheetDayEditor({
     { mode, dayId, employeeId },
     open && dayId != null && dayId !== "",
   );
+
+  // Keep map / timeline / sheets fresh while GPS is streaming
+  useEffect(() => {
+    if (!open || !trackingLive || dayId == null) return;
+    const id = globalThis.setInterval(() => {
+      void dayQuery.refetch();
+    }, 5_000);
+    return () => globalThis.clearInterval(id);
+  }, [open, trackingLive, dayId, dayQuery]);
 
   const day = dayQuery.data as
     | (DayPayload & { available_jobs?: JobRow[] })
@@ -446,9 +463,12 @@ export function TimesheetDayEditor({
       header={
         <div className="flex w-full flex-wrap items-center gap-2 border-b border-border px-3 py-3 sm:gap-6 sm:px-6">
           <div className="min-w-0 flex-1 basis-[10rem]">
-            <p className="truncate text-lg font-bold tracking-tight text-[var(--mt-text)] sm:text-2xl">
-              {dayQuery.isLoading ? "…" : title}
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="truncate text-lg font-bold tracking-tight text-[var(--mt-text)] sm:text-2xl">
+                {dayQuery.isLoading ? "…" : title}
+              </p>
+              {trackingLive ? <LiveTrackingIndicator /> : null}
+            </div>
             <p className="truncate text-sm text-muted">{subtitle}</p>
           </div>
 

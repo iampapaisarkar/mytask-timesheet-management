@@ -34,4 +34,5 @@ export function resetDomainStores(): void {
   usePayoutStore.getState().reset();
   useNotificationStore.getState().reset();
   useDashboardStore.getState().reset();
+  // tracking live store reset via resetRealtimeClientState
 }

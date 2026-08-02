@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { timesheetsApi } from "@mytask/api";
@@ -8,7 +8,10 @@ import { formatTimesheetLabel, getErrorMessage } from "@mytask/utils";
 import { Card, PageHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ErrorState, LoadingState } from "@/components/ui/States";
+import { LiveTrackingIndicator } from "@/components/LiveTrackingIndicator";
 import { useToastStore } from "@/store/toastStore";
+import { useOrganisationStore } from "@/store/organisationStore";
+import { useTrackingLive } from "@/hooks/useTrackingLive";
 import { TimesheetDayEditor } from "@/features/timesheet/TimesheetDayEditor";
 import { RemarksConfirmDialog } from "@/features/timesheet/RemarksConfirmDialog";
 
@@ -40,12 +43,14 @@ type TimesheetDetail = {
     can_revert_to_draft?: boolean;
     can_save?: boolean;
   };
-  employee?: { user?: { full_name?: string } };
+  employee?: { id?: number; user?: { full_name?: string } };
+  employee_id?: number;
 };
 
 export function TimesheetDetailPage() {
   const { orgCode = "", id = "" } = useParams();
   const toast = useToastStore();
+  const organisationId = useOrganisationStore((s) => s.organisation?.id);
   const submit = useSubmitTimesheet();
   const [selectedDayId, setSelectedDayId] = useState<number | null>(null);
   const [submitOpen, setSubmitOpen] = useState(false);
@@ -60,6 +65,18 @@ export function TimesheetDetailPage() {
   });
 
   const data = query.data;
+  const trackingLive = useTrackingLive(organisationId, {
+    timesheetId: id,
+    employeeId: data?.employee?.id ?? data?.employee_id,
+  });
+
+  useEffect(() => {
+    if (!trackingLive) return;
+    const timer = globalThis.setInterval(() => {
+      void query.refetch();
+    }, 5_000);
+    return () => globalThis.clearInterval(timer);
+  }, [trackingLive, query]);
 
   const days = useMemo(() => {
     const list = Array.isArray(data?.days) ? data.days : [];
@@ -200,12 +217,18 @@ export function TimesheetDetailPage() {
       ) : null}
 
       <Card>
-        <h2 className="mb-3 text-base font-semibold text-[var(--mt-text)]">
-          Days
-        </h2>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <h2 className="text-base font-semibold text-[var(--mt-text)]">
+            Days
+          </h2>
+          {trackingLive ? <LiveTrackingIndicator /> : null}
+        </div>
         <p className="mb-3 text-xs text-muted">
           Click a day to view or edit tasks
           {perms?.can_save === false ? " (read-only for this status)" : ""}.
+          {trackingLive
+            ? " Live hours and location refresh while tracking is active."
+            : ""}
         </p>
         {!days.length ? (
           <p className="text-sm text-muted">No days on this timesheet yet.</p>

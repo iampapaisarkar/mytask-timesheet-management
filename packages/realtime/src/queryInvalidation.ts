@@ -64,10 +64,12 @@ export const EVENT_QUERY_INVALIDATIONS: Record<
 
   [SOCKET_EVENTS.AUDIT_LOG_CREATED]: [["system-logs"]],
 
-  /** Day map / timeline / tracking_logs — avoid thrashing list screens */
+  /** Day map / timeline / tracking_logs + parent timesheet day tables */
   [SOCKET_EVENTS.TRACKING_UPDATED]: [
     ["screens", "timesheet-day-editor"],
     ["timesheet-day"],
+    ["timesheets"],
+    ["timesheet-management"],
     ["screens", "dashboard"],
     ["screens", "home"],
   ],

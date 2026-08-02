@@ -83,6 +83,28 @@ export async function activity(req, res) {
   }
 }
 
+/** Org-scoped active GPS / clock-in sessions for Live indicators. */
+export async function liveTrackers(req, res) {
+  const { organisation } = req.body;
+  try {
+    if (!organisation?.id) {
+      return res.status(400).json({
+        message: "Organisation is required",
+      });
+    }
+    const data = await timesheetActivityService.listActiveTrackers(
+      organisation.id,
+    );
+    return res.status(200).json({ data });
+  } catch (err) {
+    console.error("Error in liveTrackers():", err);
+    return res.status(500).json({
+      message: "Unable to fetch live trackers",
+      details: err?.message,
+    });
+  }
+}
+
 export async function timesheetValidation(req, res) {
   let { user, organisation } = req.body;
   try {

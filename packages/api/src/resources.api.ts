@@ -381,6 +381,13 @@ export const timesheetActivityApi = {
       req(options, params),
     );
   },
+  /** Active org trackers for Live indicators (Firebase session). */
+  live(options?: RequestOptions) {
+    return getApiClient().get<{ data?: TrackingLiveTracker[] }>(
+      "/timesheet-activity/live",
+      req(options),
+    );
+  },
   validate(params: Record<string, unknown> = {}, options?: RequestOptions) {
     return getApiClient().get<{
       data?: { timesheet_id?: number; job_count?: number };
@@ -395,6 +402,22 @@ export const timesheetActivityApi = {
       req(options),
     );
   },
+};
+
+export type TrackingLiveTracker = {
+  organisation_id?: number;
+  user_id?: number | null;
+  employee_id?: number | null;
+  timesheet_id?: number | null;
+  timesheet_day_id?: number | null;
+  timer?: "running" | "pause" | "stop" | string;
+  active?: boolean;
+  status?: string | null;
+  current_activity?: {
+    code?: string | null;
+    name?: string | null;
+    job_id?: number | null;
+  } | null;
 };
 
 export type TrackingActivityStatus = {

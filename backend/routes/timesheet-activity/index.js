@@ -4,6 +4,7 @@ import {
   store,
   sendLocation,
   activity,
+  liveTrackers,
   timesheetValidation,
   simulate,
 } from "../../controller/timesheet-activity.controller.js";
@@ -19,6 +20,7 @@ router.post("/store", TrackingTokenValidate, store);
 router.post("/send-location", TrackingTokenValidate, sendLocation);
 
 router.get("/", TokenValidate, OrganisationValidate, activity);
+router.get("/live", TokenValidate, OrganisationValidate, liveTrackers);
 router.get(
   "/validate",
   TokenValidate,

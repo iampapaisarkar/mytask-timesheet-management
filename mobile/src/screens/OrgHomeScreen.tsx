@@ -12,7 +12,9 @@ import { useDashboardParallel } from "@mytask/hooks";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { radii, spacing, typography } from "@mytask/theme";
 import { getOrganisationRoleCode } from "@mytask/utils";
+import { LiveTrackingIndicator } from "../components/LiveTrackingIndicator";
 import { SkeletonBlock, SkeletonDashboard } from "../components/Skeleton";
+import { useLocalTrackingLive } from "../hooks/useLocalTrackingLive";
 import type { DashboardStackParamList } from "../navigation/types";
 import { useOrgTabBarScrollInset } from "../navigation/useOrgTabBarScrollInset";
 import { useOrganisationStore } from "../store/organisationStore";
@@ -81,6 +83,7 @@ export function OrgHomeScreen({ route }: Props) {
   const { orgCode } = route.params;
   const c = useThemeStore((s) => s.colors);
   const tabScrollInset = useOrgTabBarScrollInset();
+  const trackingLive = useLocalTrackingLive();
   const acl = getOrganisationAcl(organisation?.role || organisation?.role_code);
   const roleCode = getOrganisationRoleCode(organisation || {});
   const canPayout = can(acl, "payout", "list");
@@ -276,6 +279,12 @@ export function OrgHomeScreen({ route }: Props) {
       <Text style={[styles.roleLine, { color: c.muted }]}>
         {roleDescription(overview?.role || roleCode, overview?.source)}
       </Text>
+
+      {trackingLive ? (
+        <View style={styles.liveRow}>
+          <LiveTrackingIndicator label="Location tracking is on" />
+        </View>
+      ) : null}
 
       {dashboard.summaryQuery.isLoading && !kpis ? (
         <SkeletonDashboard />
@@ -571,6 +580,9 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     marginBottom: spacing.md,
     lineHeight: 18,
+  },
+  liveRow: {
+    marginBottom: spacing.md,
   },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 4 },
   chartCard: {

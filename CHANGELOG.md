@@ -4,11 +4,16 @@
 
 ### Fixed
 
+- **Live tracking on web:** `tracking.updated` now also invalidates timesheet + management day tables (not only the day editor). Day sheet / timeline / grid / map refetch while GPS is streaming; org chrome and timesheet pages show a blinking green Live indicator.
 - **Tracking Start stuck on Stopped:** Activity status now treats the latest typed log as open only when it is a START row (`start_at` set). END rows no longer make Start look idempotent while the UI stays Stopped.
 
 ### Added
 
-- **Live tracking UI:** Successful location / activity store emits `tracking.updated` to the organisation Socket.IO room (workers use Redis emitter). Web + mobile invalidate `screens/timesheet-day-editor` so map, timeline, and tracking tables refresh while a day is open. Continuous GPS emits are throttled (~3s); start/pause/resume/stop emit immediately.
+- **Tracking live indicators:** Blinking green cue on web org header + timesheet day views when Socket.IO reports active tracking; on mobile Org Home + Org Header when this device has an open tracking session. Web also hydrates from `GET /timesheet-activity/live` so Live shows immediately on page load.
+
+### Fixed
+
+- **Live tracking UI:** Successful location / activity store emits `tracking.updated` to the organisation Socket.IO room (workers use Redis emitter). Web + mobile invalidate day editor + timesheet tables so map, timeline, and days refresh while a day is open. Continuous GPS emits are throttled (~3s); start/pause/resume/stop emit immediately.
 
 ### API
 

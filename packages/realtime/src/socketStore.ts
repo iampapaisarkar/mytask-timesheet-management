@@ -3,6 +3,7 @@ import type { ConnectionStatus } from "./types";
 import { getSocketManager } from "./SocketManager";
 import { sharedOfflineQueue } from "./offlineQueue";
 import { resetDomainStores } from "./domainStores";
+import { useTrackingLiveStore } from "./trackingLiveStore";
 
 interface SocketStoreState {
   status: ConnectionStatus;
@@ -32,5 +33,6 @@ export function resetRealtimeClientState(): void {
   getSocketManager().disconnect();
   useSocketStore.getState().reset();
   resetDomainStores();
+  useTrackingLiveStore.getState().reset();
   sharedOfflineQueue.clear();
 }

@@ -3,16 +3,22 @@ import { Link, NavLink, Outlet, useLocation, useParams } from "react-router-dom"
 import { useOrgBootstrap } from "@mytask/hooks";
 import { ORG_NAV, ROUTES } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
-import type { CrudPermission, OrganisationAcl } from "@mytask/types";
+import type {
+  CrudPermission,
+  OrganisationAcl,
+  OrganisationContext,
+} from "@mytask/types";
 import { getErrorMessage, getOrganisationRoleCode } from "@mytask/utils";
 import { useOrganisationStore } from "@/store/organisationStore";
 import { useAuthStore } from "@/store/authStore";
 import { displayName } from "@mytask/utils";
 import { OrganisationSwitcher } from "@/components/OrganisationSwitcher";
+import { LiveTrackingIndicator } from "@/components/LiveTrackingIndicator";
 import { NotificationsBell } from "@/features/notifications";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useSidebarStore } from "@/store/sidebarStore";
 import { useThemeStore } from "@/store/themeStore";
+import { useTrackingLive } from "@/hooks/useTrackingLive";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { useLogout } from "@/hooks/useLogout";
 import {
@@ -68,6 +74,7 @@ export function OrgLayout() {
   const handleLogout = useLogout();
   const themeMode = useThemeStore((s) => s.mode);
   const toggleTheme = useThemeStore((s) => s.toggle);
+  const trackingLive = useTrackingLive(organisation?.id);
 
   const needsSync = !organisation || organisation.code !== orgCode;
 
@@ -79,11 +86,15 @@ export function OrgLayout() {
   useEffect(() => {
     if (!orgData) return;
     setOrganisation({
-      id: orgData.id as string | number,
+      id: (orgData.id as string | number) ?? organisation?.id,
       code: String(orgData.code || orgCode),
       name: String(orgData.name || orgCode),
       role: getOrganisationRoleCode(orgData as never),
       role_code: getOrganisationRoleCode(orgData as never),
+      employee:
+        (orgData.employee as OrganisationContext["employee"]) ||
+        organisation?.employee ||
+        null,
     });
   }, [orgData, orgCode, setOrganisation]);
 
@@ -318,6 +329,7 @@ export function OrgLayout() {
             <h1 className="min-w-0 truncate text-sm font-semibold text-[var(--mt-text)] sm:text-base lg:text-lg">
               {organisation?.name || "Organisation"}
             </h1>
+            {trackingLive ? <LiveTrackingIndicator /> : null}
           </div>
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <NotificationsBell />

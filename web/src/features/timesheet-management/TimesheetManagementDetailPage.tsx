@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   useApproveTimesheet,
@@ -12,7 +12,10 @@ import { formatTimesheetLabel, getErrorMessage } from "@mytask/utils";
 import { Card, PageHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ErrorState, LoadingState } from "@/components/ui/States";
+import { LiveTrackingIndicator } from "@/components/LiveTrackingIndicator";
 import { useToastStore } from "@/store/toastStore";
+import { useOrganisationStore } from "@/store/organisationStore";
+import { useTrackingLive } from "@/hooks/useTrackingLive";
 import { TimesheetDayEditor } from "@/features/timesheet/TimesheetDayEditor";
 import {
   RemarksConfirmDialog,
@@ -55,6 +58,7 @@ type TimesheetDetail = {
 export function TimesheetManagementDetailPage() {
   const { orgCode = "", id = "" } = useParams();
   const toast = useToastStore();
+  const organisationId = useOrganisationStore((s) => s.organisation?.id);
   const [selectedDayId, setSelectedDayId] = useState<number | null>(null);
   const [pendingAction, setPendingAction] =
     useState<TimesheetStatusAction | null>(null);
@@ -71,6 +75,18 @@ export function TimesheetManagementDetailPage() {
     "Employee";
   const employeeId = data?.employee?.details?.id ?? data?.employee?.id;
   const perms = data?.permissions;
+  const trackingLive = useTrackingLive(organisationId, {
+    timesheetId: id,
+    employeeId,
+  });
+
+  useEffect(() => {
+    if (!trackingLive) return;
+    const timer = globalThis.setInterval(() => {
+      void query.refetch();
+    }, 5_000);
+    return () => globalThis.clearInterval(timer);
+  }, [trackingLive, query]);
 
   const canAct = Boolean(
     perms?.can_submit ||
@@ -244,7 +260,10 @@ export function TimesheetManagementDetailPage() {
       ) : null}
 
       <Card>
-        <h2 className="mb-3 text-base font-semibold">Days</h2>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <h2 className="text-base font-semibold">Days</h2>
+          {trackingLive ? <LiveTrackingIndicator /> : null}
+        </div>
         <p className="mb-3 text-xs text-muted">
           Click a day to view or edit tasks.
         </p>

@@ -6,6 +6,7 @@ export * from "./SocketManager";
 export * from "./createDomainStore";
 export * from "./offlineQueue";
 export * from "./domainStores";
+export * from "./trackingLiveStore";
 export * from "./socketStore";
 export * from "./applyRealtime";
 export * from "./bootstrap";

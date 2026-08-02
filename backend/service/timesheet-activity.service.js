@@ -45,6 +45,14 @@ function notifyTrackingClients({ organisation, user, timesheetDay, type }) {
   if (!organisation?.id || !user?.id) return;
   if (!shouldEmitTrackingLive(timesheetDay?.id, type)) return;
   try {
+    const action = String(type || "")
+      .trim()
+      .toLowerCase();
+    let timer = "running";
+    if (action === "stop") timer = "stop";
+    else if (action === "pause") timer = "pause";
+    else if (action === "resume" || action === "start") timer = "running";
+
     emitTrackingUpdated(
       organisation.id,
       {
@@ -55,6 +63,8 @@ function notifyTrackingClients({ organisation, user, timesheetDay, type }) {
         timesheet_day_id: timesheetDay?.id ?? null,
         user_id: user.id,
         type: type || null,
+        timer,
+        active: timer !== "stop",
       },
       user.id,
     );
@@ -515,6 +525,70 @@ async function getActivityStatus({ userId, organisationId, userTimezone }) {
         }
       : null,
   };
+}
+
+/**
+ * Active trackers in an organisation (latest typed log per user is a START row).
+ * Used by web/mobile to hydrate Live indicators without waiting for the next GPS emit.
+ */
+async function listActiveTrackers(organisationId) {
+  if (!organisationId) return [];
+
+  const rows = await TimesheetActivityLogs.findAll({
+    include: [{ model: TimesheetActivityTypes, as: "type" }],
+    where: {
+      organisation_id: organisationId,
+      type_id: { [Op.ne]: null },
+    },
+    order: [["id", "DESC"]],
+    limit: 400,
+  });
+
+  const seenUsers = new Set();
+  const active = [];
+
+  for (const row of rows) {
+    const plain = row.toJSON?.() ?? row;
+    const userId = Number(plain.user_id);
+    if (!Number.isFinite(userId) || seenUsers.has(userId)) continue;
+    seenUsers.add(userId);
+
+    if (!isOpenActivityRow(plain)) continue;
+
+    const typeCode = plain?.type?.code || null;
+    let timer = "running";
+    if (typeCode === "break") timer = "pause";
+    else if (!["travel", "working", "break"].includes(typeCode)) continue;
+
+    let timesheetId = null;
+    let employeeId = null;
+    if (plain.timesheet_day_id) {
+      const day = await TimesheetDays.findByPk(plain.timesheet_day_id, {
+        attributes: ["id", "timesheet_id", "employee_id"],
+        raw: true,
+      });
+      timesheetId = day?.timesheet_id ?? null;
+      employeeId = day?.employee_id ?? null;
+    }
+
+    active.push({
+      organisation_id: Number(organisationId),
+      user_id: userId,
+      employee_id: employeeId,
+      timesheet_id: timesheetId,
+      timesheet_day_id: plain.timesheet_day_id ?? null,
+      timer,
+      active: true,
+      status: plain?.type?.name || typeCode,
+      current_activity: {
+        code: typeCode,
+        name: plain?.type?.name || null,
+        job_id: plain?.job_id ?? null,
+      },
+    });
+  }
+
+  return active;
 }
 
 function findMatchingJob(latitude, longitude, jobs) {
@@ -1234,4 +1308,5 @@ async function storeLocation({
 export default {
   storeLocation,
   getActivityStatus,
+  listActiveTrackers,
 };

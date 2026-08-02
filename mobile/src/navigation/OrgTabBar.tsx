@@ -1,4 +1,4 @@
-import { useContext, useEffect, type ReactNode } from "react";
+import { useContext, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import {
   BottomTabBarHeightCallbackContext,
@@ -16,10 +16,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { spacing } from "@mytask/theme";
 import { useOrganisationStore } from "../store/organisationStore";
 import { useThemeStore } from "../store/themeStore";
+import { useLocalTrackingLive } from "../hooks/useLocalTrackingLive";
 import { useOrgNavigate } from "./useOrgNavigate";
 import { elevation, touchTarget, ClockIcon } from "../ui";
-import { getTrackingOrganisationCode } from "../services/trackingSession";
-import { useState } from "react";
+import { useEffect } from "react";
 
 const SPRING = { damping: 18, stiffness: 220, mass: 0.7 };
 
@@ -155,20 +155,7 @@ export function OrgTabBar({ state, descriptors, navigation }: BottomTabBarProps)
   const orgCode = useOrganisationStore((s) => s.organisation?.code) || "";
   const onHeightChange = useContext(BottomTabBarHeightCallbackContext);
   const bottomPad = Math.max(insets.bottom, 10);
-  const [trackingActive, setTrackingActive] = useState(false);
-
-  useEffect(() => {
-    let mounted = true;
-    void (async () => {
-      const code = await getTrackingOrganisationCode();
-      if (mounted) {
-        setTrackingActive(Boolean(code) && code === orgCode);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, [orgCode, state.index]);
+  const trackingActive = useLocalTrackingLive();
 
   const mid = Math.floor(state.routes.length / 2);
   const left = state.routes.slice(0, mid);

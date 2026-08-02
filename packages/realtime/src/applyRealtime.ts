@@ -10,7 +10,29 @@ import {
   useReportStore,
   useTimesheetStore,
 } from "./domainStores";
+import {
+  useTrackingLiveStore,
+  type TrackingLiveTimer,
+} from "./trackingLiveStore";
 import type { SocketEventEnvelope } from "./types";
+
+function toPositiveInt(value: unknown): number | null {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function timerFromTrackingPayload(
+  data: Record<string, unknown>,
+): TrackingLiveTimer {
+  const explicit = String(data.timer || "").toLowerCase();
+  if (explicit === "running" || explicit === "pause" || explicit === "stop") {
+    return explicit;
+  }
+  const type = String(data.type || "").toLowerCase();
+  if (type === "stop") return "stop";
+  if (type === "pause") return "pause";
+  return "running";
+}
 
 /**
  * Apply a realtime envelope to domain Zustand stores (incremental upsert/remove).
@@ -97,6 +119,32 @@ export function applyRealtimeToClientState(
         ...(typeof data === "object" && data ? data : {}),
       });
       break;
+
+    case SOCKET_EVENTS.TRACKING_UPDATED: {
+      const payload =
+        data && typeof data === "object"
+          ? (data as Record<string, unknown>)
+          : {};
+      const organisationId =
+        toPositiveInt(payload.organisation_id) ??
+        toPositiveInt(envelope.organisation_id);
+      if (organisationId) {
+        const timer = timerFromTrackingPayload(payload);
+        const active =
+          payload.active === false || timer === "stop" ? false : true;
+        useTrackingLiveStore.getState().upsert({
+          organisation_id: organisationId,
+          employee_id: toPositiveInt(payload.employee_id),
+          user_id: toPositiveInt(payload.user_id),
+          timesheet_id: toPositiveInt(payload.timesheet_id),
+          timesheet_day_id: toPositiveInt(payload.timesheet_day_id),
+          timer,
+          active,
+          last_seen_at: envelope.emitted_at || new Date().toISOString(),
+        });
+      }
+      break;
+    }
 
     default:
       break;
