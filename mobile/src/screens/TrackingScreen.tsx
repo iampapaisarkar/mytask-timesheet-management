@@ -21,9 +21,10 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { radii, spacing } from '@mytask/theme';
 import { useTracking } from '../hooks/useTracking';
 import type { OrgStackParamList } from '../navigation/types';
+import { HeaderIconButton } from '../components/HeaderIconButton';
 import { useThemeStore } from '../store/themeStore';
 import { useToastStore } from '../store/toastStore';
-import { Button, elevation } from '../ui';
+import { Button, CloseIcon, elevation } from '../ui';
 
 type Props = NativeStackScreenProps<OrgStackParamList, 'Tracking'>;
 
@@ -73,12 +74,12 @@ export function TrackingScreen({ navigation }: Props) {
 
   const accent = useMemo(() => {
     if (tracking.paused) return c.warning;
-    if (tracking.running) {
-      if (tracking.activityCode === 'travel') return '#3B82F6';
-      return c.primary;
-    }
+    if (tracking.running) return c.primary;
     return c.muted;
-  }, [tracking.paused, tracking.running, tracking.activityCode, c]);
+  }, [tracking.paused, tracking.running, c]);
+
+  /** Pulse / live indicator always uses brand primary while tracking. */
+  const indicatorColor = tracking.running || tracking.paused ? c.primary : c.muted;
 
   const dayProgress = useMemo(() => {
     // Soft visual of an 8h work day — decorative only
@@ -137,20 +138,22 @@ export function TrackingScreen({ navigation }: Props) {
       ]}
     >
       <View style={styles.topBar}>
-        <Pressable
+        <HeaderIconButton
           onPress={() => navigation.goBack()}
-          hitSlop={12}
-          accessibilityRole="button"
           accessibilityLabel="Close tracking"
+          style={styles.closeBtn}
         >
-          <Text style={[styles.close, { color: c.primary }]}>Close</Text>
-        </Pressable>
-          <Text style={[styles.title, { color: c.text }]}>Time tracking</Text>
+          <CloseIcon color={c.text} size={20} />
+        </HeaderIconButton>
+        <Text style={[styles.title, { color: c.text }]}>Time tracking</Text>
         <View style={styles.closeSpacer} />
       </View>
 
       <View style={styles.center}>
-        <TrackingPulse active={tracking.running} color={accent} />
+        <TrackingPulse
+          active={tracking.running}
+          color={indicatorColor}
+        />
 
         <Text style={[styles.timer, { color: c.text }]}>
           {tracking.formatted}
@@ -325,12 +328,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: spacing.lg,
   },
-  close: {
-    fontSize: 16,
-    fontWeight: '600',
-    width: 64,
+  closeBtn: {
+    borderRadius: 22,
   },
-  closeSpacer: { width: 64 },
+  closeSpacer: { width: 44, height: 44 },
   title: {
     fontSize: 17,
     fontWeight: '700',
