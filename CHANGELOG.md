@@ -2,6 +2,10 @@
 
 ## 2026-08-02
 
+### Fixed
+
+- **Jobs list search:** `GET /api/jobs/list?search=` no longer references removed `jobs.address`. Search uses `job_address` fields (and customer name), matching the employee list pattern. Fixes 500 `Unknown column 'Jobs.address'` on web and mobile job search.
+
 ### Changed
 
 - **Mobile web feature parity:** Organisation details now loads/edits full org profile (email, phone, website, address, reporting currency, timesheet frequency) like web. Customers gain currency picker; employees list gains Invite; timesheet lists gain job/employee filters; payouts gain search + date range; system logs gain search/date/success filters, summary, detail sheet, and CSV export. AuthActions + BillingSuccess screens and notification deep-link routing added; forgot-password uses `authApi` with Firebase fallback.

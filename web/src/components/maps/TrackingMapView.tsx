@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { mapStyleForTheme } from "@mytask/theme";
 import { loadGoogleMaps } from "@/lib/googleMaps";
+import { useThemeStore } from "@/store/themeStore";
 
 export type TrackingPoint = {
   latitude?: number | string | null;
@@ -57,6 +59,7 @@ type GoogleMapsNs = {
 
 type GoogleMap = {
   fitBounds: (b: unknown) => void;
+  setOptions: (opts: Record<string, unknown>) => void;
 };
 
 function getGoogleMaps(): GoogleMapsNs | undefined {
@@ -113,8 +116,10 @@ export function TrackingMapView({
   className?: string;
 }) {
   const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<GoogleMap | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+  const themeMode = useThemeStore((s) => s.mode);
 
   const segments = useMemo(
     () => segmentsFromLogs(trackingLogs),
@@ -167,7 +172,9 @@ export function TrackingMapView({
           mapTypeId: maps.MapTypeId.ROADMAP,
           disableDefaultUI: true,
           zoomControl: true,
+          styles: [...mapStyleForTheme(themeMode)],
         });
+        mapInstanceRef.current = map;
         const bounds = new maps.LatLngBounds();
 
         for (const segment of segments) {
@@ -250,9 +257,19 @@ export function TrackingMapView({
 
     return () => {
       cancelled = true;
+      mapInstanceRef.current = null;
       overlays.forEach((o) => o.setMap(null));
     };
+    // themeMode is applied via setOptions below so overlays are not rebuilt on toggle
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiKey, hasData, segments, jobPoints, selectedType]);
+
+  // Keep map chrome in sync when the app theme toggles without remounting overlays.
+  useEffect(() => {
+    mapInstanceRef.current?.setOptions({
+      styles: [...mapStyleForTheme(themeMode)],
+    });
+  }, [themeMode]);
 
   if (!hasData) {
     return (

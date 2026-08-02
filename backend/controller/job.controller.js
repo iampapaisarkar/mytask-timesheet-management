@@ -56,7 +56,14 @@ export async function list(req, res, next) {
           { site_contact_name: { [Op.like]: q } },
           { site_contact_email: { [Op.like]: q } },
           { site_contact_phone_number: { [Op.like]: q } },
-          { address: { [Op.like]: q } },
+          // Address lives on job_address (Jobs.address column was removed)
+          { "$address.formatted_address$": { [Op.like]: q } },
+          { "$address.address_1$": { [Op.like]: q } },
+          { "$address.address_line_1$": { [Op.like]: q } },
+          { "$address.city$": { [Op.like]: q } },
+          { "$address.postcode$": { [Op.like]: q } },
+          { "$address.postal_code$": { [Op.like]: q } },
+          { "$customer.name$": { [Op.like]: q } },
         ],
       };
     }

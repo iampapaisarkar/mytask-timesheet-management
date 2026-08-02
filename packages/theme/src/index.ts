@@ -154,3 +154,11 @@ export const theme = {
 } as const;
 
 export type Theme = typeof theme;
+
+export {
+  MINIMAL_MAP_STYLE,
+  MINIMAL_MAP_STYLE_DARK,
+  MINIMAL_MAP_STYLE_LIGHT,
+  mapStyleForTheme,
+  type MapThemeMode,
+} from "./mapStyle";

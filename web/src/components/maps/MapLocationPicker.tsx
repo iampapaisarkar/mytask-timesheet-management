@@ -5,10 +5,12 @@ import {
   parseGooglePlaceComponents,
   type GlobalAddress,
 } from "@mytask/utils";
+import { mapStyleForTheme } from "@mytask/theme";
 import {
   getGoogleMapsApiKey,
   loadGoogleMaps,
 } from "@/lib/googleMaps";
+import { useThemeStore } from "@/store/themeStore";
 
 /** Default map center when geolocation is unavailable (Sydney, AU). */
 const FALLBACK_CENTER = { lat: -33.8688, lng: 151.2093 };
@@ -17,6 +19,7 @@ const REVERSE_GEOCODE_DEBOUNCE_MS = 450;
 type MapInstance = {
   setCenter: (c: { lat: number; lng: number }) => void;
   setZoom: (z: number) => void;
+  setOptions: (opts: Record<string, unknown>) => void;
   addListener: (
     event: string,
     handler: (e: {
@@ -120,6 +123,7 @@ export function MapLocationPicker({
   const valueRef = useRef(value);
   valueRef.current = value;
   const initializedLocation = useRef(false);
+  const themeMode = useThemeStore((s) => s.mode);
 
   const reverseGeocode = useCallback((lat: number, lng: number) => {
     const maps = getMaps();
@@ -238,6 +242,7 @@ export function MapLocationPicker({
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,
+          styles: [...mapStyleForTheme(useThemeStore.getState().mode)],
         });
         mapRef.current = map;
 
@@ -295,6 +300,14 @@ export function MapLocationPicker({
     mapRef.current.setCenter(coords);
     mapRef.current.setZoom(16);
   }, [ready, value.latitude, value.longitude]);
+
+  // Match app light/dark chrome without remounting the picker map
+  useEffect(() => {
+    if (!ready || !mapRef.current) return;
+    mapRef.current.setOptions({
+      styles: [...mapStyleForTheme(themeMode)],
+    });
+  }, [ready, themeMode]);
 
   return (
     <div className="flex flex-col gap-2">

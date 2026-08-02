@@ -9,9 +9,8 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import { spacing } from "@mytask/theme";
+import { mapStyleForTheme, spacing } from "@mytask/theme";
 import { useThemeStore } from "../store/themeStore";
-import { mapStyleForTheme } from "./mapStyle";
 
 export type TrackingPoint = {
   latitude?: number | string | null;
