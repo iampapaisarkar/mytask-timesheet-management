@@ -46,6 +46,7 @@ import {
   type GlobalAddress,
 } from "@mytask/utils";
 import { FormFieldError, FormTextField } from "./FormTextField";
+import { FormDateField } from "./FormDateField";
 import { PlacesAddressInput } from "./PlacesAddressInput";
 import { GlobalPhoneInput } from "./GlobalPhoneInput";
 import { MobileSelect } from "./MobileSelect";
@@ -421,7 +422,6 @@ export function EmployeeFormSheet({
     "middle_name",
     "last_name",
     "preferred_name",
-    "dob",
   ]);
 
   const wageChain = useFormFieldChain(wageForm, ["start_date"]);
@@ -877,13 +877,12 @@ export function EmployeeFormSheet({
             inputType="bottomSheet"
             {...fieldChainProps(detailsChain, "preferred_name")}
           />
-          <FormTextField
+          <FormDateField
             control={detailsForm.control}
             name="dob"
-            label="Date of birth (YYYY-MM-DD)"
-            inputType="bottomSheet"
-            editable={!meta.lockIdentity || !detailsForm.watch("dob")}
-            {...fieldChainProps(detailsChain, "dob")}
+            label="Date of birth"
+            placeholder="Select date of birth"
+            adultDob
           />
           <Controller
             control={detailsForm.control}

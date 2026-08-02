@@ -6,6 +6,7 @@ import { authApi } from "@mytask/api";
 import { radii, spacing, typography } from "@mytask/theme";
 import { getErrorMessage, getTimezone } from "@mytask/utils";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { FormDateField } from "../components/FormDateField";
 import { FormTextField } from "../components/FormTextField";
 import { FormKeyboardScroll } from "../components/FormKeyboardScroll";
 import { GlobalPhoneInput } from "../components/GlobalPhoneInput";
@@ -52,7 +53,6 @@ export function SignupScreen({ navigation, route }: Props) {
     "first_name",
     "last_name",
     "email",
-    "dob",
     "password",
     "confirm_password",
   ]);
@@ -138,13 +138,13 @@ export function SignupScreen({ navigation, route }: Props) {
           editable={!loading}
           {...fieldChainProps(chain, "email")}
         />
-        <FormTextField
+        <FormDateField
           control={form.control}
           name="dob"
-          label="Date of birth (YYYY-MM-DD)"
-          autoCapitalize="none"
-          editable={!loading}
-          {...fieldChainProps(chain, "dob")}
+          label="Date of birth"
+          placeholder="Select date of birth"
+          adultDob
+          disabled={loading}
         />
         <Controller
           control={form.control}
