@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -240,14 +240,15 @@ export function PlacesAddressInput({
             { backgroundColor: c.surface, borderColor: c.border },
           ]}
         >
-          <FlatList
+          {/* ScrollView (not FlatList) — this field sits inside form ScrollViews / sheets. */}
+          <ScrollView
             keyboardShouldPersistTaps="handled"
-            data={predictions}
-            keyExtractor={(item) => item.place_id}
             nestedScrollEnabled
-            style={{ maxHeight: 180 }}
-            renderItem={({ item }) => (
+            style={styles.dropdownScroll}
+          >
+            {predictions.map((item) => (
               <Pressable
+                key={item.place_id}
                 onPress={() => void selectPrediction(item)}
                 style={[styles.row, { borderBottomColor: c.border }]}
               >
@@ -255,8 +256,8 @@ export function PlacesAddressInput({
                   {item.description}
                 </Text>
               </Pressable>
-            )}
-          />
+            ))}
+          </ScrollView>
         </View>
       ) : null}
       {hasAddressContent(address) ? (
@@ -291,6 +292,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 12,
     overflow: "hidden",
+  },
+  dropdownScroll: {
+    maxHeight: 180,
   },
   row: {
     paddingHorizontal: 12,
