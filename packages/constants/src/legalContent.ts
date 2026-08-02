@@ -82,7 +82,7 @@ export const FAQ_SECTIONS: FaqSection[] = [
     items: [
       {
         q: "What are jobs and customers?",
-        a: "Customers and jobs define where work happens. Timesheet day entries can be linked to jobs selected for that timesheet period. Counts count toward the organisation owner's plan limits.",
+        a: "Customers and jobs define where work happens. Job sites can include an address and geofence radius so mobile time tracking can confirm you are at the assigned location. Timesheet day entries can be linked to jobs selected for that timesheet period. Counts count toward the organisation owner's plan limits.",
       },
     ],
   },
@@ -91,11 +91,48 @@ export const FAQ_SECTIONS: FaqSection[] = [
     items: [
       {
         q: "How do I submit a timesheet?",
-        a: "Open My Sheets, complete day entries, then submit for approval. Managers review items under Timesheets (management). Monthly timesheet generation counts toward the owner's plan quota.",
+        a: "Open My Sheets, complete day entries, then submit for approval. Managers review items under Timesheets (management). Monthly timesheet generation counts toward the owner's plan quota. Days may include automatically recorded working, travel, and break periods from mobile time tracking when your organisation uses that feature.",
       },
       {
         q: "Can I approve my own timesheet?",
         a: "Moderators and managers cannot approve or reject their own timesheets. Owners retain full approval rights per organisation ACL.",
+      },
+    ],
+  },
+  {
+    title: "Time & location tracking",
+    items: [
+      {
+        q: "What is time and location tracking?",
+        a: "On the myTask mobile app, Tracking lets you Start, Pause, Resume, and Stop a work session. myTask records working time, travel time, and breaks for your draft timesheet, and uses your device location to help verify that you are at (or traveling to) an assigned job site. Managers can see live maps, timelines, and day totals while a session is active.",
+      },
+      {
+        q: "How do I start tracking?",
+        a: "Open your organisation on mobile and tap the center Track button on the bottom navigation. On the Tracking screen, tap Start. You need a draft timesheet for today with at least one assigned job, and you must grant the location permissions described below. You can only track in one organisation at a time.",
+      },
+      {
+        q: "What device permissions does tracking need?",
+        a: "iOS: Location When In Use and Always (background) location, plus Motion & Fitness when prompted, so tracking can continue while the app is in the background or the screen is locked. Android: precise location, background location (Allow all the time), a location foreground-service notification while tracking runs, and notification permission on newer Android versions. Without Always / background location, tracking may stop when you leave the app.",
+      },
+      {
+        q: "What location and activity data is collected?",
+        a: "While a session is running, myTask may collect GPS coordinates (latitude/longitude), timestamps, accuracy-related location metadata, motion/activity hints (for example traveling vs stationary), organisation and user identifiers for the session, and start/pause/resume/stop events (including optional pause remarks). The server uses this to classify Travel, Working, or Break against job geofences and to build your day timeline, map path, and hour totals. Location is not collected for tracking when you have Stopped (or never Started).",
+      },
+      {
+        q: "Does tracking run in the background?",
+        a: "Yes, when you have granted background / Always location permission and started a session. The mobile app may keep a lightweight location service and (on Android) a persistent notification while tracking is active, including after the app is swiped away, until you Stop or Pause according to product rules. A durable tracking credential on the device lets location updates reach myTask even if your normal login token has expired.",
+      },
+      {
+        q: "Who can see my live location and times?",
+        a: "People in your organisation who have permission to view the relevant timesheet or timesheet-management screens can see maps, timelines, and day hours while you are tracking, and historical paths for that day after you stop. Location and time-tracking data is organisation-scoped for workforce operations — it is not sold and is not shown to other organisations.",
+      },
+      {
+        q: "How do I stop location collection?",
+        a: "Tap Stop on the Tracking screen to end the session. You can also revoke Location (and Motion) access in your device Settings; tracking will not work correctly until permissions are restored. Signing out revokes the device tracking credential used for background location uploads.",
+      },
+      {
+        q: "Why does the Live indicator appear?",
+        a: "A Live cue on organisation home (mobile) and on web/mobile timesheet views means an active tracking session is in progress for that organisation. Day hours for open working, travel, or break segments keep updating even if you stay in one place; the map updates when new GPS points arrive.",
       },
     ],
   },
@@ -145,6 +182,10 @@ export const FAQ_SECTIONS: FaqSection[] = [
         q: "Why is a menu item missing?",
         a: "Navigation and actions are gated by your organisation role ACL. System Logs also require Pro on your personal subscription. Contact an owner if you need additional organisation permissions, or upgrade for Pro-only features.",
       },
+      {
+        q: "What device permissions does the mobile app request?",
+        a: "Depending on features you use: Location (When In Use and Always / background) and Motion for time tracking; Notifications for alerts and the Android tracking foreground service; network access for sync. You can change these anytime in the device Settings app. Denying background location limits or stops Tracking while the app is not open.",
+      },
     ],
   },
   {
@@ -156,7 +197,11 @@ export const FAQ_SECTIONS: FaqSection[] = [
       },
       {
         q: "Realtime updates are not appearing",
-        a: "Confirm network connectivity and that you remain signed in. The app reconnects Socket.IO automatically after brief outages.",
+        a: "Confirm network connectivity and that you remain signed in. The app reconnects Socket.IO automatically after brief outages. For live tracking maps and day hours, ensure the employee has an active Tracking session and that you are viewing the correct organisation timesheet day.",
+      },
+      {
+        q: "Tracking will not start or stops in the background",
+        a: "Confirm you have a draft timesheet for today with an assigned job, grant Always / background location (and Motion on iOS), keep location services on for the device, and do not force-stop the app if you need background updates. On Android, allow the location notification and battery unrestricted / not optimised for myTask if your OEM kills background apps. Sign out and back in if the tracking credential needs refreshing, then try Start again.",
       },
       {
         q: "I paid but still see Free",
@@ -186,74 +231,86 @@ export const TERMS_SECTIONS: LegalSection[] = [
   },
   {
     title: "3. Organisations and data",
-    body: "Organisation owners control membership, roles, and operational data (employees, timesheets, reports, payouts). You agree to use organisation data only for legitimate work purposes authorised by that organisation. Invited members do not inherit the owner's paid subscription.",
+    body: "Organisation owners control membership, roles, and operational data (employees, timesheets, reports, payouts, and time/location tracking records). You agree to use organisation data only for legitimate work purposes authorised by that organisation. Invited members do not inherit the owner's paid subscription.",
   },
   {
-    title: "4. Plans and subscriptions",
+    title: "4. Time tracking and location",
+    body: "myTask’s mobile app may offer optional time and location tracking so organisations can record working, travel, and break time and verify presence near assigned job sites. By starting a tracking session you consent to collection of location and related activity data while the session is active (including in the background when you grant the required device permissions). You must only track your own work activity, grant accurate permissions, and stop tracking when you are not working for that organisation. Organisation administrators may view live and historical tracking data for authorised workforce management. Misuse (for example tracking another person without authority, falsifying location, or bypassing geofence controls) is prohibited and may result in suspension.",
+  },
+  {
+    title: "5. Device permissions",
+    body: "Time tracking may require device Location (including background / Always access), Motion sensors, and Notifications (including an Android foreground-service notification while tracking). You control these permissions in your device settings. If you decline or revoke them, tracking features may be unavailable or incomplete; other myTask features that do not need those permissions remain available subject to your plan and role.",
+  },
+  {
+    title: "6. Plans and subscriptions",
     body: "myTask offers a Free plan and a paid Pro plan (monthly or yearly). Subscriptions are owned by the authenticated user account, not by an organisation. Feature and usage limits (including organisations you may own, employees, customers, jobs, timesheets, reports, email notifications, and System Logs) are enforced according to the applicable plan. Workspace quotas for an organisation follow the organisation owner's plan.",
   },
   {
-    title: "5. Payments, renewals, and invoices",
+    title: "7. Payments, renewals, and invoices",
     body: "Paid subscriptions are processed by Stripe. By upgrading you authorise recurring charges for the selected billing interval until cancelled. Prices are shown at checkout in the stated currency. Successful payments generate invoices available in Billing history and may be emailed as receipts. Taxes may apply where required.",
   },
   {
-    title: "6. Cancellation, expiry, and payment failure",
+    title: "8. Cancellation, expiry, and payment failure",
     body: "You may cancel at period end or immediately via Subscription / Stripe Customer Portal. When a subscription ends, expires, or a renewal payment fails, Pro features are disabled and the account reverts to Free limits. Your operational data is preserved subject to Free plan limits. We may notify you in-app and by email of upcoming expiry, payment failure, or plan changes.",
   },
   {
-    title: "7. Acceptable use",
-    body: "You must not misuse the service, attempt to bypass plan limits or access controls, interfere with other users, or upload unlawful content. We may suspend access for policy violations or unpaid balances on paid features.",
+    title: "9. Acceptable use",
+    body: "You must not misuse the service, attempt to bypass plan limits or access controls, interfere with other users, abuse location or time-tracking features, or upload unlawful content. We may suspend access for policy violations or unpaid balances on paid features.",
   },
   {
-    title: "8. Availability",
-    body: "We aim for reliable availability but do not guarantee uninterrupted service. Features and plan limits may evolve; material changes will be communicated through the product where practical.",
+    title: "10. Availability",
+    body: "We aim for reliable availability but do not guarantee uninterrupted service. Background location depends on device OS behaviour, battery settings, and permissions you grant. Features and plan limits may evolve; material changes will be communicated through the product where practical.",
   },
   {
-    title: "9. Liability",
-    body: "To the maximum extent permitted by law, myTask is provided as-is. Organisation owners remain responsible for payroll decisions, approvals, and statutory compliance. Billing disputes related to card charges should first be addressed via Subscription / Stripe billing portal, then support.",
+    title: "11. Liability",
+    body: "To the maximum extent permitted by law, myTask is provided as-is. Organisation owners remain responsible for payroll decisions, approvals, workforce monitoring practices, and statutory compliance (including any employment or privacy obligations when using location tracking). Billing disputes related to card charges should first be addressed via Subscription / Stripe billing portal, then support.",
   },
   {
-    title: "10. Changes",
+    title: "12. Changes",
     body: "These terms may be updated. Continued use after updates constitutes acceptance of the revised terms. Pricing or plan changes for new purchases will be reflected at checkout; existing subscriptions follow Stripe and product notices.",
   },
   {
-    title: "11. Contact",
-    body: "Questions about these terms, billing, or your subscription should be directed to product support (include your account email and invoice number when relevant), or to your organisation owner for workspace matters.",
+    title: "13. Contact",
+    body: "Questions about these terms, billing, tracking, or your subscription should be directed to product support (include your account email and invoice number when relevant), or to your organisation owner for workspace matters.",
   },
 ];
 
 export const PRIVACY_SECTIONS: LegalSection[] = [
   {
     title: "Information we process",
-    body: "Account profile details (name, email, phone), organisation membership and roles, timesheet and payroll-related activity, notifications, device tokens for push delivery, subscription status, plan usage counters, and billing records (invoice numbers, amounts, payment status, Stripe customer/subscription identifiers).",
+    body: "Account profile details (name, email, phone, date of birth where provided), organisation membership and roles, timesheet and payroll-related activity (including working, travel, and break periods), time-tracking session events (start, pause, resume, stop, optional remarks), location points and related metadata while tracking is active, motion/activity signals used to support travel vs stationary detection, maps and timelines derived from that data, notifications, device tokens for push delivery, a durable mobile tracking credential used only for authorised location uploads, subscription status, plan usage counters, and billing records (invoice numbers, amounts, payment status, Stripe customer/subscription identifiers).",
   },
   {
     title: "How we use information",
-    body: "We use data to authenticate users, operate timesheets and organisation workflows, enforce plan limits, send transactional and product notifications (including billing emails), process subscriptions via Stripe, improve reliability and security, and support customer requests.",
+    body: "We use data to authenticate users, operate timesheets and organisation workflows, record and display work time, verify presence near job sites configured by your organisation, show live and historical maps/timelines to authorised org members, enforce plan limits, send transactional and product notifications (including billing emails), process subscriptions via Stripe, improve reliability and security, and support customer requests.",
   },
   {
     title: "Payments and Stripe",
     body: "Card payments are processed by Stripe. We do not store full card numbers on myTask servers. Stripe may process payment method details, billing address, and transaction metadata under its own privacy policy. We store references needed to sync your plan, show billing history, send receipts, and support cancellations or disputes.",
   },
   {
-    title: "Location",
-    body: "When clock-in tracking is enabled, location may be collected while you are actively tracking to support travel and work activity features configured by your organisation.",
+    title: "Location and background tracking",
+    body: "When you Start time tracking in the myTask mobile app and grant the required permissions, we collect location data (typically latitude, longitude, timestamp, and accuracy-related fields) while your session is running — including when the app is in the background or the device is locked, if you allowed Always / background location. We may also use motion or activity signals to help distinguish travel from stationary work. Location updates are sent to myTask servers with an organisation-scoped tracking credential so timesheet activity can continue if your normal login session token has expired. We use this data to classify Travel, Working, and Break against job geofences, maintain day tasks and hour totals, and power maps and live updates for authorised viewers in your organisation. We do not collect tracking locations when you have Stopped tracking (or never started). Web browsers do not run this background GPS tracking; web users may still view organisation timesheet maps and live status fed by mobile sessions.",
+  },
+  {
+    title: "Permissions we request",
+    body: "Mobile: Location (When In Use and Always / background), Motion & Fitness (iOS) or equivalent activity recognition where applicable, Notifications (including Android’s ongoing location foreground-service notification while tracking), and network access. You can withdraw these permissions in your device settings at any time; doing so may stop or degrade tracking until restored. Signing out revokes the device tracking credential used for background uploads.",
   },
   {
     title: "Sharing",
-    body: "Organisation admins can access workforce data within their organisation. We do not sell personal information. Service providers (such as Stripe for payments, email and hosting vendors) process data only as needed to run myTask.",
+    body: "Organisation admins and other roles with timesheet or timesheet-management access can view workforce time and location data within their organisation. We do not sell personal information. Service providers (such as Stripe for payments, email, hosting, and the mobile background-location SDK vendor operating on-device) process data only as needed to run myTask.",
   },
   {
     title: "Retention",
-    body: "We retain account and organisation data while your account is active and as required for legal, security, and billing records. You may request deletion subject to organisation ownership and compliance obligations.",
+    body: "We retain account and organisation data — including timesheet periods, day tasks, and associated tracking/location history — while your account and organisation records remain active and as required for legal, security, payroll, and billing records. You may request deletion subject to organisation ownership and compliance obligations.",
   },
   {
     title: "Your choices",
-    body: "Update profile details in the app, manage push permissions on your device, and manage billing via Subscription / Stripe Customer Portal. Organisation owners control membership and operational data retention within their workspace.",
+    body: "Update profile details in the app; Start or Stop tracking at any time; manage Location, Motion, and Notification permissions on your device; and manage billing via Subscription / Stripe Customer Portal. Organisation owners control membership, job sites/geofences, and operational data retention within their workspace. Review our Help & FAQ for practical steps on permissions and troubleshooting tracking.",
   },
   {
     title: "Contact",
-    body: "Privacy questions can be sent to product support with your account email. For payment-processor requests that only Stripe can fulfil, we will point you to Stripe’s customer tools where appropriate.",
+    body: "Privacy questions — including location or tracking data — can be sent to product support with your account email. For payment-processor requests that only Stripe can fulfil, we will point you to Stripe’s customer tools where appropriate.",
   },
 ];
 

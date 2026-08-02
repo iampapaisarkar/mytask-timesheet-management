@@ -2,6 +2,10 @@
 
 ## 2026-08-02
 
+### Changed
+
+- **Help / Terms / Privacy:** Documented mobile time & location tracking — what it does, Always/background location and motion permissions, data collected (GPS, session events, geofence classification), who can view live maps/timelines, and how to stop collection. Shared copy in `@mytask/constants` (`legalContent.ts`) for web and mobile; iOS Info.plist usage strings aligned.
+
 ### Fixed
 
 - **Mobile timesheet live parity:** Timesheet days, day editor (sheets / timeline / map) now use org Socket.IO + `GET /timesheet-activity/live` (`useTrackingLive`) like web, instead of device-local tracking only. Open hours keep ticking; map refreshes when GPS breadcrumbs change.

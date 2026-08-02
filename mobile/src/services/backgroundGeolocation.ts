@@ -225,8 +225,8 @@ function transistorConfig(overrides: BglConfig = {}): BglConfig {
     enableHeadless: true,
     foregroundService: true,
     notification: {
-      title: 'myTask tracking',
-      text: 'Recording timesheet location',
+      title: 'myTask time tracking',
+      text: 'Recording work time and location for your timesheet',
       sticky: true,
     },
     locationAuthorizationRequest: 'Always',
@@ -234,7 +234,7 @@ function transistorConfig(overrides: BglConfig = {}): BglConfig {
       title:
         "Allow {applicationName} to access this device's location even when closed or not in use.",
       message:
-        'myTask uses location while you are clocked in to detect travel and work at assigned job sites.',
+        'myTask needs background location for time tracking (working, travel, and breaks) and to verify you are at assigned job sites while a session is active.',
       positiveAction: 'Change to "{backgroundPermissionOptionLabel}"',
       negativeAction: 'Cancel',
     },

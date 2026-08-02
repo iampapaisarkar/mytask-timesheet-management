@@ -59,13 +59,13 @@
 		<true/>
 	</dict>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>myTask uses your location to track travel and work time for your organisation, including when the app is in the background.</string>
+	<string>myTask uses your location for time tracking (working, travel, and breaks) and to verify you are at assigned job sites, including when the app is in the background.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
-	<string>myTask needs always-on location access to continue tracking your timesheet while the app is in the background.</string>
+	<string>myTask needs always-on location so time and location tracking can continue for your timesheet while the app is in the background or the screen is locked.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>myTask needs your location while you use the app to record timesheet travel and work activity.</string>
+	<string>myTask needs your location while you use the app to record timesheet travel and work activity at job sites.</string>
 	<key>NSMotionUsageDescription</key>
-	<string>Motion detection helps myTask know when you are traveling or stationary during time tracking.</string>
+	<string>Motion detection helps myTask know when you are traveling or stationary during time and location tracking.</string>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>com.transistorsoft.fetch</string>
