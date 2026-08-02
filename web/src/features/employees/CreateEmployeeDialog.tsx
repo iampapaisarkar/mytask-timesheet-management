@@ -407,8 +407,6 @@ export function CreateEmployeeDialog({
 
   const stepLabel = useMemo(() => STEPS[step] || "", [step]);
 
-  if (!open) return null;
-
   function syncAddressToDetails(next: AddressValue) {
     setAddress(next);
     setDetailsValue("address_line_1", next.address_line_1 || "", {
@@ -604,6 +602,8 @@ export function CreateEmployeeDialog({
   }
 
   const handleCreate = useValidatedSubmit(payrollForm, submitEmployee);
+
+  if (!open) return null;
 
   return (
     <FullScreenModal
