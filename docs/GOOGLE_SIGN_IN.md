@@ -92,11 +92,25 @@ Paths:
 
 ### SHA-1 / SHA-256 (Android debug)
 
+This project signs debug builds with `mobile/android/app/debug.keystore`
+(not necessarily `~/.android/debug.keystore`).
+
 ```bash
 cd mobile/android
 ./gradlew signingReport
-# Add both SHA-1 and SHA-256 for the debug (and later release) keystore in Firebase.
+# Use the SHA-1 / SHA-256 under Variant: debug → Store: .../app/debug.keystore
 ```
+
+Current debug fingerprints for `com.mytask.imps.app` (from `app/debug.keystore`):
+
+- **SHA-1:** `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25`
+- **SHA-256:** `FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C`
+
+Add both in Firebase → Project settings → Your apps → Android app → Add fingerprint.
+Then **download a fresh `google-services.json`** into `mobile/android/app/`.
+A working file must include an `oauth_client` with `"client_type": 1` (Android)
+and a `certificate_hash`. If you only see `client_type: 3` (Web), SHA fingerprints
+are missing and Google Sign-In will fail with `DEVELOPER_ERROR` / code `10`.
 
 ## Platform notes
 

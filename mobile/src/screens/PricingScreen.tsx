@@ -15,7 +15,7 @@ import { useAuthStore } from "../store/authStore";
 import { useThemeStore } from "../store/themeStore";
 import type { AppColors } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
-import { Button, Card, ErrorState, ScreenHeader } from "../ui";
+import { Button, Card, ErrorState, ScreenHeader, SegmentedControl } from "../ui";
 
 export function PricingScreen() {
   const navigation =
@@ -92,18 +92,15 @@ export function PricingScreen() {
         </Card>
       ) : null}
 
-      <View style={[styles.toggleRow, { backgroundColor: c.bgMuted }]}>
-        {(["month", "year"] as const).map((key) => (
-          <Button
-            key={key}
-            title={key === "month" ? "Monthly" : "Yearly"}
-            variant={interval === key ? "primary" : "ghost"}
-            size="sm"
-            onPress={() => setInterval(key)}
-            style={styles.toggleBtn}
-          />
-        ))}
-      </View>
+      <SegmentedControl
+        value={interval}
+        onChange={setInterval}
+        options={[
+          { value: "month", label: "Monthly" },
+          { value: "year", label: "Yearly" },
+        ]}
+      />
+      <View style={styles.toggleSpacer} />
 
       <PlanBlock
         title={freePlan?.name || "Free"}
@@ -217,14 +214,7 @@ const styles = StyleSheet.create({
   eyebrow: { fontWeight: "700", fontSize: 12, letterSpacing: 0.4 },
   planName: { fontSize: 18, fontWeight: "700", marginBottom: 4 },
   manageBtn: { marginTop: spacing.sm, alignSelf: "flex-start", paddingHorizontal: 0 },
-  toggleRow: {
-    flexDirection: "row",
-    gap: 4,
-    marginBottom: spacing.md,
-    borderRadius: 14,
-    padding: 4,
-  },
-  toggleBtn: { flex: 1 },
+  toggleSpacer: { height: spacing.md },
   cta: { marginTop: 14 },
   historyBtn: { marginTop: spacing.sm },
 });

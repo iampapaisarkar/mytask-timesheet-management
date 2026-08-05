@@ -7,7 +7,7 @@ import Animated, {
 import { radii, spacing } from "@mytask/theme";
 import { useThemeStore } from "../store/themeStore";
 import { triggerHaptic } from "../utils/haptics";
-import { elevation, motion, touchTarget } from "./tokens";
+import { motion, touchTarget } from "./tokens";
 
 export type SegmentOption<T extends string> = {
   value: T;
@@ -48,7 +48,6 @@ function SegmentItem<T extends string>({
       }}
       style={[
         styles.item,
-        active && elevation.soft,
         {
           backgroundColor: active ? c.primary : "transparent",
         },
@@ -62,6 +61,7 @@ function SegmentItem<T extends string>({
           active && styles.labelActive,
         ]}
         numberOfLines={1}
+        includeFontPadding={false}
       >
         {option.label}
       </Text>
@@ -82,7 +82,13 @@ export function SegmentedControl<T extends string>({
 
   return (
     <View
-      style={[styles.track, { backgroundColor: c.bgMuted }]}
+      style={[
+        styles.track,
+        {
+          backgroundColor: c.bgMuted,
+          borderColor: c.border,
+        },
+      ]}
       accessibilityRole="tablist"
     >
       {options.map((opt) => (
@@ -100,18 +106,24 @@ export function SegmentedControl<T extends string>({
 const styles = StyleSheet.create({
   track: {
     flexDirection: "row",
-    borderRadius: radii.full,
-    padding: 3,
-    gap: 2,
+    borderRadius: radii.lg,
+    padding: 4,
+    gap: 4,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   item: {
     flex: 1,
     minHeight: touchTarget.min - 4,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: radii.full,
+    borderRadius: radii.md,
     paddingHorizontal: spacing.sm,
+    paddingVertical: 8,
   },
-  label: { fontSize: 13, fontWeight: "600" },
+  label: {
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
+  },
   labelActive: { fontWeight: "700" },
 });

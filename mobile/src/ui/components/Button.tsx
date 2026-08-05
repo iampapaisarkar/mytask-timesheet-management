@@ -1,6 +1,7 @@
 import { type ReactNode, useCallback } from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -45,6 +46,13 @@ type Props = {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
+const FILLED_VARIANTS: ButtonVariant[] = [
+  "primary",
+  "secondary",
+  "danger",
+  "soft",
+];
+
 export function Button({
   title,
   onPress,
@@ -62,6 +70,7 @@ export function Button({
   const c = useThemeStore((s) => s.colors);
   const scale = useSharedValue(1);
   const isDisabled = disabled || loading;
+  const isFilled = FILLED_VARIANTS.includes(variant);
 
   const palette = (() => {
     switch (variant) {
@@ -70,36 +79,43 @@ export function Button({
           bg: c.secondary,
           text: c.white,
           border: c.secondary,
+          borderWidth: StyleSheet.hairlineWidth,
         };
       case "outline":
         return {
-          bg: "transparent",
+          // Solid surface fill — Android elevation on transparent looks muddy
+          bg: c.surface,
           text: c.text,
           border: c.borderStrong,
+          borderWidth: Platform.OS === "android" ? 1 : StyleSheet.hairlineWidth,
         };
       case "ghost":
         return {
           bg: "transparent",
           text: c.primary,
           border: "transparent",
+          borderWidth: 0,
         };
       case "danger":
         return {
           bg: c.negative,
           text: c.white,
           border: c.negative,
+          borderWidth: StyleSheet.hairlineWidth,
         };
       case "soft":
         return {
           bg: c.primarySoft,
           text: c.secondary,
           border: "transparent",
+          borderWidth: 0,
         };
       default:
         return {
           bg: c.primary,
           text: c.white,
           border: c.primary,
+          borderWidth: StyleSheet.hairlineWidth,
         };
     }
   })();
@@ -137,10 +153,11 @@ export function Button({
       onPressOut={handlePressOut}
       style={[
         styles.base,
-        elevation.soft,
+        isFilled ? elevation.soft : elevation.none,
         {
           backgroundColor: palette.bg,
           borderColor: palette.border,
+          borderWidth: palette.borderWidth,
           paddingVertical: pad.py,
           paddingHorizontal: pad.px,
           opacity: isDisabled ? opacity.disabled : 1,
@@ -154,16 +171,18 @@ export function Button({
         <ActivityIndicator color={palette.text} />
       ) : (
         <View style={styles.row}>
-          {leftIcon}
+          {leftIcon ? <View style={styles.iconSlot}>{leftIcon}</View> : null}
           <Text
             style={[
               styles.label,
               { color: palette.text, fontSize: pad.font },
             ]}
+            numberOfLines={1}
+            ellipsizeMode="tail"
           >
             {title}
           </Text>
-          {rightIcon}
+          {rightIcon ? <View style={styles.iconSlot}>{rightIcon}</View> : null}
         </View>
       )}
     </AnimatedPressable>
@@ -174,17 +193,29 @@ const styles = StyleSheet.create({
   base: {
     minHeight: touchTarget.min,
     borderRadius: radii.lg,
-    borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
+    overflow: Platform.OS === "android" ? "hidden" : "visible",
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: spacing.sm,
+    maxWidth: "100%",
+  },
+  iconSlot: {
+    width: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
   },
   label: {
+    flexShrink: 1,
     fontWeight: "700",
     letterSpacing: 0.2,
+    textAlign: "center",
+    includeFontPadding: false,
+    textAlignVertical: "center",
   },
 });

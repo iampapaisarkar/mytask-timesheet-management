@@ -9,12 +9,24 @@ export function mapAuthError(error: unknown): string {
   const code =
     "code" in error && typeof (error as { code?: unknown }).code === "string"
       ? (error as { code: string }).code
-      : "";
+      : "code" in error && typeof (error as { code?: unknown }).code === "number"
+        ? String((error as { code: number }).code)
+        : "";
   const message =
     "message" in error &&
     typeof (error as { message?: unknown }).message === "string"
       ? (error as { message: string }).message
       : "";
+
+  const normalized = `${code} ${message}`.toLowerCase();
+  if (
+    code === "10" ||
+    code === "DEVELOPER_ERROR" ||
+    normalized.includes("developer_error") ||
+    normalized.includes("apiException: 10")
+  ) {
+    return "Google Sign-In is misconfigured for Android. Add this app's debug SHA-1/SHA-256 in Firebase (Project settings → Your apps), download a fresh google-services.json, then rebuild.";
+  }
 
   switch (code) {
     case "auth/popup-closed-by-user":
@@ -51,6 +63,7 @@ export function mapAuthError(error: unknown): string {
   if (message) return message;
   return "Unable to sign in with Google. Please try again.";
 }
+
 
 export class AuthCancelledError extends Error {
   readonly code = "auth/cancelled";

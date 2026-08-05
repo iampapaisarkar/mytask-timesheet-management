@@ -90,6 +90,17 @@ export async function signInWithGoogle(): Promise<UserCredential> {
   try {
     ensureGoogleConfigured();
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+
+    // Clear a stale native Google session so a previous DEVELOPER_ERROR
+    // / cancelled attempt does not block the next prompt.
+    try {
+      if (GoogleSignin.getCurrentUser()) {
+        await GoogleSignin.signOut();
+      }
+    } catch {
+      // ignore
+    }
+
     const response = await GoogleSignin.signIn();
 
     if (!isSuccessResponse(response)) {
@@ -106,6 +117,9 @@ export async function signInWithGoogle(): Promise<UserCredential> {
     const credential = GoogleAuthProvider.credential(idToken);
     return await signInWithCredential(getFirebaseAuth(), credential);
   } catch (error: unknown) {
+    if (__DEV__) {
+      console.warn("[GoogleSignIn]", error);
+    }
     if (isAuthCancelled(error)) {
       throw new AuthCancelledError(mapAuthError(error));
     }
