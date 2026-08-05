@@ -42,6 +42,7 @@
 | Mobile premium design system | ✅ Done | 2026-08-01 | Shared tokens + `src/ui` component library; all screens redesigned (cards, badges, empty/error states, auth, lists, details); light/dark semantic palette |
 | Mobile standalone org navigation | ✅ Done | 2026-08-01 | OrgStack siblings hide OrgHeader+tabs; Timesheet Day + More destinations use StandaloneHeader; swipe-back enabled |
 | Enhanced day map (GPS cleanup + activity routes) | ✅ Done | 2026-08-05 | Shared `@mytask/utils` RouteProcessor/GPSFilter; activity colors in theme; segmented polylines + start/end markers on web + mobile |
+| Mobile FCM push (Android) | ✅ Done | 2026-08-05 | `@react-native-firebase/messaging`; token upsert; default channel; tap → navigateNotificationPath |
 
 ## Vue ↔ Web ↔ Mobile gap matrix
 
@@ -50,7 +51,7 @@
 | `/` org picker + create | ✅ | ✅ | Create organisation screen |
 | `/org-invitation` | ✅ | ✅ | Token verify + accept; HTTPS Universal Links + `mytask://` |
 | Pending invitations inbox | ✅ | ✅ | HomeScreen Accept/Reject |
-| Notifications chrome | ✅ | ✅ | List + deep-link to TM detail |
+| Notifications chrome | ✅ | ✅ | List + FCM push (Android; iOS needs APNs) |
 | Route/action ACL | ✅ | Partial | OrgHome gates + create gates; stack ACL TBD |
 | `/org/:code` home + charts | ✅ | ✅ | KPIs + weekly bars; tracking via FAB |
 | ClockInOut tracking | Notice (correct) | ✅ | Full-screen Tracking + Transistorsoft |
@@ -74,4 +75,4 @@
 
 ## Current focus
 
-Enhanced timesheet day map shipped (color-coded segments, activity markers, GPS spike filtering). Remaining: FCM push on mobile; payout date-range filters polish.
+Mobile FCM push wired for Android (and iOS once APNs is configured). Remaining: payout date-range filters polish.

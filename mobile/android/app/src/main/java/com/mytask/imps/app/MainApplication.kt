@@ -1,6 +1,9 @@
 package com.mytask.imps.app
 
 import android.app.Application
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.os.Build
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
@@ -22,6 +25,22 @@ class MainApplication : Application(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
+    ensureDefaultNotificationChannel()
     loadReactNative(this)
+  }
+
+  /** Default channel used when FCM payloads omit android.notification.channel_id. */
+  private fun ensureDefaultNotificationChannel() {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+    val manager = getSystemService(NotificationManager::class.java) ?: return
+    val channel =
+        NotificationChannel(
+            "mytask_default",
+            "myTask",
+            NotificationManager.IMPORTANCE_HIGH,
+        )
+    channel.description = "Timesheet and organisation alerts"
+    channel.enableVibration(true)
+    manager.createNotificationChannel(channel)
   }
 }

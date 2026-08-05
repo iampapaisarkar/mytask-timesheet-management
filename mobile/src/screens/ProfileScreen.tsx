@@ -27,6 +27,7 @@ import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 import { resetAllStores } from "../store/resetAllStores";
 import { signOutUser } from "../services/firebase";
+import { unregisterMobilePush } from "../services/pushNotifications";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import {
   Avatar,
@@ -132,6 +133,11 @@ export function ProfileScreen() {
       await authApi.logout({ platform: Platform.OS });
     } catch {
       // still clear local session
+    }
+    try {
+      await unregisterMobilePush();
+    } catch {
+      // ignore
     }
     try {
       await signOutUser();

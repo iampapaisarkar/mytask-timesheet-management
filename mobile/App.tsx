@@ -21,6 +21,7 @@ import {
 } from './src/navigation/navigationRef';
 import { RealtimeProvider } from './src/providers/RealtimeProvider';
 import { AuthSessionProvider } from './src/providers/AuthSessionProvider';
+import { PushNotificationsProvider } from './src/providers/PushNotificationsProvider';
 import { useAuthStore } from './src/store/authStore';
 import { useOrganisationStore } from './src/store/organisationStore';
 import { useThemeStore } from './src/store/themeStore';
@@ -127,24 +128,26 @@ function App() {
         <KeyboardProvider>
           <QueryClientProvider client={queryClient}>
             <AuthSessionProvider>
-              <RealtimeProvider>
-                <BottomSheetModalProvider>
-                  <NavigationContainer
-                    ref={navigationRef}
-                    theme={navTheme}
-                    linking={navigationLinking}
-                    onReady={() => flushPendingOrgInvitation()}
-                  >
-                    <StatusBar
-                      barStyle={mode === 'dark' ? 'light-content' : 'dark-content'}
-                      backgroundColor={c.bg}
-                    />
-                    <DeepLinkHandler />
-                    <RootNavigator />
-                    <ToastViewport />
-                  </NavigationContainer>
-                </BottomSheetModalProvider>
-              </RealtimeProvider>
+              <PushNotificationsProvider>
+                <RealtimeProvider>
+                  <BottomSheetModalProvider>
+                    <NavigationContainer
+                      ref={navigationRef}
+                      theme={navTheme}
+                      linking={navigationLinking}
+                      onReady={() => flushPendingOrgInvitation()}
+                    >
+                      <StatusBar
+                        barStyle={mode === 'dark' ? 'light-content' : 'dark-content'}
+                        backgroundColor={c.bg}
+                      />
+                      <DeepLinkHandler />
+                      <RootNavigator />
+                      <ToastViewport />
+                    </NavigationContainer>
+                  </BottomSheetModalProvider>
+                </RealtimeProvider>
+              </PushNotificationsProvider>
             </AuthSessionProvider>
           </QueryClientProvider>
         </KeyboardProvider>
