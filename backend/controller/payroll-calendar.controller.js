@@ -43,8 +43,6 @@ export async function list(req, res, next) {
       offset,
       limit: rowsPerPage,
       order: [[sortBy, sortDirection]],
-      distinct: true,
-      col: "PayrollCalendars.id",
       raw: false,
       nest: true,
     });

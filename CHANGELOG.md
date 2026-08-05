@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-05
+
+### Fixed
+
+- **GET `/api/payroll-calendars/list`:** Removed `distinct`/`col: "PayrollCalendars.id"` from `findAndCountAll`. Sequelize was generating `count(DISTINCT(\`PayrollCalendars->PayrollCalendars\`.\`id\`))`, which MySQL rejected (`ER_BAD_FIELD_ERROR`). The `pay_cycle` include is `belongsTo`, so distinct counting is unnecessary.
+
 ## 2026-08-02
 
 ### Added
