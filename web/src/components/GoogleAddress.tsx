@@ -109,11 +109,13 @@ export function GoogleAddressAutocomplete({
   onChangeRef.current = onChange;
   const statesRef = useRef(states);
   statesRef.current = states;
+  const autocompleteRef = useRef<GoogleAutocomplete | null>(null);
+  /** Ignore programmatic value writes while the user is typing a new search. */
+  const editingSearchRef = useRef(false);
 
   useEffect(() => {
     if (!hasMaps || !apiKey) return;
     let cancelled = false;
-    let autocomplete: GoogleAutocomplete | null = null;
 
     void loadGoogleMaps(apiKey)
       .then(() => {
@@ -126,7 +128,12 @@ export function GoogleAddressAutocomplete({
         const Places = window.google?.maps?.places;
         if (!Places) return;
 
-        autocomplete = new Places.Autocomplete(searchRef.current, {
+        // Keep a single Autocomplete on a stable input node — remounting the
+        // input (e.g. via key={place_id}) orphans the widget and breaks the
+        // second search.
+        if (autocompleteRef.current) return;
+
+        const autocomplete = new Places.Autocomplete(searchRef.current, {
           fields: [
             "place_id",
             "formatted_address",
@@ -135,10 +142,10 @@ export function GoogleAddressAutocomplete({
           ],
           types: ["address"],
         });
+        autocompleteRef.current = autocomplete;
 
-        const instance = autocomplete;
-        instance.addListener("place_changed", () => {
-          const place = instance.getPlace();
+        autocomplete.addListener("place_changed", () => {
+          const place = autocomplete.getPlace();
           if (!place?.address_components?.length && !place?.formatted_address) {
             return;
           }
@@ -168,6 +175,7 @@ export function GoogleAddressAutocomplete({
                 }
               : parsed.state,
           });
+          editingSearchRef.current = false;
           setSelected(true);
           onChangeRef.current(next);
           if (searchRef.current && place.formatted_address) {
@@ -185,15 +193,34 @@ export function GoogleAddressAutocomplete({
 
     return () => {
       cancelled = true;
-      if (autocomplete && window.google?.maps?.event?.clearInstanceListeners) {
-        window.google.maps.event.clearInstanceListeners(autocomplete);
+      const instance = autocompleteRef.current;
+      autocompleteRef.current = null;
+      if (instance && window.google?.maps?.event?.clearInstanceListeners) {
+        window.google.maps.event.clearInstanceListeners(instance);
       }
     };
   }, [hasMaps, apiKey]);
 
+  // Sync external address → search field without remounting the input
+  // (map pin / parent form updates). Skip while the user is typing.
+  useEffect(() => {
+    if (editingSearchRef.current || !searchRef.current) return;
+    const next =
+      form.formatted_address || form.address_line_1 || form.address_1 || "";
+    if (searchRef.current.value !== next) {
+      searchRef.current.value = next;
+    }
+  }, [
+    form.place_id,
+    form.formatted_address,
+    form.address_line_1,
+    form.address_1,
+  ]);
+
   const showDetails = alwaysShowDetails || selected || hasAddressContent(form);
 
   function clearAddress() {
+    editingSearchRef.current = false;
     setSelected(false);
     onChange(emptyAddress());
     if (searchRef.current) searchRef.current.value = "";
@@ -213,9 +240,24 @@ export function GoogleAddressAutocomplete({
             autoComplete="off"
             aria-invalid={Boolean(error)}
             defaultValue={
-              form.formatted_address || form.address_line_1 || form.address_1 || ""
+              form.formatted_address ||
+              form.address_line_1 ||
+              form.address_1 ||
+              ""
             }
-            key={form.place_id || "search"}
+            onFocus={() => {
+              editingSearchRef.current = true;
+            }}
+            onInput={() => {
+              editingSearchRef.current = true;
+              setSelected(false);
+            }}
+            onBlur={() => {
+              // Delay so place_changed can run before we resume external sync
+              window.setTimeout(() => {
+                editingSearchRef.current = false;
+              }, 200);
+            }}
           />
           {mapsError ? (
             <span className="text-xs text-negative">{mapsError}</span>

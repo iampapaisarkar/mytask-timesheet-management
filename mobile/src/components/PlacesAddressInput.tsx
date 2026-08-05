@@ -131,6 +131,8 @@ export function PlacesAddressInput({
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(() => hasAddressContent(value));
   const skipNextFetch = useRef(false);
+  /** While true, ignore parent address sync so a second search is not overwritten. */
+  const editingSearchRef = useRef(false);
 
   useEffect(() => {
     if (hasAddressContent(value)) setSelected(true);
@@ -142,19 +144,26 @@ export function PlacesAddressInput({
   ]);
 
   useEffect(() => {
+    if (editingSearchRef.current) return;
     const next = address.formatted_address || address.address_line_1 || "";
-    if (next && next !== query) {
+    if (next !== query) {
       skipNextFetch.current = true;
       setQuery(next);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sync external value only
-  }, [address.place_id, address.formatted_address, address.latitude, address.longitude]);
+  }, [
+    address.place_id,
+    address.formatted_address,
+    address.latitude,
+    address.longitude,
+  ]);
 
   function emit(partial: Partial<GlobalAddress>) {
     onChange(normalizeAddress({ ...address, ...partial }));
   }
 
   function clearAddress() {
+    editingSearchRef.current = false;
     skipNextFetch.current = true;
     setQuery("");
     setPredictions([]);
@@ -238,6 +247,7 @@ export function PlacesAddressInput({
         },
       );
       skipNextFetch.current = true;
+      editingSearchRef.current = false;
       setQuery(parsed.formatted_address || prediction.description);
       setPredictions([]);
       setSelected(true);
@@ -266,12 +276,19 @@ export function PlacesAddressInput({
           <Input
             value={query}
             onChangeText={(text: string) => {
+              editingSearchRef.current = true;
               setQuery(text);
               setOpen(true);
+              setSelected(false);
               if (!text.trim()) {
-                setSelected(false);
                 onChange(emptyGlobalAddress());
               }
+            }}
+            onBlur={() => {
+              // Allow place selection / parent sync after the user finishes typing
+              setTimeout(() => {
+                editingSearchRef.current = false;
+              }, 250);
             }}
             placeholder={placeholder}
             placeholderTextColor={c.muted}

@@ -262,7 +262,7 @@ button:disabled,
   outline: none;
 }
 
-.global-phone-input .PhoneInputCountryIcon--border {
-  background-color: transparent;
-  box-shadow: none;
+/* Google Places dropdown must sit above fullscreen modals (z-70). */
+.pac-container {
+  z-index: 80 !important;
 }
