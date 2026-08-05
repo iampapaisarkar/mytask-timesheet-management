@@ -2,6 +2,7 @@ import UIKit
 import React
 import React_RCTAppDelegate
 import ReactAppDependencyProvider
+import FirebaseCore
 import GoogleMaps
 import TSBackgroundFetch
 
@@ -16,6 +17,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
+    // Required before any @react-native-firebase JS module loads (RNFBAppModule).
+    FirebaseApp.configure()
+
     if let mapsKey = Bundle.main.object(forInfoDictionaryKey: "GMSApiKey") as? String,
        !mapsKey.isEmpty {
       GMSServices.provideAPIKey(mapsKey)

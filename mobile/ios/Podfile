@@ -12,11 +12,16 @@ source 'https://cdn.cocoapods.org/'
 platform :ios, min_ios_version_supported
 prepare_react_native_project!
 
-linkage = ENV['USE_FRAMEWORKS']
-if linkage != nil
-  Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
-  use_frameworks! :linkage => linkage.to_sym
-end
+# Required by firebase-ios-sdk / @react-native-firebase (v15+).
+# Override with USE_FRAMEWORKS=dynamic only if you know you need it.
+# Disable SPM: firebase-ios-sdk SPM products are dynamic-only and conflict with
+# static linkage (duplicate symbols). CocoaPods + static frameworks is the
+# supported combo for RN CLI + New Architecture.
+$RNFirebaseDisableSPM = true
+linkage = ENV['USE_FRAMEWORKS'] || 'static'
+Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
+use_frameworks! :linkage => linkage.to_sym
+$RNFirebaseAsStaticFramework = true
 
 target 'MyTaskMobile' do
   config = use_native_modules!
