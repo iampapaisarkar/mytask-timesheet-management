@@ -7,7 +7,7 @@ import {
   View,
 } from "react-native";
 import { formatMinutesAsDisplayTime } from "@mytask/utils";
-import { radii, spacing, typography } from "@mytask/theme";
+import { activityColors, radii, spacing, typography } from "@mytask/theme";
 import { useThemeStore } from "../store/themeStore";
 
 export type TimelineTaskType = "working" | "break" | "travel";
@@ -21,9 +21,9 @@ export type TimelineTask = {
 };
 
 const TYPE_COLORS: Record<TimelineTaskType, string> = {
-  working: "#04B6B1",
-  break: "#F59E0B",
-  travel: "#5B8DEF",
+  working: activityColors.working,
+  break: activityColors.break,
+  travel: activityColors.travel,
 };
 
 const PX_PER_MIN = 1.15;

@@ -1,4 +1,10 @@
-import { Fragment, useMemo, type ComponentType, type ReactNode } from "react";
+import {
+  Fragment,
+  memo,
+  useMemo,
+  type ComponentType,
+  type ReactNode,
+} from "react";
 import {
   NativeModules,
   Platform,
@@ -9,68 +15,26 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import { mapStyleForTheme, spacing } from "@mytask/theme";
+import {
+  activityColors,
+  mapStyleForTheme,
+  mapRouteStyle,
+  spacing,
+} from "@mytask/theme";
+import type {
+  LatLng,
+  TimesheetActivityType,
+  TrackingLogs,
+} from "@mytask/types";
+import {
+  hasTrackingRouteData,
+  processTrackingRoute,
+  type MapMarkerDescriptor,
+  type ProcessedRoute,
+} from "@mytask/utils";
 import { useThemeStore } from "../store/themeStore";
 
-export type TrackingPoint = {
-  latitude?: number | string | null;
-  longitude?: number | string | null;
-  start_at?: string | null;
-  end_at?: string | null;
-  type?: { code?: string; name?: string } | null;
-};
-
-export type TrackingLogs = {
-  travels?: TrackingPoint[][];
-  workings?: TrackingPoint[][];
-  breaks?: TrackingPoint[][];
-};
-
-type FlatPoint = {
-  lat: number;
-  lng: number;
-  type: "working" | "break" | "travel";
-  label: string;
-};
-
-const TYPE_COLORS: Record<FlatPoint["type"], string> = {
-  working: "#04B6B1",
-  break: "#F59E0B",
-  travel: "#3B82F6",
-};
-
-function toLatLng(point: {
-  latitude?: number | string | null;
-  longitude?: number | string | null;
-}): { lat: number; lng: number } | null {
-  const lat = Number(point?.latitude);
-  const lng = Number(point?.longitude);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  return { lat, lng };
-}
-
-function flattenTrackingLogs(logs?: TrackingLogs | null): FlatPoint[] {
-  if (!logs) return [];
-  const out: FlatPoint[] = [];
-  for (const key of ["travels", "breaks", "workings"] as const) {
-    const groups = logs[key];
-    if (!Array.isArray(groups)) continue;
-    const type = key.slice(0, -1) as FlatPoint["type"];
-    for (const group of groups) {
-      if (!Array.isArray(group)) continue;
-      for (const point of group) {
-        const pos = toLatLng(point);
-        if (!pos) continue;
-        out.push({
-          ...pos,
-          type,
-          label: point.type?.name || point.type?.code || type,
-        });
-      }
-    }
-  }
-  return out;
-}
+export type { TrackingPoint, TrackingLogs } from "@mytask/types";
 
 type MapsModule = {
   default: ComponentType<{
@@ -97,11 +61,19 @@ type MapsModule = {
     title?: string;
     description?: string;
     tracksViewChanges?: boolean;
+    zIndex?: number;
+    anchor?: { x: number; y: number };
+    children?: ReactNode;
   }>;
   Polyline: ComponentType<{
     coordinates: Array<{ latitude: number; longitude: number }>;
     strokeColor?: string;
     strokeWidth?: number;
+    strokeColors?: string[];
+    lineCap?: "butt" | "round" | "square";
+    lineJoin?: "miter" | "round" | "bevel";
+    geodesic?: boolean;
+    zIndex?: number;
   }>;
   PROVIDER_GOOGLE?: string;
 };
@@ -123,7 +95,113 @@ function loadMapsModule(): MapsModule | null {
 
 const mapsModule = loadMapsModule();
 
-function PointsList({ points }: { points: FlatPoint[] }) {
+function regionFromRoute(route: ProcessedRoute, first: LatLng) {
+  if (!route.bounds) {
+    return {
+      latitude: first.lat,
+      longitude: first.lng,
+      latitudeDelta: 0.04,
+      longitudeDelta: 0.04,
+    };
+  }
+  const { minLat, maxLat, minLng, maxLng } = route.bounds;
+  const latDelta = Math.max(0.01, (maxLat - minLat) * 1.4);
+  const lngDelta = Math.max(0.01, (maxLng - minLng) * 1.4);
+  return {
+    latitude: (minLat + maxLat) / 2,
+    longitude: (minLng + maxLng) / 2,
+    latitudeDelta: latDelta,
+    longitudeDelta: lngDelta,
+  };
+}
+
+const ActivityMarkerView = memo(function ActivityMarkerView({
+  marker,
+}: {
+  marker: MapMarkerDescriptor;
+}) {
+  const size = marker.size;
+  const inner =
+    marker.glyph === "end" ? (
+      <View
+        style={{
+          width: size * 0.32,
+          height: size * 0.32,
+          borderRadius: 2,
+          backgroundColor: "#fff",
+        }}
+      />
+    ) : marker.glyph === "travel" ? (
+      <View
+        style={{
+          width: 0,
+          height: 0,
+          borderLeftWidth: 5,
+          borderRightWidth: 5,
+          borderBottomWidth: 9,
+          borderLeftColor: "transparent",
+          borderRightColor: "transparent",
+          borderBottomColor: "#fff",
+        }}
+      />
+    ) : marker.glyph === "break" ? (
+      <View style={{ flexDirection: "row", gap: 3 }}>
+        <View
+          style={{
+            width: 2.5,
+            height: size * 0.34,
+            borderRadius: 1,
+            backgroundColor: "#fff",
+          }}
+        />
+        <View
+          style={{
+            width: 2.5,
+            height: size * 0.34,
+            borderRadius: 1,
+            backgroundColor: "#fff",
+          }}
+        />
+      </View>
+    ) : (
+      <View
+        style={{
+          width: size * 0.28,
+          height: size * 0.28,
+          borderRadius: size,
+          backgroundColor: "#fff",
+        }}
+      />
+    );
+
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: marker.color,
+        borderWidth: 2,
+        borderColor: "#fff",
+        alignItems: "center",
+        justifyContent: "center",
+        shadowColor: "#000",
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+        shadowOffset: { width: 0, height: 1 },
+        elevation: 3,
+      }}
+    >
+      {inner}
+    </View>
+  );
+});
+
+function PointsList({
+  points,
+}: {
+  points: Array<LatLng & { type: TimesheetActivityType }>;
+}) {
   const c = useThemeStore((s) => s.colors);
 
   if (!points.length) {
@@ -142,12 +220,16 @@ function PointsList({ points }: { points: FlatPoint[] }) {
           style={[styles.row, { borderBottomColor: c.border }]}
         >
           <View
-            style={[styles.dot, { backgroundColor: TYPE_COLORS[p.type] }]}
+            style={[
+              styles.dot,
+              {
+                backgroundColor:
+                  activityColors[p.type] ?? activityColors.working,
+              },
+            ]}
           />
           <View style={styles.rowBody}>
-            <Text style={[styles.type, { color: c.text }]}>
-              {p.label || p.type}
-            </Text>
+            <Text style={[styles.type, { color: c.text }]}>{p.type}</Text>
             <Text style={[styles.coords, { color: c.muted }]}>
               {p.lat.toFixed(6)}, {p.lng.toFixed(6)}
             </Text>
@@ -161,15 +243,18 @@ function PointsList({ points }: { points: FlatPoint[] }) {
 export function TrackingMap({
   trackingLogs,
   selectedType = null,
+  currentLocation = null,
 }: {
   trackingLogs?: TrackingLogs | null;
-  selectedType?: FlatPoint["type"] | null;
+  selectedType?: TimesheetActivityType | null;
+  currentLocation?: { latitude: number; longitude: number } | null;
 }) {
   const c = useThemeStore((s) => s.colors);
   const mode = useThemeStore((s) => s.mode);
-  const points = useMemo(
-    () => flattenTrackingLogs(trackingLogs),
-    [trackingLogs],
+
+  const route = useMemo(
+    () => processTrackingRoute(trackingLogs, { selectedType }),
+    [trackingLogs, selectedType],
   );
 
   const MapView = mapsModule?.default;
@@ -178,7 +263,7 @@ export function TrackingMap({
   const provider =
     mapsModule?.PROVIDER_GOOGLE ??
     (Platform.OS === "android" ? "google" : "google");
-  const canRenderMap = Boolean(MapView && Marker && points.length > 0);
+  const canRenderMap = Boolean(MapView && Marker && route.segments.length > 0);
 
   if (!canRenderMap || !MapView || !Marker) {
     return (
@@ -192,24 +277,18 @@ export function TrackingMap({
             rebuild). Showing coordinate list.
           </Text>
         ) : null}
-        <PointsList points={points} />
+        <PointsList points={route.allPoints} />
       </View>
     );
   }
 
-  const first = points[0];
-  const byType = points.reduce(
-    (acc, p) => {
-      (acc[p.type] ||= []).push(p);
-      return acc;
-    },
-    {} as Record<FlatPoint["type"], FlatPoint[]>,
-  );
+  const first = route.allPoints[0];
+  const routeKey = `${route.segments.length}-${route.allPoints.length}-${route.allPoints[route.allPoints.length - 1]?.lat}`;
 
   return (
     <View style={[styles.mapWrap, { backgroundColor: c.surface }]}>
       <MapView
-        key={`track-map-${points.length}-${points[points.length - 1]?.lat}-${points[points.length - 1]?.lng}`}
+        key={`track-map-${routeKey}`}
         style={StyleSheet.absoluteFill}
         provider={provider}
         customMapStyle={mapStyleForTheme(mode)}
@@ -219,53 +298,90 @@ export function TrackingMap({
         showsTraffic={false}
         showsCompass={false}
         toolbarEnabled={false}
-        initialRegion={{
-          latitude: first.lat,
-          longitude: first.lng,
-          latitudeDelta: 0.04,
-          longitudeDelta: 0.04,
-        }}
+        initialRegion={regionFromRoute(route, first)}
       >
-        {(Object.keys(byType) as FlatPoint["type"][]).map((type) => {
-          const coords = byType[type].map((p) => ({
+        {/* Polylines first (under markers) */}
+        {route.segments.map((segment) => {
+          const coords = segment.path.map((p) => ({
             latitude: p.lat,
             longitude: p.lng,
           }));
+          if (coords.length < 2 && coords.length === 1) {
+            // Single-point segment: still draw a tiny stub so the color shows
+            coords.push(coords[0]);
+          }
           return (
-            <Fragment key={type}>
+            <Fragment key={segment.id}>
               {Polyline ? (
-                <Polyline
-                  coordinates={coords}
-                  strokeColor={TYPE_COLORS[type]}
-                  strokeWidth={
-                    selectedType && selectedType === type
-                      ? 5
-                      : selectedType
-                        ? 2
-                        : 3
-                  }
-                />
+                <>
+                  <Polyline
+                    coordinates={coords}
+                    strokeColor={segment.style.underlayColor}
+                    strokeWidth={segment.style.underlayWidth}
+                    lineCap={segment.style.lineCap}
+                    lineJoin={segment.style.lineJoin}
+                    geodesic={segment.style.geodesic}
+                    zIndex={segment.style.zIndex}
+                  />
+                  <Polyline
+                    coordinates={coords}
+                    strokeColor={segment.style.color}
+                    strokeWidth={segment.style.width}
+                    lineCap={segment.style.lineCap}
+                    lineJoin={segment.style.lineJoin}
+                    geodesic={segment.style.geodesic}
+                    zIndex={segment.style.zIndex + 0.1}
+                  />
+                </>
               ) : null}
-              {byType[type].map((p, i) => (
-                <Marker
-                  key={`${type}-${i}`}
-                  coordinate={{ latitude: p.lat, longitude: p.lng }}
-                  pinColor={TYPE_COLORS[type]}
-                  title={p.label || type}
-                  description={`${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`}
-                  tracksViewChanges={false}
-                />
-              ))}
             </Fragment>
           );
         })}
+
+        {/* End then start markers (sorted by zIndex ascending) */}
+        {route.markers.map((marker) => (
+          <Marker
+            key={marker.id}
+            coordinate={{
+              latitude: marker.displayPosition.lat,
+              longitude: marker.displayPosition.lng,
+            }}
+            title={marker.title}
+            tracksViewChanges={false}
+            zIndex={marker.zIndex}
+            anchor={{ x: 0.5, y: 0.5 }}
+          >
+            <ActivityMarkerView marker={marker} />
+          </Marker>
+        ))}
+
+        {currentLocation ? (
+          <Marker
+            coordinate={currentLocation}
+            title="Current location"
+            tracksViewChanges={false}
+            zIndex={4}
+            anchor={{ x: 0.5, y: 0.5 }}
+          >
+            <View
+              style={{
+                width: mapRouteStyle.markerCurrentSize,
+                height: mapRouteStyle.markerCurrentSize,
+                borderRadius: mapRouteStyle.markerCurrentSize / 2,
+                backgroundColor: activityColors.working,
+                borderWidth: 2,
+                borderColor: "#fff",
+              }}
+            />
+          </Marker>
+        ) : null}
       </MapView>
     </View>
   );
 }
 
 export function hasTrackingMapData(logs?: TrackingLogs | null) {
-  return flattenTrackingLogs(logs).length > 0;
+  return hasTrackingRouteData(logs);
 }
 
 const styles = StyleSheet.create({

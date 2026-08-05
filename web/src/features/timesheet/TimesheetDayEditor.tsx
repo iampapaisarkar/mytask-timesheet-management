@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTimesheetDayEditorScreen } from "@mytask/hooks";
 import { reportsApi, timesheetsApi, timesheetManagementApi } from "@mytask/api";
 import { formatHours, formatMoney } from "@mytask/constants";
+import { activityColors } from "@mytask/theme";
 import { formatDisplayTime, getErrorMessage, resolveOpenEndTime } from "@mytask/utils";
 import { validateTimesheetDayTaskRow } from "@mytask/validation";
 import { Button } from "@/components/ui/Button";
@@ -96,9 +97,9 @@ type JobRow = {
 };
 
 const SHEET_COLORS: Record<TaskType, string> = {
-  working: "#04B6B1",
-  travel: "#7BA3F0",
-  break: "#F59E0B",
+  working: activityColors.working,
+  travel: activityColors.travel,
+  break: activityColors.break,
 };
 
 const selectClass =

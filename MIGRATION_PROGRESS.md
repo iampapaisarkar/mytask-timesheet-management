@@ -41,6 +41,7 @@
 | Mobile org navigation UX | ✅ Done | 2026-08-01 | Root Home without tabs; org-only premium bottom tabs; custom OrgHeader; swipe-back only on detail screens |
 | Mobile premium design system | ✅ Done | 2026-08-01 | Shared tokens + `src/ui` component library; all screens redesigned (cards, badges, empty/error states, auth, lists, details); light/dark semantic palette |
 | Mobile standalone org navigation | ✅ Done | 2026-08-01 | OrgStack siblings hide OrgHeader+tabs; Timesheet Day + More destinations use StandaloneHeader; swipe-back enabled |
+| Enhanced day map (GPS cleanup + activity routes) | ✅ Done | 2026-08-05 | Shared `@mytask/utils` RouteProcessor/GPSFilter; activity colors in theme; segmented polylines + start/end markers on web + mobile |
 
 ## Vue ↔ Web ↔ Mobile gap matrix
 
@@ -61,7 +62,7 @@
 | Help / Terms / Privacy | ✅ | ✅ | Main app routes (not under org settings) |
 | `employees` wizard | ✅ | ✅ | List + create/edit sheets; outbound invite on create |
 | `customers` / `jobs` / MG | ✅ | ✅ | List + create/edit sheets + Places address |
-| Timesheet day MapView | ✅ | ✅ | Google Maps only + minimal custom style |
+| Timesheet day MapView | ✅ | ✅ | Shared route pipeline; activity-colored segments + GPS cleanup |
 | System logs | ✅ | ✅ | Internal/external/email tabs |
 | Signup / forgot password | ✅ | ✅ | Firebase + backend signup |
 | Legacy payroll integration removal | ✅ | 2026-07-30 | Removed runtime and UI integration |
@@ -73,4 +74,4 @@
 
 ## Current focus
 
-Organisation navigation shell + premium mobile design system shipped. Remaining: FCM push on mobile; payout date-range filters polish.
+Enhanced timesheet day map shipped (color-coded segments, activity markers, GPS spike filtering). Remaining: FCM push on mobile; payout date-range filters polish.

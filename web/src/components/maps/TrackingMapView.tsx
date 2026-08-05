@@ -1,21 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { mapStyleForTheme } from "@mytask/theme";
+import type { TrackingLogs, TimesheetActivityType } from "@mytask/types";
+import {
+  hasTrackingRouteData,
+  markerIconSvgDataUri,
+  processTrackingRoute,
+} from "@mytask/utils";
 import { loadGoogleMaps } from "@/lib/googleMaps";
 import { useThemeStore } from "@/store/themeStore";
 
-export type TrackingPoint = {
-  latitude?: number | string | null;
-  longitude?: number | string | null;
-  start_at?: string | null;
-  end_at?: string | null;
-  type?: { code?: string; name?: string } | null;
-};
-
-export type TrackingLogs = {
-  travels?: TrackingPoint[][];
-  workings?: TrackingPoint[][];
-  breaks?: TrackingPoint[][];
-};
+export type { TrackingPoint, TrackingLogs } from "@mytask/types";
 
 export type MapJob = {
   id?: number | string;
@@ -32,17 +26,10 @@ export type MapJob = {
   } | null;
 };
 
-const TYPE_COLORS: Record<string, string> = {
-  working: "#04B6B1",
-  break: "#F59E0B",
-  travel: "#3B82F6",
-};
-
 type GoogleMapsNs = {
   Map: new (el: HTMLElement, opts: Record<string, unknown>) => GoogleMap;
   Polyline: new (opts: Record<string, unknown>) => {
     setMap: (m: unknown) => void;
-    setOptions?: (opts: Record<string, unknown>) => void;
   };
   Circle: new (opts: Record<string, unknown>) => {
     setMap: (m: unknown) => void;
@@ -54,6 +41,8 @@ type GoogleMapsNs = {
     extend: (p: { lat: number; lng: number }) => void;
     isEmpty: () => boolean;
   };
+  Size: new (w: number, h: number) => unknown;
+  Point: new (x: number, y: number) => unknown;
   MapTypeId: { ROADMAP: string };
 };
 
@@ -77,42 +66,21 @@ function toLatLng(point: {
   return { lat, lng };
 }
 
-function segmentsFromLogs(logs?: TrackingLogs | null) {
-  const segments: { type: string; points: TrackingPoint[] }[] = [];
-  if (!logs) return segments;
-  for (const key of ["travels", "breaks", "workings"] as const) {
-    const groups = logs[key];
-    if (!Array.isArray(groups)) continue;
-    for (const group of groups) {
-      if (Array.isArray(group) && group.length > 0) {
-        segments.push({ type: key.slice(0, -1), points: group });
-      }
-    }
-  }
-  return segments;
-}
-
-function flattenCoords(logs?: TrackingLogs | null) {
-  return segmentsFromLogs(logs).flatMap((seg) =>
-    seg.points
-      .map((p) => toLatLng(p))
-      .filter((p): p is { lat: number; lng: number } => !!p)
-      .map((p) => ({ ...p, type: seg.type })),
-  );
-}
-
 export function TrackingMapView({
   trackingLogs,
   jobs = [],
   height = 300,
   selectedType = null,
+  currentLocation = null,
   className,
 }: {
   trackingLogs?: TrackingLogs | null;
   jobs?: MapJob[];
   height?: number | string;
   /** Highlight segments of this activity type */
-  selectedType?: "working" | "break" | "travel" | null;
+  selectedType?: TimesheetActivityType | null;
+  /** Optional live position drawn above activity markers */
+  currentLocation?: { lat: number; lng: number } | null;
   className?: string;
 }) {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -121,13 +89,9 @@ export function TrackingMapView({
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
   const themeMode = useThemeStore((s) => s.mode);
 
-  const segments = useMemo(
-    () => segmentsFromLogs(trackingLogs),
-    [trackingLogs],
-  );
-  const fallbackPoints = useMemo(
-    () => flattenCoords(trackingLogs),
-    [trackingLogs],
+  const route = useMemo(
+    () => processTrackingRoute(trackingLogs, { selectedType }),
+    [trackingLogs, selectedType],
   );
 
   const jobPoints = useMemo(
@@ -150,7 +114,7 @@ export function TrackingMapView({
     [jobs],
   );
 
-  const hasData = segments.length > 0 || jobPoints.length > 0;
+  const hasData = route.segments.length > 0 || jobPoints.length > 0;
 
   useEffect(() => {
     if (!apiKey || !hasData || !mapRef.current) return;
@@ -166,7 +130,6 @@ export function TrackingMapView({
         if (!maps) return;
 
         const map = new maps.Map(mapRef.current, {
-          // Neutral world view until fitBounds runs on real points
           center: { lat: 20, lng: 0 },
           zoom: 2,
           mapTypeId: maps.MapTypeId.ROADMAP,
@@ -177,52 +140,33 @@ export function TrackingMapView({
         mapInstanceRef.current = map;
         const bounds = new maps.LatLngBounds();
 
-        for (const segment of segments) {
-          const path = segment.points
-            .map((p) => toLatLng(p))
-            .filter((p): p is { lat: number; lng: number } => !!p);
-          if (!path.length) continue;
-          path.forEach((p) => bounds.extend(p));
+        // 1) Polylines (bottom layer)
+        for (const segment of route.segments) {
+          if (!segment.path.length) continue;
+          segment.path.forEach((p) => bounds.extend(p));
 
           overlays.push(
             new maps.Polyline({
-              path,
-              strokeColor: "#646464",
-              strokeWeight:
-                selectedType && selectedType !== segment.type ? 3 : 6,
-              strokeOpacity:
-                selectedType && selectedType !== segment.type ? 0.25 : 0.55,
+              path: segment.path,
+              strokeColor: segment.style.underlayColor,
+              strokeWeight: segment.style.underlayWidth,
+              strokeOpacity: segment.style.underlayOpacity,
+              geodesic: segment.style.geodesic,
+              zIndex: segment.style.zIndex,
               map,
             }),
           );
           overlays.push(
             new maps.Polyline({
-              path,
-              strokeColor: TYPE_COLORS[segment.type] || "#EF4444",
-              strokeWeight:
-                selectedType && selectedType === segment.type
-                  ? 6
-                  : selectedType
-                    ? 2
-                    : 4,
-              strokeOpacity:
-                selectedType && selectedType !== segment.type ? 0.35 : 1,
+              path: segment.path,
+              strokeColor: segment.style.color,
+              strokeWeight: segment.style.width,
+              strokeOpacity: segment.style.opacity,
+              geodesic: segment.style.geodesic,
+              zIndex: segment.style.zIndex + 0.1,
               map,
             }),
           );
-
-          for (const point of segment.points) {
-            if (!point.start_at && !point.end_at) continue;
-            const pos = toLatLng(point);
-            if (!pos) continue;
-            overlays.push(
-              new maps.Marker({
-                position: pos,
-                map,
-                title: point.type?.name || segment.type,
-              }),
-            );
-          }
         }
 
         for (const { job, pos } of jobPoints) {
@@ -235,6 +179,7 @@ export function TrackingMapView({
               fillColor: "#04B6B1",
               fillOpacity: 0.2,
               strokeWeight: 1,
+              zIndex: 0,
               map,
             }),
           );
@@ -243,6 +188,58 @@ export function TrackingMapView({
               position: pos,
               map,
               title: job.name || "Job",
+              zIndex: 1,
+            }),
+          );
+        }
+
+        // 2) End markers, then 3) start markers (already sorted by zIndex)
+        for (const marker of route.markers) {
+          bounds.extend(marker.displayPosition);
+          const size = marker.size;
+          overlays.push(
+            new maps.Marker({
+              position: marker.displayPosition,
+              map,
+              title: marker.title,
+              zIndex: marker.zIndex,
+              icon: {
+                url: markerIconSvgDataUri(marker, themeMode),
+                scaledSize: new maps.Size(size, size),
+                anchor: new maps.Point(size / 2, size / 2),
+              },
+            }),
+          );
+        }
+
+        // 4) Current location on top
+        if (currentLocation) {
+          bounds.extend(currentLocation);
+          overlays.push(
+            new maps.Marker({
+              position: currentLocation,
+              map,
+              title: "Current location",
+              zIndex: 4,
+              icon: {
+                url: markerIconSvgDataUri(
+                  {
+                    id: "current",
+                    kind: "current",
+                    activityType: null,
+                    position: currentLocation,
+                    displayPosition: currentLocation,
+                    color: "#04B6B1",
+                    title: "Current location",
+                    size: 16,
+                    zIndex: 4,
+                    glyph: "dot",
+                  },
+                  themeMode,
+                ),
+                scaledSize: new maps.Size(16, 16),
+                anchor: new maps.Point(8, 8),
+              },
             }),
           );
         }
@@ -260,11 +257,10 @@ export function TrackingMapView({
       mapInstanceRef.current = null;
       overlays.forEach((o) => o.setMap(null));
     };
-    // themeMode is applied via setOptions below so overlays are not rebuilt on toggle
+    // themeMode chrome updates via setOptions; marker icons rebuild when route changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiKey, hasData, segments, jobPoints, selectedType]);
+  }, [apiKey, hasData, route, jobPoints, selectedType, currentLocation]);
 
-  // Keep map chrome in sync when the app theme toggles without remounting overlays.
   useEffect(() => {
     mapInstanceRef.current?.setOptions({
       styles: [...mapStyleForTheme(themeMode)],
@@ -286,7 +282,10 @@ export function TrackingMapView({
     return (
       <div
         className={`overflow-auto rounded-xl border border-border bg-[var(--mt-bg)] p-3 text-sm ${className || ""}`}
-        style={{ maxHeight: typeof height === "number" ? height : undefined, height }}
+        style={{
+          maxHeight: typeof height === "number" ? height : undefined,
+          height,
+        }}
       >
         <p className="mb-2 font-medium text-[var(--mt-text)]">
           {loadError
@@ -294,7 +293,7 @@ export function TrackingMapView({
             : "Map unavailable — set VITE_GOOGLE_MAPS_API_KEY"}
         </p>
         <ul className="space-y-1 font-mono text-xs text-muted">
-          {fallbackPoints.map((p, i) => (
+          {route.allPoints.map((p, i) => (
             <li key={`${p.lat}-${p.lng}-${i}`}>
               [{p.type}] {p.lat.toFixed(6)}, {p.lng.toFixed(6)}
             </li>
@@ -321,7 +320,5 @@ export function TrackingMapView({
 }
 
 export function hasTrackingMapData(logs?: TrackingLogs | null) {
-  return segmentsFromLogs(logs).some((seg) =>
-    seg.points.some((p) => toLatLng(p)),
-  );
+  return hasTrackingRouteData(logs);
 }

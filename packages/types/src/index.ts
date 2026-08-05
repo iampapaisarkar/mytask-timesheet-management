@@ -414,4 +414,11 @@ export type PlansCatalogueResponse = {
   current_subscription: SubscriptionView | null;
 };
 
+export type {
+  TimesheetActivityType,
+  TrackingPoint,
+  TrackingLogs,
+  LatLng,
+} from "./tracking";
+
 

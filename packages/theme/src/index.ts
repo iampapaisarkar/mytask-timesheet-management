@@ -162,3 +162,10 @@ export {
   mapStyleForTheme,
   type MapThemeMode,
 } from "./mapStyle";
+
+export {
+  activityColors,
+  activityColor,
+  mapRouteStyle,
+  type ActivityColorKey,
+} from "./activityColors";
