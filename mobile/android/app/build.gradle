@@ -13,9 +13,19 @@ react {
     reactNativeDir = file("../../../node_modules/react-native")
     codegenDir = file("../../../node_modules/@react-native/codegen")
     cliFile = file("../../../node_modules/react-native/cli.js")
+    // Hoisted to workspace root — auto-detect looks under mobile/node_modules and fails.
+    hermesCommand =
+        "${file("../../../node_modules/hermes-compiler/hermesc").absolutePath}/%OS-BIN%/hermesc"
 
     /* Autolinking */
     autolinkLibrariesWithApp()
+
+    /*
+     * Variants listed here skip JS bundling (Metro loads JS at runtime).
+     * Keep `demo` OUT of this list so assembleDemo embeds index.android.bundle
+     * for client sideloads without Metro, while staying debuggable for Transistorsoft.
+     */
+    debuggableVariants = ["debug", "debugOptimized"]
 }
 
 /**
@@ -42,12 +52,16 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace "com.mytask.imps.app"
+    buildFeatures {
+        buildConfig true
+    }
     defaultConfig {
         applicationId "com.mytask.imps.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        buildConfigField "boolean", "USE_METRO", "false"
     }
     signingConfigs {
         debug {
@@ -60,6 +74,23 @@ android {
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
+            buildConfigField "boolean", "USE_METRO", "true"
+        }
+        /**
+         * Client / demo sideload APK:
+         * - debuggable=true → Transistorsoft works without a license JWT
+         * - not in react.debuggableVariants → JS bundle embedded (no Metro)
+         * - USE_METRO=false → no packager / yellow-box developer UI
+         */
+        demo {
+            initWith debug
+            matchingFallbacks = ["debug"]
+            signingConfig signingConfigs.debug
+            debuggable true
+            minifyEnabled false
+            buildConfigField "boolean", "USE_METRO", "false"
+            // RN Gradle plugin only sets this for debug/release — required by AndroidManifest.
+            manifestPlaceholders = [usesCleartextTraffic: "true"]
         }
         release {
             // Caution! In production, you need to generate your own keystore file.
@@ -67,6 +98,7 @@ android {
             signingConfig signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            buildConfigField "boolean", "USE_METRO", "false"
         }
     }
 }

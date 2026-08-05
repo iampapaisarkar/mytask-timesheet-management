@@ -163,6 +163,40 @@ More detail: [`web/docs/BUILD.md`](./web/docs/BUILD.md), [`web/README.md`](./web
 
 Mobile is a **bare React Native CLI** project (`mobile/ios`, `mobile/android`).
 
+### Quick commands
+
+From `mobile/`:
+
+```bash
+cd mobile
+
+# Metro (dev server)
+npx react-native start --reset-cache
+
+# iOS (simulator or connected device)
+npx react-native run-ios --device 00008140-001A2826348A801C
+
+# Open Xcode workspace (signing, archiving, or manual runs)
+open ios/MyTaskMobile.xcworkspace
+
+# Android (emulator or connected device)
+emulator -avd Pixel_8
+npx react-native run-android --device emulator-5554
+
+# Client demo APK (debuggable + embedded JS; Transistorsoft works without license)
+./gradlew assembleDemo -PreactNativeArchitectures=arm64-v8a
+# or: npm run android:demo-apk
+adb install -r android/app/build/outputs/apk/demo/app-demo.apk
+```
+
+Gradle commands run from `mobile/android/`:
+
+```bash
+cd mobile/android
+./gradlew assembleDemo -PreactNativeArchitectures=arm64-v8a
+adb install -r app/build/outputs/apk/demo/app-demo.apk
+```
+
 ### 4.1 Configure API + Firebase
 
 Edit:

@@ -20,6 +20,8 @@ class MainApplication : Application(), ReactApplication {
           // Packages that cannot be autolinked yet can be added manually here, for example:
           // add(MyReactNativePackage())
         },
+      // debug → Metro; demo/release → embedded JS bundle (see app/build.gradle).
+      useDevSupport = BuildConfig.USE_METRO,
     )
   }
 

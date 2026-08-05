@@ -61,6 +61,7 @@ npm run pods
 ### 2. License keys
 
 - **DEBUG** builds work without a license.
+- **Demo APK** (`npm run android:demo-apk -w mobile`): debuggable + embedded JS — Transistorsoft works **without** a license and clients can install without Metro.
 - **RELEASE** Android (and App Store iOS) need a **v5** JWT from the
   [Transistorsoft customer dashboard](https://www.transistorsoft.com).
 
@@ -69,7 +70,7 @@ npm run pods
 | iOS | `Info.plist` → `TSLocationManagerLicense` |
 | Android | `AndroidManifest.xml` → `com.transistorsoft.locationmanager.license` |
 
-Replace `YOUR_*_LICENSE_KEY_JWT` placeholders before shipping release builds.
+Replace `YOUR_*_LICENSE_KEY_JWT` placeholders before shipping **release** / Play Store builds (not required for `demo`).
 
 ### 3. Already wired in this repo
 
