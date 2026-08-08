@@ -49,6 +49,7 @@ type NativeBgl = {
   stop: () => Promise<unknown>;
   sync: () => Promise<unknown>;
   setConfig: (config: BglConfig) => Promise<unknown>;
+  getState?: () => Promise<{ enabled?: boolean }>;
   getCurrentPosition: (opts?: BglConfig) => Promise<BglLocation>;
   requestPermission: () => Promise<number | string>;
   addGeofences: (geofences: BglGeofence[]) => Promise<unknown>;
@@ -339,6 +340,25 @@ export async function destroy(): Promise<void> {
   enabled = false;
 }
 
+/** Refresh `enabled` from the native plugin state (important after iOS force-quit). */
+export async function refreshEnabledFromNative(): Promise<boolean> {
+  const bgl = tryLoadNativeBgl();
+  if (!bgl) {
+    enabled = false;
+    return false;
+  }
+  try {
+    if (typeof bgl.getState === 'function') {
+      const state = await bgl.getState();
+      enabled = Boolean(state?.enabled);
+      return enabled;
+    }
+  } catch (err) {
+    console.warn('[BGL] getState failed', err);
+  }
+  return enabled;
+}
+
 export async function start(): Promise<boolean> {
   const bgl = tryLoadNativeBgl();
   if (!bgl) {
@@ -484,6 +504,7 @@ export const backgroundGeolocation = {
   requestPermissions,
   setGeofences,
   configureTrackingHttp,
+  refreshEnabledFromNative,
   isNativeBglAvailable,
   isBglReady,
   isBglEnabled,

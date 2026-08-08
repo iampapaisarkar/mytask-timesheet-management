@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
 import {
   timesheetActivityApi,
   type TrackingActivityStatus,
@@ -19,6 +20,7 @@ import {
   ensureTrackingToken,
   trackingAuthHeaders,
 } from '../services/trackingAuthToken';
+import { alignTrackingWithServerStatus } from '../services/restoreTracking';
 
 export type TimerState = 'stop' | 'running' | 'pause';
 
@@ -87,14 +89,32 @@ export function useTracking() {
     [clearTick],
   );
 
-  const refreshActivity = useCallback(async () => {
+  const refreshActivity = useCallback(async (): Promise<TrackingActivityStatus | null> => {
     try {
       const res = await timesheetActivityApi.list();
-      applyStatus(res.data?.data ?? null);
+      const data = res.data?.data ?? null;
+      applyStatus(data);
+      return data;
     } catch (err) {
       console.warn('[useTracking] activity fetch failed', err);
+      return null;
     }
   }, [applyStatus]);
+
+  const syncNativeWithServer = useCallback(
+    async (data: TrackingActivityStatus | null) => {
+      try {
+        await alignTrackingWithServerStatus({
+          organisationCode: organisation?.code,
+          userId: user?.id,
+          timer: data?.timer,
+        });
+      } catch (err) {
+        console.warn('[useTracking] native align failed', err);
+      }
+    },
+    [organisation?.code, user?.id],
+  );
 
   const refreshOtherOrgBanner = useCallback(async () => {
     if (!organisation?.code) {
@@ -125,13 +145,30 @@ export function useTracking() {
       } catch (err) {
         console.warn('[useTracking] setup failed', err);
       }
-      await refreshActivity();
+      const data = await refreshActivity();
+      await syncNativeWithServer(data);
       await refreshOtherOrgBanner();
     })();
+
+    const onAppState = (state: AppStateStatus) => {
+      if (state !== 'active') return;
+      void (async () => {
+        const data = await refreshActivity();
+        await syncNativeWithServer(data);
+      })();
+    };
+    const sub = AppState.addEventListener('change', onAppState);
+
     return () => {
       clearTick();
+      sub.remove();
     };
-  }, [refreshActivity, refreshOtherOrgBanner, clearTick]);
+  }, [
+    refreshActivity,
+    refreshOtherOrgBanner,
+    syncNativeWithServer,
+    clearTick,
+  ]);
 
   const withLocationStore = useCallback(
     async (
@@ -269,6 +306,17 @@ export function useTracking() {
       const userId = user?.id;
       if (!orgCode || userId == null) {
         return { ok: false, error: 'Missing organisation session.' };
+      }
+      // Ensure native GPS is armed (may be off after iOS force-quit).
+      if (!backgroundGeolocation.isBglEnabled()) {
+        const trackingToken = await ensureTrackingToken();
+        await setTrackingSession(orgCode, userId);
+        await backgroundGeolocation.configureTrackingHttp({
+          organisationCode: orgCode,
+          userId,
+          trackingToken,
+        });
+        await backgroundGeolocation.start();
       }
       await withLocationStore('resume', orgCode, userId);
       return { ok: true };

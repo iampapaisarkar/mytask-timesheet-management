@@ -59,8 +59,10 @@ async function locationStore(
     });
     return true;
   } catch (err) {
+    // Re-throw so BullMQ marks the job failed and retries (attempts: 5).
+    // Swallowing here reported success while dropping GPS breadcrumbs.
     console.error("Error inserting location", err);
-    return { success: false, error: err.message };
+    throw err;
   }
 }
 

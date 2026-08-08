@@ -23,10 +23,11 @@
       android:name="com.google.android.geo.API_KEY"
       android:value="@string/google_maps_api_key" />
     <!-- Transistorsoft Background Geolocation — required for RELEASE builds.
-         DEBUG works without a key. Replace with your v5 JWT from the customer dashboard. -->
+         Leave empty for DEBUG (invalid placeholder JWTs fail validation).
+         Replace with your v5 JWT from the customer dashboard for release. -->
     <meta-data
       android:name="com.transistorsoft.locationmanager.license"
-      android:value="YOUR_ANDROID_LICENSE_KEY_JWT" />
+      android:value="" />
     <meta-data
       android:name="com.google.firebase.messaging.default_notification_channel_id"
       android:value="mytask_default"

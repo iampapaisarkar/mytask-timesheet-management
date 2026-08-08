@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-08
+
+### Fixed
+
+- **Transistorsoft license placeholders:** Empty `TSLocationManagerLicense` / Android license meta-data in DEBUG instead of `YOUR_*_LICENSE_KEY_JWT` (invalid JWT caused `LICENSE VALIDATION FAILURE` / “Token must have 3 segments” on simulator boot).
+- **Mobile tracking after force-quit:** On iOS, force-closing the app stops native Transistorsoft tracking while the server timer / local session can still show “running”. The app never called `start()` again, so reopen + foreground travel wrote no history. Added `TrackingRestoreProvider` + `restoreTracking` to reconfigure HTTP auth and re-`start()` when a session is still open (cold start and AppState active). Resume also re-arms native GPS if needed. Logout now stops BGL and clears the tracking session.
+- **Location worker silent drops:** `location.worker.js` caught `storeLocation` errors and returned success, so BullMQ never retried failed GPS breadcrumbs. Errors are re-thrown so jobs fail and retry.
+
 ## 2026-08-05
 
 ### Fixed

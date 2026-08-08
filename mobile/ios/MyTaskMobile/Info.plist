@@ -70,8 +70,9 @@
 	<array>
 		<string>com.transistorsoft.fetch</string>
 	</array>
+	<!-- Empty for DEBUG (invalid placeholder JWTs fail validation). Set real v5 JWT for Release/App Store. -->
 	<key>TSLocationManagerLicense</key>
-	<string>YOUR_IOS_LICENSE_KEY_JWT</string>
+	<string></string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UIBackgroundModes</key>

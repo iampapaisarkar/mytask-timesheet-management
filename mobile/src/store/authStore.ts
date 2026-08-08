@@ -3,6 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '@mytask/constants';
 import type { UserProfile } from '@mytask/types';
 import { clearTrackingToken } from '../services/trackingAuthToken';
+import { clearTrackingSession } from '../services/trackingSession';
+import backgroundGeolocation from '../services/backgroundGeolocation';
 
 interface AuthState {
   token: string | null;
@@ -28,6 +30,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ token });
   },
   clearSession: async () => {
+    try {
+      await backgroundGeolocation.stop();
+    } catch {
+      /* ignore */
+    }
+    await clearTrackingSession();
     await AsyncStorage.multiRemove([STORAGE_KEYS.authToken, STORAGE_KEYS.user]);
     await clearTrackingToken();
     set({ token: null, user: null });

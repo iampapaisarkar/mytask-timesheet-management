@@ -22,6 +22,7 @@ import {
 import { RealtimeProvider } from './src/providers/RealtimeProvider';
 import { AuthSessionProvider } from './src/providers/AuthSessionProvider';
 import { PushNotificationsProvider } from './src/providers/PushNotificationsProvider';
+import { TrackingRestoreProvider } from './src/providers/TrackingRestoreProvider';
 import { useAuthStore } from './src/store/authStore';
 import { useOrganisationStore } from './src/store/organisationStore';
 import { useThemeStore } from './src/store/themeStore';
@@ -128,26 +129,28 @@ function App() {
         <KeyboardProvider>
           <QueryClientProvider client={queryClient}>
             <AuthSessionProvider>
-              <PushNotificationsProvider>
-                <RealtimeProvider>
-                  <BottomSheetModalProvider>
-                    <NavigationContainer
-                      ref={navigationRef}
-                      theme={navTheme}
-                      linking={navigationLinking}
-                      onReady={() => flushPendingOrgInvitation()}
-                    >
-                      <StatusBar
-                        barStyle={mode === 'dark' ? 'light-content' : 'dark-content'}
-                        backgroundColor={c.bg}
-                      />
-                      <DeepLinkHandler />
-                      <RootNavigator />
-                      <ToastViewport />
-                    </NavigationContainer>
-                  </BottomSheetModalProvider>
-                </RealtimeProvider>
-              </PushNotificationsProvider>
+              <TrackingRestoreProvider>
+                <PushNotificationsProvider>
+                  <RealtimeProvider>
+                    <BottomSheetModalProvider>
+                      <NavigationContainer
+                        ref={navigationRef}
+                        theme={navTheme}
+                        linking={navigationLinking}
+                        onReady={() => flushPendingOrgInvitation()}
+                      >
+                        <StatusBar
+                          barStyle={mode === 'dark' ? 'light-content' : 'dark-content'}
+                          backgroundColor={c.bg}
+                        />
+                        <DeepLinkHandler />
+                        <RootNavigator />
+                        <ToastViewport />
+                      </NavigationContainer>
+                    </BottomSheetModalProvider>
+                  </RealtimeProvider>
+                </PushNotificationsProvider>
+              </TrackingRestoreProvider>
             </AuthSessionProvider>
           </QueryClientProvider>
         </KeyboardProvider>

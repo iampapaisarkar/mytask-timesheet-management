@@ -10,6 +10,8 @@ full-screen `TrackingScreen`.
 |-------|------|
 | `TrackingScreen` | Start / Pause / Resume / Stop, timer, activity status |
 | `hooks/useTracking` | Validate, session, API store/list, BGL lifecycle |
+| `TrackingRestoreProvider` | Re-arm native BGL on cold start / AppState active |
+| `restoreTracking.ts` | Session + `start()` when native `enabled` is false |
 | `trackingAuthToken.ts` | Persist / ensure durable `mttrk_…` tracking token |
 | `trackingSession.ts` | Persist org + user for cross-org lock + BGL params |
 | `backgroundGeolocation.ts` | Transistorsoft ready/start/stop/setConfig |
@@ -70,7 +72,9 @@ npm run pods
 | iOS | `Info.plist` → `TSLocationManagerLicense` |
 | Android | `AndroidManifest.xml` → `com.transistorsoft.locationmanager.license` |
 
-Replace `YOUR_*_LICENSE_KEY_JWT` placeholders before shipping **release** / Play Store builds (not required for `demo`).
+Leave the license keys **empty** for DEBUG / demo (an invalid placeholder JWT like
+`YOUR_*_LICENSE_KEY_JWT` fails validation with “Token must have 3 segments”).
+Paste the real **v5** JWT before shipping **release** / Play Store / App Store builds.
 
 ### 3. Already wired in this repo
 
@@ -102,6 +106,24 @@ npx react-native run-android
 Manual actions (`start` / `pause` / `resume` / `stop`) use
 `POST /timesheet-activity/store` with the same tracking Bearer and current GPS
 fix so the backend can decide activity immediately.
+
+## Force-quit / terminate behaviour
+
+| Platform | Background (not force-quit) | Force-quit / Force stop |
+|----------|----------------------------|-------------------------|
+| **iOS** | Continues with Always location | OS stops location until the app is opened again |
+| **Android** | Continues via foreground service + headless | Usually continues unless the user uses **Force stop** in system settings |
+
+After reopen, `TrackingRestoreProvider` + `useTracking` detect a local session
+(or server `running`/`pause`) and call native `start()` again if `enabled` is
+false. Without that restore, the timer UI can look active while no GPS is
+recorded — including while the app is in the foreground.
+
+**Note:** Points while the app was force-quit on iOS cannot be recovered; only
+travel after reopen (with restore) is recorded.
+
+Continuous breadcrumbs need the backend **location worker** (`location.worker.js`
++ Redis/BullMQ). Ensure that process is running in every environment.
 
 ## Start gates
 
