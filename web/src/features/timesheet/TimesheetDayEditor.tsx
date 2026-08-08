@@ -475,18 +475,39 @@ export function TimesheetDayEditor({
       variant="workspace"
       closeOnBackdrop={false}
       header={
-        <div className="flex w-full flex-wrap items-center gap-2 border-b border-border px-3 py-3 sm:gap-6 sm:px-6">
-          <div className="min-w-0 flex-1 basis-[10rem]">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="truncate text-lg font-bold tracking-tight text-[var(--mt-text)] sm:text-2xl">
-                {dayQuery.isLoading ? "…" : title}
-              </p>
-              {trackingLive ? <LiveTrackingIndicator /> : null}
+        <div className="flex w-full flex-col gap-3 border-b border-border px-3 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 sm:px-6">
+          <div className="flex min-w-0 items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="truncate text-lg font-bold tracking-tight text-[var(--mt-text)] sm:text-2xl">
+                  {dayQuery.isLoading ? "…" : title}
+                </p>
+                {trackingLive ? <LiveTrackingIndicator /> : null}
+              </div>
+              <p className="truncate text-sm text-muted">{subtitle}</p>
             </div>
-            <p className="truncate text-sm text-muted">{subtitle}</p>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="mt-focus inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[var(--mt-muted)] transition hover:bg-primary-muted hover:text-[var(--mt-text)] sm:hidden"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                aria-hidden
+              >
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </button>
           </div>
 
-          <div className="flex w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:flex-1 sm:justify-center sm:gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:flex-1 sm:justify-center">
             <SummaryBadge
               icon="work"
               label={formatMinutesAsHm(totals.working)}
@@ -522,7 +543,7 @@ export function TimesheetDayEditor({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="mt-focus ml-auto inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[var(--mt-muted)] transition hover:bg-primary-muted hover:text-[var(--mt-text)]"
+            className="mt-focus ml-auto hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[var(--mt-muted)] transition hover:bg-primary-muted hover:text-[var(--mt-text)] sm:inline-flex"
           >
             <svg
               width="18"
@@ -540,7 +561,7 @@ export function TimesheetDayEditor({
         </div>
       }
       footer={
-        <div className="flex w-full flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 sm:px-6">
+        <div className="flex w-full flex-col gap-3 border-t border-border px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-6">
           <label className="inline-flex items-center gap-2 text-sm text-[var(--mt-text)]">
             <input
               type="checkbox"
@@ -551,12 +572,16 @@ export function TimesheetDayEditor({
             />
             Public holiday
           </label>
-          <div className="flex gap-2">
-            <Button variant="secondary" onClick={onClose}>
+          <div className="flex gap-2 sm:justify-end">
+            <Button variant="secondary" className="flex-1 sm:flex-none" onClick={onClose}>
               Cancel
             </Button>
             {canSave ? (
-              <Button loading={saving} onClick={() => void handleSave()}>
+              <Button
+                className="flex-1 sm:flex-none"
+                loading={saving}
+                onClick={() => void handleSave()}
+              >
                 Save day
               </Button>
             ) : null}
@@ -576,10 +601,10 @@ export function TimesheetDayEditor({
           />
         </div>
       ) : (
-        <div className="flex h-full min-h-0 flex-col lg:flex-row">
-          {/* Sheets column */}
-          <aside className="flex max-h-[min(42vh,20rem)] w-full shrink-0 flex-col border-b border-border lg:max-h-none lg:w-[280px] lg:border-r lg:border-b-0 xl:w-[340px]">
-            <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex min-h-full flex-col lg:h-full lg:min-h-0 lg:flex-row lg:overflow-hidden">
+          {/* Sheets column — natural height on mobile (page scrolls); fixed pane on lg+ */}
+          <aside className="flex w-full shrink-0 flex-col border-b border-border lg:h-full lg:w-[280px] lg:overflow-hidden lg:border-r lg:border-b-0 xl:w-[340px]">
+            <div className="flex shrink-0 items-center justify-between px-4 py-3">
               <h3 className="text-sm font-medium text-muted">Sheets</h3>
               {canSave ? (
                 <Button
@@ -596,7 +621,7 @@ export function TimesheetDayEditor({
                 </Button>
               ) : null}
             </div>
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pb-4">
+            <div className="space-y-3 px-4 pb-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
               {!tasks.length ? (
                 <p className="text-sm text-muted">No sheets for this day.</p>
               ) : (
@@ -787,9 +812,9 @@ export function TimesheetDayEditor({
           </aside>
 
           {/* Grid / Map */}
-          <section className="flex min-h-0 min-w-0 flex-1 flex-col px-4 py-3 sm:px-6">
+          <section className="flex min-w-0 flex-1 flex-col px-4 py-3 pb-6 sm:px-6 lg:min-h-0 lg:overflow-hidden lg:pb-3">
             <div
-              className="mb-3 flex gap-6 border-b border-border"
+              className="mb-3 flex shrink-0 gap-6 border-b border-border"
               role="tablist"
               aria-label="Day view"
             >
@@ -814,7 +839,7 @@ export function TimesheetDayEditor({
               ))}
             </div>
 
-            <div className="min-h-0 flex-1">
+            <div className="min-h-[min(70vh,28rem)] lg:min-h-0 lg:flex-1 lg:overflow-hidden">
               {viewTab === "grid" ? (
                 <TrackedTimeline
                   tasks={timelineTasks}
@@ -832,7 +857,7 @@ export function TimesheetDayEditor({
                       className="min-h-[280px] flex-1"
                     />
                   ) : (
-                    <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border text-sm text-muted">
+                    <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted">
                       No GPS tracking for this day — timeline still shows
                       manual sheets.
                     </div>
@@ -976,8 +1001,8 @@ function SummaryBadge({
   label: string;
 }) {
   return (
-    <div className="inline-flex items-center gap-2 rounded-xl border border-border bg-[var(--mt-bg)] px-3 py-2 text-sm text-[var(--mt-text)]">
-      <span className="text-muted" aria-hidden>
+    <div className="inline-flex max-w-full items-center gap-1.5 rounded-xl border border-border bg-[var(--mt-bg)] px-2.5 py-1.5 text-xs text-[var(--mt-text)] sm:gap-2 sm:px-3 sm:py-2 sm:text-sm">
+      <span className="shrink-0 text-muted" aria-hidden>
         {icon === "break" ? (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
             <path d="M2 21h18v-2H2v2zm6-4h5a6 6 0 0 0 6-6V3H4v8a6 6 0 0 0 4 5.65V17zm-2-6V5h10v6a4 4 0 0 1-4 4H8a4 4 0 0 1-2-3.46V11zM20 3h2v6a4 4 0 0 1-4 4h-1v-2h1a2 2 0 0 0 2-2V3z" />

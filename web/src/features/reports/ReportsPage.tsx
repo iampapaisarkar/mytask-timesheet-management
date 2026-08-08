@@ -332,7 +332,7 @@ export function ReportsPage() {
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-medium">Employee</span>
             <select
-              className={`rounded-xl border bg-[var(--mt-surface)] px-3 py-2.5 ${
+              className={`w-full min-w-0 max-w-full rounded-xl border bg-[var(--mt-surface)] px-3 py-2.5 ${
                 errors.employee_id ? "border-negative" : "border-border"
               }`}
               value={employeeId}
@@ -359,7 +359,7 @@ export function ReportsPage() {
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-medium">Approved timesheet</span>
             <select
-              className={`rounded-xl border bg-[var(--mt-surface)] px-3 py-2.5 disabled:opacity-55 ${
+              className={`w-full min-w-0 max-w-full rounded-xl border bg-[var(--mt-surface)] px-3 py-2.5 disabled:opacity-55 ${
                 errors.timesheet_id ? "border-negative" : "border-border"
               }`}
               value={timesheetId}
@@ -396,8 +396,9 @@ export function ReportsPage() {
           </p>
         ) : null}
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <Button
+            className="w-full sm:w-auto"
             loading={createMutation.isPending}
             disabled={!canCreate || !employeeId || !timesheetId}
             onClick={() => handleGenerate()}
@@ -415,8 +416,8 @@ export function ReportsPage() {
         </div>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
-        <div className="flex flex-col gap-4">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,18rem)]">
+        <div className="flex min-w-0 flex-col gap-4">
           {activeStatus.data?.status === "failed" ? (
             <ErrorState
               message={
@@ -435,13 +436,13 @@ export function ReportsPage() {
 
           {result ? (
             <>
-              <Card className="flex flex-col gap-3">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
+              <Card className="flex min-w-0 flex-col gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+                  <div className="min-w-0">
                     <p className="text-lg font-semibold text-[var(--mt-text)]">
                       {result.employee?.name || "Employee"}
                     </p>
-                    <p className="text-sm text-muted">
+                    <p className="break-words text-sm text-muted">
                       {formatTimesheetLabel(
                         {
                           code: result.timesheet?.code,
@@ -460,9 +461,10 @@ export function ReportsPage() {
                         : ""}
                     </p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
                     <Button
                       variant="secondary"
+                      className="w-full sm:w-auto"
                       loading={downloadMutation.isPending}
                       onClick={() => downloadMutation.mutate()}
                     >
@@ -470,6 +472,7 @@ export function ReportsPage() {
                     </Button>
                     <Button
                       variant="secondary"
+                      className="w-full sm:w-auto"
                       loading={emailMutation.isPending}
                       onClick={() => emailMutation.mutate()}
                     >
@@ -478,12 +481,12 @@ export function ReportsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 lg:grid-cols-5">
                   <div className="rounded-xl border border-border px-3 py-2">
                     <p className="text-xs uppercase tracking-wide text-muted">
                       Working
                     </p>
-                    <p className="mt-1 text-xl font-semibold">
+                    <p className="mt-1 text-base font-semibold tabular-nums sm:text-xl">
                       {formatHours(result.totals?.working_hours ?? 0)}
                     </p>
                   </div>
@@ -491,7 +494,7 @@ export function ReportsPage() {
                     <p className="text-xs uppercase tracking-wide text-muted">
                       Break
                     </p>
-                    <p className="mt-1 text-xl font-semibold">
+                    <p className="mt-1 text-base font-semibold tabular-nums sm:text-xl">
                       {formatHours(result.totals?.break_hours ?? 0)}
                     </p>
                   </div>
@@ -499,7 +502,7 @@ export function ReportsPage() {
                     <p className="text-xs uppercase tracking-wide text-muted">
                       Travel
                     </p>
-                    <p className="mt-1 text-xl font-semibold">
+                    <p className="mt-1 text-base font-semibold tabular-nums sm:text-xl">
                       {formatHours(result.totals?.travel_hours ?? 0)}
                     </p>
                   </div>
@@ -507,19 +510,19 @@ export function ReportsPage() {
                     <p className="text-xs uppercase tracking-wide text-muted">
                       Pay cycle total
                     </p>
-                    <p className="mt-1 text-xl font-semibold text-primary">
+                    <p className="mt-1 text-base font-semibold text-primary tabular-nums sm:text-xl">
                       {formatMoney(
                         result.pay_cycle?.total_amount,
                         result.currency || result.pay_cycle?.currency,
                       )}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-border px-3 py-2">
+                  <div className="rounded-xl border border-border px-3 py-2 min-[400px]:col-span-2 lg:col-span-1">
                     <p className="text-xs uppercase tracking-wide text-muted">
                       Payment
                     </p>
                     <p
-                      className={`mt-1 text-xl font-semibold ${
+                      className={`mt-1 text-base font-semibold sm:text-xl ${
                         result.pay_cycle?.is_paid
                           ? "text-positive"
                           : "text-[var(--mt-text)]"
@@ -532,9 +535,92 @@ export function ReportsPage() {
                 </div>
               </Card>
 
-              <Card>
+              <Card className="min-w-0">
                 <h3 className="mb-3 text-base font-semibold">Daily breakdown</h3>
-                <div className="overflow-x-auto">
+
+                {/* Mobile: stacked day cards */}
+                <div className="flex flex-col gap-3 md:hidden">
+                  {(result.days || []).length === 0 ? (
+                    <p className="text-sm text-muted">No days in this report.</p>
+                  ) : (
+                    (result.days || []).map((d) => (
+                      <div
+                        key={String(d.date)}
+                        className="rounded-xl border border-border px-3 py-3"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="font-medium text-[var(--mt-text)]">
+                              {d.date || "—"}
+                            </p>
+                            <p className="text-xs text-muted">
+                              {d.day_name || "—"}
+                              {d.is_public_holiday ? " · Public holiday" : ""}
+                            </p>
+                          </div>
+                          <p className="shrink-0 text-sm font-semibold text-primary tabular-nums">
+                            {formatMoney(
+                              d.amount,
+                              result.currency || result.pay_cycle?.currency,
+                            )}
+                          </p>
+                        </div>
+                        <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <dt className="text-xs text-muted">In</dt>
+                            <dd className="font-medium">
+                              {formatDisplayTime(d.clock_in)}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-xs text-muted">Out</dt>
+                            <dd className="font-medium">
+                              {formatDisplayTime(d.clock_out)}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-xs text-muted">Work</dt>
+                            <dd className="font-medium tabular-nums">
+                              {formatHours(d.working_hours ?? 0)}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-xs text-muted">Break</dt>
+                            <dd className="font-medium tabular-nums">
+                              {formatHours(d.break_hours ?? 0)}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-xs text-muted">Travel</dt>
+                            <dd className="font-medium tabular-nums">
+                              {formatHours(d.travel_hours ?? 0)}
+                            </dd>
+                          </div>
+                        </dl>
+                      </div>
+                    ))
+                  )}
+                  <div className="rounded-xl border border-primary/30 bg-primary-muted/20 px-3 py-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold">
+                        Pay cycle total
+                      </span>
+                      <span className="text-sm font-semibold text-primary tabular-nums">
+                        {formatMoney(
+                          result.pay_cycle?.total_amount,
+                          result.currency || result.pay_cycle?.currency,
+                        )}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-muted">
+                      {result.pay_cycle?.paid_label ||
+                        (result.pay_cycle?.is_paid ? "Paid" : "Not paid")}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Desktop / tablet table */}
+                <div className="hidden overflow-x-auto md:block">
                   <table className="min-w-full text-left text-sm">
                     <thead className="border-b border-border text-muted">
                       <tr>
@@ -564,16 +650,16 @@ export function ReportsPage() {
                           <td className="px-2 py-1.5">
                             {formatDisplayTime(d.clock_out)}
                           </td>
-                          <td className="px-2 py-1.5">
+                          <td className="px-2 py-1.5 tabular-nums">
                             {formatHours(d.working_hours ?? 0)}
                           </td>
-                          <td className="px-2 py-1.5">
+                          <td className="px-2 py-1.5 tabular-nums">
                             {formatHours(d.break_hours ?? 0)}
                           </td>
-                          <td className="px-2 py-1.5">
+                          <td className="px-2 py-1.5 tabular-nums">
                             {formatHours(d.travel_hours ?? 0)}
                           </td>
-                          <td className="px-2 py-1.5">
+                          <td className="px-2 py-1.5 tabular-nums">
                             {formatMoney(
                               d.amount,
                               result.currency || result.pay_cycle?.currency,
@@ -587,7 +673,7 @@ export function ReportsPage() {
                         <td className="px-2 py-2" colSpan={6}>
                           Pay cycle total
                         </td>
-                        <td className="px-2 py-2">
+                        <td className="px-2 py-2 tabular-nums">
                           {formatMoney(
                             result.pay_cycle?.total_amount,
                             result.currency || result.pay_cycle?.currency,
@@ -626,7 +712,7 @@ export function ReportsPage() {
           ) : null}
         </div>
 
-        <Card className="h-fit">
+        <Card className="h-fit min-w-0 lg:sticky lg:top-4">
           <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
             Recent requests
           </h3>

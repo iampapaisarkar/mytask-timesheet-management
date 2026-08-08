@@ -4,6 +4,9 @@
 
 ### Changed
 
+- **Web timesheet day editor (mobile):** Full-screen day workspace now scrolls on small screens instead of clipping. Sheets stack naturally above the timeline/map; desktop keeps the split panes. Header/footer are more compact on phones.
+- **Web reports (mobile):** Daily breakdown uses stacked cards on small screens (table from `md` up); actions and selects are full-width; totals grid and request sidebar no longer overflow.
+
 - **Hours display (web + mobile + reports):** Working / travel / break / total / payout hours now show as `Xh YYm` (e.g. `5.6` → `5h 36m`) instead of decimal `5.6h`. Shared via `formatHours` (`@mytask/constants`) and `formatHoursAsHm` / `formatMinutesAsHm` (`@mytask/utils`); report PDF/email labels aligned.
 
 ### Fixed

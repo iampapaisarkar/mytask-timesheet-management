@@ -79,20 +79,27 @@ export function FullScreenModal({
         aria-labelledby={title ? titleId : undefined}
         className={`mt-fullscreen-panel relative z-10 flex h-full w-full flex-col bg-[var(--mt-surface)] ${className || ""}`}
       >
-        {header ??
-          (title ? (
-            <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-6">
-              <h2
-                id={titleId}
-                className="text-lg font-semibold text-[var(--mt-text)]"
-              >
-                {title}
-              </h2>
-              <CloseButton onClose={onClose} />
-            </div>
-          ) : null)}
-        <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
-        {footer}
+        {header || title ? (
+          <div className="shrink-0">
+            {header ??
+              (title ? (
+                <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-6">
+                  <h2
+                    id={titleId}
+                    className="text-lg font-semibold text-[var(--mt-text)]"
+                  >
+                    {title}
+                  </h2>
+                  <CloseButton onClose={onClose} />
+                </div>
+              ) : null)}
+          </div>
+        ) : null}
+        {/* Mobile: page scroll. Desktop workspace panes manage their own overflow. */}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain lg:overflow-hidden">
+          {children}
+        </div>
+        {footer ? <div className="shrink-0">{footer}</div> : null}
       </div>
     ) : (
       <div

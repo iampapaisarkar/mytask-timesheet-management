@@ -103,11 +103,11 @@ export function TrackedTimeline({
   }
 
   return (
-    <div className="flex h-full min-h-[320px] flex-col">
-      <h3 className="mb-3 text-base font-semibold text-[var(--mt-text)]">
+    <div className="flex min-h-[320px] flex-col lg:h-full lg:min-h-0">
+      <h3 className="mb-3 shrink-0 text-base font-semibold text-[var(--mt-text)]">
         Tracked Timeline
       </h3>
-      <div className="relative min-h-0 flex-1 overflow-auto rounded-xl border border-border bg-[var(--mt-bg)]/40">
+      <div className="relative min-h-[320px] overflow-auto rounded-xl border border-border bg-[var(--mt-bg)]/40 lg:min-h-0 lg:flex-1">
         <div className="relative" style={{ height, minWidth: 280 }}>
           {ticks.map((t) => {
             const top = (t - rangeStart) * PX_PER_MIN;
