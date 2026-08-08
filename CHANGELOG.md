@@ -4,6 +4,8 @@
 
 ### Changed
 
+- **Mobile timesheet day time picker:** Start/End on the day sheets editor use a native 12-hour AM/PM picker (`TimeField`). Values still save as `HH:mm` for the API; the UI shows `9:00 AM` style everywhere on that screen.
+
 - **Web timesheet day editor (mobile):** Full-screen day workspace now scrolls on small screens instead of clipping. Sheets stack naturally above the timeline/map; desktop keeps the split panes. Header/footer are more compact on phones.
 - **Web reports (mobile):** Daily breakdown uses stacked cards on small screens (table from `md` up); actions and selects are full-width; totals grid and request sidebar no longer overflow.
 

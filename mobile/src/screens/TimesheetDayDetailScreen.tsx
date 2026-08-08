@@ -25,6 +25,7 @@ import {
 } from "../components/TrackingMap";
 import { LiveTrackingIndicator } from "../components/LiveTrackingIndicator";
 import { SkeletonDetail } from "../components/Skeleton";
+import { TimeField } from "../components/TimeField";
 import {
   TrackedTimeline,
   formatMinutesAsHm,
@@ -729,19 +730,25 @@ function EditFields({
         ))}
       </View>
       <View style={styles.timeRow}>
-        <Field
+        <TimeField
           label="Start"
           value={task.start_time}
           error={errors?.start_time}
-          onChangeText={(start_time) => onChange({ start_time })}
-          placeholder="09:00"
+          onChange={(start_time) => onChange({ start_time })}
+          placeholder="9:00 AM"
+          onColor
+          containerStyle={styles.timeField}
         />
-        <Field
+        <TimeField
           label="End"
           value={task.end_time}
           error={errors?.end_time}
-          onChangeText={(end_time) => onChange({ end_time })}
-          placeholder="17:00"
+          onChange={(end_time) => onChange({ end_time })}
+          placeholder="5:00 PM"
+          clearable
+          onColor
+          hint={!task.end_time?.trim() ? "Leave empty while in progress" : undefined}
+          containerStyle={styles.timeField}
         />
       </View>
       {task.type === "working" && jobs.length > 1 ? (
@@ -911,6 +918,7 @@ const styles = StyleSheet.create({
   },
   typeChipText: { color: "#fff", fontWeight: "700", fontSize: 12 },
   timeRow: { flexDirection: "row", gap: 10 },
+  timeField: { flex: 1, marginBottom: 0 },
   fieldLabel: {
     color: "rgba(255,255,255,0.85)",
     fontSize: 11,
