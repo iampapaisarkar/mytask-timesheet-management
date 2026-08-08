@@ -1,5 +1,5 @@
 import { activityColors } from "@mytask/theme";
-import { formatMinutesAsDisplayTime } from "@mytask/utils";
+import { formatMinutesAsDisplayTime, formatMinutesAsHm } from "@mytask/utils";
 
 export type TimelineTaskType = "working" | "break" | "travel";
 
@@ -32,10 +32,7 @@ function formatDuration(start: string, end: string): string {
   const a = parseMinutes(start);
   const b = parseMinutes(end);
   if (a == null || b == null || b <= a) return "—";
-  const mins = b - a;
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return `${h}h ${String(m).padStart(2, "0")}m`;
+  return formatMinutesAsHm(b - a);
 }
 
 export function sumDurationsByType(tasks: TimelineTask[]) {
@@ -49,11 +46,7 @@ export function sumDurationsByType(tasks: TimelineTask[]) {
   return totals;
 }
 
-export function formatMinutesAsHm(mins: number) {
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return `${h}h ${String(m).padStart(2, "0")}m`;
-}
+export { formatMinutesAsHm };
 
 function TypeIcon({ type }: { type: TimelineTaskType }) {
   if (type === "break") {

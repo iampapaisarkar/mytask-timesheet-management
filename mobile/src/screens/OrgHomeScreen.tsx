@@ -7,7 +7,7 @@ import {
   View,
 } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { formatMoney } from "@mytask/constants";
+import { formatMoney, formatHours } from "@mytask/constants";
 import { useDashboardParallel } from "@mytask/hooks";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { radii, spacing, typography } from "@mytask/theme";
@@ -138,15 +138,15 @@ export function OrgHomeScreen({ route }: Props) {
       return [
         {
           label: "Worked hours",
-          value: `${worked_hours_month}h`,
+          value: formatHours(worked_hours_month),
           hint: "This calendar month",
           icon: <ClockIcon color={c.primary} size={16} />,
           accent: c.primary,
         },
         {
           label: "Approved hours",
-          value: `${approved_hours_month}h`,
-          hint: `${pending_hours_month}h pending`,
+          value: formatHours(approved_hours_month),
+          hint: `${formatHours(pending_hours_month)} pending`,
           icon: <CheckCircleIcon color={c.positive} size={16} />,
           accent: c.positive,
         },
@@ -231,8 +231,8 @@ export function OrgHomeScreen({ route }: Props) {
           },
           {
             label: "Hours this month",
-            value: `${kpis.worked_hours_month ?? 0}h`,
-            hint: `${kpis.approved_hours_month ?? 0}h approved`,
+            value: formatHours(kpis.worked_hours_month ?? 0),
+            hint: `${formatHours(kpis.approved_hours_month ?? 0)} approved`,
             accent: c.primary,
           },
         ]
@@ -487,7 +487,7 @@ export function OrgHomeScreen({ route }: Props) {
                       >
                         {trend.money
                           ? formatMoney(value, displayCurrency)
-                          : `${value}h`}
+                          : String(value)}
                       </Text>
                       <View
                         style={[

@@ -178,6 +178,33 @@ export function formatMinutesAsDisplayTime(mins: number): string {
   );
 }
 
+/**
+ * Duration in minutes → "4h 30m", "0h 45m", "2h 00m".
+ * Used for working / travel / break lengths across web and mobile.
+ */
+export function formatMinutesAsHm(mins: number | string | null | undefined): string {
+  if (mins == null || mins === "") return "—";
+  const n = Number(mins);
+  if (!Number.isFinite(n) || n < 0) return "—";
+  const total = Math.round(n);
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return `${h}h ${String(m).padStart(2, "0")}m`;
+}
+
+/**
+ * Decimal hours (e.g. 5.6) → "5h 36m".
+ * Prefer this for API fields like total_hours / working_hours.
+ */
+export function formatHoursAsHm(
+  hours: number | string | null | undefined,
+): string {
+  if (hours == null || hours === "") return "—";
+  const n = Number(hours);
+  if (!Number.isFinite(n) || n < 0) return "—";
+  return formatMinutesAsHm(n * 60);
+}
+
 function toValidDate(value: string | number | Date | null | undefined): Date | null {
   if (value == null || value === "") return null;
   const d = value instanceof Date ? value : new Date(value);

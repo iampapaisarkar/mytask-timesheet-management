@@ -6,7 +6,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { formatMinutesAsDisplayTime } from "@mytask/utils";
+import { formatMinutesAsDisplayTime, formatMinutesAsHm } from "@mytask/utils";
 import { activityColors, radii, spacing, typography } from "@mytask/theme";
 import { useThemeStore } from "../store/themeStore";
 
@@ -47,11 +47,7 @@ export function sumDurationsByType(tasks: TimelineTask[]) {
   return totals;
 }
 
-export function formatMinutesAsHm(mins: number) {
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return `${h}h ${String(m).padStart(2, "0")}m`;
-}
+export { formatMinutesAsHm };
 
 function compactAxisTime(mins: number): string {
   const label = formatMinutesAsDisplayTime(mins);

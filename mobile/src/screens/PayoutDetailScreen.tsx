@@ -9,7 +9,7 @@ import {
   useReleasePayout,
   useSubmitPayout,
 } from "@mytask/hooks";
-import { formatMoney } from "@mytask/constants";
+import { formatMoney, formatHours } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing, typography } from "@mytask/theme";
 import { getErrorMessage } from "@mytask/utils";
@@ -328,8 +328,8 @@ export function PayoutDetailScreen({ navigation, route }: Props) {
       </Card>
 
       <View style={styles.statsGrid}>
-        <StatCard label="Worked hours" value={`${selected.worked_hours ?? "—"}h`} />
-        <StatCard label="Overtime" value={`${selected.overtime_hours ?? "—"}h`} />
+        <StatCard label="Worked hours" value={formatHours(selected.worked_hours)} />
+        <StatCard label="Overtime" value={formatHours(selected.overtime_hours)} />
         <StatCard
           label="Hourly rate"
           value={formatAmount(selected.hourly_rate, currency)}

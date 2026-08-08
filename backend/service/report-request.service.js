@@ -597,11 +597,11 @@ function moneyLabel(amount, currency) {
 
 function hoursLabel(hours) {
   const num = Number(hours);
-  if (Number.isNaN(num)) return "—";
-  const text = Number.isInteger(num)
-    ? String(num)
-    : String(Number(num.toFixed(2)));
-  return `${text}h`;
+  if (!Number.isFinite(num) || num < 0) return "—";
+  const totalMins = Math.round(num * 60);
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+  return `${h}h ${String(m).padStart(2, "0")}m`;
 }
 
 function buildReportEmailBody({ result, title, generatedBy, generatedAt }) {

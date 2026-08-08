@@ -4,6 +4,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useSubmitTimesheet, useTimesheet } from "@mytask/hooks";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { spacing, typography } from "@mytask/theme";
+import { formatHours } from "@mytask/constants";
 import {
   formatTimesheetLabel,
   getErrorMessage,
@@ -276,7 +277,7 @@ export function TimesheetDetailScreen({ navigation, route }: Props) {
                   {item.day_name ? ` · ${item.day_name}` : ""}
                 </Text>
                 <Text style={{ color: c.muted, marginTop: 2 }}>
-                  {item.total_hours != null ? `${item.total_hours} hrs` : "—"}
+                  {formatHours(item.total_hours)}
                   {item.is_public_holiday ? " · Holiday" : ""}
                 </Text>
               </View>

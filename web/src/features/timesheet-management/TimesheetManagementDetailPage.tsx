@@ -7,7 +7,7 @@ import {
   useSubmitTimesheetManagement,
   useTimesheetManagementItem,
 } from "@mytask/hooks";
-import { ROUTES } from "@mytask/constants";
+import { ROUTES, formatHours } from "@mytask/constants";
 import {
   formatTimesheetLabel,
   getErrorMessage,
@@ -321,7 +321,7 @@ export function TimesheetManagementDetailPage() {
                     <p className="text-xs text-muted">{day.day_name || "—"}</p>
                   </div>
                   <span className="shrink-0 text-sm font-semibold text-primary">
-                    {day.total_hours ?? "—"}
+                    {formatHours(day.total_hours)}
                   </span>
                 </button>
               ))}
@@ -344,7 +344,7 @@ export function TimesheetManagementDetailPage() {
                   >
                     <td className="px-3 py-2">{day.date || "—"}</td>
                     <td className="px-3 py-2">{day.day_name || "—"}</td>
-                    <td className="px-3 py-2">{day.total_hours ?? "—"}</td>
+                    <td className="px-3 py-2">{formatHours(day.total_hours)}</td>
                   </tr>
                 ))}
               </tbody>

@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { timesheetsApi } from "@mytask/api";
 import { useSubmitTimesheet } from "@mytask/hooks";
-import { ROUTES } from "@mytask/constants";
+import { ROUTES, formatHours } from "@mytask/constants";
 import { formatTimesheetLabel, getErrorMessage, sumOpenAwareTaskHours } from "@mytask/utils";
 import { Card, PageHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -276,7 +276,7 @@ export function TimesheetDetailPage() {
                     </p>
                   </div>
                   <span className="shrink-0 text-sm font-semibold text-primary">
-                    {day.total_hours ?? "—"}
+                    {formatHours(day.total_hours)}
                   </span>
                 </button>
               ))}
@@ -302,7 +302,7 @@ export function TimesheetDetailPage() {
                       {day.day_name ||
                         (day.is_public_holiday ? "Holiday" : "—")}
                     </td>
-                    <td className="px-3 py-2">{day.total_hours ?? "—"}</td>
+                    <td className="px-3 py-2">{formatHours(day.total_hours)}</td>
                   </tr>
                 ))}
               </tbody>

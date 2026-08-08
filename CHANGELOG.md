@@ -2,6 +2,10 @@
 
 ## 2026-08-08
 
+### Changed
+
+- **Hours display (web + mobile + reports):** Working / travel / break / total / payout hours now show as `Xh YYm` (e.g. `5.6` → `5h 36m`) instead of decimal `5.6h`. Shared via `formatHours` (`@mytask/constants`) and `formatHoursAsHm` / `formatMinutesAsHm` (`@mytask/utils`); report PDF/email labels aligned.
+
 ### Fixed
 
 - **Transistorsoft license placeholders:** Empty `TSLocationManagerLicense` / Android license meta-data in DEBUG instead of `YOUR_*_LICENSE_KEY_JWT` (invalid JWT caused `LICENSE VALIDATION FAILURE` / “Token must have 3 segments” on simulator boot).

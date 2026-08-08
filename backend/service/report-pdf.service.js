@@ -49,9 +49,12 @@ function money(n, currency) {
 
 function hours(n) {
   if (n == null || Number.isNaN(Number(n))) return "—";
-  const v = Number(n) || 0;
-  const text = Number.isInteger(v) ? String(v) : String(Number(v.toFixed(2)));
-  return `${text}h`;
+  const v = Number(n);
+  if (!Number.isFinite(v) || v < 0) return "—";
+  const totalMins = Math.round(v * 60);
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+  return `${h}h ${String(m).padStart(2, "0")}m`;
 }
 
 function fmtDate(value) {

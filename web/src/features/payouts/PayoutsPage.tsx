@@ -11,7 +11,7 @@ import {
   useReleasePayout,
   useSubmitPayout,
 } from "@mytask/hooks";
-import { DEFAULT_LIST_PAGE_SIZE, formatMoney } from "@mytask/constants";
+import { DEFAULT_LIST_PAGE_SIZE, formatHours, formatMoney } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { getErrorMessage, listPagination, listRows } from "@mytask/utils";
 import { Button } from "@/components/ui/Button";
@@ -669,9 +669,7 @@ export function PayoutsPage() {
                           Hours
                         </dt>
                         <dd>
-                          {row.worked_hours != null
-                            ? `${Number(row.worked_hours).toFixed(2)}h`
-                            : "—"}
+                          {formatHours(row.worked_hours)}
                         </dd>
                       </div>
                       <div className="col-span-2">
@@ -725,9 +723,7 @@ export function PayoutsPage() {
                       </td>
                       <td className="px-2 py-2.5">{periodLabel(row)}</td>
                       <td className="px-2 py-2.5">
-                        {row.worked_hours != null
-                          ? `${Number(row.worked_hours).toFixed(2)}h`
-                          : "—"}
+                        {formatHours(row.worked_hours)}
                       </td>
                       <td className="px-2 py-2.5">
                         {formatAmount(row.net_amount ?? row.amount, currency)}
@@ -836,7 +832,7 @@ export function PayoutsPage() {
                 />
                 <DetailRow
                   label="Worked / OT"
-                  value={`${selected.worked_hours ?? "—"}h / ${selected.overtime_hours ?? "—"}h`}
+                  value={`${formatHours(selected.worked_hours)} / ${formatHours(selected.overtime_hours)}`}
                 />
                 <DetailRow
                   label="Hourly rate"

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ROUTES, formatMoney } from "@mytask/constants";
+import { ROUTES, formatHours, formatMoney } from "@mytask/constants";
 import { can, getOrganisationAcl } from "@mytask/services";
 import { useDashboardParallel } from "@mytask/hooks";
 import type { DashboardOverviewView } from "@mytask/types";
@@ -304,14 +304,14 @@ export function OrganisationHomePage() {
             <StatCard
               icon={<Hourglass className="text-primary" size={20} />}
               label="Worked hours"
-              value={`${worked_hours_month}h`}
+              value={formatHours(worked_hours_month)}
               hint="This calendar month"
             />
             <StatCard
               icon={<CheckCircle2 className="text-positive" size={20} />}
               label="Approved hours"
-              value={`${approved_hours_month}h`}
-              hint={`${pending_hours_month}h pending`}
+              value={formatHours(approved_hours_month)}
+              hint={`${formatHours(pending_hours_month)} pending`}
             />
             <StatCard
               icon={<Wallet className="text-info" size={20} />}
@@ -392,8 +392,8 @@ export function OrganisationHomePage() {
           <StatCard
             icon={<Hourglass className="text-info" size={20} />}
             label="Hours this month"
-            value={`${worked_hours_month}h`}
-            hint={`${approved_hours_month}h approved`}
+            value={formatHours(worked_hours_month)}
+            hint={`${formatHours(approved_hours_month)} approved`}
           />
         </div>
       ) : null}
